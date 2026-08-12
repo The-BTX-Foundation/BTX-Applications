@@ -1,0 +1,4 @@
+{
+  "buildCommand": "cd btx-frontend && npm install && npm run build",
+  "outputDirectory": "btx-frontend/dist"
+}
