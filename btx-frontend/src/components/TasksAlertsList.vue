@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
 
@@ -8,10 +8,21 @@ const tasksAlertsStore = useTasksAlertsStore()
 
 const completingTaskId = ref(null)
 
-onMounted(async () => {
-  await authStore.init()
-  await tasksAlertsStore.fetchTasks()
+onMounted(() => {
+  authStore.init()
 })
+
+// Refetch whenever the signed-in user changes (sign in, sign out, switch
+// accounts) — not just on mount — so stale rows from a previous session
+// don't linger. Keyed on user id rather than the whole session object so
+// token refreshes (same user) don't trigger a redundant refetch.
+watch(
+  () => authStore.session?.user?.id ?? null,
+  () => {
+    tasksAlertsStore.fetchTasks()
+  },
+  { immediate: true },
+)
 
 function dueLabel(dueDate) {
   const due = new Date(dueDate)
