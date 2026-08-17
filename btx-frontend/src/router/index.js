@@ -27,7 +27,11 @@ const router = createRouter({
         placeholderRoute('alerts', 'alerts', 'Alert Center'),
         placeholderRoute('awardee-workflow', 'awardee-workflow', 'Awardee Workflow'),
         placeholderRoute('progress-to-goal', 'progress-to-goal', 'Progress-to-Goal Workflow'),
-        placeholderRoute('donor-impact', 'donor-impact', 'Donor Impact Workflow'),
+        {
+          path: 'donor-impact',
+          name: 'donor-impact',
+          component: () => import('../views/DonorImpactWorkflowView.vue'),
+        },
         placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
         placeholderRoute('marketing', 'marketing', 'Marketing'),
         placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
