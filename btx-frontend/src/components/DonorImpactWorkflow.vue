@@ -6,6 +6,14 @@ import { useDonorImpactStore } from '@/stores/donorImpact'
 const authStore = useAuthStore()
 const donorImpactStore = useDonorImpactStore()
 
+// Metrics selectable via the chart's tab bar, in display order. `format`
+// drives how bar-top values are rendered (currency vs. plain number).
+const CHART_METRICS = [
+  { key: 'funds_granted', label: 'Funds Granted', format: 'currency' },
+  { key: 'students_reached', label: 'Students Reached', format: 'number' },
+  { key: 'scholarships_awarded', label: 'Scholarships Awarded', format: 'number' },
+]
+
 // Only admin (edit) and board (view-only) can see this workflow at all,
 // matching the donor_impact RLS policy — other roles never get a fetch
 // attempt, just the same "Access Denied" treatment used elsewhere.
@@ -17,6 +25,7 @@ const saving = ref(false)
 const showAddCycle = ref(false)
 const newCycleYear = ref(null)
 const addingCycle = ref(false)
+const chartMetricKey = ref('funds_granted')
 
 onMounted(() => {
   authStore.init()
@@ -81,13 +90,24 @@ const publishedCycles = computed(() =>
   donorImpactStore.cycles.filter((c) => c.published).sort((a, b) => a.cycle_year - b.cycle_year),
 )
 
-const maxFundsGranted = computed(() =>
-  Math.max(...publishedCycles.value.map((c) => c.funds_granted), 1),
+// The metric definition backing the chart's currently selected tab.
+const chartMetric = computed(() => CHART_METRICS.find((m) => m.key === chartMetricKey.value))
+
+const maxChartValue = computed(() =>
+  Math.max(...publishedCycles.value.map((c) => c[chartMetricKey.value]), 1),
 )
 
-// Bar height as a percentage of the highest published funds_granted value.
+// Bar height as a percentage of the highest published value for the
+// selected metric.
 function barHeight(cycle) {
-  return `${(cycle.funds_granted / maxFundsGranted.value) * 100}%`
+  return `${(cycle[chartMetricKey.value] / maxChartValue.value) * 100}%`
+}
+
+// Formats a cycle's bar-top label for the selected metric — currency for
+// Funds Granted, a plain thousands-separated number otherwise.
+function formatBarValue(cycle) {
+  const value = cycle[chartMetricKey.value]
+  return chartMetric.value.format === 'currency' ? `$${value.toLocaleString()}` : value.toLocaleString()
 }
 
 // Saves the edit form's values to the selected cycle and publishes it.
@@ -203,13 +223,27 @@ async function handleAddCycle() {
         </form>
 
         <div class="chart">
-          <h3>Funds Granted by Year</h3>
+          <h3>{{ chartMetric.label }} by Year</h3>
+
+          <div class="chart-tabs">
+            <button
+              v-for="metric in CHART_METRICS"
+              :key="metric.key"
+              type="button"
+              class="chart-tab"
+              :class="{ 'chart-tab--active': metric.key === chartMetricKey }"
+              @click="chartMetricKey = metric.key"
+            >
+              {{ metric.label }}
+            </button>
+          </div>
+
           <p v-if="publishedCycles.length === 0" class="chart-empty">
             No published cycles yet.
           </p>
           <div v-else class="bars">
             <div v-for="cycle in publishedCycles" :key="cycle.metric_id" class="bar-col">
-              <span class="bar-value">${{ cycle.funds_granted.toLocaleString() }}</span>
+              <span class="bar-value">{{ formatBarValue(cycle) }}</span>
               <div class="bar" :style="{ height: barHeight(cycle) }"></div>
               <span class="bar-label">{{ cycle.cycle_year }}</span>
             </div>
@@ -383,6 +417,29 @@ async function handleAddCycle() {
   font-size: 14px;
   font-weight: 500;
   color: #2d3142;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chart-tab {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #8a8a85;
+  cursor: pointer;
+}
+
+.chart-tab--active {
+  background: #faeeda;
+  color: #854f0b;
+  font-weight: 600;
 }
 
 .chart-empty {
