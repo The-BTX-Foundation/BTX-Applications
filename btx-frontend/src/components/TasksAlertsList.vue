@@ -24,6 +24,8 @@ watch(
   { immediate: true },
 )
 
+// Formats a due date as a relative label ("Due today"/"Due tomorrow") for
+// near-term dates, falling back to a short calendar date otherwise.
 function dueLabel(dueDate) {
   const due = new Date(dueDate)
   const today = new Date()
@@ -37,6 +39,8 @@ function dueLabel(dueDate) {
   return due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+// Marks a task complete, tracking its id so only that row's button shows
+// a disabled/loading state while the request is in flight.
 async function handleMarkComplete(taskId) {
   completingTaskId.value = taskId
   await tasksAlertsStore.markComplete(taskId)
@@ -66,6 +70,9 @@ async function handleMarkComplete(taskId) {
           <p class="assignee">Assigned to {{ task.assigned_to?.name ?? 'Unassigned' }}</p>
         </div>
 
+        <!-- Only board/admin roles can mark tasks complete; matches the
+             RLS policy on tasks_alerts updates, so non-privileged users
+             never see a button whose click would just be rejected. -->
         <button
           v-if="authStore.isBoardOrAdmin && task.status !== 'Complete'"
           type="button"
