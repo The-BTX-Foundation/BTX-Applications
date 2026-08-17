@@ -4,20 +4,23 @@ import LoginForm from '../components/LoginForm.vue'
 
 const route = useRoute()
 
-// Nav sections shown in the sidebar. Only "Program" has children wired up
-// to real routes so far — the rest are placeholders until their views
-// exist, so they render as plain non-interactive labels.
+// Nav sections shown in the sidebar. A section is either a standalone
+// clickable item (routeName set, e.g. Finance & Funding) or a group header
+// (Program) whose children are the clickable items.
 const navSections = [
-  { label: 'Finance & Funding' },
+  { label: 'Finance & Funding', routeName: 'finance-funding' },
   {
     label: 'Program',
     children: [
       { label: 'Task & Approval', routeName: 'tasks' },
-      { label: 'Donor Impact', routeName: 'donor-impact' },
+      { label: 'Alert Center', routeName: 'alerts' },
+      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
+      { label: 'Progress-to-Goal Workflow', routeName: 'progress-to-goal' },
+      { label: 'Donor Impact Workflow', routeName: 'donor-impact' },
     ],
   },
-  { label: 'Marketing' },
-  { label: 'Scholarship' },
+  { label: 'Marketing', routeName: 'marketing' },
+  { label: 'Scholarship', routeName: 'scholarship' },
 ]
 </script>
 
@@ -28,7 +31,15 @@ const navSections = [
 
       <nav class="nav">
         <div v-for="section in navSections" :key="section.label" class="nav-section">
-          <span class="nav-label">{{ section.label }}</span>
+          <RouterLink
+            v-if="section.routeName"
+            :to="{ name: section.routeName }"
+            class="nav-link"
+            :class="{ 'nav-link--active': route.name === section.routeName }"
+          >
+            {{ section.label }}
+          </RouterLink>
+          <span v-else class="nav-label">{{ section.label }}</span>
 
           <div v-if="section.children" class="nav-children">
             <RouterLink
@@ -97,6 +108,22 @@ const navSections = [
   color: #d4a24e;
   font-size: 14px;
   font-weight: 500;
+}
+
+.nav-link {
+  display: block;
+  color: #d4a24e;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  text-decoration: none;
+}
+
+.nav-link--active {
+  background: rgba(212, 162, 78, 0.15);
+  border-left: 3px solid #d4a24e;
 }
 
 .nav-children {
