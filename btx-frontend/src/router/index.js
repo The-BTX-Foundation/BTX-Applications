@@ -1,5 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import PlaceholderView from '../views/PlaceholderView.vue'
+
+// Every sidebar item except Task & Approval has no real page yet, so they
+// all share PlaceholderView with a route-specific title prop.
+function placeholderRoute(path, name, title) {
+  return { path, name, component: PlaceholderView, props: { title } }
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,12 +24,13 @@ const router = createRouter({
           name: 'tasks',
           component: () => import('../views/TasksApprovalView.vue'),
         },
-        {
-          path: 'donor-impact',
-          name: 'donor-impact',
-          // Placeholder view — no page built yet, just wired up for nav.
-          component: () => import('../views/DonorImpactView.vue'),
-        },
+        placeholderRoute('alerts', 'alerts', 'Alert Center'),
+        placeholderRoute('awardee-workflow', 'awardee-workflow', 'Awardee Workflow'),
+        placeholderRoute('progress-to-goal', 'progress-to-goal', 'Progress-to-Goal Workflow'),
+        placeholderRoute('donor-impact', 'donor-impact', 'Donor Impact Workflow'),
+        placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
+        placeholderRoute('marketing', 'marketing', 'Marketing'),
+        placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
       ],
     },
     {
