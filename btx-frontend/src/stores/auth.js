@@ -14,9 +14,11 @@ export const useAuthStore = defineStore('auth', () => {
   // by RLS policies — the UI only uses it to decide what to show/hide, the
   // database is the actual source of truth for what a role can do.
   const role = computed(() => session.value?.user?.user_metadata?.role ?? null)
-  // Board members and admins share the same elevated UI permissions (e.g.
-  // approving tasks); this mirrors the role checks in the RLS policies.
-  const isBoardOrAdmin = computed(() => role.value === 'admin' || role.value === 'board')
+  // Board and admin are kept as separate checks (rather than one combined
+  // flag) because they now gate different actions: board members mark
+  // plain tasks complete, admins approve/decline approval rows.
+  const isBoard = computed(() => role.value === 'board')
+  const isAdmin = computed(() => role.value === 'admin')
 
   // Loads the current session and subscribes to future auth changes
   // (sign in, sign out, token refresh) so `session` always stays current.
@@ -32,5 +34,5 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  return { session, role, isBoardOrAdmin, init }
+  return { session, role, isBoard, isAdmin, init }
 })

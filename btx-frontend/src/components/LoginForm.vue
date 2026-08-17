@@ -61,6 +61,10 @@ async function handleSignOut() {
 
 <style scoped>
 .login-form {
+  /* Explicit dark text rather than inheriting var(--color-text), which
+     flips to a light color under prefers-color-scheme: dark and becomes
+     unreadable against this component's white background. */
+  color: #2d3142;
   margin-bottom: 1.5rem;
 }
 

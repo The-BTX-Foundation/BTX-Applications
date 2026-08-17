@@ -35,15 +35,16 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     loading.value = false
   }
 
-  // Marks a task complete. The update itself is still governed by RLS, so
-  // this will silently fail with an update error for users who aren't
-  // allowed to complete this particular task (e.g. non board/admin roles).
-  async function markComplete(taskId) {
+  // Updates a row's status (Complete/Declined). The update itself is still
+  // governed by RLS, so this will silently fail with an update error for
+  // users who aren't allowed to act on this particular row (e.g. non
+  // board/admin roles).
+  async function updateStatus(taskId, status) {
     error.value = null
 
     const { data, error: updateError } = await supabase
       .from('tasks_alerts')
-      .update({ status: 'Complete' })
+      .update({ status })
       .eq('task_id', taskId)
       .select(TASK_COLUMNS)
       .single()
@@ -60,5 +61,15 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     }
   }
 
-  return { tasks, loading, error, fetchTasks, markComplete }
+  // Marks a task/approval complete (used for "Mark complete" and "Approve").
+  function markComplete(taskId) {
+    return updateStatus(taskId, 'Complete')
+  }
+
+  // Declines an approval row.
+  function declineTask(taskId) {
+    return updateStatus(taskId, 'Declined')
+  }
+
+  return { tasks, loading, error, fetchTasks, markComplete, declineTask }
 })
