@@ -19,7 +19,11 @@ const router = createRouter({
       path: '/',
       component: HomeView,
       children: [
-        { path: '', redirect: { name: 'tasks' } },
+        {
+          path: '',
+          name: 'home',
+          component: () => import('../views/Home.vue'),
+        },
         {
           path: 'tasks',
           name: 'tasks',
@@ -34,8 +38,17 @@ const router = createRouter({
           component: () => import('../views/DonorImpactWorkflowView.vue'),
         },
         placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
+        // Finance & Funding's 3 planned tabs, surfaced today as placeholder
+        // routes so the Home.vue card grid has something to link to.
+        placeholderRoute('finance-headline-metrics', 'finance-headline-metrics', 'Headline Metrics'),
+        placeholderRoute('finance-budget-tracking', 'finance-budget-tracking', 'Budget Tracking'),
+        placeholderRoute('finance-fundraising-totals', 'finance-fundraising-totals', 'Fundraising Totals'),
         placeholderRoute('marketing', 'marketing', 'Marketing'),
         placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
+        // Scholarship's 3 planned tabs, same treatment as Finance & Funding above.
+        placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),
+        placeholderRoute('scholarship-interviews', 'scholarship-interviews', 'Interviews'),
+        placeholderRoute('scholarship-applicant-records', 'scholarship-applicant-records', 'Applicant Records'),
       ],
     },
     {
@@ -71,7 +84,7 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (isAuthenticated && to.name === 'login') {
-    return { name: 'tasks' }
+    return { name: 'home' }
   }
 })
 

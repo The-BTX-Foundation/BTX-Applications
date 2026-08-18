@@ -20,7 +20,7 @@ watch([email, password], () => {
 
 // Signs the user in with Supabase; on success, sends them to the route they
 // were originally trying to reach (carried via ?redirect from the router
-// guard), or /tasks by default.
+// guard), or home by default.
 async function handleSignIn() {
   loading.value = true
   errorMessage.value = null
@@ -38,7 +38,7 @@ async function handleSignIn() {
     return
   }
 
-  const redirectPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/tasks'
+  const redirectPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
   router.push(redirectPath)
   loading.value = false
 }
