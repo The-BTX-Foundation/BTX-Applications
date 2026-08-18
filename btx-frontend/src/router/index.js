@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import PlaceholderView from '../views/PlaceholderView.vue'
+import { useAuthStore } from '../stores/auth'
 
 // Every sidebar item except Task & Approval has no real page yet, so they
 // all share PlaceholderView with a route-specific title prop.
@@ -45,7 +46,33 @@ const router = createRouter({
       // which is lazy-loaded when the route is visited.
       component: () => import('../views/AboutView.vue'),
     },
+    {
+      // Standalone full-screen route, deliberately not a child of HomeView
+      // so it renders without the sidebar/topbar shell.
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/Login.vue'),
+    },
   ],
+})
+
+// Global auth gate: no session -> forced to /login (remembering where the
+// user was headed via ?redirect); has a session -> /login bounces to /tasks.
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
+  // init() is idempotent (guarded by authStore.initialized), so this only
+  // hits Supabase once across the app's lifetime — later navigations just
+  // read the already-loaded session.
+  await authStore.init()
+
+  const isAuthenticated = !!authStore.session
+
+  if (!isAuthenticated && to.name !== 'login') {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (isAuthenticated && to.name === 'login') {
+    return { name: 'tasks' }
+  }
 })
 
 export default router
