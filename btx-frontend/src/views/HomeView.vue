@@ -1,4 +1,5 @@
 <script setup>
+import { reactive } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabaseClient'
@@ -15,11 +16,17 @@ async function handleSignOut() {
   router.push({ name: 'login' })
 }
 
-// Nav sections shown in the sidebar. A section is either a standalone
-// clickable item (routeName set, e.g. Finance & Funding) or a group header
-// (Program) whose children are the clickable items.
+// Nav sections shown in the sidebar, each an expandable group of links.
+// Sub-items mirror the same routes surfaced on the Home.vue landing cards.
 const navSections = [
-  { label: 'Finance & Funding', routeName: 'finance-funding' },
+  {
+    label: 'Finance & Funding',
+    children: [
+      { label: 'Headline Metrics', routeName: 'finance-headline-metrics' },
+      { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
+      { label: 'Fundraising Totals', routeName: 'finance-fundraising-totals' },
+    ],
+  },
   {
     label: 'Program',
     children: [
@@ -30,29 +37,60 @@ const navSections = [
       { label: 'Donor Impact Workflow', routeName: 'donor-impact' },
     ],
   },
-  { label: 'Marketing', routeName: 'marketing' },
-  { label: 'Scholarship', routeName: 'scholarship' },
+  {
+    label: 'Marketing',
+    children: [{ label: 'Marketing', routeName: 'marketing' }],
+  },
+  {
+    label: 'Scholarship',
+    children: [
+      { label: 'Scoring', routeName: 'scholarship-scoring' },
+      { label: 'Interviews', routeName: 'scholarship-interviews' },
+      { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
+    ],
+  },
 ]
+
+// Which nav groups are expanded; Program starts open to match the mockup,
+// the rest start collapsed.
+const expandedSections = reactive(new Set(['Program']))
+
+// Expands or collapses a sidebar nav group's sub-item list.
+function toggleSection(label) {
+  if (expandedSections.has(label)) {
+    expandedSections.delete(label)
+  } else {
+    expandedSections.add(label)
+  }
+}
 </script>
 
 <template>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand">BTX <span class="brand-accent">Ops Hub</span></div>
+      <RouterLink :to="{ name: 'home' }" class="brand">BTX <span class="brand-accent">Ops Hub</span></RouterLink>
 
       <nav class="nav">
         <div v-for="section in navSections" :key="section.label" class="nav-section">
-          <RouterLink
-            v-if="section.routeName"
-            :to="{ name: section.routeName }"
-            class="nav-link"
-            :class="{ 'nav-link--active': route.name === section.routeName }"
-          >
-            {{ section.label }}
-          </RouterLink>
-          <span v-else class="nav-label">{{ section.label }}</span>
+          <button type="button" class="nav-section-header" @click="toggleSection(section.label)">
+            <span class="nav-label">{{ section.label }}</span>
+            <svg
+              class="nav-chevron"
+              :class="{ 'nav-chevron--expanded': expandedSections.has(section.label) }"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
 
-          <div v-if="section.children" class="nav-children">
+          <div v-if="expandedSections.has(section.label)" class="nav-children">
             <RouterLink
               v-for="child in section.children"
               :key="child.label"
@@ -97,10 +135,13 @@ const navSections = [
 }
 
 .brand {
+  display: block;
   color: #fff;
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 32px;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .brand-accent {
@@ -119,26 +160,31 @@ const navSections = [
   gap: 8px;
 }
 
+.nav-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
 .nav-label {
   color: #d4a24e;
   font-size: 14px;
   font-weight: 500;
 }
 
-.nav-link {
-  display: block;
-  color: #d4a24e;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border-left: 3px solid transparent;
-  text-decoration: none;
+.nav-chevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.15s ease;
 }
 
-.nav-link--active {
-  background: rgba(212, 162, 78, 0.15);
-  border-left: 3px solid #d4a24e;
+.nav-chevron--expanded {
+  transform: rotate(180deg);
 }
 
 .nav-children {
