@@ -1,8 +1,19 @@
 <script setup>
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-import LoginForm from '../components/LoginForm.vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { supabase } from '@/lib/supabaseClient'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+// Signs the current user out and sends them to /login. The router guard
+// only re-evaluates on navigation (not reactively when the session clears),
+// so this explicit push is what actually moves the user off the page.
+async function handleSignOut() {
+  await supabase.auth.signOut()
+  router.push({ name: 'login' })
+}
 
 // Nav sections shown in the sidebar. A section is either a standalone
 // clickable item (routeName set, e.g. Finance & Funding) or a group header
@@ -54,13 +65,15 @@ const navSections = [
           </div>
         </div>
       </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-divider"></div>
+        <p class="user-email">{{ authStore.session?.user?.email }}</p>
+        <button type="button" class="sign-out-btn" @click="handleSignOut">Sign Out</button>
+      </div>
     </aside>
 
     <main class="page">
-      <div class="topbar">
-        <LoginForm />
-      </div>
-
       <div class="panel">
         <RouterView />
       </div>
@@ -79,6 +92,8 @@ const navSections = [
   width: 260px;
   background: #1a1a1a;
   padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .brand {
@@ -151,15 +166,40 @@ const navSections = [
   font-weight: 600;
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.user-email {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  margin: 0 0 8px;
+  word-break: break-all;
+}
+
+.sign-out-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #d4a24e;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
 .page {
   flex: 1;
   min-width: 0;
   background: #f7f6f3;
   padding: 32px;
-}
-
-.topbar {
-  margin-bottom: 16px;
 }
 
 .panel {
