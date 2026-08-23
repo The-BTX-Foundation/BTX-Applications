@@ -15,6 +15,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   const tasks = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const assignableUsers = ref([])
 
   // Loads all tasks/alerts visible to the current user under RLS, soonest
   // due date first.
@@ -61,6 +62,44 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     }
   }
 
+  // Loads board/admin profiles for the New Task modal's Assigned To dropdown.
+  // Gated by the same "Board/Admin can view profiles" RLS policy as every
+  // other read of this table, so this silently returns nothing for roles
+  // that shouldn't see it rather than needing a client-side role check.
+  async function fetchAssignableUsers() {
+    const { data, error: fetchError } = await supabase.from('profiles').select('id, name').order('name')
+
+    if (fetchError) {
+      error.value = fetchError.message
+    } else {
+      assignableUsers.value = data
+    }
+  }
+
+  // Creates a new task/approval row, defaulting status to 'Open'. Refetches
+  // the list on success (rather than splicing the row in locally) so the
+  // due-date ordering stays correct regardless of where the new row falls.
+  // Returns whether the insert succeeded so the modal knows to close.
+  async function createTask({ title, assignedTo, dueDate, type }) {
+    error.value = null
+
+    const { error: insertError } = await supabase.from('tasks_alerts').insert({
+      title,
+      assigned_to: assignedTo,
+      due_date: dueDate,
+      type,
+      status: 'Open',
+    })
+
+    if (insertError) {
+      error.value = insertError.message
+      return false
+    }
+
+    await fetchTasks()
+    return true
+  }
+
   // Marks a task/approval complete (used for "Mark complete" and "Approve").
   function markComplete(taskId) {
     return updateStatus(taskId, 'Complete')
@@ -71,5 +110,15 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     return updateStatus(taskId, 'Declined')
   }
 
-  return { tasks, loading, error, fetchTasks, markComplete, declineTask }
+  return {
+    tasks,
+    loading,
+    error,
+    assignableUsers,
+    fetchTasks,
+    fetchAssignableUsers,
+    createTask,
+    markComplete,
+    declineTask,
+  }
 })

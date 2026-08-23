@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+import NewTaskModal from './NewTaskModal.vue'
 
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
@@ -9,6 +10,9 @@ const tasksAlertsStore = useTasksAlertsStore()
 // Tracks which row has a request in flight, so only that row's buttons
 // show a disabled state rather than locking the whole list.
 const pendingTaskId = ref(null)
+
+// Controls the New Task modal's visibility.
+const showNewTaskModal = ref(false)
 
 onMounted(() => {
   authStore.init()
@@ -82,12 +86,22 @@ async function handleDecline(taskId) {
 
     <!-- Applicants have no visibility into this list at all — hide the
          heading and every state (loading/error/empty/list) in favor of a
-         single denial message. Other non-board/admin roles (e.g. reviewer)
-         still see the read-only list as before. -->
+         single denial message. Admin, board, and reviewer all get full
+         access below. -->
     <p v-else-if="authStore.role === 'applicant'" class="access-denied">Access Denied</p>
 
     <template v-else>
-      <h2>Tasks &amp; Approvals</h2>
+      <div class="header-row">
+        <h2>Tasks &amp; Approvals</h2>
+        <button
+          v-if="authStore.isBoard || authStore.isAdmin || authStore.isReviewer"
+          type="button"
+          class="btn btn--gold"
+          @click="showNewTaskModal = true"
+        >
+          + New Task
+        </button>
+      </div>
 
       <p v-if="tasksAlertsStore.loading">Loading tasks…</p>
       <p v-else-if="tasksAlertsStore.error" class="error">{{ tasksAlertsStore.error }}</p>
@@ -102,14 +116,19 @@ async function handleDecline(taskId) {
             <p class="assignee">Assigned to {{ task.assigned_to?.name ?? 'Unassigned' }}</p>
           </div>
 
-          <!-- Board handles plain tasks, admin handles approvals; matches the
-               RLS policy split on tasks_alerts updates, so a role only ever
-               sees a button for an action it's actually allowed to take. -->
+          <!-- Action buttons are keyed purely on row type, not on which of
+               the three roles is signed in — the underlying RLS policy
+               already grants admin, board, and reviewer full access to
+               tasks_alerts updates, so there's no permission split left to
+               mirror here. -->
           <div v-if="task.status === 'Complete'" class="outcome outcome--complete">
             <span class="check">&#10003;</span> Complete
           </div>
           <div v-else-if="task.status === 'Declined'" class="outcome outcome--declined">Declined</div>
-          <div v-else-if="task.type === 'Task' && authStore.isBoard" class="actions">
+          <div
+            v-else-if="task.type === 'Task' && (authStore.isBoard || authStore.isAdmin || authStore.isReviewer)"
+            class="actions"
+          >
             <button
               type="button"
               class="btn btn--outline"
@@ -119,7 +138,10 @@ async function handleDecline(taskId) {
               Mark complete
             </button>
           </div>
-          <div v-else-if="task.type === 'Approval' && authStore.isAdmin" class="actions">
+          <div
+            v-else-if="task.type === 'Approval' && (authStore.isBoard || authStore.isAdmin || authStore.isReviewer)"
+            class="actions"
+          >
             <button
               type="button"
               class="btn btn--gold"
@@ -140,10 +162,23 @@ async function handleDecline(taskId) {
         </li>
       </ul>
     </template>
+
+    <NewTaskModal v-if="showNewTaskModal" @close="showNewTaskModal = false" />
   </section>
 </template>
 
 <style scoped>
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header-row h2 {
+  margin: 0;
+}
+
 .task-list {
   list-style: none;
   padding: 0;
