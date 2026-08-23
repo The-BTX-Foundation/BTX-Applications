@@ -16,6 +16,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   const loading = ref(false)
   const error = ref(null)
   const assignableUsers = ref([])
+  const assignedOpenCount = ref(0)
 
   // Loads all tasks/alerts visible to the current user under RLS, soonest
   // due date first.
@@ -100,6 +101,22 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     return true
   }
 
+  // Counts open (not Complete/Declined) rows assigned to the given user, for
+  // the Home page's "X open items assigned to you" line. A head-only count
+  // query rather than fetchTasks(), since fetchTasks() aliases assigned_to
+  // to the joined profile object and loses the raw id needed to filter here.
+  async function fetchAssignedOpenCount(userId) {
+    const { count, error: fetchError } = await supabase
+      .from('tasks_alerts')
+      .select('task_id', { count: 'exact', head: true })
+      .eq('assigned_to', userId)
+      .not('status', 'in', '(Complete,Declined)')
+
+    if (!fetchError) {
+      assignedOpenCount.value = count ?? 0
+    }
+  }
+
   // Marks a task/approval complete (used for "Mark complete" and "Approve").
   function markComplete(taskId) {
     return updateStatus(taskId, 'Complete')
@@ -115,8 +132,10 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     loading,
     error,
     assignableUsers,
+    assignedOpenCount,
     fetchTasks,
     fetchAssignableUsers,
+    fetchAssignedOpenCount,
     createTask,
     markComplete,
     declineTask,

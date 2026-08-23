@@ -1,5 +1,10 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+
+const authStore = useAuthStore()
+const tasksAlertsStore = useTasksAlertsStore()
 
 // The 4 landing-page cards. subItems map to real routes for Program (which
 // already has 5 built pages) and to new placeholder routes for the other
@@ -49,6 +54,26 @@ const cards = [
   },
 ]
 
+// Tracks whether the Program card's assigned-open-items count has loaded
+// yet, so the metric line doesn't flash "0" before the real value arrives.
+const assignedCountLoaded = ref(false)
+
+// Refetches the Program card's assigned count whenever the signed-in user
+// changes (sign in, sign out, switch accounts), mirroring the same pattern
+// used in TasksAlertsList.vue. Skips the fetch while signed out.
+watch(
+  () => authStore.session?.user?.id ?? null,
+  async (userId) => {
+    if (userId) {
+      await tasksAlertsStore.fetchAssignedOpenCount(userId)
+      assignedCountLoaded.value = true
+    } else {
+      assignedCountLoaded.value = false
+    }
+  },
+  { immediate: true },
+)
+
 // Tracks which cards are expanded; multiple cards can be open at once.
 const expandedCardIds = reactive(new Set())
 
@@ -93,6 +118,10 @@ function toggleCard(id) {
         <ul v-if="expandedCardIds.has(card.id)" class="sub-item-list">
           <li v-for="item in card.subItems" :key="item.routeName">
             <RouterLink :to="{ name: item.routeName }" class="sub-item-link">{{ item.label }}</RouterLink>
+            <p v-if="item.routeName === 'tasks' && assignedCountLoaded" class="sub-item-metric">
+              {{ tasksAlertsStore.assignedOpenCount }}
+              open item{{ tasksAlertsStore.assignedOpenCount === 1 ? '' : 's' }} assigned to you
+            </p>
           </li>
         </ul>
       </div>
@@ -202,5 +231,11 @@ function toggleCard(id) {
 
 .sub-item-link:hover {
   text-decoration: underline;
+}
+
+.sub-item-metric {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #9a9a9a;
 }
 </style>
