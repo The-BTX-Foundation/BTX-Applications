@@ -38,9 +38,14 @@ const router = createRouter({
           component: () => import('../views/DonorImpactWorkflowView.vue'),
         },
         placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
-        // Finance & Funding's 3 planned tabs, surfaced today as placeholder
-        // routes so the Home.vue card grid has something to link to.
-        placeholderRoute('finance-headline-metrics', 'finance-headline-metrics', 'Headline Metrics'),
+        // Finance & Funding's 3 planned tabs. Headline Metrics is now a real
+        // page; Budget Tracking and Fundraising Totals remain placeholders
+        // so the Home.vue card grid and sidebar still have somewhere to link.
+        {
+          path: 'finance-headline-metrics',
+          name: 'finance-headline-metrics',
+          component: () => import('../views/FinanceFundingHeadlineMetric.vue'),
+        },
         placeholderRoute('finance-budget-tracking', 'finance-budget-tracking', 'Budget Tracking'),
         placeholderRoute('finance-fundraising-totals', 'finance-fundraising-totals', 'Fundraising Totals'),
         placeholderRoute('marketing', 'marketing', 'Marketing'),
