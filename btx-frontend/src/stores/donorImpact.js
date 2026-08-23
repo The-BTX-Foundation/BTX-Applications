@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -17,6 +17,12 @@ export const useDonorImpactStore = defineStore('donorImpact', () => {
   const cycles = ref([])
   const loading = ref(false)
   const error = ref(null)
+
+  // Total funds granted across every donor_impact row currently loaded
+  // (i.e. everything visible to this user under RLS — admin/board see all
+  // cycles). Derived from fetchCycles()'s data rather than a separate
+  // query, since PostgREST has no SUM() aggregate without a DB-side RPC.
+  const totalRaised = computed(() => cycles.value.reduce((sum, cycle) => sum + cycle.funds_granted, 0))
 
   // Loads every reporting cycle visible under RLS, most recent year first.
   async function fetchCycles() {
@@ -89,5 +95,5 @@ export const useDonorImpactStore = defineStore('donorImpact', () => {
     }
   }
 
-  return { cycles, loading, error, fetchCycles, createCycle, saveAndPublish }
+  return { cycles, loading, error, totalRaised, fetchCycles, createCycle, saveAndPublish }
 })

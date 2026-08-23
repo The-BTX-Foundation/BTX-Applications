@@ -17,6 +17,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   const error = ref(null)
   const assignableUsers = ref([])
   const assignedOpenCount = ref(0)
+  const globalOpenCount = ref(0)
 
   // Loads all tasks/alerts visible to the current user under RLS, soonest
   // due date first.
@@ -117,6 +118,23 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     }
   }
 
+  // Counts every Open row platform-wide (not scoped to any one user), for
+  // the Finance & Funding Headline Metric page's "Pending Tasks" card.
+  // tasks_alerts' RLS policy is a single FOR ALL check on role IN
+  // ('board','admin','reviewer') with no assigned_to restriction, so
+  // board/admin sessions already see the full table here — no extra
+  // filtering needed to make this a true global count.
+  async function fetchGlobalOpenCount() {
+    const { count, error: fetchError } = await supabase
+      .from('tasks_alerts')
+      .select('task_id', { count: 'exact', head: true })
+      .eq('status', 'Open')
+
+    if (!fetchError) {
+      globalOpenCount.value = count ?? 0
+    }
+  }
+
   // Marks a task/approval complete (used for "Mark complete" and "Approve").
   function markComplete(taskId) {
     return updateStatus(taskId, 'Complete')
@@ -133,9 +151,11 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     error,
     assignableUsers,
     assignedOpenCount,
+    globalOpenCount,
     fetchTasks,
     fetchAssignableUsers,
     fetchAssignedOpenCount,
+    fetchGlobalOpenCount,
     createTask,
     markComplete,
     declineTask,
