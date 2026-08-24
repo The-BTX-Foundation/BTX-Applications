@@ -23,7 +23,6 @@ const navSections = [
   {
     label: 'Finance & Funding',
     children: [
-      { label: 'Headline Metrics', routeName: 'finance-headline-metrics' },
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Fundraising Totals', routeName: 'finance-fundraising-totals' },
     ],
