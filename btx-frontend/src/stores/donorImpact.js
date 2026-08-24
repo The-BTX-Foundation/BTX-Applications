@@ -9,10 +9,10 @@ const CYCLE_COLUMNS =
   'metric_id, cycle_year, funds_granted, students_reached, scholarships_awarded, published'
 
 // Pinia store for the Donor Impact Workflow. Reads/writes go through
-// Supabase's RLS policies on `donor_impact` (admin: view/create/edit,
-// board: view-only), so the rows/actions available here are already scoped
-// to what the signed-in user is allowed to do — no client-side role
-// filtering is needed on top of this.
+// Supabase's RLS policies on `donor_impact` (admin: view/create/edit;
+// board and reviewer: view-only), so the rows/actions available here are
+// already scoped to what the signed-in user is allowed to do — no
+// client-side role filtering is needed on top of this.
 export const useDonorImpactStore = defineStore('donorImpact', () => {
   const cycles = ref([])
   const loading = ref(false)
