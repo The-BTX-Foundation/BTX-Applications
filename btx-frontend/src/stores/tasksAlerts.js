@@ -2,15 +2,21 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
-// Shared column list so fetchTasks and markComplete return identically
+// Shared column list so fetchTasks and updateStatus return identically
 // shaped rows — keeps the row swapped into `tasks` after an update
-// consistent with rows loaded from the initial fetch.
-const TASK_COLUMNS = 'task_id, title, due_date, status, type, assigned_to:profiles(name)'
+// consistent with rows loaded from the initial fetch. `assigned_to` is
+// selected raw (not aliased to the profiles join) so components can compare
+// it against the signed-in user's id for button-visibility checks; the
+// joined name is exposed separately as `profiles`.
+const TASK_COLUMNS = 'task_id, title, due_date, status, type, assigned_to, profiles(name)'
 
-// Pinia store for the Tasks & Approvals list. Reads/writes go through
-// Supabase's RLS policies on `tasks_alerts`, so the rows returned here are
-// already scoped to what the signed-in user is allowed to see/edit — no
-// client-side filtering by user or role is needed on top of this.
+// Pinia store for the Tasks & Approvals list. Reads go through Supabase's
+// RLS SELECT policy on `tasks_alerts`, so the rows returned here are already
+// scoped to what the signed-in user is allowed to see — no client-side
+// filtering by user or role is needed for visibility. Writes are further
+// restricted to the row's assignee by the UPDATE policy, but that's only
+// enforced server-side here — components still need their own
+// assigned_to-based check to decide whether to show action buttons at all.
 export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   const tasks = ref([])
   const loading = ref(false)
@@ -38,10 +44,10 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     loading.value = false
   }
 
-  // Updates a row's status (Complete/Declined). The update itself is still
-  // governed by RLS, so this will silently fail with an update error for
-  // users who aren't allowed to act on this particular row (e.g. non
-  // board/admin roles).
+  // Updates a row's status (Approved/Complete/Declined). The update itself
+  // is still governed by RLS, so this will silently fail with an update
+  // error for users who aren't allowed to act on this particular row (i.e.
+  // anyone other than the assignee, even if they're board/admin/reviewer).
   async function updateStatus(taskId, status) {
     error.value = null
 
@@ -103,9 +109,10 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   }
 
   // Counts open (not Complete/Declined) rows assigned to the given user, for
-  // the Home page's "X open items assigned to you" line. A head-only count
-  // query rather than fetchTasks(), since fetchTasks() aliases assigned_to
-  // to the joined profile object and loses the raw id needed to filter here.
+  // the Home page's "X open items assigned to you" line. Approved rows count
+  // as open too — an approval isn't finished until the assignee marks it
+  // Complete. A head-only count query rather than fetchTasks(), to avoid
+  // pulling full rows just to count them.
   async function fetchAssignedOpenCount(userId) {
     const { count, error: fetchError } = await supabase
       .from('tasks_alerts')
@@ -120,10 +127,9 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
 
   // Counts every Open row platform-wide (not scoped to any one user), for
   // the Finance & Funding Headline Metric page's "Pending Tasks" card.
-  // tasks_alerts' RLS policy is a single FOR ALL check on role IN
-  // ('board','admin','reviewer') with no assigned_to restriction, so
-  // board/admin sessions already see the full table here — no extra
-  // filtering needed to make this a true global count.
+  // tasks_alerts' SELECT policy grants board/admin/reviewer unrestricted
+  // read access (unlike UPDATE, which is assignee-gated), so this already
+  // sees the full table — no extra filtering needed for a true global count.
   async function fetchGlobalOpenCount() {
     const { count, error: fetchError } = await supabase
       .from('tasks_alerts')
@@ -135,12 +141,22 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     }
   }
 
-  // Marks a task/approval complete (used for "Mark complete" and "Approve").
+  // Marks a task/approval complete. For Task-type rows this finalizes the
+  // row directly; for Approval-type rows this is the second step, only
+  // available once the row is already 'Approved'.
   function markComplete(taskId) {
     return updateStatus(taskId, 'Complete')
   }
 
-  // Declines an approval row.
+  // First step of the Approval flow: moves an Approval row to 'Approved'
+  // rather than completing it immediately, so the assignee still has to
+  // come back and Mark Complete to finalize it.
+  function approveTask(taskId) {
+    return updateStatus(taskId, 'Approved')
+  }
+
+  // Declines an approval row. Terminal — unlike Approve, there's no
+  // follow-up step.
   function declineTask(taskId) {
     return updateStatus(taskId, 'Declined')
   }
@@ -158,6 +174,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     fetchGlobalOpenCount,
     createTask,
     markComplete,
+    approveTask,
     declineTask,
   }
 })

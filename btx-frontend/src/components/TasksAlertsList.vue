@@ -62,15 +62,32 @@ function badge(task) {
   return { text: label, variant }
 }
 
-// Marks a task/approval complete, tracking its id so only that row's
-// buttons show a disabled/loading state while the request is in flight.
+// Returns whether the signed-in user is this row's assignee — the only
+// person allowed to act on it, regardless of their role. Non-assignees
+// (even admin/board/reviewer) get no action buttons at all, just the
+// read-only "Assigned to X" line below.
+function isAssignee(task) {
+  return task.assigned_to === authStore.session?.user?.id
+}
+
+// Moves an Approval row from Open/Overdue to 'Approved' (not Complete —
+// the assignee still has to come back and Mark Complete to finalize it).
 async function handleApprove(taskId) {
+  pendingTaskId.value = taskId
+  await tasksAlertsStore.approveTask(taskId)
+  pendingTaskId.value = null
+}
+
+// Finalizes a row: Task rows go straight to Complete, Approval rows only
+// reach this once they're already 'Approved'.
+async function handleMarkComplete(taskId) {
   pendingTaskId.value = taskId
   await tasksAlertsStore.markComplete(taskId)
   pendingTaskId.value = null
 }
 
-// Declines an approval row, tracking its id the same way as handleApprove.
+// Declines an approval row, tracking its id the same way as the other
+// handlers.
 async function handleDecline(taskId) {
   pendingTaskId.value = taskId
   await tasksAlertsStore.declineTask(taskId)
@@ -113,35 +130,42 @@ async function handleDecline(taskId) {
 
           <div class="task-body">
             <p class="title">{{ task.title }}</p>
-            <p class="assignee">Assigned to {{ task.assigned_to?.name ?? 'Unassigned' }}</p>
+            <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
           </div>
 
-          <!-- Action buttons are keyed purely on row type, not on which of
-               the three roles is signed in — the underlying RLS policy
-               already grants admin, board, and reviewer full access to
-               tasks_alerts updates, so there's no permission split left to
-               mirror here. -->
+          <!-- Action buttons are gated on assignment, not role: only the
+               person this row is assigned to can act on it, even though
+               admin/board/reviewer can all see every row (per the SELECT
+               policy) to know who owns what. -->
           <div v-if="task.status === 'Complete'" class="outcome outcome--complete">
             <span class="check">&#10003;</span> Complete
           </div>
           <div v-else-if="task.status === 'Declined'" class="outcome outcome--declined">Declined</div>
-          <div
-            v-else-if="task.type === 'Task' && (authStore.isBoard || authStore.isAdmin || authStore.isReviewer)"
-            class="actions"
-          >
+          <!-- Approved is visible to everyone as a status, but only the
+               assignee gets the Mark Complete button to finalize it. -->
+          <div v-else-if="task.status === 'Approved'" class="actions">
+            <span class="outcome outcome--approved">Approved</span>
             <button
+              v-if="isAssignee(task)"
               type="button"
               class="btn btn--outline"
               :disabled="pendingTaskId === task.task_id"
-              @click="handleApprove(task.task_id)"
+              @click="handleMarkComplete(task.task_id)"
             >
               Mark complete
             </button>
           </div>
-          <div
-            v-else-if="task.type === 'Approval' && (authStore.isBoard || authStore.isAdmin || authStore.isReviewer)"
-            class="actions"
-          >
+          <div v-else-if="task.type === 'Task' && isAssignee(task)" class="actions">
+            <button
+              type="button"
+              class="btn btn--outline"
+              :disabled="pendingTaskId === task.task_id"
+              @click="handleMarkComplete(task.task_id)"
+            >
+              Mark complete
+            </button>
+          </div>
+          <div v-else-if="task.type === 'Approval' && isAssignee(task)" class="actions">
             <button
               type="button"
               class="btn btn--gold"
@@ -289,6 +313,10 @@ async function handleDecline(taskId) {
 
 .outcome--declined {
   color: #8a8a85;
+}
+
+.outcome--approved {
+  color: #854f0b;
 }
 
 .error {
