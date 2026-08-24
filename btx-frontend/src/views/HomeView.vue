@@ -16,8 +16,9 @@ async function handleSignOut() {
   router.push({ name: 'login' })
 }
 
-// Nav sections shown in the sidebar, each an expandable group of links.
-// Sub-items mirror the same routes surfaced on the Home.vue landing cards.
+// Nav sections shown in the sidebar. Most are expandable groups of links
+// (via `children`); Task & Approval is a flat top-level link instead (see
+// the template below). Sub-items mirror the routes on the Home.vue cards.
 const navSections = [
   {
     label: 'Finance & Funding',
@@ -30,13 +31,15 @@ const navSections = [
   {
     label: 'Program',
     children: [
-      { label: 'Task & Approval', routeName: 'tasks' },
       { label: 'Alert Center', routeName: 'alerts' },
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Progress-to-Goal Workflow', routeName: 'progress-to-goal' },
       { label: 'Donor Impact Workflow', routeName: 'donor-impact' },
     ],
   },
+  // Flat top-level link (no `children`) rather than an expandable group —
+  // the template below checks for `children` to decide which to render.
+  { label: 'Task & Approval', routeName: 'tasks' },
   {
     label: 'Marketing',
     children: [{ label: 'Marketing', routeName: 'marketing' }],
@@ -72,35 +75,49 @@ function toggleSection(label) {
 
       <nav class="nav">
         <div v-for="section in navSections" :key="section.label" class="nav-section">
-          <button type="button" class="nav-section-header" @click="toggleSection(section.label)">
-            <span class="nav-label">{{ section.label }}</span>
-            <svg
-              class="nav-chevron"
-              :class="{ 'nav-chevron--expanded': expandedSections.has(section.label) }"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+          <!-- Sections with `children` render as an expand/collapse group;
+               sections without (e.g. Task & Approval) render as a single
+               top-level link with no chevron or toggle behavior. -->
+          <template v-if="section.children">
+            <button type="button" class="nav-section-header" @click="toggleSection(section.label)">
+              <span class="nav-label">{{ section.label }}</span>
+              <svg
+                class="nav-chevron"
+                :class="{ 'nav-chevron--expanded': expandedSections.has(section.label) }"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
 
-          <div v-if="expandedSections.has(section.label)" class="nav-children">
-            <RouterLink
-              v-for="child in section.children"
-              :key="child.label"
-              :to="{ name: child.routeName }"
-              class="nav-child"
-              :class="{ 'nav-child--active': route.name === child.routeName }"
-            >
-              {{ child.label }}
-            </RouterLink>
-          </div>
+            <div v-if="expandedSections.has(section.label)" class="nav-children">
+              <RouterLink
+                v-for="child in section.children"
+                :key="child.label"
+                :to="{ name: child.routeName }"
+                class="nav-child"
+                :class="{ 'nav-child--active': route.name === child.routeName }"
+              >
+                {{ child.label }}
+              </RouterLink>
+            </div>
+          </template>
+
+          <RouterLink
+            v-else
+            :to="{ name: section.routeName }"
+            class="nav-section-header nav-top-link"
+            :class="{ 'nav-top-link--active': route.name === section.routeName }"
+          >
+            <span class="nav-label">{{ section.label }}</span>
+          </RouterLink>
         </div>
       </nav>
 
@@ -192,6 +209,24 @@ function toggleSection(label) {
   flex-direction: column;
   gap: 4px;
   padding-left: 12px;
+}
+
+/* Flat top-level link (e.g. Task & Approval) — same header sizing as an
+   expandable group, but styled/active like a leaf nav-child since it acts
+   as a direct route link rather than a toggle. */
+.nav-top-link {
+  text-decoration: none;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+}
+
+.nav-top-link--active {
+  background: rgba(212, 162, 78, 0.15);
+  border-left: 3px solid #d4a24e;
+}
+
+.nav-top-link--active .nav-label {
+  font-weight: 600;
 }
 
 .nav-child {
