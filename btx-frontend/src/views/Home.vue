@@ -6,9 +6,9 @@ import { useTasksAlertsStore } from '@/stores/tasksAlerts'
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
 
-// The 4 landing-page cards. subItems map to real routes for Program (which
-// already has 5 built pages) and to new placeholder routes for the other
-// three sections, which don't have real sub-pages yet.
+// The 5 landing-page cards. subItems map to real routes for Program and
+// Task & Approval (which have built pages) and to placeholder routes for
+// the other sections, which don't have real sub-pages yet.
 const cards = [
   {
     id: 'finance-funding',
@@ -24,10 +24,9 @@ const cards = [
   {
     id: 'program',
     title: 'Program',
-    description: 'Tasks, approvals, alerts & content publishing workflows',
-    meta: '→ 5 tabs',
+    description: 'Approvals, alerts & content publishing workflows',
+    meta: '→ 4 tabs',
     subItems: [
-      { label: 'Task & Approval', routeName: 'tasks' },
       { label: 'Alert Center', routeName: 'alerts' },
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Progress-to-Goal Workflow', routeName: 'progress-to-goal' },
@@ -51,6 +50,13 @@ const cards = [
       { label: 'Interviews', routeName: 'scholarship-interviews' },
       { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
     ],
+  },
+  {
+    id: 'task-approval',
+    title: 'Task & Approval',
+    description: 'Review and act on tasks and approvals assigned to you',
+    meta: '→ 1 tab (built)',
+    subItems: [{ label: 'Task & Approval', routeName: 'tasks' }],
   },
 ]
 
@@ -99,6 +105,14 @@ function toggleCard(id) {
             <h2 class="card-title">{{ card.title }}</h2>
             <p class="card-description">{{ card.description }}</p>
             <p class="card-meta">{{ card.meta }}</p>
+            <!-- Lives on the card face (outside the expandable sub-item
+                 list below) so it's visible whether the card is expanded
+                 or collapsed. Gated on assignedCountLoaded to avoid a "0"
+                 flash before the real count arrives. -->
+            <p v-if="card.id === 'task-approval' && assignedCountLoaded" class="card-counter">
+              {{ tasksAlertsStore.assignedOpenCount }}
+              open item{{ tasksAlertsStore.assignedOpenCount === 1 ? '' : 's' }} assigned to you
+            </p>
           </div>
           <svg
             class="chevron"
@@ -118,10 +132,6 @@ function toggleCard(id) {
         <ul v-if="expandedCardIds.has(card.id)" class="sub-item-list">
           <li v-for="item in card.subItems" :key="item.routeName">
             <RouterLink :to="{ name: item.routeName }" class="sub-item-link">{{ item.label }}</RouterLink>
-            <p v-if="item.routeName === 'tasks' && assignedCountLoaded" class="sub-item-metric">
-              {{ tasksAlertsStore.assignedOpenCount }}
-              open item{{ tasksAlertsStore.assignedOpenCount === 1 ? '' : 's' }} assigned to you
-            </p>
           </li>
         </ul>
       </div>
@@ -233,8 +243,8 @@ function toggleCard(id) {
   text-decoration: underline;
 }
 
-.sub-item-metric {
-  margin: 2px 0 0;
+.card-counter {
+  margin: 4px 0 0;
   font-size: 12px;
   color: #9a9a9a;
 }
