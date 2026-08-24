@@ -31,11 +31,11 @@ const router = createRouter({
         },
         placeholderRoute('alerts', 'alerts', 'Alert Center'),
         placeholderRoute('awardee-workflow', 'awardee-workflow', 'Awardee Workflow'),
-        placeholderRoute('progress-to-goal', 'progress-to-goal', 'Progress-to-Goal Workflow'),
+        placeholderRoute('progress-to-goal', 'progress-to-goal', 'Progress-to-Goal'),
         {
           path: 'donor-impact',
           name: 'donor-impact',
-          component: () => import('../views/DonorImpactWorkflowView.vue'),
+          component: () => import('../views/DonorImpactView.vue'),
         },
         placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
         // Finance & Funding's remaining 2 planned tabs. Headline Metrics

@@ -14,7 +14,7 @@ const CHART_METRICS = [
   { key: 'scholarships_awarded', label: 'Scholarships Awarded', format: 'number' },
 ]
 
-// Only admin (edit) and board (view-only) can see this workflow at all,
+// Only admin (edit) and board (view-only) can see this page at all,
 // matching the donor_impact RLS policy — other roles never get a fetch
 // attempt, just the same "Access Denied" treatment used elsewhere.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard)
@@ -33,7 +33,7 @@ onMounted(() => {
 
 // Refetch whenever the signed-in user changes (sign in, sign out, switch
 // accounts). Skips the fetch entirely while signed out or for a role that
-// can't view this workflow, since RLS would just reject it with a
+// can't view this page, since RLS would just reject it with a
 // permission-denied error before the user ever gets a chance to act.
 watch(
   () => authStore.session?.user?.id ?? null,

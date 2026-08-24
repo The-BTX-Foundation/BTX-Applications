@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 const CYCLE_COLUMNS =
   'metric_id, cycle_year, funds_granted, students_reached, scholarships_awarded, published'
 
-// Pinia store for the Donor Impact Workflow. Reads/writes go through
+// Pinia store for Donor Impact. Reads/writes go through
 // Supabase's RLS policies on `donor_impact` (admin: view/create/edit;
 // board and reviewer: view-only), so the rows/actions available here are
 // already scoped to what the signed-in user is allowed to do — no
