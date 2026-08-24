@@ -30,8 +30,8 @@ const cards = [
     subItems: [
       { label: 'Alert Center', routeName: 'alerts' },
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
-      { label: 'Progress-to-Goal Workflow', routeName: 'progress-to-goal' },
-      { label: 'Donor Impact Workflow', routeName: 'donor-impact' },
+      { label: 'Progress-to-Goal', routeName: 'progress-to-goal' },
+      { label: 'Donor Impact', routeName: 'donor-impact' },
     ],
   },
   {
@@ -78,7 +78,7 @@ const applicationsThisCycle = 128
 // PLACEHOLDER — wire to the interviews table once Scholarship Hub ships.
 const upcomingInterviews = 12
 
-// PLACEHOLDER — static bars matching the shape of DonorImpactWorkflow.vue's
+// PLACEHOLDER — static bars matching the shape of DonorImpact.vue's
 // hand-rolled bar chart, until a real applications-by-month query exists.
 const applicationsByMonth = [
   { label: 'Apr', value: 18 },

@@ -32,8 +32,8 @@ const navSections = [
     children: [
       { label: 'Alert Center', routeName: 'alerts' },
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
-      { label: 'Progress-to-Goal Workflow', routeName: 'progress-to-goal' },
-      { label: 'Donor Impact Workflow', routeName: 'donor-impact' },
+      { label: 'Progress-to-Goal', routeName: 'progress-to-goal' },
+      { label: 'Donor Impact', routeName: 'donor-impact' },
     ],
   },
   // Flat top-level link (no `children`) rather than an expandable group —
