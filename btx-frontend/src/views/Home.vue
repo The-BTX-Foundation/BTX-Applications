@@ -1,10 +1,12 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+import { useDonorImpactStore } from '@/stores/donorImpact'
 
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
+const donorImpactStore = useDonorImpactStore()
 
 // The 5 landing-page cards. subItems map to real routes for Program and
 // Task & Approval (which have built pages) and to placeholder routes for
@@ -13,10 +15,9 @@ const cards = [
   {
     id: 'finance-funding',
     title: 'Finance & Funding',
-    description: 'Headline metrics, budget tracking & fundraising totals',
-    meta: '→ 3 tabs (1 built, 2 concept)',
+    description: 'Budget tracking & fundraising totals',
+    meta: '→ 3 tabs (0 built, 3 concept)',
     subItems: [
-      { label: 'Headline Metrics', routeName: 'finance-headline-metrics' },
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Fundraising Totals', routeName: 'finance-fundraising-totals' },
     ],
@@ -64,17 +65,58 @@ const cards = [
 // yet, so the metric line doesn't flash "0" before the real value arrives.
 const assignedCountLoaded = ref(false)
 
-// Refetches the Program card's assigned count whenever the signed-in user
-// changes (sign in, sign out, switch accounts), mirroring the same pattern
-// used in TasksAlertsList.vue. Skips the fetch while signed out.
+// Headline Metrics section, moved here from the deleted
+// FinanceFundingHeadlineMetric view/component. Only admin, board, and
+// reviewer can see it — matches donor_impact's and tasks_alerts' RLS SELECT
+// policies, so this mirrors (rather than restricts beyond) what the backend
+// already allows each role to read.
+const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
+
+// PLACEHOLDER — wire to the applications table once Scholarship Hub ships.
+const applicationsThisCycle = 128
+
+// PLACEHOLDER — wire to the interviews table once Scholarship Hub ships.
+const upcomingInterviews = 12
+
+// PLACEHOLDER — static bars matching the shape of DonorImpactWorkflow.vue's
+// hand-rolled bar chart, until a real applications-by-month query exists.
+const applicationsByMonth = [
+  { label: 'Apr', value: 18 },
+  { label: 'May', value: 34 },
+  { label: 'Jun', value: 47 },
+  { label: 'Jul', value: 61 },
+]
+const maxMonthlyApplications = Math.max(...applicationsByMonth.map((m) => m.value))
+
+// Bar height as a percentage of the highest placeholder month value.
+function monthBarHeight(month) {
+  return `${(month.value / maxMonthlyApplications) * 100}%`
+}
+
+// Tracks whether the Headline Metrics section's real data (Total Raised,
+// Pending Tasks) has loaded yet, so those values don't flash "0" before the
+// fetch resolves — same guard pattern as assignedCountLoaded above.
+const metricsLoaded = ref(false)
+
+// Refetches the Program card's assigned count and, for roles that can view
+// the Headline Metrics section, its real data sources — whenever the
+// signed-in user changes (sign in, sign out, switch accounts). Skips all
+// fetches while signed out; skips the metrics fetches for roles RLS
+// wouldn't return donor_impact/tasks_alerts rows to anyway.
 watch(
   () => authStore.session?.user?.id ?? null,
   async (userId) => {
     if (userId) {
       await tasksAlertsStore.fetchAssignedOpenCount(userId)
       assignedCountLoaded.value = true
+
+      if (canView.value) {
+        await Promise.all([donorImpactStore.fetchCycles(), tasksAlertsStore.fetchGlobalOpenCount()])
+        metricsLoaded.value = true
+      }
     } else {
       assignedCountLoaded.value = false
+      metricsLoaded.value = false
     }
   },
   { immediate: true },
@@ -97,6 +139,48 @@ function toggleCard(id) {
   <div class="home">
     <h1 class="heading">Welcome to BTX Ops Hub</h1>
     <p class="subtext">Select a section below, or from the sidebar, to get started.</p>
+
+    <!-- Headline Metrics: admin/board/reviewer only. Omitted entirely (no
+         "Access Denied") for roles that can't view it, since this section
+         sits on the general homepage everyone lands on. -->
+    <section v-if="canView" class="headline-metric">
+      <p v-if="donorImpactStore.loading || !metricsLoaded">Loading metrics…</p>
+      <p v-else-if="donorImpactStore.error" class="error">{{ donorImpactStore.error }}</p>
+
+      <template v-else>
+        <h2 class="page-title">Headline Metrics</h2>
+
+        <div class="metric-cards">
+          <div class="metric-card">
+            <span class="metric-label">Total Raised</span>
+            <span class="metric-value">${{ donorImpactStore.totalRaised.toLocaleString() }}</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Applications This Cycle</span>
+            <span class="metric-value">{{ applicationsThisCycle.toLocaleString() }}</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Pending Tasks</span>
+            <span class="metric-value">{{ tasksAlertsStore.globalOpenCount.toLocaleString() }}</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Upcoming Interviews</span>
+            <span class="metric-value">{{ upcomingInterviews.toLocaleString() }}</span>
+          </div>
+        </div>
+
+        <div class="chart">
+          <h3>Applications by Month</h3>
+          <div class="bars">
+            <div v-for="month in applicationsByMonth" :key="month.label" class="bar-col">
+              <span class="bar-value">{{ month.value }}</span>
+              <div class="bar" :style="{ height: monthBarHeight(month) }"></div>
+              <span class="bar-label">{{ month.label }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </section>
 
     <div class="card-grid">
       <div v-for="card in cards" :key="card.id" class="card" :class="{ 'card--expanded': expandedCardIds.has(card.id) }">
@@ -150,6 +234,88 @@ function toggleCard(id) {
   margin: 0 0 24px;
   color: #6b6b6b;
   font-size: 14px;
+}
+
+.headline-metric {
+  margin-bottom: 32px;
+}
+
+.page-title {
+  margin: 0 0 20px;
+  font-size: 18px;
+}
+
+.metric-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.metric-label {
+  font-size: 13px;
+  color: #8a8a85;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #c9932a;
+}
+
+.chart h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  height: 180px;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  width: 48px;
+}
+
+.bar-value {
+  font-size: 12px;
+  color: #8a8a85;
+  margin-bottom: 4px;
+}
+
+.bar {
+  width: 100%;
+  background: #c9932a;
+  border-radius: 4px 4px 0 0;
+}
+
+.bar-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #2d3142;
+}
+
+.error {
+  color: #b3261e;
 }
 
 .card-grid {
