@@ -17,8 +17,9 @@ async function handleSignOut() {
 }
 
 // Nav sections shown in the sidebar. Most are expandable groups of links
-// (via `children`); Task & Approval is a flat top-level link instead (see
-// the template below). Sub-items mirror the routes on the Home.vue cards.
+// (via `children`); Task & Approval and Alert Center are flat top-level
+// links instead (see the template below). Sub-items mirror the routes on
+// the Home.vue cards, except Alert Center, which only lives in the sidebar.
 const navSections = [
   {
     label: 'Finance & Funding',
@@ -30,15 +31,15 @@ const navSections = [
   {
     label: 'Program',
     children: [
-      { label: 'Alert Center', routeName: 'alerts' },
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Progress-to-Goal', routeName: 'progress-to-goal' },
       { label: 'Donor Impact', routeName: 'donor-impact' },
     ],
   },
-  // Flat top-level link (no `children`) rather than an expandable group —
+  // Flat top-level links (no `children`) rather than expandable groups —
   // the template below checks for `children` to decide which to render.
   { label: 'Task & Approval', routeName: 'tasks' },
+  { label: 'Alert Center', routeName: 'alerts' },
   {
     label: 'Marketing',
     children: [{ label: 'Marketing', routeName: 'marketing' }],
