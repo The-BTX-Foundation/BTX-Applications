@@ -138,7 +138,6 @@ function toggleCard(id) {
 <template>
   <div class="home">
     <h1 class="heading">Welcome to BTX Ops Hub</h1>
-    <p class="subtext">Select a section below, or from the sidebar, to get started.</p>
 
     <!-- Headline Metrics: admin/board/reviewer only. Omitted entirely (no
          "Access Denied") for roles that can't view it, since this section
@@ -181,6 +180,10 @@ function toggleCard(id) {
         </div>
       </template>
     </section>
+
+    <!-- Kept unconditional (not tied to canView) so it still reads as an
+         intro line for the cards grid below, for every role. -->
+    <p class="subtext">Select a section below, or from the sidebar, to get started.</p>
 
     <div class="card-grid">
       <div v-for="card in cards" :key="card.id" class="card" :class="{ 'card--expanded': expandedCardIds.has(card.id) }">
