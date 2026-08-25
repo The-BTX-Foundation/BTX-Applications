@@ -137,7 +137,11 @@ function toggleCard(id) {
 
 <template>
   <div class="home">
-    <h1 class="heading">Welcome to BTX Ops Hub</h1>
+    <!-- heading--with-metrics only applies when the metrics section below it
+         renders, so it can resolve its own bottom margin (no subtext directly
+         beneath it anymore) without changing the default heading spacing for
+         roles that never see that section. -->
+    <h1 class="heading" :class="{ 'heading--with-metrics': canView }">Welcome to BTX Ops Hub</h1>
 
     <!-- Headline Metrics: admin/board/reviewer only. Omitted entirely (no
          "Access Denied") for roles that can't view it, since this section
@@ -181,8 +185,14 @@ function toggleCard(id) {
       </template>
     </section>
 
-    <!-- Kept unconditional (not tied to canView) so it still reads as an
-         intro line for the cards grid below, for every role. -->
+    <!-- Hairline separator between Headline Metrics and the cards grid;
+         only rendered alongside the metrics section itself so non-privileged
+         roles (which never see that section) get no orphan rule here. -->
+    <div v-if="canView" class="section-divider"></div>
+
+    <!-- Doubles as the intro line for the cards grid below (not just a
+         generic page subtext), so it's kept unconditional and positioned
+         directly above the grid rather than tied to canView. -->
     <p class="subtext">Select a section below, or from the sidebar, to get started.</p>
 
     <div class="card-grid">
@@ -233,14 +243,29 @@ function toggleCard(id) {
   font-weight: 700;
 }
 
+/* Applies only when the metrics section renders directly below (see
+   :class binding in the template) — resolves the heading on its own now
+   that the subtext no longer sits right beneath it for those roles. */
+.heading--with-metrics {
+  margin-bottom: 24px;
+}
+
 .subtext {
-  margin: 0 0 24px;
+  margin: 0 0 20px;
   color: #6b6b6b;
   font-size: 14px;
 }
 
 .headline-metric {
-  margin-bottom: 32px;
+  margin-bottom: 40px;
+}
+
+/* Hairline rule matching the app's existing light-hairline color (already
+   used for .card's border and .sub-item-list's border-top below). */
+.section-divider {
+  height: 1px;
+  background: #ececec;
+  margin: 0 0 24px;
 }
 
 .page-title {
