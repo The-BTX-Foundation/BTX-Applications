@@ -10,7 +10,8 @@ const donorImpactStore = useDonorImpactStore()
 
 // The 5 landing-page cards. subItems map to real routes for Program and
 // Task & Approval (which have built pages) and to placeholder routes for
-// the other sections, which don't have real sub-pages yet.
+// the other sections, which don't have real sub-pages yet. Alert Center is
+// deliberately absent — it lives only in the sidebar, not on the homepage.
 const cards = [
   {
     id: 'finance-funding',
@@ -25,10 +26,9 @@ const cards = [
   {
     id: 'program',
     title: 'Program',
-    description: 'Approvals, alerts & content publishing workflows',
-    meta: '→ 4 tabs',
+    description: 'Awardee workflows, progress tracking & donor impact',
+    meta: '→ 3 tabs',
     subItems: [
-      { label: 'Alert Center', routeName: 'alerts' },
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Progress-to-Goal', routeName: 'progress-to-goal' },
       { label: 'Donor Impact', routeName: 'donor-impact' },
