@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useMarketingTasksStore } from '@/stores/marketingTasks'
+import { MARKETING_TASK_TYPES } from '@/lib/marketingTaskTypes'
 
 const emit = defineEmits(['close'])
 
@@ -12,7 +13,9 @@ const date = ref('')
 // Defaults to the first of the three DB-constrained values (marketing_tasks'
 // CHECK constraint only allows these three exact strings — a free-text
 // field would get silently rejected by the database on any mismatch).
-const type = ref('Marketing Event')
+// Sourced from the shared constants file so this can't drift from the
+// Calendar page's color-coding, which uses the same list.
+const type = ref(MARKETING_TASK_TYPES[0])
 const description = ref('')
 const submitting = ref(false)
 const error = ref(null)
@@ -59,9 +62,9 @@ async function handleSubmit() {
         <label class="field">
           <span class="field-label">Type</span>
           <select v-model="type" required>
-            <option value="Marketing Event">Marketing Event</option>
-            <option value="Ad Publishment">Ad Publishment</option>
-            <option value="Media Post">Media Post</option>
+            <option v-for="taskType in MARKETING_TASK_TYPES" :key="taskType" :value="taskType">
+              {{ taskType }}
+            </option>
           </select>
         </label>
 
