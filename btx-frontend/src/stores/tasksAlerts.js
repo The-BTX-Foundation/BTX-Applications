@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 // selected raw (not aliased to the profiles join) so components can compare
 // it against the signed-in user's id for button-visibility checks; the
 // joined name is exposed separately as `profiles`.
-const TASK_COLUMNS = 'task_id, title, due_date, status, type, assigned_to, profiles(name)'
+const TASK_COLUMNS = 'task_id, title, due_date, status, type, assigned_to, completed_at, profiles(name)'
 
 // Pinia store for the Tasks & Approvals list. Reads go through Supabase's
 // RLS SELECT policy on `tasks_alerts`, so the rows returned here are already
@@ -45,22 +45,33 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   }
 
   // Updates a row's status (Approved/Complete/Declined). The update itself
-  // is still governed by RLS, so this will silently fail with an update
-  // error for users who aren't allowed to act on this particular row (i.e.
-  // anyone other than the assignee, even if they're board/admin/reviewer).
+  // is still governed by RLS (assignee-only), so this can be rejected by the
+  // database even though the UI only shows the triggering button to the
+  // assignee — e.g. a race where the row gets reassigned after the page
+  // loads but before the click lands. Sets completed_at client-side the
+  // moment a row reaches a terminal status (Complete/Declined), since that's
+  // the instant the change is known to have succeeded. Returns a boolean
+  // (rather than only setting the shared `error` ref) so callers can show a
+  // scoped, per-row error instead of the whole list falling back to the
+  // store's generic error state.
   async function updateStatus(taskId, status) {
     error.value = null
 
+    const payload = { status }
+    if (status === 'Complete' || status === 'Declined') {
+      payload.completed_at = new Date().toISOString()
+    }
+
     const { data, error: updateError } = await supabase
       .from('tasks_alerts')
-      .update({ status })
+      .update(payload)
       .eq('task_id', taskId)
       .select(TASK_COLUMNS)
       .single()
 
     if (updateError) {
       error.value = updateError.message
-      return
+      return false
     }
 
     // Patch the single row in place rather than refetching the whole list.
@@ -68,6 +79,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     if (index !== -1) {
       tasks.value[index] = data
     }
+    return true
   }
 
   // Loads board/admin profiles for the New Task modal's Assigned To dropdown.
@@ -143,20 +155,23 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
 
   // Marks a task/approval complete. For Task-type rows this finalizes the
   // row directly; for Approval-type rows this is the second step, only
-  // available once the row is already 'Approved'.
+  // available once the row is already 'Approved'. Returns whether the
+  // update succeeded, so the caller can surface a per-row error on failure.
   function markComplete(taskId) {
     return updateStatus(taskId, 'Complete')
   }
 
   // First step of the Approval flow: moves an Approval row to 'Approved'
   // rather than completing it immediately, so the assignee still has to
-  // come back and Mark Complete to finalize it.
+  // come back and Mark Complete to finalize it. Returns whether the update
+  // succeeded, so the caller can surface a per-row error on failure.
   function approveTask(taskId) {
     return updateStatus(taskId, 'Approved')
   }
 
   // Declines an approval row. Terminal — unlike Approve, there's no
-  // follow-up step.
+  // follow-up step. Returns whether the update succeeded, so the caller can
+  // surface a per-row error on failure.
   function declineTask(taskId) {
     return updateStatus(taskId, 'Declined')
   }
