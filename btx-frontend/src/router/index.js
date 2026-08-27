@@ -44,7 +44,11 @@ const router = createRouter({
         // still have somewhere to link.
         placeholderRoute('finance-budget-tracking', 'finance-budget-tracking', 'Budget Tracking'),
         placeholderRoute('finance-fundraising-totals', 'finance-fundraising-totals', 'Fundraising Totals'),
-        placeholderRoute('marketing-calendar', 'marketing-calendar', 'Calendar'),
+        {
+          path: 'marketing-calendar',
+          name: 'marketing-calendar',
+          component: () => import('../views/MarketingCalendarView.vue'),
+        },
         {
           path: 'marketing-tasks',
           name: 'marketing-tasks',
