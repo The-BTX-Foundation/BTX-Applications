@@ -21,9 +21,9 @@ const actionErrorMessage = ref('')
 // Controls the New Task modal's visibility.
 const showNewTaskModal = ref(false)
 
-// Which of the three tabs is showing. Pending is the default so
-// decision-needed approvals surface first.
-const activeTab = ref('pending')
+// Which of the three tabs is showing. Active is the default so in-progress
+// work surfaces first.
+const activeTab = ref('active')
 
 // Completed-tab drill-down position: null/null shows the year list,
 // year/null shows the month list for that year, year/month shows the
@@ -275,18 +275,18 @@ async function handleDecline(taskId) {
         <button
           type="button"
           class="tab"
-          :class="{ 'tab--active': activeTab === 'pending' }"
-          @click="selectTab('pending')"
-        >
-          Pending
-        </button>
-        <button
-          type="button"
-          class="tab"
           :class="{ 'tab--active': activeTab === 'active' }"
           @click="selectTab('active')"
         >
           Active
+        </button>
+        <button
+          type="button"
+          class="tab"
+          :class="{ 'tab--active': activeTab === 'pending' }"
+          @click="selectTab('pending')"
+        >
+          Pending
         </button>
         <button
           type="button"
