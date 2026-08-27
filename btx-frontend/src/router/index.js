@@ -44,7 +44,12 @@ const router = createRouter({
         // still have somewhere to link.
         placeholderRoute('finance-budget-tracking', 'finance-budget-tracking', 'Budget Tracking'),
         placeholderRoute('finance-fundraising-totals', 'finance-fundraising-totals', 'Fundraising Totals'),
-        placeholderRoute('marketing', 'marketing', 'Marketing'),
+        placeholderRoute('marketing-calendar', 'marketing-calendar', 'Calendar'),
+        {
+          path: 'marketing-tasks',
+          name: 'marketing-tasks',
+          component: () => import('../views/MarketingTasksView.vue'),
+        },
         placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
         // Scholarship's 3 planned tabs, same treatment as Finance & Funding above.
         placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),

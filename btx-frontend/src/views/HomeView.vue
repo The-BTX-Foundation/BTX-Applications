@@ -42,7 +42,10 @@ const navSections = [
   { label: 'Alert Center', routeName: 'alerts' },
   {
     label: 'Marketing',
-    children: [{ label: 'Marketing', routeName: 'marketing' }],
+    children: [
+      { label: 'Calendar', routeName: 'marketing-calendar' },
+      { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
+    ],
   },
   {
     label: 'Scholarship',

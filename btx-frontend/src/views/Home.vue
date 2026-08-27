@@ -38,8 +38,11 @@ const cards = [
     id: 'marketing',
     title: 'Marketing',
     description: 'Outreach & campaign tracking',
-    meta: '→ concept, not yet built out',
-    subItems: [{ label: 'Marketing', routeName: 'marketing' }],
+    meta: '→ 2 tabs (1 built, 1 concept)',
+    subItems: [
+      { label: 'Calendar', routeName: 'marketing-calendar' },
+      { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
+    ],
   },
   {
     id: 'scholarship',
