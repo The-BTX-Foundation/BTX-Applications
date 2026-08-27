@@ -21,8 +21,9 @@ const actionErrorMessage = ref('')
 // Controls the New Task modal's visibility.
 const showNewTaskModal = ref(false)
 
-// Which of the two tabs is showing.
-const activeTab = ref('active')
+// Which of the three tabs is showing. Pending is the default so
+// decision-needed approvals surface first.
+const activeTab = ref('pending')
 
 // Completed-tab drill-down position: null/null shows the year list,
 // year/null shows the month list for that year, year/month shows the
@@ -80,19 +81,36 @@ function badge(task) {
 
 // Returns whether the signed-in user is this row's assignee — the only
 // person allowed to act on it, regardless of their role. Non-assignees
-// (even admin/board/reviewer) get no action buttons at all, just the
-// read-only "Awaiting [name]'s review" note instead.
+// (even admin/board/reviewer) get no action buttons at all, just a
+// read-only note instead (wording depends on the tab: "Awaiting review" in
+// Pending, "Task in progress by" in Active).
 function isAssignee(task) {
   return task.assigned_to === authStore.session?.user?.id
 }
 
-// Rows still in progress, soonest due date first (the store already orders
-// fetchTasks by due_date ascending). Deliberately broader than just
-// Open/Overdue — 'Approved' rows still need the assignee to come back and
-// Mark Complete, so they stay in Active until they actually reach a
-// terminal status (Complete/Declined), rather than disappearing early.
-const activeTasks = computed(() =>
-  tasksAlertsStore.tasks.filter((task) => task.status !== 'Complete' && task.status !== 'Declined'),
+// Approval rows still awaiting a decision, soonest due date first (the
+// store already orders fetchTasks by due_date ascending). Deliberately its
+// own computed rather than a shared "active" filter — keeping the three
+// tabs as independent, non-overlapping predicates is what makes it
+// structurally impossible for one row to match more than one tab, or for a
+// tab's non-assignee text to leak into a state it wasn't written for.
+const pendingTasks = computed(() =>
+  tasksAlertsStore.tasks.filter(
+    (task) => task.type === 'Approval' && (task.status === 'Open' || task.status === 'Overdue'),
+  ),
+)
+
+// Rows genuinely in progress: an Approval that's already been approved
+// (awaiting the assignee's Mark Complete, not a decision) or a Task that
+// hasn't been finalized yet. Approved-Approval rows leave Pending and land
+// here the moment they're approved, so a row is always in exactly one of
+// Pending/Active, never both and never neither.
+const inProgressTasks = computed(() =>
+  tasksAlertsStore.tasks.filter(
+    (task) =>
+      (task.type === 'Approval' && task.status === 'Approved') ||
+      (task.type === 'Task' && (task.status === 'Open' || task.status === 'Overdue')),
+  ),
 )
 
 // Resolved rows only — the source list for the Completed tab's year/month
@@ -257,6 +275,14 @@ async function handleDecline(taskId) {
         <button
           type="button"
           class="tab"
+          :class="{ 'tab--active': activeTab === 'pending' }"
+          @click="selectTab('pending')"
+        >
+          Pending
+        </button>
+        <button
+          type="button"
+          class="tab"
           :class="{ 'tab--active': activeTab === 'active' }"
           @click="selectTab('active')"
         >
@@ -275,14 +301,15 @@ async function handleDecline(taskId) {
       <p v-if="tasksAlertsStore.loading">Loading tasks…</p>
       <p v-else-if="tasksAlertsStore.error" class="error">{{ tasksAlertsStore.error }}</p>
 
-      <!-- Active tab: in-progress rows (Open/Overdue/Approved), soonest due
-           date first. Action buttons only render for the row's assignee;
-           everyone else sees a read-only "Awaiting" note. -->
-      <template v-else-if="activeTab === 'active'">
-        <p v-if="activeTasks.length === 0">No active tasks.</p>
+      <!-- Pending tab: Approval rows awaiting a decision (Open/Overdue),
+           soonest due date first. This is the only place in the file that
+           renders "Awaiting ... review" text, so it can never leak into an
+           Approved or Task row's action area again. -->
+      <template v-else-if="activeTab === 'pending'">
+        <p v-if="pendingTasks.length === 0">No approvals awaiting a decision.</p>
 
         <ul v-else class="task-list">
-          <li v-for="task in activeTasks" :key="task.task_id" class="task-card">
+          <li v-for="task in pendingTasks" :key="task.task_id" class="task-card">
             <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
 
             <div class="task-body">
@@ -291,34 +318,7 @@ async function handleDecline(taskId) {
               <p v-if="actionErrorTaskId === task.task_id" class="row-error">{{ actionErrorMessage }}</p>
             </div>
 
-            <!-- Approved is visible to everyone as a status, but only the
-                 assignee gets the Mark Complete button to finalize it. -->
-            <div v-if="task.status === 'Approved'" class="actions">
-              <span class="outcome outcome--approved">Approved</span>
-              <button
-                v-if="isAssignee(task)"
-                type="button"
-                class="btn btn--outline"
-                :disabled="pendingTaskId === task.task_id"
-                @click="handleMarkComplete(task.task_id)"
-              >
-                Mark complete
-              </button>
-              <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
-            </div>
-            <div v-else-if="task.type === 'Task'" class="actions">
-              <button
-                v-if="isAssignee(task)"
-                type="button"
-                class="btn btn--outline"
-                :disabled="pendingTaskId === task.task_id"
-                @click="handleMarkComplete(task.task_id)"
-              >
-                Mark complete
-              </button>
-              <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
-            </div>
-            <div v-else-if="task.type === 'Approval'" class="actions">
+            <div class="actions">
               <template v-if="isAssignee(task)">
                 <button
                   type="button"
@@ -338,6 +338,44 @@ async function handleDecline(taskId) {
                 </button>
               </template>
               <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
+            </div>
+          </li>
+        </ul>
+      </template>
+
+      <!-- Active tab: rows genuinely in progress — an already-approved
+           Approval (awaiting Mark Complete, not a decision) or an
+           unfinished Task. This is the only place that renders "Task in
+           progress by ..." text, kept separate from Pending's "Awaiting
+           review" text since the two tabs mean different things. -->
+      <template v-else-if="activeTab === 'active'">
+        <p v-if="inProgressTasks.length === 0">No active tasks.</p>
+
+        <ul v-else class="task-list">
+          <li v-for="task in inProgressTasks" :key="task.task_id" class="task-card">
+            <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
+
+            <div class="task-body">
+              <p class="title">{{ task.title }}</p>
+              <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
+              <p v-if="actionErrorTaskId === task.task_id" class="row-error">{{ actionErrorMessage }}</p>
+            </div>
+
+            <div class="actions">
+              <!-- Approved is a status, not the hidden "type" label — shown
+                   to everyone so an approved-Approval row reads differently
+                   from a plain Task row, same as before this rework. -->
+              <span v-if="task.status === 'Approved'" class="outcome outcome--approved">Approved</span>
+              <button
+                v-if="isAssignee(task)"
+                type="button"
+                class="btn btn--outline"
+                :disabled="pendingTaskId === task.task_id"
+                @click="handleMarkComplete(task.task_id)"
+              >
+                Mark complete
+              </button>
+              <span v-else class="awaiting">Task in progress by {{ task.profiles?.name ?? 'the assignee' }}</span>
             </div>
           </li>
         </ul>
