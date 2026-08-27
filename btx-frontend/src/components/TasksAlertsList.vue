@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
 import NewTaskModal from './NewTaskModal.vue'
@@ -11,8 +11,24 @@ const tasksAlertsStore = useTasksAlertsStore()
 // show a disabled state rather than locking the whole list.
 const pendingTaskId = ref(null)
 
+// Tracks which row (if any) most recently failed a status-changing action,
+// and the message to show beside it. Kept separate from the store's global
+// `error` so a single failed action shows a scoped message on that row
+// instead of replacing the entire list.
+const actionErrorTaskId = ref(null)
+const actionErrorMessage = ref('')
+
 // Controls the New Task modal's visibility.
 const showNewTaskModal = ref(false)
+
+// Which of the two tabs is showing.
+const activeTab = ref('active')
+
+// Completed-tab drill-down position: null/null shows the year list,
+// year/null shows the month list for that year, year/month shows the
+// resolved rows for that month.
+const selectedYear = ref(null)
+const selectedMonth = ref(null)
 
 onMounted(() => {
   authStore.init()
@@ -65,32 +81,149 @@ function badge(task) {
 // Returns whether the signed-in user is this row's assignee — the only
 // person allowed to act on it, regardless of their role. Non-assignees
 // (even admin/board/reviewer) get no action buttons at all, just the
-// read-only "Assigned to X" line below.
+// read-only "Awaiting [name]'s review" note instead.
 function isAssignee(task) {
   return task.assigned_to === authStore.session?.user?.id
 }
 
+// Rows still in progress, soonest due date first (the store already orders
+// fetchTasks by due_date ascending). Deliberately broader than just
+// Open/Overdue — 'Approved' rows still need the assignee to come back and
+// Mark Complete, so they stay in Active until they actually reach a
+// terminal status (Complete/Declined), rather than disappearing early.
+const activeTasks = computed(() =>
+  tasksAlertsStore.tasks.filter((task) => task.status !== 'Complete' && task.status !== 'Declined'),
+)
+
+// Resolved rows only — the source list for the Completed tab's year/month
+// grouping.
+const completedTasks = computed(() =>
+  tasksAlertsStore.tasks.filter((task) => task.status === 'Complete' || task.status === 'Declined'),
+)
+
+// Groups resolved rows by the year and month of completed_at:
+// { [year]: { [month]: Task[] } }. A row missing completed_at (shouldn't
+// happen once every resolution path sets it) is skipped since it has
+// nowhere to bucket.
+const completedGroups = computed(() => {
+  const groups = {}
+  for (const task of completedTasks.value) {
+    if (!task.completed_at) continue
+    const date = new Date(task.completed_at)
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    if (!groups[year]) groups[year] = {}
+    if (!groups[year][month]) groups[year][month] = []
+    groups[year][month].push(task)
+  }
+  return groups
+})
+
+// Years with resolved items, most recent first.
+const completedYears = computed(() =>
+  Object.keys(completedGroups.value)
+    .map(Number)
+    .sort((a, b) => b - a),
+)
+
+// Formats a month index (0-11) as its full name, e.g. "March".
+function monthLabel(monthIndex) {
+  return new Date(2000, monthIndex, 1).toLocaleDateString(undefined, { month: 'long' })
+}
+
+// Total resolved rows in a given year, shown next to the year in the
+// drill-down list.
+function completedCountForYear(year) {
+  return Object.values(completedGroups.value[year] ?? {}).reduce((sum, tasks) => sum + tasks.length, 0)
+}
+
+// Months with resolved items for the given year, most recent first, each
+// with its display label and row count.
+function completedMonthsForYear(year) {
+  const months = completedGroups.value[year] ?? {}
+  return Object.keys(months)
+    .map(Number)
+    .sort((a, b) => b - a)
+    .map((index) => ({ index, label: monthLabel(index), count: months[index].length }))
+}
+
+// Resolved rows for a given year/month, most recently resolved first.
+function completedTasksForYearMonth(year, month) {
+  const tasks = completedGroups.value[year]?.[month] ?? []
+  return [...tasks].sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+}
+
+// Switches tabs. Always resets the Completed drill-down back to the year
+// list so re-opening it later doesn't leave the user stuck deep in a stale
+// month.
+function selectTab(tab) {
+  activeTab.value = tab
+  selectedYear.value = null
+  selectedMonth.value = null
+}
+
+// Drills into a year's month list.
+function selectYear(year) {
+  selectedYear.value = year
+  selectedMonth.value = null
+}
+
+// Drills into a month's resolved task list.
+function selectMonth(month) {
+  selectedMonth.value = month
+}
+
+// Backs out of the month list to the year list.
+function goBackToYears() {
+  selectedYear.value = null
+  selectedMonth.value = null
+}
+
+// Backs out of the task list to the month list.
+function goBackToMonths() {
+  selectedMonth.value = null
+}
+
 // Moves an Approval row from Open/Overdue to 'Approved' (not Complete —
 // the assignee still has to come back and Mark Complete to finalize it).
+// Surfaces a scoped error on this row if Supabase rejects the update (e.g.
+// the row was reassigned after the page loaded) instead of assuming
+// success.
 async function handleApprove(taskId) {
   pendingTaskId.value = taskId
-  await tasksAlertsStore.approveTask(taskId)
+  actionErrorTaskId.value = null
+  const success = await tasksAlertsStore.approveTask(taskId)
+  if (!success) {
+    actionErrorTaskId.value = taskId
+    actionErrorMessage.value = tasksAlertsStore.error ?? 'Could not approve this item.'
+  }
   pendingTaskId.value = null
 }
 
 // Finalizes a row: Task rows go straight to Complete, Approval rows only
-// reach this once they're already 'Approved'.
+// reach this once they're already 'Approved'. Surfaces a scoped error on
+// this row on failure instead of assuming success.
 async function handleMarkComplete(taskId) {
   pendingTaskId.value = taskId
-  await tasksAlertsStore.markComplete(taskId)
+  actionErrorTaskId.value = null
+  const success = await tasksAlertsStore.markComplete(taskId)
+  if (!success) {
+    actionErrorTaskId.value = taskId
+    actionErrorMessage.value = tasksAlertsStore.error ?? 'Could not mark this item complete.'
+  }
   pendingTaskId.value = null
 }
 
-// Declines an approval row, tracking its id the same way as the other
-// handlers.
+// Declines an approval row. Surfaces a scoped error on this row on failure
+// instead of assuming success.
 async function handleDecline(taskId) {
   pendingTaskId.value = taskId
-  await tasksAlertsStore.declineTask(taskId)
+  actionErrorTaskId.value = null
+  const success = await tasksAlertsStore.declineTask(taskId)
+  if (!success) {
+    actionErrorTaskId.value = taskId
+    actionErrorMessage.value = tasksAlertsStore.error ?? 'Could not decline this item.'
+  }
   pendingTaskId.value = null
 }
 </script>
@@ -120,71 +253,152 @@ async function handleDecline(taskId) {
         </button>
       </div>
 
+      <div class="tabs">
+        <button
+          type="button"
+          class="tab"
+          :class="{ 'tab--active': activeTab === 'active' }"
+          @click="selectTab('active')"
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          class="tab"
+          :class="{ 'tab--active': activeTab === 'completed' }"
+          @click="selectTab('completed')"
+        >
+          Completed
+        </button>
+      </div>
+
       <p v-if="tasksAlertsStore.loading">Loading tasks…</p>
       <p v-else-if="tasksAlertsStore.error" class="error">{{ tasksAlertsStore.error }}</p>
-      <p v-else-if="tasksAlertsStore.tasks.length === 0">No tasks.</p>
 
-      <ul v-else class="task-list">
-        <li v-for="task in tasksAlertsStore.tasks" :key="task.task_id" class="task-card">
-          <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
+      <!-- Active tab: in-progress rows (Open/Overdue/Approved), soonest due
+           date first. Action buttons only render for the row's assignee;
+           everyone else sees a read-only "Awaiting" note. -->
+      <template v-else-if="activeTab === 'active'">
+        <p v-if="activeTasks.length === 0">No active tasks.</p>
 
-          <div class="task-body">
-            <p class="title">{{ task.title }}</p>
-            <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
-          </div>
+        <ul v-else class="task-list">
+          <li v-for="task in activeTasks" :key="task.task_id" class="task-card">
+            <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
 
-          <!-- Action buttons are gated on assignment, not role: only the
-               person this row is assigned to can act on it, even though
-               admin/board/reviewer can all see every row (per the SELECT
-               policy) to know who owns what. -->
-          <div v-if="task.status === 'Complete'" class="outcome outcome--complete">
-            <span class="check">&#10003;</span> Complete
-          </div>
-          <div v-else-if="task.status === 'Declined'" class="outcome outcome--declined">Declined</div>
-          <!-- Approved is visible to everyone as a status, but only the
-               assignee gets the Mark Complete button to finalize it. -->
-          <div v-else-if="task.status === 'Approved'" class="actions">
-            <span class="outcome outcome--approved">Approved</span>
-            <button
-              v-if="isAssignee(task)"
-              type="button"
-              class="btn btn--outline"
-              :disabled="pendingTaskId === task.task_id"
-              @click="handleMarkComplete(task.task_id)"
+            <div class="task-body">
+              <p class="title">{{ task.title }}</p>
+              <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
+              <p v-if="actionErrorTaskId === task.task_id" class="row-error">{{ actionErrorMessage }}</p>
+            </div>
+
+            <!-- Approved is visible to everyone as a status, but only the
+                 assignee gets the Mark Complete button to finalize it. -->
+            <div v-if="task.status === 'Approved'" class="actions">
+              <span class="outcome outcome--approved">Approved</span>
+              <button
+                v-if="isAssignee(task)"
+                type="button"
+                class="btn btn--outline"
+                :disabled="pendingTaskId === task.task_id"
+                @click="handleMarkComplete(task.task_id)"
+              >
+                Mark complete
+              </button>
+              <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
+            </div>
+            <div v-else-if="task.type === 'Task'" class="actions">
+              <button
+                v-if="isAssignee(task)"
+                type="button"
+                class="btn btn--outline"
+                :disabled="pendingTaskId === task.task_id"
+                @click="handleMarkComplete(task.task_id)"
+              >
+                Mark complete
+              </button>
+              <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
+            </div>
+            <div v-else-if="task.type === 'Approval'" class="actions">
+              <template v-if="isAssignee(task)">
+                <button
+                  type="button"
+                  class="btn btn--gold"
+                  :disabled="pendingTaskId === task.task_id"
+                  @click="handleApprove(task.task_id)"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--outline"
+                  :disabled="pendingTaskId === task.task_id"
+                  @click="handleDecline(task.task_id)"
+                >
+                  Decline
+                </button>
+              </template>
+              <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
+            </div>
+          </li>
+        </ul>
+      </template>
+
+      <!-- Completed tab: resolved rows only, drilled down by year then
+           month of completed_at. Never shows action buttons — these rows
+           are terminal. -->
+      <template v-else>
+        <div v-if="selectedYear === null" class="drill-list">
+          <p v-if="completedYears.length === 0">No completed items yet.</p>
+          <button
+            v-for="year in completedYears"
+            :key="year"
+            type="button"
+            class="drill-row"
+            @click="selectYear(year)"
+          >
+            <span>{{ year }}</span>
+            <span class="drill-count">{{ completedCountForYear(year) }}</span>
+          </button>
+        </div>
+
+        <div v-else-if="selectedMonth === null" class="drill-list">
+          <button type="button" class="back-link" @click="goBackToYears">&larr; {{ selectedYear }}</button>
+          <button
+            v-for="month in completedMonthsForYear(selectedYear)"
+            :key="month.index"
+            type="button"
+            class="drill-row"
+            @click="selectMonth(month.index)"
+          >
+            <span>{{ month.label }}</span>
+            <span class="drill-count">{{ month.count }}</span>
+          </button>
+        </div>
+
+        <div v-else>
+          <button type="button" class="back-link" @click="goBackToMonths">
+            &larr; {{ monthLabel(selectedMonth) }} {{ selectedYear }}
+          </button>
+          <ul class="task-list">
+            <li
+              v-for="task in completedTasksForYearMonth(selectedYear, selectedMonth)"
+              :key="task.task_id"
+              class="task-card"
             >
-              Mark complete
-            </button>
-          </div>
-          <div v-else-if="task.type === 'Task' && isAssignee(task)" class="actions">
-            <button
-              type="button"
-              class="btn btn--outline"
-              :disabled="pendingTaskId === task.task_id"
-              @click="handleMarkComplete(task.task_id)"
-            >
-              Mark complete
-            </button>
-          </div>
-          <div v-else-if="task.type === 'Approval' && isAssignee(task)" class="actions">
-            <button
-              type="button"
-              class="btn btn--gold"
-              :disabled="pendingTaskId === task.task_id"
-              @click="handleApprove(task.task_id)"
-            >
-              Approve
-            </button>
-            <button
-              type="button"
-              class="btn btn--outline"
-              :disabled="pendingTaskId === task.task_id"
-              @click="handleDecline(task.task_id)"
-            >
-              Decline
-            </button>
-          </div>
-        </li>
-      </ul>
+              <span
+                class="outcome-pill"
+                :class="task.status === 'Complete' ? 'outcome-pill--complete' : 'outcome-pill--declined'"
+              >
+                {{ task.status }}
+              </span>
+              <div class="task-body">
+                <p class="title">{{ task.title }}</p>
+                <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </template>
     </template>
 
     <NewTaskModal v-if="showNewTaskModal" @close="showNewTaskModal = false" />
@@ -201,6 +415,67 @@ async function handleDecline(taskId) {
 
 .header-row h2 {
   margin: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e3dd;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 4px;
+  margin-right: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #8a8a85;
+  cursor: pointer;
+}
+
+.tab--active {
+  color: #2d3142;
+  border-bottom-color: #c9932a;
+}
+
+.drill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+  cursor: pointer;
+}
+
+.drill-count {
+  color: #8a8a85;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.back-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0 0 4px;
+  margin-bottom: 4px;
+  color: #8a8a85;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .task-list {
@@ -246,6 +521,25 @@ async function handleDecline(taskId) {
   color: #b3261e;
 }
 
+.outcome-pill {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.outcome-pill--complete {
+  background: #e3f1e4;
+  color: #2e7d32;
+}
+
+.outcome-pill--declined {
+  background: #f1efe8;
+  color: #5f5e5a;
+}
+
 .task-body {
   flex: 1;
   min-width: 0;
@@ -264,10 +558,23 @@ async function handleDecline(taskId) {
   color: #8a8a85;
 }
 
+.row-error {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #b3261e;
+}
+
 .actions {
   flex-shrink: 0;
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.awaiting {
+  font-size: 13px;
+  color: #8a8a85;
+  font-style: italic;
 }
 
 .btn {
@@ -298,21 +605,6 @@ async function handleDecline(taskId) {
 .outcome {
   flex-shrink: 0;
   font-size: 13px;
-}
-
-.outcome--complete {
-  color: #2e7d32;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.outcome--complete .check {
-  color: #2e7d32;
-}
-
-.outcome--declined {
-  color: #8a8a85;
 }
 
 .outcome--approved {
