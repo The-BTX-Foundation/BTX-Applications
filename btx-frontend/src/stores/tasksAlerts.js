@@ -50,13 +50,12 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   // assignee — e.g. a race where the row gets reassigned after the page
   // loads but before the click lands. Sets completed_at client-side the
   // moment a row reaches a terminal status (Complete/Declined), since that's
-  // the instant the change is known to have succeeded. Returns a boolean
-  // (rather than only setting the shared `error` ref) so callers can show a
-  // scoped, per-row error instead of the whole list falling back to the
-  // store's generic error state.
+  // the instant the change is known to have succeeded. Deliberately does
+  // NOT touch the shared `error` ref (that's reserved for list-load
+  // failures that legitimately blank the whole tab) — instead returns the
+  // failure message directly so the caller can show a per-row error without
+  // ever affecting the rest of the list.
   async function updateStatus(taskId, status) {
-    error.value = null
-
     const payload = { status }
     if (status === 'Complete' || status === 'Declined') {
       payload.completed_at = new Date().toISOString()
@@ -70,8 +69,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
       .single()
 
     if (updateError) {
-      error.value = updateError.message
-      return false
+      return { success: false, message: updateError.message }
     }
 
     // Patch the single row in place rather than refetching the whole list.
@@ -79,7 +77,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
     if (index !== -1) {
       tasks.value[index] = data
     }
-    return true
+    return { success: true, message: null }
   }
 
   // Loads board/admin profiles for the New Task modal's Assigned To dropdown.
@@ -155,22 +153,22 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
 
   // Marks a task/approval complete. For Task-type rows this finalizes the
   // row directly; for Approval-type rows this is the second step, only
-  // available once the row is already 'Approved'. Returns whether the
-  // update succeeded, so the caller can surface a per-row error on failure.
+  // available once the row is already 'Approved'. Returns { success,
+  // message }, so the caller can surface a per-row error on failure.
   function markComplete(taskId) {
     return updateStatus(taskId, 'Complete')
   }
 
   // First step of the Approval flow: moves an Approval row to 'Approved'
   // rather than completing it immediately, so the assignee still has to
-  // come back and Mark Complete to finalize it. Returns whether the update
-  // succeeded, so the caller can surface a per-row error on failure.
+  // come back and Mark Complete to finalize it. Returns { success,
+  // message }, so the caller can surface a per-row error on failure.
   function approveTask(taskId) {
     return updateStatus(taskId, 'Approved')
   }
 
   // Declines an approval row. Terminal — unlike Approve, there's no
-  // follow-up step. Returns whether the update succeeded, so the caller can
+  // follow-up step. Returns { success, message }, so the caller can
   // surface a per-row error on failure.
   function declineTask(taskId) {
     return updateStatus(taskId, 'Declined')

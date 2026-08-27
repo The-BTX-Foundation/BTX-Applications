@@ -210,10 +210,10 @@ function goBackToMonths() {
 async function handleApprove(taskId) {
   pendingTaskId.value = taskId
   actionErrorTaskId.value = null
-  const success = await tasksAlertsStore.approveTask(taskId)
+  const { success, message } = await tasksAlertsStore.approveTask(taskId)
   if (!success) {
     actionErrorTaskId.value = taskId
-    actionErrorMessage.value = tasksAlertsStore.error ?? 'Could not approve this item.'
+    actionErrorMessage.value = message ?? 'Could not approve this item.'
   }
   pendingTaskId.value = null
 }
@@ -224,10 +224,10 @@ async function handleApprove(taskId) {
 async function handleMarkComplete(taskId) {
   pendingTaskId.value = taskId
   actionErrorTaskId.value = null
-  const success = await tasksAlertsStore.markComplete(taskId)
+  const { success, message } = await tasksAlertsStore.markComplete(taskId)
   if (!success) {
     actionErrorTaskId.value = taskId
-    actionErrorMessage.value = tasksAlertsStore.error ?? 'Could not mark this item complete.'
+    actionErrorMessage.value = message ?? 'Could not mark this item complete.'
   }
   pendingTaskId.value = null
 }
@@ -237,10 +237,10 @@ async function handleMarkComplete(taskId) {
 async function handleDecline(taskId) {
   pendingTaskId.value = taskId
   actionErrorTaskId.value = null
-  const success = await tasksAlertsStore.declineTask(taskId)
+  const { success, message } = await tasksAlertsStore.declineTask(taskId)
   if (!success) {
     actionErrorTaskId.value = taskId
-    actionErrorMessage.value = tasksAlertsStore.error ?? 'Could not decline this item.'
+    actionErrorMessage.value = message ?? 'Could not decline this item.'
   }
   pendingTaskId.value = null
 }
