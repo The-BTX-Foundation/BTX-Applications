@@ -165,37 +165,45 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
       <p v-else-if="marketingTasksStore.error" class="error">{{ marketingTasksStore.error }}</p>
 
       <template v-else>
-        <div class="weekday-row">
-          <span v-for="label in WEEKDAY_LABELS" :key="label" class="weekday-label">{{ label }}</span>
-        </div>
+        <!-- Constrains the header row and grid to the same width so weekday
+             labels stay column-aligned with the cells beneath them. At
+             900px / 7 columns / 6px of 1px gaps, each column comes out to
+             ~127.7px wide against a 48px cell height (~2.66:1) — a
+             deliberately compact, non-square proportion rather than the
+             ~170px-wide flat bars a full-panel-width grid would produce. -->
+        <div class="calendar-frame">
+          <div class="weekday-row">
+            <span v-for="label in WEEKDAY_LABELS" :key="label" class="weekday-label">{{ label }}</span>
+          </div>
 
-        <div class="calendar-grid">
-          <button
-            v-for="day in calendarDays"
-            :key="day.key"
-            type="button"
-            class="day-cell"
-            :class="{
-              'day-cell--muted': !day.isCurrentMonth,
-              'day-cell--clickable': day.isCurrentMonth && day.entries.length > 0,
-            }"
-            :disabled="!day.isCurrentMonth || day.entries.length === 0"
-            @click="handleDayClick(day)"
-          >
-            <span class="day-number">{{ day.dayNumber }}</span>
+          <div class="calendar-grid">
+            <button
+              v-for="day in calendarDays"
+              :key="day.key"
+              type="button"
+              class="day-cell"
+              :class="{
+                'day-cell--muted': !day.isCurrentMonth,
+                'day-cell--clickable': day.isCurrentMonth && day.entries.length > 0,
+              }"
+              :disabled="!day.isCurrentMonth || day.entries.length === 0"
+              @click="handleDayClick(day)"
+            >
+              <span class="day-number">{{ day.dayNumber }}</span>
 
-            <template v-if="day.entries.length > 0">
-              <span class="day-count">{{ day.entries.length }}</span>
-              <span class="day-dots">
-                <span
-                  v-for="type in distinctTypesForDay(day)"
-                  :key="type"
-                  class="day-dot"
-                  :style="{ backgroundColor: MARKETING_TASK_TYPE_COLORS[type] }"
-                ></span>
-              </span>
-            </template>
-          </button>
+              <template v-if="day.entries.length > 0">
+                <span class="day-count">{{ day.entries.length }}</span>
+                <span class="day-dots">
+                  <span
+                    v-for="type in distinctTypesForDay(day)"
+                    :key="type"
+                    class="day-dot"
+                    :style="{ backgroundColor: MARKETING_TASK_TYPE_COLORS[type] }"
+                  ></span>
+                </span>
+              </template>
+            </button>
+          </div>
         </div>
       </template>
 
@@ -259,6 +267,14 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   cursor: pointer;
 }
 
+/* Caps the header/grid width so columns read as a compact, non-square
+   grid (~2.66:1 width:height per cell) instead of stretching to the full
+   panel width. */
+.calendar-frame {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
 .weekday-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -272,22 +288,27 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   color: #8a8a85;
 }
 
+/* The grid's own background shows through the 1px gaps as a hairline
+   between cells — the standard CSS technique for a gap that reads as a
+   border, since a grid `gap` only ever reveals the container's
+   background. Each .day-cell supplies its own opaque background so only
+   the 1px seam shows the hairline color. */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 1px;
+  background: #ececec;
 }
 
 .day-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  aspect-ratio: 1;
+  align-items: flex-start;
+  min-height: 48px;
   background: #fff;
-  border: 0.5px solid #e5e3dd;
-  border-radius: 10px;
-  padding: 8px 4px;
+  border-radius: 4px;
+  padding: 4px 5px;
   font-family: inherit;
   cursor: default;
 }
@@ -301,31 +322,43 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   cursor: pointer;
 }
 
+/* outline (not border) so the hover affordance doesn't add to the box's
+   rendered size and perturb the tight 48px cell height. */
 .day-cell--clickable:hover {
-  border-color: #c9932a;
+  outline: 1px solid #c9932a;
+  outline-offset: -1px;
 }
 
 .day-number {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: inherit;
 }
 
+/* Pinned to the top-right corner regardless of day-number's normal flow
+   position (top-left) — the two can never collide since they're anchored
+   to opposite corners. */
 .day-count {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  color: #8a8a85;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: #c9932a;
+  color: #fff;
+  font-size: 9px;
+  border-radius: 8px;
+  padding: 1px 5px;
 }
 
 .day-dots {
   display: flex;
-  gap: 4px;
+  margin-top: 5px;
 }
 
 .day-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  margin-right: 2px;
 }
 
 .overlay {
