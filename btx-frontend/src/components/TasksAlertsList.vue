@@ -2,17 +2,54 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+import { useMarketingTasksStore } from '@/stores/marketingTasks'
+import { useBudgetingTasksStore } from '@/stores/budgetingTasks'
+import { useFundraisingTasksStore } from '@/stores/fundraisingTasks'
 import NewTaskModal from './NewTaskModal.vue'
 
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
+const marketingTasksStore = useMarketingTasksStore()
+const budgetingTasksStore = useBudgetingTasksStore()
+const fundraisingTasksStore = useFundraisingTasksStore()
+
+// Maps each row's `source` tag to the store that actually owns it, so
+// status-changing actions call the correct table's methods instead of
+// being hardcoded to tasksAlertsStore. All four stores expose identical
+// approveTask/markComplete/declineTask method names and { success,
+// message } return shapes, so this lookup is all the routing needs — no
+// per-source special-casing beyond picking the right instance.
+const storesBySource = {
+  tasks_alerts: tasksAlertsStore,
+  marketing_tasks: marketingTasksStore,
+  budgeting_tasks: budgetingTasksStore,
+  fundraising_tasks: fundraisingTasksStore,
+}
+
+// Display label per source, shown on every row (including native
+// tasks_alerts ones) so the merged list never has a blank-looking row.
+const SOURCE_LABELS = {
+  tasks_alerts: 'Task & Approval',
+  marketing_tasks: 'Marketing',
+  budgeting_tasks: 'Budgeting',
+  fundraising_tasks: 'Fundraising',
+}
+
+// Options for the domain filter row.
+const SOURCE_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'tasks_alerts', label: 'Task & Approval' },
+  { value: 'marketing_tasks', label: 'Marketing' },
+  { value: 'budgeting_tasks', label: 'Budgeting' },
+  { value: 'fundraising_tasks', label: 'Fundraising' },
+]
 
 // Tracks which row has a request in flight, so only that row's buttons
 // show a disabled state rather than locking the whole list.
 const pendingTaskId = ref(null)
 
 // Tracks which row (if any) most recently failed a status-changing action,
-// and the message to show beside it. Kept separate from the store's global
+// and the message to show beside it. Kept separate from any store's global
 // `error` so a single failed action shows a scoped message on that row
 // instead of replacing the entire list.
 const actionErrorTaskId = ref(null)
@@ -25,6 +62,10 @@ const showNewTaskModal = ref(false)
 // work surfaces first.
 const activeTab = ref('active')
 
+// Which domain the list is filtered to — 'all' or one of the four source
+// keys.
+const selectedSource = ref('all')
+
 // Completed-tab drill-down position: null/null shows the year list,
 // year/null shows the month list for that year, year/month shows the
 // resolved rows for that month.
@@ -35,26 +76,82 @@ onMounted(() => {
   authStore.init()
 })
 
-// Refetch whenever the signed-in user changes (sign in, sign out, switch
-// accounts) — not just on mount — so stale rows from a previous session
-// don't linger. Keyed on user id rather than the whole session object so
-// token refreshes (same user) don't trigger a redundant refetch. Skips the
-// fetch entirely while signed out, since RLS would just reject it with a
-// permission-denied error before the user ever gets a chance to log in.
+// Refetch all four sources whenever the signed-in user changes (sign in,
+// sign out, switch accounts). Each store's own RLS SELECT policy already
+// scopes its rows to what the signed-in user can see — this just fans the
+// same watcher out to four fetches instead of one.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
     if (userId) {
-      tasksAlertsStore.fetchTasks()
+      Promise.all([
+        tasksAlertsStore.fetchTasks(),
+        marketingTasksStore.fetchTasks(),
+        budgetingTasksStore.fetchTasks(),
+        fundraisingTasksStore.fetchTasks(),
+      ])
     }
   },
   { immediate: true },
 )
 
-// Formats a due date as a relative label ("Due today"/"Due tomorrow") for
-// near-term dates, falling back to a short calendar date otherwise.
-function dueLabel(dueDate) {
-  const due = new Date(dueDate)
+// True while any of the four sources is still loading.
+const anyLoading = computed(() =>
+  [tasksAlertsStore, marketingTasksStore, budgetingTasksStore, fundraisingTasksStore].some((store) => store.loading),
+)
+
+// The first load error found across the four sources, or null if none.
+const firstError = computed(
+  () =>
+    [tasksAlertsStore, marketingTasksStore, budgetingTasksStore, fundraisingTasksStore]
+      .map((store) => store.error)
+      .find(Boolean) ?? null,
+)
+
+// Normalizes one store's rows into the shape the rest of this component
+// works with, tagging each with its source and folding the two column
+// naming differences (task_id vs id, due_date vs date) into a single id/
+// date pair. Everything else (status, assigned_to, profiles, type,
+// completed_at) is already shaped the same across all four tables.
+function normalize(tasks, source) {
+  return tasks.map((task) => ({
+    id: source === 'tasks_alerts' ? task.task_id : task.id,
+    source,
+    title: task.title,
+    date: source === 'tasks_alerts' ? task.due_date : task.date,
+    status: task.status,
+    assigned_to: task.assigned_to,
+    profiles: task.profiles,
+    type: task.type ?? null,
+    completed_at: task.completed_at,
+  }))
+}
+
+// Merges all four stores' rows into one list, sorted by date ascending.
+// Each source array is already sorted individually (every store's
+// fetchTasks orders by its own date column), but interleaving four sorted
+// arrays by concatenation isn't itself sorted, so this still needs its own
+// sort after merging.
+const allTasks = computed(() =>
+  [
+    ...normalize(tasksAlertsStore.tasks, 'tasks_alerts'),
+    ...normalize(marketingTasksStore.tasks, 'marketing_tasks'),
+    ...normalize(budgetingTasksStore.tasks, 'budgeting_tasks'),
+    ...normalize(fundraisingTasksStore.tasks, 'fundraising_tasks'),
+  ].sort((a, b) => new Date(a.date) - new Date(b.date)),
+)
+
+// Narrows the merged list to the selected domain filter.
+const sourceFilteredTasks = computed(() =>
+  selectedSource.value === 'all'
+    ? allTasks.value
+    : allTasks.value.filter((task) => task.source === selectedSource.value),
+)
+
+// Formats a task's date as a relative label ("Due today"/"Due tomorrow")
+// for near-term dates, falling back to a short calendar date otherwise.
+function dueLabel(date) {
+  const due = new Date(date)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   due.setHours(0, 0, 0, 0)
@@ -74,7 +171,7 @@ function badge(task) {
     return { text: 'Overdue', variant: 'overdue' }
   }
 
-  const label = dueLabel(task.due_date)
+  const label = dueLabel(task.date)
   const variant = label === 'Due today' || label === 'Due tomorrow' ? 'amber' : 'default'
   return { text: label, variant }
 }
@@ -88,35 +185,42 @@ function isAssignee(task) {
   return task.assigned_to === authStore.session?.user?.id
 }
 
-// Approval rows still awaiting a decision, soonest due date first (the
-// store already orders fetchTasks by due_date ascending). Deliberately its
-// own computed rather than a shared "active" filter — keeping the three
-// tabs as independent, non-overlapping predicates is what makes it
-// structurally impossible for one row to match more than one tab, or for a
-// tab's non-assignee text to leak into a state it wasn't written for.
+// Rows awaiting a decision, soonest date first (the merged list is already
+// sorted). tasks_alerts rows need type === 'Approval' to count as
+// "awaiting a decision" — its Task-type rows have no approval step and
+// skip straight to Active on creation. Marketing/Budgeting/Fundraising
+// rows have no such split: every Open/Overdue row there is awaiting a
+// decision, since those tables have no type-driven workflow branch at all.
 const pendingTasks = computed(() =>
-  tasksAlertsStore.tasks.filter(
-    (task) => task.type === 'Approval' && (task.status === 'Open' || task.status === 'Overdue'),
-  ),
+  sourceFilteredTasks.value.filter((task) => {
+    if (task.source === 'tasks_alerts') {
+      return task.type === 'Approval' && (task.status === 'Open' || task.status === 'Overdue')
+    }
+    return task.status === 'Open' || task.status === 'Overdue'
+  }),
 )
 
-// Rows genuinely in progress: an Approval that's already been approved
-// (awaiting the assignee's Mark Complete, not a decision) or a Task that
-// hasn't been finalized yet. Approved-Approval rows leave Pending and land
-// here the moment they're approved, so a row is always in exactly one of
-// Pending/Active, never both and never neither.
-const inProgressTasks = computed(() =>
-  tasksAlertsStore.tasks.filter(
-    (task) =>
-      (task.type === 'Approval' && task.status === 'Approved') ||
-      (task.type === 'Task' && (task.status === 'Open' || task.status === 'Overdue')),
-  ),
+// Rows genuinely in progress. tasks_alerts Task-type rows land here
+// immediately (Open/Overdue, no approval step); tasks_alerts Approval-type
+// rows land here only once Approved. Every other domain's Active rows are
+// simply status === 'Approved', since they never had a Task/Approval split
+// to begin with.
+const activeTasks = computed(() =>
+  sourceFilteredTasks.value.filter((task) => {
+    if (task.source === 'tasks_alerts') {
+      return (
+        (task.type === 'Approval' && task.status === 'Approved') ||
+        (task.type === 'Task' && (task.status === 'Open' || task.status === 'Overdue'))
+      )
+    }
+    return task.status === 'Approved'
+  }),
 )
 
 // Resolved rows only — the source list for the Completed tab's year/month
 // grouping.
 const completedTasks = computed(() =>
-  tasksAlertsStore.tasks.filter((task) => task.status === 'Complete' || task.status === 'Declined'),
+  sourceFilteredTasks.value.filter((task) => task.status === 'Complete' || task.status === 'Declined'),
 )
 
 // Groups resolved rows by the year and month of completed_at:
@@ -180,6 +284,16 @@ function selectTab(tab) {
   selectedMonth.value = null
 }
 
+// Switches the domain filter. Also resets the Completed drill-down, since
+// a previously selected year/month might not exist at all once the list is
+// narrowed to a different domain, which would otherwise leave the view
+// looking stuck on an empty state.
+function selectSource(source) {
+  selectedSource.value = source
+  selectedYear.value = null
+  selectedMonth.value = null
+}
+
 // Drills into a year's month list.
 function selectYear(year) {
   selectedYear.value = year
@@ -202,44 +316,46 @@ function goBackToMonths() {
   selectedMonth.value = null
 }
 
-// Moves an Approval row from Open/Overdue to 'Approved' (not Complete —
-// the assignee still has to come back and Mark Complete to finalize it).
-// Surfaces a scoped error on this row if Supabase rejects the update (e.g.
-// the row was reassigned after the page loaded) instead of assuming
-// success.
-async function handleApprove(taskId) {
-  pendingTaskId.value = taskId
+// Moves a row from Open/Overdue to 'Approved' (not Complete — the assignee
+// still has to come back and Mark Complete to finalize it). Routes to
+// whichever store actually owns the row's source table. Surfaces a scoped
+// error on this row if Supabase rejects the update (e.g. the row was
+// reassigned after the page loaded) instead of assuming success.
+async function handleApprove(task) {
+  pendingTaskId.value = task.id
   actionErrorTaskId.value = null
-  const { success, message } = await tasksAlertsStore.approveTask(taskId)
+  const { success, message } = await storesBySource[task.source].approveTask(task.id)
   if (!success) {
-    actionErrorTaskId.value = taskId
+    actionErrorTaskId.value = task.id
     actionErrorMessage.value = message ?? 'Could not approve this item.'
   }
   pendingTaskId.value = null
 }
 
-// Finalizes a row: Task rows go straight to Complete, Approval rows only
-// reach this once they're already 'Approved'. Surfaces a scoped error on
-// this row on failure instead of assuming success.
-async function handleMarkComplete(taskId) {
-  pendingTaskId.value = taskId
+// Finalizes a row — only reachable once it's already 'Approved', or
+// immediately for a tasks_alerts Task-type row that never needed approval.
+// Routes to whichever store actually owns the row's source table. Surfaces
+// a scoped error on this row on failure instead of assuming success.
+async function handleMarkComplete(task) {
+  pendingTaskId.value = task.id
   actionErrorTaskId.value = null
-  const { success, message } = await tasksAlertsStore.markComplete(taskId)
+  const { success, message } = await storesBySource[task.source].markComplete(task.id)
   if (!success) {
-    actionErrorTaskId.value = taskId
+    actionErrorTaskId.value = task.id
     actionErrorMessage.value = message ?? 'Could not mark this item complete.'
   }
   pendingTaskId.value = null
 }
 
-// Declines an approval row. Surfaces a scoped error on this row on failure
-// instead of assuming success.
-async function handleDecline(taskId) {
-  pendingTaskId.value = taskId
+// Declines a row. Routes to whichever store actually owns the row's source
+// table. Surfaces a scoped error on this row on failure instead of
+// assuming success.
+async function handleDecline(task) {
+  pendingTaskId.value = task.id
   actionErrorTaskId.value = null
-  const { success, message } = await tasksAlertsStore.declineTask(taskId)
+  const { success, message } = await storesBySource[task.source].declineTask(task.id)
   if (!success) {
-    actionErrorTaskId.value = taskId
+    actionErrorTaskId.value = task.id
     actionErrorMessage.value = message ?? 'Could not decline this item.'
   }
   pendingTaskId.value = null
@@ -271,6 +387,23 @@ async function handleDecline(taskId) {
         </button>
       </div>
 
+      <!-- Domain filter: narrows the merged list to one source (or all)
+           before the status tabs further slice it by Active/Pending/
+           Completed. Reuses the same .tab styling as the status tabs for
+           visual consistency, in its own row above them. -->
+      <div class="source-filters">
+        <button
+          v-for="filter in SOURCE_FILTERS"
+          :key="filter.value"
+          type="button"
+          class="tab"
+          :class="{ 'tab--active': selectedSource === filter.value }"
+          @click="selectSource(filter.value)"
+        >
+          {{ filter.label }}
+        </button>
+      </div>
+
       <div class="tabs">
         <button
           type="button"
@@ -298,24 +431,27 @@ async function handleDecline(taskId) {
         </button>
       </div>
 
-      <p v-if="tasksAlertsStore.loading">Loading tasks…</p>
-      <p v-else-if="tasksAlertsStore.error" class="error">{{ tasksAlertsStore.error }}</p>
+      <p v-if="anyLoading">Loading tasks…</p>
+      <p v-else-if="firstError" class="error">{{ firstError }}</p>
 
-      <!-- Pending tab: Approval rows awaiting a decision (Open/Overdue),
-           soonest due date first. This is the only place in the file that
-           renders "Awaiting ... review" text, so it can never leak into an
+      <!-- Pending tab: Approval-eligible rows awaiting a decision, soonest
+           date first. This is the only place in the file that renders
+           "Awaiting ... review" text, so it can never leak into an
            Approved or Task row's action area again. -->
       <template v-else-if="activeTab === 'pending'">
         <p v-if="pendingTasks.length === 0">No approvals awaiting a decision.</p>
 
         <ul v-else class="task-list">
-          <li v-for="task in pendingTasks" :key="task.task_id" class="task-card">
+          <li v-for="task in pendingTasks" :key="`${task.source}-${task.id}`" class="task-card">
             <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
 
             <div class="task-body">
               <p class="title">{{ task.title }}</p>
-              <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
-              <p v-if="actionErrorTaskId === task.task_id" class="row-error">{{ actionErrorMessage }}</p>
+              <p class="assignee">
+                Assigned to {{ task.profiles?.name ?? 'Unassigned' }}
+                <span class="source-label">{{ SOURCE_LABELS[task.source] }}</span>
+              </p>
+              <p v-if="actionErrorTaskId === task.id" class="row-error">{{ actionErrorMessage }}</p>
             </div>
 
             <div class="actions">
@@ -323,16 +459,16 @@ async function handleDecline(taskId) {
                 <button
                   type="button"
                   class="btn btn--gold"
-                  :disabled="pendingTaskId === task.task_id"
-                  @click="handleApprove(task.task_id)"
+                  :disabled="pendingTaskId === task.id"
+                  @click="handleApprove(task)"
                 >
                   Approve
                 </button>
                 <button
                   type="button"
                   class="btn btn--outline"
-                  :disabled="pendingTaskId === task.task_id"
-                  @click="handleDecline(task.task_id)"
+                  :disabled="pendingTaskId === task.id"
+                  @click="handleDecline(task)"
                 >
                   Decline
                 </button>
@@ -344,34 +480,37 @@ async function handleDecline(taskId) {
       </template>
 
       <!-- Active tab: rows genuinely in progress — an already-approved
-           Approval (awaiting Mark Complete, not a decision) or an
-           unfinished Task. This is the only place that renders "Task in
-           progress by ..." text, kept separate from Pending's "Awaiting
-           review" text since the two tabs mean different things. -->
+           Approval (awaiting Mark Complete, not a decision), an unfinished
+           tasks_alerts Task-type row, or any Approved row from another
+           domain. The "Approved" label is unconditional on status (not
+           source) so it correctly appears for every domain's Approved rows
+           and is correctly absent for a Task-type row that's still Open/
+           Overdue. This is the only place that renders "Task in progress
+           by ..." text. -->
       <template v-else-if="activeTab === 'active'">
-        <p v-if="inProgressTasks.length === 0">No active tasks.</p>
+        <p v-if="activeTasks.length === 0">No active tasks.</p>
 
         <ul v-else class="task-list">
-          <li v-for="task in inProgressTasks" :key="task.task_id" class="task-card">
+          <li v-for="task in activeTasks" :key="`${task.source}-${task.id}`" class="task-card">
             <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
 
             <div class="task-body">
               <p class="title">{{ task.title }}</p>
-              <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
-              <p v-if="actionErrorTaskId === task.task_id" class="row-error">{{ actionErrorMessage }}</p>
+              <p class="assignee">
+                Assigned to {{ task.profiles?.name ?? 'Unassigned' }}
+                <span class="source-label">{{ SOURCE_LABELS[task.source] }}</span>
+              </p>
+              <p v-if="actionErrorTaskId === task.id" class="row-error">{{ actionErrorMessage }}</p>
             </div>
 
             <div class="actions">
-              <!-- Approved is a status, not the hidden "type" label — shown
-                   to everyone so an approved-Approval row reads differently
-                   from a plain Task row, same as before this rework. -->
               <span v-if="task.status === 'Approved'" class="outcome outcome--approved">Approved</span>
               <button
                 v-if="isAssignee(task)"
                 type="button"
                 class="btn btn--outline"
-                :disabled="pendingTaskId === task.task_id"
-                @click="handleMarkComplete(task.task_id)"
+                :disabled="pendingTaskId === task.id"
+                @click="handleMarkComplete(task)"
               >
                 Mark complete
               </button>
@@ -420,7 +559,7 @@ async function handleDecline(taskId) {
           <ul class="task-list">
             <li
               v-for="task in completedTasksForYearMonth(selectedYear, selectedMonth)"
-              :key="task.task_id"
+              :key="`${task.source}-${task.id}`"
               class="task-card"
             >
               <span
@@ -431,7 +570,10 @@ async function handleDecline(taskId) {
               </span>
               <div class="task-body">
                 <p class="title">{{ task.title }}</p>
-                <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
+                <p class="assignee">
+                  Assigned to {{ task.profiles?.name ?? 'Unassigned' }}
+                  <span class="source-label">{{ SOURCE_LABELS[task.source] }}</span>
+                </p>
               </div>
             </li>
           </ul>
@@ -453,6 +595,12 @@ async function handleDecline(taskId) {
 
 .header-row h2 {
   margin: 0;
+}
+
+.source-filters {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
 }
 
 .tabs {
@@ -594,6 +742,16 @@ async function handleDecline(taskId) {
   margin: 0;
   font-size: 13px;
   color: #8a8a85;
+}
+
+.source-label {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1efe8;
+  color: #5f5e5a;
 }
 
 .row-error {
