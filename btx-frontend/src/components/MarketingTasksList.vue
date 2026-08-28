@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketingTasksStore } from '@/stores/marketingTasks'
-import NewMarketingTaskModal from './NewMarketingTaskModal.vue'
 
 const authStore = useAuthStore()
 const marketingTasksStore = useMarketingTasksStore()
@@ -17,9 +16,6 @@ const pendingTaskId = ref(null)
 // instead of replacing the entire list.
 const actionErrorTaskId = ref(null)
 const actionErrorMessage = ref('')
-
-// Controls the New Marketing Task modal's visibility.
-const showNewTaskModal = ref(false)
 
 // Which of the three tabs is showing. Active is the default so in-progress
 // work surfaces first.
@@ -248,14 +244,6 @@ async function handleDecline(id) {
     <template v-else>
       <div class="header-row">
         <h2>Marketing Tasks</h2>
-        <button
-          v-if="authStore.isBoard || authStore.isAdmin || authStore.isReviewer"
-          type="button"
-          class="btn btn--gold"
-          @click="showNewTaskModal = true"
-        >
-          + New task
-        </button>
       </div>
 
       <div class="tabs">
@@ -419,8 +407,6 @@ async function handleDecline(id) {
         </div>
       </template>
     </template>
-
-    <NewMarketingTaskModal v-if="showNewTaskModal" @close="showNewTaskModal = false" />
   </section>
 </template>
 
