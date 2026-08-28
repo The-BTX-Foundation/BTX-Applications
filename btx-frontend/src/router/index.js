@@ -43,7 +43,17 @@ const router = createRouter({
         // of these remain placeholders so the Home.vue card grid and sidebar
         // still have somewhere to link.
         placeholderRoute('finance-budget-tracking', 'finance-budget-tracking', 'Budget Tracking'),
+        {
+          path: 'finance-budgeting-tasks',
+          name: 'finance-budgeting-tasks',
+          component: () => import('../views/BudgetingTasksView.vue'),
+        },
         placeholderRoute('finance-fundraising-totals', 'finance-fundraising-totals', 'Fundraising Totals'),
+        {
+          path: 'finance-fundraising-tasks',
+          name: 'finance-fundraising-tasks',
+          component: () => import('../views/FundraisingTasksView.vue'),
+        },
         {
           path: 'marketing-calendar',
           name: 'marketing-calendar',
