@@ -165,12 +165,9 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
       <p v-else-if="marketingTasksStore.error" class="error">{{ marketingTasksStore.error }}</p>
 
       <template v-else>
-        <!-- Constrains the header row and grid to the same width so weekday
-             labels stay column-aligned with the cells beneath them. At
-             900px / 7 columns / 6px of 1px gaps, each column comes out to
-             ~127.7px wide against a 48px cell height (~2.66:1) — a
-             deliberately compact, non-square proportion rather than the
-             ~170px-wide flat bars a full-panel-width grid would produce. -->
+        <!-- Wraps the header row and grid together (no width cap of its
+             own — fills whatever the panel gives it) so weekday labels
+             stay column-aligned with the cells beneath them. -->
         <div class="calendar-frame">
           <div class="weekday-row">
             <span v-for="label in WEEKDAY_LABELS" :key="label" class="weekday-label">{{ label }}</span>
@@ -267,12 +264,10 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   cursor: pointer;
 }
 
-/* Caps the header/grid width so columns read as a compact, non-square
-   grid (~2.66:1 width:height per cell) instead of stretching to the full
-   panel width. */
+/* No width cap — fills the panel's actual available width instead of
+   being capped at a fixed pixel value regardless of viewport size. */
 .calendar-frame {
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .weekday-row {
@@ -300,12 +295,17 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   background: #ececec;
 }
 
+/* aspect-ratio (not a fixed min-height) so cell height scales with
+   whatever width the now-full-width columns end up at, preserving the
+   approved 127.7:48 proportion instead of producing flat bars at wider
+   viewports. Using the precise ratio rather than the rounded 2.66 to
+   avoid compounding rounding error into the computed height. */
 .day-cell {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-height: 48px;
+  aspect-ratio: 2.660482;
   background: #fff;
   border-radius: 4px;
   padding: 4px 5px;
