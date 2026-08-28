@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketingTasksStore } from '@/stores/marketingTasks'
 import { MARKETING_TASK_TYPE_COLORS } from '@/lib/marketingTaskTypes'
@@ -8,6 +8,45 @@ const authStore = useAuthStore()
 const marketingTasksStore = useMarketingTasksStore()
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Space left below the grid so it doesn't run flush to the bottom of the
+// viewport — matches the page/panel's existing 32px padding rhythm.
+const BOTTOM_MARGIN = 32
+
+// Template ref for the grid element itself, needed to measure how far down
+// the page it starts (title, nav row, weekday header, and their margins/
+// padding all push this down by a different amount depending on viewport
+// width, so it can't be hardcoded).
+const gridRef = ref(null)
+
+// Explicit pixel height applied to the grid so its 6 rows (via
+// grid-auto-rows: 1fr in the template) fill almost all remaining vertical
+// space instead of sizing themselves from a fixed aspect-ratio. Null until
+// the first measurement runs, so the grid falls back to its natural height
+// for the one frame before mount.
+const gridHeight = ref(null)
+
+// Recomputes gridHeight from the grid's current position — window height
+// minus how far down the page the grid starts, minus the bottom margin,
+// minus .panel's and .page's own bottom padding. Those two paddings sit
+// structurally below the grid (inside .panel, then inside .page) and would
+// otherwise push the whole page 64px taller than the viewport regardless
+// of what height is set here, since neither ancestor clips or caps its own
+// height — that's exactly what produced a genuine page-level scrollbar
+// during testing. Measured at runtime via getComputedStyle rather than
+// hardcoded, since this component doesn't own HomeView.vue's layout and
+// shouldn't assume its padding values won't change. Called on mount and on
+// resize, since the grid's start position shifts whenever the viewport
+// width changes how the content above it wraps.
+function updateGridHeight() {
+  if (!gridRef.value) return
+  const top = gridRef.value.getBoundingClientRect().top
+  const panelEl = gridRef.value.closest('.panel')
+  const pageEl = panelEl?.closest('.page')
+  const panelBottomPadding = panelEl ? parseFloat(getComputedStyle(panelEl).paddingBottom) : 0
+  const pageBottomPadding = pageEl ? parseFloat(getComputedStyle(pageEl).paddingBottom) : 0
+  gridHeight.value = window.innerHeight - top - panelBottomPadding - pageBottomPadding - BOTTOM_MARGIN
+}
 
 // Which month is being viewed, defaulting to the real current month on
 // load. Kept as separate year/month refs (rather than a single Date ref)
@@ -25,7 +64,29 @@ const selectedDayKey = ref(null)
 
 onMounted(() => {
   authStore.init()
+  updateGridHeight()
+  window.addEventListener('resize', updateGridHeight)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateGridHeight)
+})
+
+// Re-measures once the grid actually appears in the DOM after a load
+// finishes. fetchTasks() sets `loading` to true synchronously as soon as
+// it's called — which, via the immediate watcher below, happens during
+// setup, before the component's first render — so on a typical page load
+// the grid doesn't exist yet when onMounted's updateGridHeight() call
+// runs. nextTick waits for Vue to actually patch the DOM with the
+// now-visible grid before measuring it.
+watch(
+  () => marketingTasksStore.loading,
+  (isLoading) => {
+    if (!isLoading) {
+      nextTick(updateGridHeight)
+    }
+  },
+)
 
 // Refetch whenever the signed-in user changes (sign in, sign out, switch
 // accounts) — same pattern as MarketingTasksList.vue. Calendar is read-only
@@ -173,7 +234,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
             <span v-for="label in WEEKDAY_LABELS" :key="label" class="weekday-label">{{ label }}</span>
           </div>
 
-          <div class="calendar-grid">
+          <div ref="gridRef" class="calendar-grid" :style="gridHeight ? { height: `${gridHeight}px` } : {}">
             <button
               v-for="day in calendarDays"
               :key="day.key"
@@ -287,25 +348,27 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
    between cells — the standard CSS technique for a gap that reads as a
    border, since a grid `gap` only ever reveals the container's
    background. Each .day-cell supplies its own opaque background so only
-   the 1px seam shows the hairline color. */
+   the 1px seam shows the hairline color. grid-auto-rows: 1fr splits the
+   JS-computed height (see gridHeight/:style above) evenly across the 6
+   rows instead of each row sizing from the cells' own content.
+   overflow: hidden is defensive — the grid is sized to exactly fit its
+   allotted space, so nothing should overflow it, but this guarantees a
+   future content change (e.g. unusually long badge text) clips instead
+   of silently introducing a second scrollbar. */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
   gap: 1px;
   background: #ececec;
+  overflow: hidden;
 }
 
-/* aspect-ratio (not a fixed min-height) so cell height scales with
-   whatever width the now-full-width columns end up at, preserving the
-   approved 127.7:48 proportion instead of producing flat bars at wider
-   viewports. Using the precise ratio rather than the rounded 2.66 to
-   avoid compounding rounding error into the computed height. */
 .day-cell {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  aspect-ratio: 2.660482;
   background: #fff;
   border-radius: 4px;
   padding: 4px 5px;
