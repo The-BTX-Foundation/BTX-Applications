@@ -54,6 +54,11 @@ const router = createRouter({
           name: 'marketing-tasks',
           component: () => import('../views/MarketingTasksView.vue'),
         },
+        {
+          path: 'event-calendar',
+          name: 'event-calendar',
+          component: () => import('../views/EventCalendarView.vue'),
+        },
         placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
         // Scholarship's 3 planned tabs, same treatment as Finance & Funding above.
         placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),

@@ -40,6 +40,7 @@ const navSections = [
   // the template below checks for `children` to decide which to render.
   { label: 'Task & Approval', routeName: 'tasks' },
   { label: 'Alert Center', routeName: 'alerts' },
+  { label: 'Event Calendar', routeName: 'event-calendar' },
   {
     label: 'Marketing',
     children: [
