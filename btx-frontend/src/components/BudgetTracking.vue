@@ -128,8 +128,8 @@ function formatVariancePercent(value) {
   return '0.0%'
 }
 
-// -- Grant Pipeline: client-side only, same non-persisting pattern as
-// EventCalendar's `entries` / AddEventModal -- no store, no Supabase call.
+// -- Grant Pipeline: client-side only, same non-persisting pattern as the
+// rest of this page's placeholder fields -- no store, no Supabase call.
 const GRANT_STATUSES = ['Submitted', 'Pending', 'Awarded', 'Declined']
 const grants = ref([])
 const showAddGrant = ref(false)
