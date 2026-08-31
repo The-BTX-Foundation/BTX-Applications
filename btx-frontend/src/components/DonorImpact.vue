@@ -1,18 +1,33 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useDonorImpactStore } from '@/stores/donorImpact'
+import { DONOR_IMPACT_METRICS, useDonorImpactStore } from '@/stores/donorImpact'
 
 const authStore = useAuthStore()
 const donorImpactStore = useDonorImpactStore()
 
-// Metrics selectable via the chart's tab bar, in display order. `format`
-// drives how bar-top values are rendered (currency vs. plain number).
-const CHART_METRICS = [
-  { key: 'funds_granted', label: 'Funds Granted', format: 'currency' },
-  { key: 'students_reached', label: 'Students Reached', format: 'number' },
-  { key: 'scholarships_awarded', label: 'Scholarships Awarded', format: 'number' },
-]
+// The subset of metrics that are real columns (editable in the form,
+// selected/inserted by the store) as opposed to client-derived computed ones.
+const editableMetrics = DONOR_IMPACT_METRICS.filter((m) => m.editable)
+
+// Fixed category display order for the form's grouped sections — independent
+// of the order metrics happen to appear in the source array.
+const CATEGORY_ORDER = ['Reach', 'Investment']
+
+// Editable metrics grouped into their category sections, in CATEGORY_ORDER,
+// for the form's "Reach" / "Investment" headers.
+const groupedMetrics = computed(() =>
+  CATEGORY_ORDER.map((category) => ({
+    category,
+    metrics: editableMetrics.filter((m) => m.category === category),
+  })).filter((group) => group.metrics.length > 0),
+)
+
+// Reads a metric's value off a cycle row — computed metrics derive their
+// value from other columns instead of reading a column directly.
+function metricValue(cycle, metric) {
+  return metric.computed ? metric.computed(cycle) : cycle[metric.key]
+}
 
 // Only admin (edit) and board (view-only) can see this page at all,
 // matching the donor_impact RLS policy — other roles never get a fetch
@@ -20,7 +35,9 @@ const CHART_METRICS = [
 const canView = computed(() => authStore.isAdmin || authStore.isBoard)
 
 const selectedMetricId = ref(null)
-const draft = reactive({ funds_granted: 0, students_reached: 0, scholarships_awarded: 0 })
+// Built from editableMetrics so the draft always has an entry for every
+// editable column, regardless of how many metrics exist.
+const draft = reactive(Object.fromEntries(editableMetrics.map((m) => [m.key, 0])))
 const saving = ref(false)
 const showAddCycle = ref(false)
 const newCycleYear = ref(null)
@@ -64,9 +81,9 @@ const selectedCycle = computed(() =>
 // edits on one cycle never leak into another.
 watch(selectedCycle, (cycle) => {
   if (!cycle) return
-  draft.funds_granted = cycle.funds_granted
-  draft.students_reached = cycle.students_reached
-  draft.scholarships_awarded = cycle.scholarships_awarded
+  editableMetrics.forEach((metric) => {
+    draft[metric.key] = cycle[metric.key]
+  })
 })
 
 // The most recent published year — that card gets the "Live" badge, every
@@ -90,23 +107,25 @@ const publishedCycles = computed(() =>
   donorImpactStore.cycles.filter((c) => c.published).sort((a, b) => a.cycle_year - b.cycle_year),
 )
 
-// The metric definition backing the chart's currently selected tab.
-const chartMetric = computed(() => CHART_METRICS.find((m) => m.key === chartMetricKey.value))
+// The metric definition backing the chart's currently selected tab. Tabs
+// are built from the full DONOR_IMPACT_METRICS array (not just editableMetrics)
+// so computed metrics like Average Scholarship Size get their own tab too.
+const chartMetric = computed(() => DONOR_IMPACT_METRICS.find((m) => m.key === chartMetricKey.value))
 
 const maxChartValue = computed(() =>
-  Math.max(...publishedCycles.value.map((c) => c[chartMetricKey.value]), 1),
+  Math.max(...publishedCycles.value.map((c) => metricValue(c, chartMetric.value)), 1),
 )
 
 // Bar height as a percentage of the highest published value for the
 // selected metric.
 function barHeight(cycle) {
-  return `${(cycle[chartMetricKey.value] / maxChartValue.value) * 100}%`
+  return `${(metricValue(cycle, chartMetric.value) / maxChartValue.value) * 100}%`
 }
 
 // Formats a cycle's bar-top label for the selected metric — currency for
-// Funds Granted, a plain thousands-separated number otherwise.
+// currency-format metrics, a plain thousands-separated number otherwise.
 function formatBarValue(cycle) {
-  const value = cycle[chartMetricKey.value]
+  const value = metricValue(cycle, chartMetric.value)
   return chartMetric.value.format === 'currency' ? `$${value.toLocaleString()}` : value.toLocaleString()
 }
 
@@ -114,11 +133,8 @@ function formatBarValue(cycle) {
 async function handleSave() {
   if (!selectedCycle.value) return
   saving.value = true
-  await donorImpactStore.saveAndPublish(selectedCycle.value.metric_id, {
-    funds_granted: Number(draft.funds_granted),
-    students_reached: Number(draft.students_reached),
-    scholarships_awarded: Number(draft.scholarships_awarded),
-  })
+  const metrics = Object.fromEntries(editableMetrics.map((m) => [m.key, Number(draft[m.key])]))
+  await donorImpactStore.saveAndPublish(selectedCycle.value.metric_id, metrics)
   saving.value = false
 }
 
@@ -189,33 +205,20 @@ async function handleAddCycle() {
         <h2>{{ selectedCycle.cycle_year }} Metrics</h2>
 
         <form class="metrics-form" @submit.prevent="handleSave">
-          <label>
-            Funds Granted
-            <input
-              v-model.number="draft.funds_granted"
-              type="number"
-              min="0"
-              :disabled="!authStore.isAdmin"
-            />
-          </label>
-          <label>
-            Students Reached
-            <input
-              v-model.number="draft.students_reached"
-              type="number"
-              min="0"
-              :disabled="!authStore.isAdmin"
-            />
-          </label>
-          <label>
-            Scholarships Awarded
-            <input
-              v-model.number="draft.scholarships_awarded"
-              type="number"
-              min="0"
-              :disabled="!authStore.isAdmin"
-            />
-          </label>
+          <div v-for="group in groupedMetrics" :key="group.category" class="metrics-group">
+            <h4 class="metrics-group-header">{{ group.category }}</h4>
+            <div class="metrics-group-fields">
+              <label v-for="metric in group.metrics" :key="metric.key">
+                {{ metric.label }}
+                <input
+                  v-model.number="draft[metric.key]"
+                  type="number"
+                  min="0"
+                  :disabled="!authStore.isAdmin"
+                />
+              </label>
+            </div>
+          </div>
 
           <button v-if="authStore.isAdmin" type="submit" class="btn btn--gold" :disabled="saving">
             Save & Publish
@@ -227,7 +230,7 @@ async function handleAddCycle() {
 
           <div class="chart-tabs">
             <button
-              v-for="metric in CHART_METRICS"
+              v-for="metric in DONOR_IMPACT_METRICS"
               :key="metric.key"
               type="button"
               class="chart-tab"
@@ -359,13 +362,28 @@ async function handleAddCycle() {
 
 .metrics-form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px;
+  flex-direction: column;
+  gap: 20px;
   margin-bottom: 32px;
 }
 
-.metrics-form label {
+.metrics-group-header {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8a8a85;
+}
+
+.metrics-group-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.metrics-group-fields label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -373,7 +391,7 @@ async function handleAddCycle() {
   color: #8a8a85;
 }
 
-.metrics-form input {
+.metrics-group-fields input {
   padding: 6px 10px;
   border: 1px solid #d8d6cf;
   border-radius: 8px;
@@ -382,7 +400,7 @@ async function handleAddCycle() {
   width: 160px;
 }
 
-.metrics-form input:disabled {
+.metrics-group-fields input:disabled {
   background: #f7f6f3;
   color: #8a8a85;
 }
@@ -421,6 +439,7 @@ async function handleAddCycle() {
 
 .chart-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }

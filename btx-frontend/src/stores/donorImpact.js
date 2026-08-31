@@ -2,11 +2,33 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
+// Single source of truth for every donor_impact metric. DonorImpact.vue's
+// form fields, chart tabs, and this store's column list/insert defaults are
+// all derived from this array instead of being hand-duplicated in four
+// separate places — add a metric here and it appears everywhere it needs to.
+//
+// - category: 'Reach' | 'Investment' — groups form fields into sections.
+// - format: drives currency vs. plain-number display.
+// - editable: true for real donor_impact columns (selected/inserted/edited);
+//   false for values derived client-side from other columns.
+// - computed: for non-editable metrics, a fn(cycle) deriving its value —
+//   never persisted, so it's excluded from CYCLE_COLUMNS/inserts.
+export const DONOR_IMPACT_METRICS = [
+  // -- Reach --
+  { key: 'students_reached', label: 'Students Reached', category: 'Reach', format: 'number', editable: true },
+  { key: 'scholarships_awarded', label: 'Scholarships Awarded', category: 'Reach', format: 'number', editable: true },
+
+  // -- Investment --
+  { key: 'funds_granted', label: 'Funds Granted', category: 'Investment', format: 'currency', editable: true },
+]
+
+const EDITABLE_METRIC_KEYS = DONOR_IMPACT_METRICS.filter((m) => m.editable).map((m) => m.key)
+
 // Shared column list so fetchCycles, createCycle, and saveAndPublish all
 // return identically shaped rows — keeps rows patched into `cycles` after a
-// write consistent with rows loaded from the initial fetch.
-const CYCLE_COLUMNS =
-  'metric_id, cycle_year, funds_granted, students_reached, scholarships_awarded, published'
+// write consistent with rows loaded from the initial fetch. Derived from
+// DONOR_IMPACT_METRICS so a new editable metric is selected automatically.
+const CYCLE_COLUMNS = ['metric_id', 'cycle_year', 'published', ...EDITABLE_METRIC_KEYS].join(', ')
 
 // Pinia store for Donor Impact. Reads/writes go through
 // Supabase's RLS policies on `donor_impact` (admin: view/create/edit;
@@ -48,13 +70,15 @@ export const useDonorImpactStore = defineStore('donorImpact', () => {
   async function createCycle(cycleYear) {
     error.value = null
 
+    // Zero out every editable metric so a fresh draft always has the full
+    // set of columns present, regardless of how many metrics exist.
+    const zeroedMetrics = Object.fromEntries(EDITABLE_METRIC_KEYS.map((key) => [key, 0]))
+
     const { data, error: insertError } = await supabase
       .from('donor_impact')
       .insert({
         cycle_year: cycleYear,
-        funds_granted: 0,
-        students_reached: 0,
-        scholarships_awarded: 0,
+        ...zeroedMetrics,
         published: false,
       })
       .select(CYCLE_COLUMNS)
