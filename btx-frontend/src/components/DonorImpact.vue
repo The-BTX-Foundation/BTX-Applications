@@ -29,10 +29,11 @@ function metricValue(cycle, metric) {
   return metric.computed ? metric.computed(cycle) : cycle[metric.key]
 }
 
-// Only admin (edit) and board (view-only) can see this page at all,
-// matching the donor_impact RLS policy — other roles never get a fetch
-// attempt, just the same "Access Denied" treatment used elsewhere.
-const canView = computed(() => authStore.isAdmin || authStore.isBoard)
+// Includes reviewer alongside admin/board so viewing matches the donor_impact
+// RLS SELECT policy (admin, board, and reviewer can all view) — the write
+// actions below stay gated on authStore.isAdmin specifically, so this only
+// widens who can see the page, not who can edit/add/publish.
+const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
 const selectedMetricId = ref(null)
 // Built from editableMetrics so the draft always has an entry for every
