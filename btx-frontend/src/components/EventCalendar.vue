@@ -1,21 +1,12 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import AddEventModal from './AddEventModal.vue'
+import { useTasksAlertsStore } from '@/stores/tasksAlerts'
 
 const authStore = useAuthStore()
+const tasksAlertsStore = useTasksAlertsStore()
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-// Stand-in for a real data source — no events table/store exists yet, so
-// this stays a permanently empty local ref. Structured the same as
-// Marketing Calendar's `tasks` (an array of rows with a `date` field) so
-// swapping in a real store later is a drop-in change rather than a
-// rewrite of the grid logic below.
-const entries = ref([])
-
-// Controls the Add Event modal's visibility.
-const showAddEventModal = ref(false)
 
 // Space left below the grid so it doesn't run flush to the bottom of the
 // viewport — matches the page/panel's existing 32px padding rhythm. Same
@@ -53,16 +44,12 @@ const viewedYear = ref(today.getFullYear())
 const viewedMonth = ref(today.getMonth())
 
 // Which day's modal is open, keyed by its 'YYYY-MM-DD' date string, or null
-// if no modal is open. Unreachable today since entries is always empty
-// (see handleDayClick), kept so this doesn't need rebuilding once a real
-// data source exists.
+// if no modal is open.
 const selectedDayKey = ref(null)
 
 onMounted(() => {
   authStore.init()
-  // No async data load to wait on (unlike Marketing Calendar), so a single
-  // nextTick after the grid's first real render is enough to measure it.
-  nextTick(updateGridHeight)
+  updateGridHeight()
   window.addEventListener('resize', updateGridHeight)
 })
 
@@ -70,25 +57,56 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateGridHeight)
 })
 
+// Re-measures once the grid actually appears in the DOM after a load
+// finishes — see MarketingCalendar.vue's identical watcher for why
+// onMounted's own call isn't enough (fetchTasks sets loading synchronously
+// during setup, before the grid's first real render).
+watch(
+  () => tasksAlertsStore.loading,
+  (isLoading) => {
+    if (!isLoading) {
+      nextTick(updateGridHeight)
+    }
+  },
+)
+
+// Refetch whenever the signed-in user changes (sign in, sign out, switch
+// accounts) — same pattern as Marketing Calendar. Calendar is read-only so
+// it only ever needs fetchTasks(), never the write methods.
+watch(
+  () => authStore.session?.user?.id ?? null,
+  (userId) => {
+    if (userId) {
+      tasksAlertsStore.fetchTasks()
+    }
+  },
+  { immediate: true },
+)
+
 // Zero-pads a number to 2 digits, e.g. 5 -> "05".
 function pad(n) {
   return String(n).padStart(2, '0')
 }
 
-// Formats a Date as a 'YYYY-MM-DD' string, matching the key shape a real
-// events table's date column would return.
+// Formats a Date as the 'YYYY-MM-DD' string Postgres' `date` type returns
+// via PostgREST, so it can be used as a lookup key against task.due_date.
 function dateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-// Groups entries by date string for O(1) lookup per grid cell. Always
-// empty today since `entries` never gets populated, but keeps the same
-// shape Marketing Calendar uses.
+// Declined items must never render anywhere on the calendar, not even
+// muted — every computed below derives only from this filtered list, same
+// as Marketing Calendar's visibleTasks. Complete rows do show.
+const visibleTasks = computed(() => tasksAlertsStore.tasks.filter((task) => task.status !== 'Declined'))
+
+// Groups visible tasks by due date for O(1) lookup per grid cell.
+// tasks_alerts uses due_date, not the `date` column name
+// marketing_tasks/budgeting_tasks/fundraising_tasks all share.
 const entriesByDate = computed(() => {
   const map = {}
-  for (const entry of entries.value) {
-    if (!map[entry.date]) map[entry.date] = []
-    map[entry.date].push(entry)
+  for (const task of visibleTasks.value) {
+    if (!map[task.due_date]) map[task.due_date] = []
+    map[task.due_date].push(task)
   }
   return map
 })
@@ -138,10 +156,10 @@ function goToNextMonth() {
   viewedMonth.value = next.getMonth()
 }
 
-// Opens the day modal for current-month days with entries. Since `entries`
-// is always empty today, day.entries.length is always 0, so no day is
-// ever actually clickable — this mirrors Marketing Calendar's gating
-// exactly so the behavior is already correct the moment real data exists.
+// Opens the day modal for current-month days with entries. Leading/
+// trailing days are deliberately never interactive, even if they happen to
+// have entries themselves: they're shown only for grid continuity, and the
+// same day is properly clickable once the user navigates to its real month.
 function handleDayClick(day) {
   if (day.isCurrentMonth && day.entries.length > 0) {
     selectedDayKey.value = day.key
@@ -155,6 +173,45 @@ function closeDayModal() {
 // Entries for the currently open day modal, or an empty array if none is
 // open.
 const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.value] ?? [])
+
+// Formats a task's due date as a relative label ("Due today"/"Due
+// tomorrow") for near-term dates, falling back to a short calendar date
+// otherwise — same relative-date logic as TasksAlertsList.vue's dueLabel,
+// adapted to read due_date directly since this page works with raw
+// tasks_alerts rows, not that component's normalized/merged shape. Parses
+// the Y/M/D components directly rather than `new Date(dateStr)`: the
+// latter treats a bare 'YYYY-MM-DD' string as UTC midnight per the ISO
+// 8601 spec, which then renders a day early in any timezone behind UTC —
+// this modal's own heading (built from the same dateKey() used for grid
+// placement) doesn't have that bug, so the badge disagreeing with the
+// heading it sits next to would be a visible, confusing inconsistency.
+function dueLabel(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const due = new Date(year, month - 1, day)
+  const todayDate = new Date()
+  todayDate.setHours(0, 0, 0, 0)
+
+  const diffDays = Math.round((due - todayDate) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'Due today'
+  if (diffDays === 1) return 'Due tomorrow'
+  return due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// Builds a task's due-date badge text/variant for the day modal — same
+// logic as TasksAlertsList.vue's badge(). Overdue status always wins
+// regardless of date math (a row can be marked Overdue without its
+// due_date having actually passed), near-term dates get the amber
+// treatment, everything else is a neutral date pill.
+function badgeFor(task) {
+  if (task.status === 'Overdue') {
+    return { text: 'Overdue', variant: 'overdue' }
+  }
+
+  const label = dueLabel(task.due_date)
+  const variant = label === 'Due today' || label === 'Due tomorrow' ? 'amber' : 'default'
+  return { text: label, variant }
+}
 </script>
 
 <template>
@@ -163,22 +220,11 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
          but kept for parity with Marketing Calendar's structure. -->
     <h2 v-if="!authStore.session">Sign in</h2>
 
-    <!-- Inherited from Marketing Calendar/Marketing Tasks' convention as a
-         placeholder decision — no real access requirement has been set for
-         Event Calendar yet. -->
     <p v-else-if="authStore.role === 'applicant'" class="access-denied">Access Denied</p>
 
     <template v-else>
       <div class="header-row">
         <h2>Event Calendar</h2>
-        <button
-          v-if="authStore.isBoard || authStore.isAdmin || authStore.isReviewer"
-          type="button"
-          class="btn btn--gold"
-          @click="showAddEventModal = true"
-        >
-          + Add Event
-        </button>
       </div>
 
       <div class="month-nav">
@@ -187,57 +233,56 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
         <button type="button" class="nav-btn" @click="goToNextMonth">Next &rarr;</button>
       </div>
 
-      <!-- Wraps the header row and grid together (no width cap of its own
-           — fills whatever the panel gives it) so weekday labels stay
-           column-aligned with the cells beneath them. -->
-      <div class="calendar-frame">
-        <div class="weekday-row">
-          <span v-for="label in WEEKDAY_LABELS" :key="label" class="weekday-label">{{ label }}</span>
+      <p v-if="tasksAlertsStore.loading">Loading calendar…</p>
+      <p v-else-if="tasksAlertsStore.error" class="error">{{ tasksAlertsStore.error }}</p>
+
+      <template v-else>
+        <!-- Wraps the header row and grid together (no width cap of its
+             own — fills whatever the panel gives it) so weekday labels stay
+             column-aligned with the cells beneath them. -->
+        <div class="calendar-frame">
+          <div class="weekday-row">
+            <span v-for="label in WEEKDAY_LABELS" :key="label" class="weekday-label">{{ label }}</span>
+          </div>
+
+          <div ref="gridRef" class="calendar-grid" :style="gridHeight ? { height: `${gridHeight}px` } : {}">
+            <button
+              v-for="day in calendarDays"
+              :key="day.key"
+              type="button"
+              class="day-cell"
+              :class="{
+                'day-cell--muted': !day.isCurrentMonth,
+                'day-cell--clickable': day.isCurrentMonth && day.entries.length > 0,
+              }"
+              :disabled="!day.isCurrentMonth || day.entries.length === 0"
+              @click="handleDayClick(day)"
+            >
+              <span class="day-number">{{ day.dayNumber }}</span>
+              <span v-if="day.entries.length > 0" class="day-count">{{ day.entries.length }}</span>
+            </button>
+          </div>
         </div>
+      </template>
 
-        <div ref="gridRef" class="calendar-grid" :style="gridHeight ? { height: `${gridHeight}px` } : {}">
-          <button
-            v-for="day in calendarDays"
-            :key="day.key"
-            type="button"
-            class="day-cell"
-            :class="{
-              'day-cell--muted': !day.isCurrentMonth,
-              'day-cell--clickable': day.isCurrentMonth && day.entries.length > 0,
-            }"
-            :disabled="!day.isCurrentMonth || day.entries.length === 0"
-            @click="handleDayClick(day)"
-          >
-            <span class="day-number">{{ day.dayNumber }}</span>
-
-            <!-- Never renders today since day.entries is always empty —
-                 kept so the count badge/dots don't need to be rebuilt once
-                 a real events source exists. -->
-            <template v-if="day.entries.length > 0">
-              <span class="day-count">{{ day.entries.length }}</span>
-              <span class="day-dots">
-                <span v-for="(entry, index) in day.entries" :key="index" class="day-dot"></span>
-              </span>
-            </template>
-          </button>
-        </div>
-      </div>
-
-      <!-- Day modal — unreachable today (see handleDayClick), kept for
-           parity with Marketing Calendar's structure. -->
+      <!-- Day modal: title + due-date badge (the same pill style
+           TasksAlertsList.vue uses) — there's no type field on tasks_alerts
+           to fill a second visual slot the way Marketing's colored type
+           label does, so due-date urgency fills it instead. Read-only, no
+           action buttons — creation/status changes only happen via
+           Task & Approval. -->
       <div v-if="selectedDayKey" class="overlay" @click.self="closeDayModal">
         <div class="modal">
           <h3 class="modal-heading">{{ selectedDayKey }}</h3>
           <ul class="entry-list">
-            <li v-for="(entry, index) in selectedDayEntries" :key="index" class="entry-row">
+            <li v-for="entry in selectedDayEntries" :key="entry.task_id" class="entry-row">
               <span class="entry-title">{{ entry.title }}</span>
+              <span class="badge" :class="`badge--${badgeFor(entry).variant}`">{{ badgeFor(entry).text }}</span>
             </li>
           </ul>
           <button type="button" class="btn btn--outline" @click="closeDayModal">Close</button>
         </div>
       </div>
-
-      <AddEventModal v-if="showAddEventModal" @close="showAddEventModal = false" />
     </template>
   </section>
 </template>
@@ -353,21 +398,6 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   padding: 1px 5px;
 }
 
-.day-dots {
-  display: flex;
-  margin-top: 5px;
-}
-
-/* No color source exists yet (no event-type taxonomy defined) — defaults
-   to a neutral gray until real types/colors are decided. */
-.day-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-right: 2px;
-  background: #b5b3ac;
-}
-
 .overlay {
   position: fixed;
   inset: 0;
@@ -415,10 +445,34 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   font-weight: 500;
 }
 
+.badge {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge--amber {
+  background: #faeeda;
+  color: #854f0b;
+}
+
+.badge--default {
+  background: #f1efe8;
+  color: #5f5e5a;
+}
+
+.badge--overdue {
+  background: #fbdede;
+  color: #b3261e;
+}
+
 .btn {
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
 }
@@ -429,10 +483,8 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   border: 1px solid #d8d6cf;
 }
 
-.btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
+.error {
+  color: #b3261e;
 }
 
 .access-denied {
