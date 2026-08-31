@@ -24,9 +24,13 @@ const groupedMetrics = computed(() =>
 )
 
 // Reads a metric's value off a cycle row — computed metrics derive their
-// value from other columns instead of reading a column directly.
+// value from other columns instead of reading a column directly. Falls
+// back to 0 for editable metrics: cycles created before a column existed
+// hold real `null` there (never backfilled), and null.toLocaleString()
+// throws in formatBarValue — coalescing here is the one place that needs
+// to know about that, instead of every caller guarding separately.
 function metricValue(cycle, metric) {
-  return metric.computed ? metric.computed(cycle) : cycle[metric.key]
+  return metric.computed ? metric.computed(cycle) : (cycle[metric.key] ?? 0)
 }
 
 // Includes reviewer alongside admin/board so viewing matches the donor_impact
