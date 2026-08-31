@@ -10,17 +10,94 @@ const donorImpactStore = useDonorImpactStore()
 // selected/inserted by the store) as opposed to client-derived computed ones.
 const editableMetrics = DONOR_IMPACT_METRICS.filter((m) => m.editable)
 
-// Fixed category display order for the form's grouped sections — independent
-// of the order metrics happen to appear in the source array.
-const CATEGORY_ORDER = ['Reach', 'Investment']
+// Category tabs shown across the top of the detail panel, in display
+// order. Reach/Investment are real, DONOR_IMPACT_METRICS-backed
+// categories; the other four are placeholder-only (see PLACEHOLDER_METRICS
+// below) until their columns exist.
+const CATEGORY_TABS = ['Reach', 'Investment', 'Engagement', 'Outcomes', 'Equity', 'Stewardship']
+const REAL_CATEGORIES = ['Reach', 'Investment']
+const activeCategory = ref('Reach')
 
-// Editable metrics grouped into their category sections, in CATEGORY_ORDER,
-// for the form's "Reach" / "Investment" headers.
-const groupedMetrics = computed(() =>
-  CATEGORY_ORDER.map((category) => ({
-    category,
-    metrics: editableMetrics.filter((m) => m.category === category),
-  })).filter((group) => group.metrics.length > 0),
+// Placeholder metrics for categories with no backing donor_impact columns
+// yet. Deliberately kept out of DONOR_IMPACT_METRICS/the store so the
+// store's contract stays honest -- it only ever describes real,
+// Supabase-backed data. Never read by handleSave/CYCLE_COLUMNS/createCycle,
+// so these values are structurally impossible to write to donor_impact,
+// not just excluded by convention.
+const PLACEHOLDER_METRICS = [
+  // -- Engagement --
+  { key: 'workshops_held', label: 'Number of Workshops/Events Held', category: 'Engagement', format: 'number' },
+  { key: 'attendance_per_workshop', label: 'Attendance Per Workshop', category: 'Engagement', format: 'number' },
+  { key: 'mentor_volunteer_hours', label: 'Mentor/Volunteer Hours', category: 'Engagement', format: 'number' },
+  {
+    key: 'repeat_engagement',
+    label: 'Repeat Engagement (2+ Programs)',
+    category: 'Engagement',
+    format: 'number',
+  },
+  {
+    key: 'students_sponsored_travel',
+    label: 'Students Sponsored for Travel',
+    category: 'Engagement',
+    format: 'number',
+  },
+  {
+    key: 'students_sponsored_certifications',
+    label: 'Students Sponsored for Certifications',
+    category: 'Engagement',
+    format: 'number',
+  },
+
+  // -- Outcomes --
+  { key: 'retention_graduation_rate', label: 'Retention/Graduation Rate', category: 'Outcomes', format: 'percent' },
+  { key: 'gpa_improvement', label: 'GPA Improvement', category: 'Outcomes', format: 'number' },
+  { key: 'internships_received', label: 'Internships Received', category: 'Outcomes', format: 'number' },
+  {
+    key: 'post_graduation_outcomes',
+    label: 'Post-Graduation Outcomes',
+    category: 'Outcomes',
+    format: 'percent',
+  },
+
+  // -- Equity --
+  { key: 'pct_first_generation', label: '% First-Generation Students', category: 'Equity', format: 'percent' },
+  {
+    key: 'pct_underrepresented_low_income',
+    label: '% Underrepresented/Low-Income',
+    category: 'Equity',
+    format: 'percent',
+  },
+
+  // -- Stewardship --
+  {
+    key: 'pct_donations_to_programs',
+    label: '% of Donations to Programs vs. Overhead',
+    category: 'Stewardship',
+    format: 'percent',
+  },
+]
+
+// In-memory only -- not tied to any donor_impact column or reporting
+// cycle, so unlike `draft` below this deliberately does NOT reset when the
+// selected cycle changes. Gone on refresh; never sent anywhere.
+const placeholderDraft = reactive(Object.fromEntries(PLACEHOLDER_METRICS.map((m) => [m.key, 0])))
+
+// Placeholder metrics for the currently active category (empty while a
+// real category is active).
+const activePlaceholderMetrics = computed(() =>
+  PLACEHOLDER_METRICS.filter((m) => m.category === activeCategory.value),
+)
+
+// Reach/Investment's editable metrics for the currently active category.
+const activeCategoryMetrics = computed(() =>
+  editableMetrics.filter((m) => m.category === activeCategory.value),
+)
+
+// Chart-tab metrics for the active category -- the full DONOR_IMPACT_METRICS
+// list (not just editable ones), so computed metrics like Average
+// Scholarship Size still get their own tab within Investment.
+const chartMetricsForCategory = computed(() =>
+  DONOR_IMPACT_METRICS.filter((m) => m.category === activeCategory.value),
 )
 
 // Reads a metric's value off a cycle row — computed metrics derive their
@@ -47,7 +124,22 @@ const saving = ref(false)
 const showAddCycle = ref(false)
 const newCycleYear = ref(null)
 const addingCycle = ref(false)
-const chartMetricKey = ref('funds_granted')
+// Matches activeCategory's default ('Reach') so the chart and the visible
+// category agree on first load.
+const chartMetricKey = ref('students_reached')
+
+// Chart tabs are scoped to the active category. When switching categories,
+// reset the chart selection to that category's first metric if the
+// current one doesn't belong there anymore -- otherwise you could land on
+// a category whose chart-tab row doesn't even include the previously
+// selected metric. For placeholder categories (no chart section at all)
+// this just clears the selection; it's never read while one is active.
+watch(activeCategory, (category) => {
+  const categoryMetrics = DONOR_IMPACT_METRICS.filter((m) => m.category === category)
+  if (!categoryMetrics.some((m) => m.key === chartMetricKey.value)) {
+    chartMetricKey.value = categoryMetrics[0]?.key ?? null
+  }
+})
 
 onMounted(() => {
   authStore.init()
@@ -83,7 +175,8 @@ const selectedCycle = computed(() =>
 )
 
 // Resets the edit form whenever the selected cycle changes, so in-progress
-// edits on one cycle never leak into another.
+// edits on one cycle never leak into another. Only touches the real
+// draft -- placeholderDraft is intentionally untouched by cycle switches.
 watch(selectedCycle, (cycle) => {
   if (!cycle) return
   editableMetrics.forEach((metric) => {
@@ -112,9 +205,7 @@ const publishedCycles = computed(() =>
   donorImpactStore.cycles.filter((c) => c.published).sort((a, b) => a.cycle_year - b.cycle_year),
 )
 
-// The metric definition backing the chart's currently selected tab. Tabs
-// are built from the full DONOR_IMPACT_METRICS array (not just editableMetrics)
-// so computed metrics like Average Scholarship Size get their own tab too.
+// The metric definition backing the chart's currently selected tab.
 const chartMetric = computed(() => DONOR_IMPACT_METRICS.find((m) => m.key === chartMetricKey.value))
 
 const maxChartValue = computed(() =>
@@ -135,6 +226,10 @@ function formatBarValue(cycle) {
 }
 
 // Saves the edit form's values to the selected cycle and publishes it.
+// Only ever reads `draft` (the real Reach/Investment columns) regardless
+// of which category tab is active when this is called -- placeholderDraft
+// is never referenced here, so placeholder-tab values can't be attempted
+// against donor_impact even accidentally.
 async function handleSave() {
   if (!selectedCycle.value) return
   saving.value = true
@@ -210,53 +305,100 @@ async function handleAddCycle() {
         <h2>{{ selectedCycle.cycle_year }} Metrics</h2>
 
         <form class="metrics-form" @submit.prevent="handleSave">
-          <div v-for="group in groupedMetrics" :key="group.category" class="metrics-group">
-            <h4 class="metrics-group-header">{{ group.category }}</h4>
-            <div class="metrics-group-fields">
-              <label v-for="metric in group.metrics" :key="metric.key">
-                {{ metric.label }}
-                <input
-                  v-model.number="draft[metric.key]"
-                  type="number"
-                  min="0"
-                  :disabled="!authStore.isAdmin"
-                />
-              </label>
-            </div>
-          </div>
-
-          <button v-if="authStore.isAdmin" type="submit" class="btn btn--gold" :disabled="saving">
-            Save & Publish
-          </button>
-        </form>
-
-        <div class="chart">
-          <h3>{{ chartMetric.label }} by Year</h3>
-
-          <div class="chart-tabs">
+          <div class="tabs">
             <button
-              v-for="metric in DONOR_IMPACT_METRICS"
-              :key="metric.key"
+              v-for="category in CATEGORY_TABS"
+              :key="category"
               type="button"
-              class="chart-tab"
-              :class="{ 'chart-tab--active': metric.key === chartMetricKey }"
-              @click="chartMetricKey = metric.key"
+              class="tab"
+              :class="{ 'tab--active': activeCategory === category }"
+              @click="activeCategory = category"
             >
-              {{ metric.label }}
+              {{ category }}
             </button>
           </div>
 
-          <p v-if="publishedCycles.length === 0" class="chart-empty">
-            No published cycles yet.
-          </p>
-          <div v-else class="bars">
-            <div v-for="cycle in publishedCycles" :key="cycle.metric_id" class="bar-col">
-              <span class="bar-value">{{ formatBarValue(cycle) }}</span>
-              <div class="bar" :style="{ height: barHeight(cycle) }"></div>
-              <span class="bar-label">{{ cycle.cycle_year }}</span>
-            </div>
+          <div class="category-panel">
+            <template v-if="REAL_CATEGORIES.includes(activeCategory)">
+              <div class="metrics-group-fields">
+                <label v-for="metric in activeCategoryMetrics" :key="metric.key">
+                  {{ metric.label }}
+                  <input
+                    v-model.number="draft[metric.key]"
+                    type="number"
+                    min="0"
+                    :disabled="!authStore.isAdmin"
+                  />
+                </label>
+              </div>
+
+              <div class="chart">
+                <h3>{{ chartMetric?.label }} by Year</h3>
+
+                <div class="chart-tabs">
+                  <button
+                    v-for="metric in chartMetricsForCategory"
+                    :key="metric.key"
+                    type="button"
+                    class="chart-tab"
+                    :class="{ 'chart-tab--active': metric.key === chartMetricKey }"
+                    @click="chartMetricKey = metric.key"
+                  >
+                    {{ metric.label }}
+                  </button>
+                </div>
+
+                <p v-if="publishedCycles.length === 0" class="chart-empty">
+                  No published cycles yet.
+                </p>
+                <div v-else class="bars">
+                  <div v-for="cycle in publishedCycles" :key="cycle.metric_id" class="bar-col">
+                    <span class="bar-value">{{ formatBarValue(cycle) }}</span>
+                    <div class="bar" :style="{ height: barHeight(cycle) }"></div>
+                    <span class="bar-label">{{ cycle.cycle_year }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template v-else>
+              <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
+
+              <div class="metrics-group-fields">
+                <label v-for="metric in activePlaceholderMetrics" :key="metric.key">
+                  {{ metric.label }}
+                  <span class="input-with-suffix">
+                    <input v-model.number="placeholderDraft[metric.key]" type="number" min="0" />
+                    <span v-if="metric.format === 'percent'" class="input-suffix">%</span>
+                  </span>
+                </label>
+              </div>
+
+              <!-- Applicant Pool Comparison is inherently a comparison, not
+                   a single metric -- reuses the 2 Equity fields above in a
+                   side-by-side layout rather than adding a fake 3rd field. -->
+              <div v-if="activeCategory === 'Equity'" class="applicant-pool-comparison">
+                <h4 class="metrics-group-header">Applicant Pool Comparison</h4>
+                <div class="comparison-row">
+                  <div class="comparison-item">
+                    <span class="comparison-label">% First-Generation Students</span>
+                    <span class="comparison-value">{{ placeholderDraft.pct_first_generation }}%</span>
+                  </div>
+                  <div class="comparison-item">
+                    <span class="comparison-label">% Underrepresented/Low-Income</span>
+                    <span class="comparison-value">{{ placeholderDraft.pct_underrepresented_low_income }}%</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
-        </div>
+
+          <div class="save-bar">
+            <button v-if="authStore.isAdmin" type="submit" class="btn btn--gold" :disabled="saving">
+              Save & Publish
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </template>
@@ -369,7 +511,45 @@ async function handleAddCycle() {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  margin-bottom: 32px;
+}
+
+/* Category tab bar — same underline pattern as TasksAlertsList.vue's
+   Active/Pending/Completed tabs, reused here rather than inventing a new
+   tab style. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e5e3dd;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 4px;
+  margin-right: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #8a8a85;
+  cursor: pointer;
+}
+
+.tab--active {
+  color: #2d3142;
+  border-bottom-color: #c9932a;
+}
+
+.category-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.not-connected-note {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: #8a8a85;
 }
 
 .metrics-group-header {
@@ -410,6 +590,43 @@ async function handleAddCycle() {
   color: #8a8a85;
 }
 
+.input-with-suffix {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input-suffix {
+  font-size: 13px;
+  color: #8a8a85;
+}
+
+.applicant-pool-comparison {
+  padding-top: 4px;
+}
+
+.comparison-row {
+  display: flex;
+  gap: 24px;
+}
+
+.comparison-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comparison-label {
+  font-size: 13px;
+  color: #8a8a85;
+}
+
+.comparison-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #c9932a;
+}
+
 .btn {
   font-size: 13px;
   font-weight: 500;
@@ -433,6 +650,16 @@ async function handleAddCycle() {
   background: #c9932a;
   color: #fff;
   border: 1px solid #c9932a;
+}
+
+/* Card wrapper reusing .cycle-card's existing border treatment, so the
+   chart reads as a grouped panel consistent with the cycle-list cards
+   already on this page. */
+.chart {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
 }
 
 .chart h3 {
@@ -503,6 +730,14 @@ async function handleAddCycle() {
   margin-top: 8px;
   font-size: 13px;
   color: #2d3142;
+}
+
+/* Persistent, tab-agnostic save action -- visually separated from
+   whichever category panel is showing above it, since it always writes
+   the real Reach/Investment draft regardless of the active tab. */
+.save-bar {
+  border-top: 1px solid #e5e3dd;
+  padding-top: 16px;
 }
 
 .error {
