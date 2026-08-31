@@ -17,9 +17,48 @@ export const DONOR_IMPACT_METRICS = [
   // -- Reach --
   { key: 'students_reached', label: 'Students Reached', category: 'Reach', format: 'number', editable: true },
   { key: 'scholarships_awarded', label: 'Scholarships Awarded', category: 'Reach', format: 'number', editable: true },
+  { key: 'applicants_count', label: 'Number of Applicants', category: 'Reach', format: 'number', editable: true },
+  { key: 'geographic_spread_count', label: 'Geographic Spread', category: 'Reach', format: 'number', editable: true },
 
   // -- Investment --
   { key: 'funds_granted', label: 'Funds Granted', category: 'Investment', format: 'currency', editable: true },
+  {
+    key: 'scholarship_funds_awarded',
+    label: 'Scholarship Funds Awarded',
+    category: 'Investment',
+    format: 'currency',
+    editable: true,
+  },
+  {
+    key: 'other_program_funds_awarded',
+    label: 'Other Program Funds Awarded',
+    category: 'Investment',
+    format: 'currency',
+    editable: true,
+  },
+  {
+    key: 'avg_scholarship_size',
+    label: 'Average Scholarship Size',
+    category: 'Investment',
+    format: 'currency',
+    editable: false,
+    // Guards divide-by-zero for draft cycles that start at 0 scholarships.
+    computed: (cycle) =>
+      cycle.scholarships_awarded > 0 ? cycle.scholarship_funds_awarded / cycle.scholarships_awarded : 0,
+  },
+  {
+    key: 'cost_per_student',
+    label: 'Cost Per Student Served',
+    category: 'Investment',
+    format: 'currency',
+    editable: false,
+    // Scholarship + other program funds only — funds_granted is a separate,
+    // broader figure and is intentionally excluded from this ratio.
+    computed: (cycle) =>
+      cycle.students_reached > 0
+        ? (cycle.scholarship_funds_awarded + cycle.other_program_funds_awarded) / cycle.students_reached
+        : 0,
+  },
 ]
 
 const EDITABLE_METRIC_KEYS = DONOR_IMPACT_METRICS.filter((m) => m.editable).map((m) => m.key)
