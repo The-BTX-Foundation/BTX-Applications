@@ -51,9 +51,9 @@ const router = createRouter({
           component: () => import('../views/BudgetingTasksView.vue'),
         },
         {
-          path: 'finance-fundraising-totals',
-          name: 'finance-fundraising-totals',
-          component: () => import('../views/FundraisingTotalsView.vue'),
+          path: 'finance-fundraising-health',
+          name: 'finance-fundraising-health',
+          component: () => import('../views/FundraisingHealthView.vue'),
         },
         {
           path: 'finance-fundraising-tasks',
