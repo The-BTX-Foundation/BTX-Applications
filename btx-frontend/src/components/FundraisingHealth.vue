@@ -1,11 +1,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useFundraisingTotalsDraft } from '@/stores/fundraisingTotalsDraft'
+import { useFundraisingHealthDraft } from '@/stores/fundraisingHealthDraft'
 import HistoryBrowser from '@/components/HistoryBrowser.vue'
 
 const authStore = useAuthStore()
-const draft = useFundraisingTotalsDraft()
+const draft = useFundraisingHealthDraft()
 
 // Same page-access gate as BudgetTracking.vue -- no write-gating beyond
 // this exists, since nothing on this page persists.
@@ -45,7 +45,7 @@ const showHistory = ref(false)
 
   <template v-else>
     <div class="page-header">
-      <h2>Fundraising Totals</h2>
+      <h2>Fundraising Health</h2>
       <button type="button" class="btn btn--outline" @click="showHistory = !showHistory">
         {{ showHistory ? '← Back to Today' : 'View Fundraising History' }}
       </button>

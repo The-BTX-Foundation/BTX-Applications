@@ -7,7 +7,7 @@ import { defineStore } from 'pinia'
 // Cost to Raise a Dollar can read totalRevenue live, from a separate page,
 // without a reload. Same non-persisting placeholder pattern as
 // BudgetTracking.vue's own draft.
-export const useFundraisingTotalsDraft = defineStore('fundraisingTotalsDraft', () => {
+export const useFundraisingHealthDraft = defineStore('fundraisingHealthDraft', () => {
   const individual_donors = ref(0)
   const corporate_partnerships = ref(0)
   const grants_revenue = ref(0)

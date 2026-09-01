@@ -6,7 +6,7 @@ import { ref } from 'vue'
 // props and reads no page-specific data, since there's no real historical
 // dataset behind it yet -- the lists below are a fixed static range rather
 // than anything data-derived. Shared by BudgetTracking.vue and
-// FundraisingTotals.vue, each with its own independent instance/state.
+// FundraisingHealth.vue, each with its own independent instance/state.
 const selectedYear = ref(null)
 const selectedMonth = ref(null)
 

@@ -1,14 +1,14 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useFundraisingTotalsDraft } from '@/stores/fundraisingTotalsDraft'
+import { useFundraisingHealthDraft } from '@/stores/fundraisingHealthDraft'
 import HistoryBrowser from '@/components/HistoryBrowser.vue'
 
 const authStore = useAuthStore()
 // Cost to Raise a Dollar reads this page's own fundraising_expenses against
 // the OTHER page's revenue total -- a live cross-store read, not a copy, so
-// it updates the instant Fundraising Totals' fields change.
-const fundraisingStore = useFundraisingTotalsDraft()
+// it updates the instant Fundraising Health's fields change.
+const fundraisingStore = useFundraisingHealthDraft()
 
 // Matches Donor Impact/Marketing's view convention. No write-gating beyond
 // this exists anywhere on this page (see the field/grant inputs below) --
@@ -62,7 +62,7 @@ const programExpenseRatio = computed(() => {
   return total > 0 ? (draft.program_expenses / total) * 100 : 0
 })
 
-// Reads totalRevenue from the separate Fundraising Totals store (a Pinia
+// Reads totalRevenue from the separate Fundraising Health store (a Pinia
 // singleton), not local state -- this is what makes it update live when
 // revenue fields change on the other page, without a reload.
 const costToRaiseADollar = computed(() =>
