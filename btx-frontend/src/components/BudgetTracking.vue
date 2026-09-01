@@ -1,8 +1,14 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useFundraisingTotalsDraft } from '@/stores/fundraisingTotalsDraft'
+import HistoryBrowser from '@/components/HistoryBrowser.vue'
 
 const authStore = useAuthStore()
+// Cost to Raise a Dollar reads this page's own fundraising_expenses against
+// the OTHER page's revenue total -- a live cross-store read, not a copy, so
+// it updates the instant Fundraising Totals' fields change.
+const fundraisingStore = useFundraisingTotalsDraft()
 
 // Matches Donor Impact/Marketing's view convention. No write-gating beyond
 // this exists anywhere on this page (see the field/grant inputs below) --
@@ -15,20 +21,7 @@ onMounted(() => {
   authStore.init()
 })
 
-// -- Field definitions, grouped into the two category tabs --
-const REVENUE_FIELDS = [
-  { key: 'individual_donors', label: 'Individual Donors', format: 'currency' },
-  { key: 'corporate_partnerships', label: 'Corporate/Partnerships', format: 'currency' },
-  { key: 'grants_revenue', label: 'Grants', format: 'currency' },
-  { key: 'events_revenue', label: 'Events', format: 'currency' },
-  { key: 'annual_goal', label: 'Annual Goal', format: 'currency' },
-  { key: 'donor_retention_rate', label: 'Donor Retention Rate', format: 'percent' },
-  { key: 'average_gift_size', label: 'Average Gift Size', format: 'currency' },
-  { key: 'median_gift_size', label: 'Median Gift Size', format: 'currency' },
-  { key: 'new_donors', label: 'New Donors', format: 'number' },
-  { key: 'recurring_donors', label: 'Recurring Donors', format: 'number' },
-]
-
+// -- Field definitions for the Budget & Spend tab --
 const BUDGET_FIELDS = [
   { key: 'program_expenses', label: 'Program Expenses', format: 'currency' },
   { key: 'overhead_expenses', label: 'Overhead Expenses', format: 'currency' },
@@ -37,11 +30,9 @@ const BUDGET_FIELDS = [
   { key: 'fundraising_expenses', label: 'Fundraising Expenses', format: 'currency' },
 ]
 
-const CATEGORY_FIELDS = {
-  'Revenue & Fundraising Health': REVENUE_FIELDS,
-  'Budget & Spend': BUDGET_FIELDS,
-}
-const CATEGORY_TABS = Object.keys(CATEGORY_FIELDS)
+// Tab bar: Budget & Spend's editable fields, then Grant Pipeline (moved
+// here from its old standalone section below the tabs).
+const CATEGORY_TABS = ['Budget & Spend', 'Grant Pipeline']
 const activeCategory = ref(CATEGORY_TABS[0])
 
 // Budget Variance table rows.
@@ -52,13 +43,12 @@ const VARIANCE_ROWS = [
   { key: 'marketing', label: 'Marketing' },
 ]
 
-// Single flat draft holding every stored field across BOTH tabs plus the
-// variance rows -- not split per-category. This is what lets
-// costToRaiseADollar (displayed under Budget & Spend) read the Revenue
-// tab's fields below: category is purely a display-grouping label here,
-// same as it is for DONOR_IMPACT_METRICS, never a data-access boundary.
+// Flat draft holding Budget & Spend's fields plus the variance rows.
+// Revenue & Fundraising Health's fields now live in the separate
+// fundraisingStore (see costToRaiseADollar below for the one place that
+// still reads across into it).
 const draft = reactive({
-  ...Object.fromEntries([...REVENUE_FIELDS, ...BUDGET_FIELDS].map((f) => [f.key, 0])),
+  ...Object.fromEntries(BUDGET_FIELDS.map((f) => [f.key, 0])),
   ...Object.fromEntries(
     VARIANCE_ROWS.flatMap((r) => [
       [`${r.key}_budgeted`, 0],
@@ -67,24 +57,16 @@ const draft = reactive({
   ),
 })
 
-// Shared by Fundraising Goal Progress and Cost to Raise a Dollar.
-const totalRevenue = computed(
-  () => draft.individual_donors + draft.corporate_partnerships + draft.grants_revenue + draft.events_revenue,
-)
-
-const fundraisingGoalProgress = computed(() =>
-  draft.annual_goal > 0 ? (totalRevenue.value / draft.annual_goal) * 100 : 0,
-)
-
 const programExpenseRatio = computed(() => {
   const total = draft.program_expenses + draft.overhead_expenses
   return total > 0 ? (draft.program_expenses / total) * 100 : 0
 })
 
-// Reaches into the Revenue tab's totalRevenue even though this is
-// displayed under Budget & Spend -- see the draft comment above.
+// Reads totalRevenue from the separate Fundraising Totals store (a Pinia
+// singleton), not local state -- this is what makes it update live when
+// revenue fields change on the other page, without a reload.
 const costToRaiseADollar = computed(() =>
-  totalRevenue.value > 0 ? draft.fundraising_expenses / totalRevenue.value : 0,
+  fundraisingStore.totalRevenue > 0 ? draft.fundraising_expenses / fundraisingStore.totalRevenue : 0,
 )
 
 // The one thing that gets its own top-of-page callout instead of living
@@ -149,33 +131,10 @@ function removeGrant(id) {
   grants.value = grants.value.filter((grant) => grant.id !== id)
 }
 
-// -- Year→Month history browser: reuses the exact drill-down state machine
-// from TasksAlertsList.vue's Completed tab (null/null = year list,
-// year/null = month list, year/month = detail view) and the same
-// click-through interaction. What's NOT reused: TasksAlertsList derives
-// its year/month lists from real completed_at timestamps on actual rows.
-// There's no equivalent dataset here -- the editable fields above are one
-// flat "right now" draft, not per-cycle rows -- so the lists below are a
-// fixed static range instead of anything data-derived.
+// Toggles the shared HistoryBrowser (see components/HistoryBrowser.vue).
+// Its drill-down state lives inside that component and resets for free on
+// every toggle, since v-if/v-else below unmounts/remounts it each time.
 const showHistory = ref(false)
-const selectedYear = ref(null)
-const selectedMonth = ref(null)
-
-const CURRENT_YEAR = new Date().getFullYear()
-const historyYears = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i)
-
-function monthLabel(monthIndex) {
-  return new Date(2000, monthIndex, 1).toLocaleDateString(undefined, { month: 'long' })
-}
-const historyMonths = Array.from({ length: 12 }, (_, i) => ({ index: i, label: monthLabel(i) }))
-
-// Always resets the drill-down back to the year list on open, so
-// re-entering History later never leaves you stuck deep in a stale month.
-function openHistory() {
-  showHistory.value = true
-  selectedYear.value = null
-  selectedMonth.value = null
-}
 </script>
 
 <template>
@@ -185,11 +144,7 @@ function openHistory() {
   <template v-else>
     <div class="page-header">
       <h2>Budget Tracking</h2>
-      <button
-        type="button"
-        class="btn btn--outline"
-        @click="showHistory ? (showHistory = false) : openHistory()"
-      >
+      <button type="button" class="btn btn--outline" @click="showHistory = !showHistory">
         {{ showHistory ? '← Back to Today' : 'View Budget History' }}
       </button>
     </div>
@@ -218,24 +173,17 @@ function openHistory() {
       </div>
 
       <div class="category-panel">
-        <div class="metrics-group-fields">
-          <label v-for="field in CATEGORY_FIELDS[activeCategory]" :key="field.key">
-            {{ field.label }}
-            <span class="input-with-suffix">
-              <input v-model.number="draft[field.key]" type="number" min="0" />
-              <span v-if="field.format === 'percent'" class="input-suffix">%</span>
-            </span>
-          </label>
-        </div>
-
-        <div v-if="activeCategory === 'Revenue & Fundraising Health'" class="computed-row">
-          <div class="computed-display">
-            <span class="computed-label">Fundraising Goal Progress</span>
-            <span class="computed-value">{{ fundraisingGoalProgress.toFixed(1) }}%</span>
-          </div>
-        </div>
-
         <template v-if="activeCategory === 'Budget & Spend'">
+          <div class="metrics-group-fields">
+            <label v-for="field in BUDGET_FIELDS" :key="field.key">
+              {{ field.label }}
+              <span class="input-with-suffix">
+                <input v-model.number="draft[field.key]" type="number" min="0" />
+                <span v-if="field.format === 'percent'" class="input-suffix">%</span>
+              </span>
+            </label>
+          </div>
+
           <div class="computed-row">
             <div class="computed-display">
               <span class="computed-label">Program Expense Ratio</span>
@@ -279,87 +227,53 @@ function openHistory() {
             </table>
           </div>
         </template>
-      </div>
 
-      <div class="grant-pipeline">
-        <div class="grant-pipeline-header">
-          <h3>Grant Pipeline</h3>
-          <button type="button" class="btn btn--outline" @click="showAddGrant = !showAddGrant">+ Add Grant</button>
+        <div v-else class="grant-pipeline">
+          <div class="grant-pipeline-header">
+            <h3>Grant Pipeline</h3>
+            <button type="button" class="btn btn--outline" @click="showAddGrant = !showAddGrant">+ Add Grant</button>
+          </div>
+
+          <form v-if="showAddGrant" class="add-grant-form" @submit.prevent="handleAddGrant">
+            <input v-model="newGrant.name" type="text" placeholder="Name" required />
+            <input v-model="newGrant.funder" type="text" placeholder="Funder" required />
+            <input v-model.number="newGrant.amount" type="number" min="0" placeholder="Amount" />
+            <select v-model="newGrant.status">
+              <option v-for="status in GRANT_STATUSES" :key="status" :value="status">{{ status }}</option>
+            </select>
+            <button type="submit" class="btn btn--gold">Add</button>
+          </form>
+
+          <p v-if="grants.length === 0" class="chart-empty">No grants added yet.</p>
+          <table v-else class="grant-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Funder</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="grant in grants" :key="grant.id">
+                <td>{{ grant.name }}</td>
+                <td>{{ grant.funder }}</td>
+                <td>${{ grant.amount.toLocaleString() }}</td>
+                <td><span class="badge badge--default">{{ grant.status }}</span></td>
+                <td>
+                  <button type="button" class="remove-btn" @click="removeGrant(grant.id)" aria-label="Remove grant">
+                    ×
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <form v-if="showAddGrant" class="add-grant-form" @submit.prevent="handleAddGrant">
-          <input v-model="newGrant.name" type="text" placeholder="Name" required />
-          <input v-model="newGrant.funder" type="text" placeholder="Funder" required />
-          <input v-model.number="newGrant.amount" type="number" min="0" placeholder="Amount" />
-          <select v-model="newGrant.status">
-            <option v-for="status in GRANT_STATUSES" :key="status" :value="status">{{ status }}</option>
-          </select>
-          <button type="submit" class="btn btn--gold">Add</button>
-        </form>
-
-        <p v-if="grants.length === 0" class="chart-empty">No grants added yet.</p>
-        <table v-else class="grant-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Funder</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="grant in grants" :key="grant.id">
-              <td>{{ grant.name }}</td>
-              <td>{{ grant.funder }}</td>
-              <td>${{ grant.amount.toLocaleString() }}</td>
-              <td><span class="badge badge--default">{{ grant.status }}</span></td>
-              <td>
-                <button type="button" class="remove-btn" @click="removeGrant(grant.id)" aria-label="Remove grant">
-                  ×
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </template>
 
-    <template v-else>
-      <div class="history-browser">
-        <template v-if="selectedYear === null">
-          <ul class="history-list">
-            <li v-for="year in historyYears" :key="year">
-              <button type="button" class="history-card" @click="selectedYear = year">
-                <span class="history-label">{{ year }}</span>
-              </button>
-            </li>
-          </ul>
-        </template>
-
-        <template v-else-if="selectedMonth === null">
-          <button type="button" class="btn btn--outline back-btn" @click="selectedYear = null">← Back to Years</button>
-          <ul class="history-list">
-            <li v-for="month in historyMonths" :key="month.index">
-              <button type="button" class="history-card" @click="selectedMonth = month.index">
-                <span class="history-label">{{ month.label }}</span>
-              </button>
-            </li>
-          </ul>
-        </template>
-
-        <template v-else>
-          <button type="button" class="btn btn--outline back-btn" @click="selectedMonth = null">
-            ← Back to Months
-          </button>
-          <h3 class="history-detail-heading">{{ monthLabel(selectedMonth) }} {{ selectedYear }}</h3>
-          <!-- History-browser instance: this specific month's empty state,
-               distinct from the page-level caption above -- every month
-               shows this, since there's no real historical data anywhere. -->
-          <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
-        </template>
-      </div>
-    </template>
+    <HistoryBrowser v-else />
   </template>
 </template>
 
@@ -655,42 +569,6 @@ function openHistory() {
   background: #c9932a;
   color: #fff;
   border: 1px solid #c9932a;
-}
-
-.history-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-.history-card {
-  width: 100%;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
-  border-radius: 12px;
-  padding: 14px;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.history-label {
-  font-size: 15px;
-  font-weight: 500;
-  color: #2d3142;
-}
-
-.back-btn {
-  margin-bottom: 16px;
-}
-
-.history-detail-heading {
-  margin: 0 0 8px;
-  font-size: 16px;
-  color: #2d3142;
 }
 
 .access-denied {
