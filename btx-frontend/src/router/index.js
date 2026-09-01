@@ -50,7 +50,11 @@ const router = createRouter({
           name: 'finance-budgeting-tasks',
           component: () => import('../views/BudgetingTasksView.vue'),
         },
-        placeholderRoute('finance-fundraising-totals', 'finance-fundraising-totals', 'Fundraising Totals'),
+        {
+          path: 'finance-fundraising-totals',
+          name: 'finance-fundraising-totals',
+          component: () => import('../views/FundraisingTotalsView.vue'),
+        },
         {
           path: 'finance-fundraising-tasks',
           name: 'finance-fundraising-tasks',
