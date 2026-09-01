@@ -16,12 +16,12 @@ const cards = [
   {
     id: 'finance-funding',
     title: 'Finance & Funding',
-    description: 'Budget tracking & fundraising totals',
+    description: 'Budget tracking & fundraising health',
     meta: '→ 4 tabs (2 built, 2 concept)',
     subItems: [
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
-      { label: 'Fundraising Totals', routeName: 'finance-fundraising-totals' },
+      { label: 'Fundraising Health', routeName: 'finance-fundraising-health' },
       { label: 'Fundraising Tasks', routeName: 'finance-fundraising-tasks' },
     ],
   },

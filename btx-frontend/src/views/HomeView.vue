@@ -26,7 +26,7 @@ const navSections = [
     children: [
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
-      { label: 'Fundraising Totals', routeName: 'finance-fundraising-totals' },
+      { label: 'Fundraising Health', routeName: 'finance-fundraising-health' },
       { label: 'Fundraising Tasks', routeName: 'finance-fundraising-tasks' },
     ],
   },
