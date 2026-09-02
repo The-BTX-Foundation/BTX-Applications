@@ -52,16 +52,16 @@ const showHistory = ref(false)
     </div>
 
     <template v-if="!showHistory">
-      <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
+      <p class="not-connected-note">Not yet connected to saved data — values shown are placeholders.</p>
 
       <div class="metrics-group-fields">
-        <label v-for="field in FIELDS" :key="field.key">
-          {{ field.label }}
-          <span class="input-with-suffix">
-            <input v-model.number="draft[field.key]" type="number" min="0" />
-            <span v-if="field.format === 'percent'" class="input-suffix">%</span>
+        <div v-for="field in FIELDS" :key="field.key" class="metric-field">
+          <span class="metric-label">{{ field.label }}</span>
+          <span class="value-with-suffix">
+            <span class="metric-value">{{ draft[field.key] }}</span>
+            <span v-if="field.format === 'percent'" class="value-suffix">%</span>
           </span>
-        </label>
+        </div>
       </div>
 
       <div class="computed-row">
@@ -105,30 +105,29 @@ const showHistory = ref(false)
   margin-bottom: 20px;
 }
 
-.metrics-group-fields label {
+.metric-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.metric-label {
   font-size: 13px;
   color: #8a8a85;
 }
 
-.metrics-group-fields input {
-  padding: 6px 10px;
-  border: 1px solid #d8d6cf;
-  border-radius: 8px;
+.metric-value {
   font-size: 14px;
   color: #2d3142;
-  width: 160px;
 }
 
-.input-with-suffix {
+.value-with-suffix {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.input-suffix {
+.value-suffix {
   font-size: 13px;
   color: #8a8a85;
 }
