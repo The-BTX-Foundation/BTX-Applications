@@ -21,9 +21,9 @@ const activeCategory = ref('Reach')
 // Placeholder metrics for categories with no backing donor_impact columns
 // yet. Deliberately kept out of DONOR_IMPACT_METRICS/the store so the
 // store's contract stays honest -- it only ever describes real,
-// Supabase-backed data. Never read by handleSave/CYCLE_COLUMNS/createCycle,
-// so these values are structurally impossible to write to donor_impact,
-// not just excluded by convention.
+// Supabase-backed data. Never read by CYCLE_COLUMNS/createCycle in the
+// store, so these values are structurally impossible to write to
+// donor_impact, not just excluded by convention.
 const PLACEHOLDER_METRICS = [
   // -- Engagement --
   { key: 'workshops_held', label: 'Number of Workshops/Events Held', category: 'Engagement', format: 'number' },
@@ -78,8 +78,8 @@ const PLACEHOLDER_METRICS = [
 ]
 
 // In-memory only -- not tied to any donor_impact column or reporting
-// cycle, so unlike `draft` below this deliberately does NOT reset when the
-// selected cycle changes. Gone on refresh; never sent anywhere.
+// cycle, so it deliberately does NOT reset when the selected cycle
+// changes. Gone on refresh; never sent anywhere.
 const placeholderDraft = reactive(Object.fromEntries(PLACEHOLDER_METRICS.map((m) => [m.key, 0])))
 
 // Placeholder metrics for the currently active category (empty while a
@@ -111,19 +111,11 @@ function metricValue(cycle, metric) {
 }
 
 // Includes reviewer alongside admin/board so viewing matches the donor_impact
-// RLS SELECT policy (admin, board, and reviewer can all view) — the write
-// actions below stay gated on authStore.isAdmin specifically, so this only
-// widens who can see the page, not who can edit/add/publish.
+// RLS SELECT policy (admin, board, and reviewer can all view). This page has
+// no write actions of its own anymore -- all data here is read-only display.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
 const selectedMetricId = ref(null)
-// Built from editableMetrics so the draft always has an entry for every
-// editable column, regardless of how many metrics exist.
-const draft = reactive(Object.fromEntries(editableMetrics.map((m) => [m.key, 0])))
-const saving = ref(false)
-const showAddCycle = ref(false)
-const newCycleYear = ref(null)
-const addingCycle = ref(false)
 // Matches activeCategory's default ('Reach') so the chart and the visible
 // category agree on first load.
 const chartMetricKey = ref('students_reached')
@@ -174,16 +166,6 @@ const selectedCycle = computed(() =>
   donorImpactStore.cycles.find((cycle) => cycle.metric_id === selectedMetricId.value),
 )
 
-// Resets the edit form whenever the selected cycle changes, so in-progress
-// edits on one cycle never leak into another. Only touches the real
-// draft -- placeholderDraft is intentionally untouched by cycle switches.
-watch(selectedCycle, (cycle) => {
-  if (!cycle) return
-  editableMetrics.forEach((metric) => {
-    draft[metric.key] = cycle[metric.key]
-  })
-})
-
 // The most recent published year — that card gets the "Live" badge, every
 // other published card gets "Archived".
 const liveYear = computed(() => {
@@ -225,32 +207,6 @@ function formatBarValue(cycle) {
   return chartMetric.value.format === 'currency' ? `$${value.toLocaleString()}` : value.toLocaleString()
 }
 
-// Saves the edit form's values to the selected cycle and publishes it.
-// Only ever reads `draft` (the real Reach/Investment columns) regardless
-// of which category tab is active when this is called -- placeholderDraft
-// is never referenced here, so placeholder-tab values can't be attempted
-// against donor_impact even accidentally.
-async function handleSave() {
-  if (!selectedCycle.value) return
-  saving.value = true
-  const metrics = Object.fromEntries(editableMetrics.map((m) => [m.key, Number(draft[m.key])]))
-  await donorImpactStore.saveAndPublish(selectedCycle.value.metric_id, metrics)
-  saving.value = false
-}
-
-// Creates a new draft cycle for the given year and selects it for editing.
-async function handleAddCycle() {
-  if (!newCycleYear.value) return
-  addingCycle.value = true
-  const created = await donorImpactStore.createCycle(Number(newCycleYear.value))
-  addingCycle.value = false
-
-  if (created) {
-    selectedMetricId.value = created.metric_id
-    newCycleYear.value = null
-    showAddCycle.value = false
-  }
-}
 </script>
 
 <template>
@@ -265,20 +221,7 @@ async function handleAddCycle() {
       <div class="cycle-column">
         <div class="cycle-column-header">
           <h2>Reporting Cycles</h2>
-          <button
-            v-if="authStore.isAdmin"
-            type="button"
-            class="btn btn--outline"
-            @click="showAddCycle = !showAddCycle"
-          >
-            + Add Cycle
-          </button>
         </div>
-
-        <form v-if="showAddCycle" class="add-cycle" @submit.prevent="handleAddCycle">
-          <input v-model.number="newCycleYear" type="number" placeholder="Year" required />
-          <button type="submit" class="btn btn--gold" :disabled="addingCycle">Create</button>
-        </form>
 
         <ul class="cycle-list">
           <li v-for="cycle in donorImpactStore.cycles" :key="cycle.metric_id">
@@ -304,7 +247,7 @@ async function handleAddCycle() {
       <div v-if="selectedCycle" class="detail-column">
         <h2>{{ selectedCycle.cycle_year }} Metrics</h2>
 
-        <form class="metrics-form" @submit.prevent="handleSave">
+        <div class="metrics-form">
           <div class="tabs">
             <button
               v-for="category in CATEGORY_TABS"
@@ -321,15 +264,10 @@ async function handleAddCycle() {
           <div class="category-panel">
             <template v-if="REAL_CATEGORIES.includes(activeCategory)">
               <div class="metrics-group-fields">
-                <label v-for="metric in activeCategoryMetrics" :key="metric.key">
-                  {{ metric.label }}
-                  <input
-                    v-model.number="draft[metric.key]"
-                    type="number"
-                    min="0"
-                    :disabled="!authStore.isAdmin"
-                  />
-                </label>
+                <div v-for="metric in activeCategoryMetrics" :key="metric.key" class="metric-field">
+                  <span class="metric-label">{{ metric.label }}</span>
+                  <span class="metric-value">{{ metricValue(selectedCycle, metric) }}</span>
+                </div>
               </div>
 
               <div class="chart">
@@ -362,16 +300,16 @@ async function handleAddCycle() {
             </template>
 
             <template v-else>
-              <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
+              <p class="not-connected-note">Not yet connected to saved data — values shown are placeholders.</p>
 
               <div class="metrics-group-fields">
-                <label v-for="metric in activePlaceholderMetrics" :key="metric.key">
-                  {{ metric.label }}
-                  <span class="input-with-suffix">
-                    <input v-model.number="placeholderDraft[metric.key]" type="number" min="0" />
-                    <span v-if="metric.format === 'percent'" class="input-suffix">%</span>
+                <div v-for="metric in activePlaceholderMetrics" :key="metric.key" class="metric-field">
+                  <span class="metric-label">{{ metric.label }}</span>
+                  <span class="value-with-suffix">
+                    <span class="metric-value">{{ placeholderDraft[metric.key] }}</span>
+                    <span v-if="metric.format === 'percent'" class="value-suffix">%</span>
                   </span>
-                </label>
+                </div>
               </div>
 
               <!-- Applicant Pool Comparison is inherently a comparison, not
@@ -392,13 +330,7 @@ async function handleAddCycle() {
               </div>
             </template>
           </div>
-
-          <div class="save-bar">
-            <button v-if="authStore.isAdmin" type="submit" class="btn btn--gold" :disabled="saving">
-              Save & Publish
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   </template>
@@ -427,21 +359,6 @@ async function handleAddCycle() {
 .cycle-column-header h2 {
   margin: 0;
   font-size: 18px;
-}
-
-.add-cycle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.add-cycle input {
-  width: 0;
-  flex: 1;
-  padding: 6px 10px;
-  border: 1px solid #d8d6cf;
-  border-radius: 8px;
-  font-size: 13px;
 }
 
 .cycle-list {
@@ -568,35 +485,29 @@ async function handleAddCycle() {
   gap: 16px;
 }
 
-.metrics-group-fields label {
+.metric-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.metric-label {
   font-size: 13px;
   color: #8a8a85;
 }
 
-.metrics-group-fields input {
-  padding: 6px 10px;
-  border: 1px solid #d8d6cf;
-  border-radius: 8px;
+.metric-value {
   font-size: 14px;
   color: #2d3142;
-  width: 160px;
 }
 
-.metrics-group-fields input:disabled {
-  background: #f7f6f3;
-  color: #8a8a85;
-}
-
-.input-with-suffix {
+.value-with-suffix {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.input-suffix {
+.value-suffix {
   font-size: 13px;
   color: #8a8a85;
 }
@@ -625,31 +536,6 @@ async function handleAddCycle() {
   font-size: 20px;
   font-weight: 600;
   color: #c9932a;
-}
-
-.btn {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
-}
-
-.btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
 }
 
 /* Card wrapper reusing .cycle-card's existing border treatment, so the
@@ -730,14 +616,6 @@ async function handleAddCycle() {
   margin-top: 8px;
   font-size: 13px;
   color: #2d3142;
-}
-
-/* Persistent, tab-agnostic save action -- visually separated from
-   whichever category panel is showing above it, since it always writes
-   the real Reach/Investment draft regardless of the active tab. */
-.save-bar {
-  border-top: 1px solid #e5e3dd;
-  padding-top: 16px;
 }
 
 .error {
