@@ -3,14 +3,20 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
 // Single source of truth for every donor_impact metric. DonorImpact.vue's
-// form fields, chart tabs, and this store's column list/insert defaults are
-// all derived from this array instead of being hand-duplicated in four
-// separate places — add a metric here and it appears everywhere it needs to.
+// field display, chart tabs, and this store's column list/insert defaults
+// are all derived from this array instead of being hand-duplicated in
+// several separate places — add a metric here and it appears everywhere
+// it needs to.
 //
-// - category: 'Reach' | 'Investment' — groups form fields into sections.
-// - format: drives currency vs. plain-number display.
-// - editable: true for real donor_impact columns (selected/inserted/edited);
-//   false for values derived client-side from other columns.
+// - category: 'Reach' | 'Investment' | 'Engagement' | 'Outcomes' | 'Equity'
+//   | 'Stewardship' — groups display fields into tabs.
+// - format: 'currency' | 'percent' | 'number' — drives display formatting
+//   (both the field value and, for the metric's chart tab, the bar label).
+// - editable: true for real donor_impact columns (selected/inserted by
+//   this store); false for values derived client-side from other columns.
+//   Historically also meant "editable in the form" before DonorImpact.vue
+//   became read-only display -- the name is a holdover from that, but the
+//   selected/inserted meaning below is still exactly what it drives.
 // - computed: for non-editable metrics, a fn(cycle) deriving its value —
 //   never persisted, so it's excluded from CYCLE_COLUMNS/inserts.
 export const DONOR_IMPACT_METRICS = [
@@ -58,6 +64,75 @@ export const DONOR_IMPACT_METRICS = [
       cycle.students_reached > 0
         ? (cycle.scholarship_funds_awarded + cycle.other_program_funds_awarded) / cycle.students_reached
         : 0,
+  },
+
+  // -- Engagement --
+  { key: 'workshops_held', label: 'Number of Workshops/Events Held', category: 'Engagement', format: 'number', editable: true },
+  { key: 'attendance_per_workshop', label: 'Attendance Per Workshop', category: 'Engagement', format: 'number', editable: true },
+  { key: 'mentor_volunteer_hours', label: 'Mentor/Volunteer Hours', category: 'Engagement', format: 'number', editable: true },
+  {
+    key: 'repeat_engagement',
+    label: 'Repeat Engagement (2+ Programs)',
+    category: 'Engagement',
+    format: 'number',
+    editable: true,
+  },
+  {
+    key: 'students_sponsored_travel',
+    label: 'Students Sponsored for Travel',
+    category: 'Engagement',
+    format: 'number',
+    editable: true,
+  },
+  {
+    key: 'students_sponsored_certifications',
+    label: 'Students Sponsored for Certifications',
+    category: 'Engagement',
+    format: 'number',
+    editable: true,
+  },
+
+  // -- Outcomes --
+  {
+    key: 'retention_graduation_rate',
+    label: 'Retention/Graduation Rate',
+    category: 'Outcomes',
+    format: 'percent',
+    editable: true,
+  },
+  { key: 'gpa_improvement', label: 'GPA Improvement', category: 'Outcomes', format: 'number', editable: true },
+  { key: 'internships_received', label: 'Internships Received', category: 'Outcomes', format: 'number', editable: true },
+  {
+    key: 'post_graduation_outcomes',
+    label: 'Post-Graduation Outcomes',
+    category: 'Outcomes',
+    format: 'percent',
+    editable: true,
+  },
+
+  // -- Equity --
+  {
+    key: 'pct_first_generation',
+    label: '% First-Generation Students',
+    category: 'Equity',
+    format: 'percent',
+    editable: true,
+  },
+  {
+    key: 'pct_underrepresented_low_income',
+    label: '% Underrepresented/Low-Income',
+    category: 'Equity',
+    format: 'percent',
+    editable: true,
+  },
+
+  // -- Stewardship --
+  {
+    key: 'pct_donations_to_programs',
+    label: '% of Donations to Programs vs. Overhead',
+    category: 'Stewardship',
+    format: 'percent',
+    editable: true,
   },
 ]
 
