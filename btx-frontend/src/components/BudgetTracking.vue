@@ -10,9 +10,9 @@ const authStore = useAuthStore()
 // it updates the instant Fundraising Health's fields change.
 const fundraisingStore = useFundraisingHealthDraft()
 
-// Matches Donor Impact/Marketing's view convention. No write-gating beyond
-// this exists anywhere on this page (see the field/grant inputs below) --
-// nothing here persists, so there's nothing a stricter role split would
+// Matches Donor Impact/Marketing's view convention. This page has no write
+// actions of its own -- everything on it, including Grant Pipeline, is
+// read-only display, so there's nothing a stricter role split would
 // actually be protecting, matching EventCalendar.vue's precedent of only
 // gating page access, not individual actions.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
@@ -111,25 +111,10 @@ function formatVariancePercent(value) {
 }
 
 // -- Grant Pipeline: client-side only, same non-persisting pattern as the
-// rest of this page's placeholder fields -- no store, no Supabase call.
-const GRANT_STATUSES = ['Submitted', 'Pending', 'Awarded', 'Declined']
+// rest of this page's placeholder fields -- no store, no Supabase call, and
+// (now that Add/Remove are gone) no way to populate this list at all; it
+// only exists to display grants once there's a real data source to read.
 const grants = ref([])
-const showAddGrant = ref(false)
-const newGrant = reactive({ name: '', funder: '', amount: 0, status: GRANT_STATUSES[0] })
-
-function handleAddGrant() {
-  if (!newGrant.name || !newGrant.funder) return
-  grants.value.push({ id: crypto.randomUUID(), ...newGrant })
-  newGrant.name = ''
-  newGrant.funder = ''
-  newGrant.amount = 0
-  newGrant.status = GRANT_STATUSES[0]
-  showAddGrant.value = false
-}
-
-function removeGrant(id) {
-  grants.value = grants.value.filter((grant) => grant.id !== id)
-}
 
 // Toggles the shared HistoryBrowser (see components/HistoryBrowser.vue).
 // Its drill-down state lives inside that component and resets for free on
@@ -150,9 +135,9 @@ const showHistory = ref(false)
     </div>
 
     <template v-if="!showHistory">
-      <!-- Page-level instance: governs the whole editable "Today" view
-           below, shown once here rather than repeated per field. -->
-      <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
+      <!-- Page-level instance: governs the whole "Today" view below, shown
+           once here rather than repeated per field. -->
+      <p class="not-connected-note">Not yet connected to saved data — values shown are placeholders.</p>
 
       <div class="burn-rate-callout">
         <span class="burn-rate-label">Burn Rate / Runway</span>
@@ -175,13 +160,10 @@ const showHistory = ref(false)
       <div class="category-panel">
         <template v-if="activeCategory === 'Budget & Spend'">
           <div class="metrics-group-fields">
-            <label v-for="field in BUDGET_FIELDS" :key="field.key">
-              {{ field.label }}
-              <span class="input-with-suffix">
-                <input v-model.number="draft[field.key]" type="number" min="0" />
-                <span v-if="field.format === 'percent'" class="input-suffix">%</span>
-              </span>
-            </label>
+            <div v-for="field in BUDGET_FIELDS" :key="field.key" class="metric-field">
+              <span class="metric-label">{{ field.label }}</span>
+              <span class="metric-value">{{ draft[field.key] }}</span>
+            </div>
           </div>
 
           <div class="computed-row">
@@ -210,8 +192,8 @@ const showHistory = ref(false)
               <tbody>
                 <tr v-for="row in VARIANCE_ROWS" :key="row.key">
                   <td class="variance-label">{{ row.label }}</td>
-                  <td><input v-model.number="draft[`${row.key}_budgeted`]" type="number" min="0" /></td>
-                  <td><input v-model.number="draft[`${row.key}_actual`]" type="number" min="0" /></td>
+                  <td>{{ draft[`${row.key}_budgeted`] }}</td>
+                  <td>{{ draft[`${row.key}_actual`] }}</td>
                   <td :class="varianceDollar(row) > 0 ? 'variance--over' : 'variance--under'">
                     {{ formatVarianceDollar(varianceDollar(row)) }}
                   </td>
@@ -229,20 +211,7 @@ const showHistory = ref(false)
         </template>
 
         <div v-else class="grant-pipeline">
-          <div class="grant-pipeline-header">
-            <h3>Grant Pipeline</h3>
-            <button type="button" class="btn btn--outline" @click="showAddGrant = !showAddGrant">+ Add Grant</button>
-          </div>
-
-          <form v-if="showAddGrant" class="add-grant-form" @submit.prevent="handleAddGrant">
-            <input v-model="newGrant.name" type="text" placeholder="Name" required />
-            <input v-model="newGrant.funder" type="text" placeholder="Funder" required />
-            <input v-model.number="newGrant.amount" type="number" min="0" placeholder="Amount" />
-            <select v-model="newGrant.status">
-              <option v-for="status in GRANT_STATUSES" :key="status" :value="status">{{ status }}</option>
-            </select>
-            <button type="submit" class="btn btn--gold">Add</button>
-          </form>
+          <h3 class="grant-pipeline-title">Grant Pipeline</h3>
 
           <p v-if="grants.length === 0" class="chart-empty">No grants added yet.</p>
           <table v-else class="grant-table">
@@ -252,7 +221,6 @@ const showHistory = ref(false)
                 <th>Funder</th>
                 <th>Amount</th>
                 <th>Status</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -261,11 +229,6 @@ const showHistory = ref(false)
                 <td>{{ grant.funder }}</td>
                 <td>${{ grant.amount.toLocaleString() }}</td>
                 <td><span class="badge badge--default">{{ grant.status }}</span></td>
-                <td>
-                  <button type="button" class="remove-btn" @click="removeGrant(grant.id)" aria-label="Remove grant">
-                    ×
-                  </button>
-                </td>
               </tr>
             </tbody>
           </table>
@@ -370,32 +333,20 @@ const showHistory = ref(false)
   gap: 16px;
 }
 
-.metrics-group-fields label {
+.metric-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.metric-label {
   font-size: 13px;
   color: #8a8a85;
 }
 
-.metrics-group-fields input {
-  padding: 6px 10px;
-  border: 1px solid #d8d6cf;
-  border-radius: 8px;
+.metric-value {
   font-size: 14px;
   color: #2d3142;
-  width: 160px;
-}
-
-.input-with-suffix {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.input-suffix {
-  font-size: 13px;
-  color: #8a8a85;
 }
 
 .computed-row {
@@ -450,15 +401,6 @@ const showHistory = ref(false)
   font-weight: 500;
 }
 
-.variance-table input {
-  width: 110px;
-  padding: 6px 10px;
-  border: 1px solid #d8d6cf;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #2d3142;
-}
-
 .variance--over {
   color: #b3261e;
   font-weight: 600;
@@ -469,33 +411,9 @@ const showHistory = ref(false)
   font-weight: 600;
 }
 
-.grant-pipeline-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.grant-pipeline-header h3 {
-  margin: 0;
+.grant-pipeline-title {
+  margin: 0 0 12px;
   font-size: 16px;
-}
-
-.add-grant-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.add-grant-form input,
-.add-grant-form select {
-  padding: 6px 10px;
-  border: 1px solid #d8d6cf;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #2d3142;
 }
 
 .chart-empty {
@@ -537,20 +455,6 @@ const showHistory = ref(false)
   color: #5f5e5a;
 }
 
-.remove-btn {
-  background: none;
-  border: none;
-  color: #8a8a85;
-  font-size: 16px;
-  cursor: pointer;
-  line-height: 1;
-  padding: 4px;
-}
-
-.remove-btn:hover {
-  color: #b3261e;
-}
-
 .btn {
   font-size: 13px;
   font-weight: 500;
@@ -563,12 +467,6 @@ const showHistory = ref(false)
   background: #fff;
   color: #2d3142;
   border: 1px solid #d8d6cf;
-}
-
-.btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
 }
 
 .access-denied {
