@@ -1,0 +1,11 @@
+-- Grants service_role full read/write on donor_impact. Applied live via
+-- the Supabase SQL Editor on 2026-09-01 (~14:51 EDT / 18:51 UTC), after the
+-- sync-donor-impact Edge Function's first test run failed: service_role
+-- previously only had REFERENCES/TRIGGER/TRUNCATE/MAINTAIN on this table
+-- (see 20260815000000_baseline_missing_tables.sql), which isn't enough for
+-- an upsert even though service_role bypasses RLS -- RLS bypass and
+-- table-level GRANTs are separate checks in Postgres, and the narrow
+-- baseline grant only covered the first. This file is applied via
+-- `migration repair`, which records it as already-applied without
+-- re-running this SQL against the live database.
+GRANT SELECT, INSERT, UPDATE ON donor_impact TO service_role;
