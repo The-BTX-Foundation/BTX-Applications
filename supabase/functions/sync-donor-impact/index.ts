@@ -171,6 +171,78 @@ Deno.serve(async (req) => {
     return json({ success: false, error: 'published must be a boolean (or "true"/"false")' }, 400)
   }
 
+  // Engagement
+  const workshopsHeld = parseInteger(body.workshops_held)
+  if (workshopsHeld === undefined) {
+    return json({ success: false, error: 'workshops_held must be a valid whole number' }, 400)
+  }
+
+  const attendancePerWorkshop = parseNumeric(body.attendance_per_workshop)
+  if (attendancePerWorkshop === undefined) {
+    return json({ success: false, error: 'attendance_per_workshop must be a valid number' }, 400)
+  }
+
+  const mentorVolunteerHours = parseNumeric(body.mentor_volunteer_hours)
+  if (mentorVolunteerHours === undefined) {
+    return json({ success: false, error: 'mentor_volunteer_hours must be a valid number' }, 400)
+  }
+
+  const repeatEngagement = parseInteger(body.repeat_engagement)
+  if (repeatEngagement === undefined) {
+    return json({ success: false, error: 'repeat_engagement must be a valid whole number' }, 400)
+  }
+
+  const studentsSponsoredTravel = parseInteger(body.students_sponsored_travel)
+  if (studentsSponsoredTravel === undefined) {
+    return json({ success: false, error: 'students_sponsored_travel must be a valid whole number' }, 400)
+  }
+
+  const studentsSponsoredCertifications = parseInteger(body.students_sponsored_certifications)
+  if (studentsSponsoredCertifications === undefined) {
+    return json(
+      { success: false, error: 'students_sponsored_certifications must be a valid whole number' },
+      400,
+    )
+  }
+
+  // Outcomes
+  const retentionGraduationRate = parseNumeric(body.retention_graduation_rate)
+  if (retentionGraduationRate === undefined) {
+    return json({ success: false, error: 'retention_graduation_rate must be a valid number' }, 400)
+  }
+
+  const gpaImprovement = parseNumeric(body.gpa_improvement)
+  if (gpaImprovement === undefined) {
+    return json({ success: false, error: 'gpa_improvement must be a valid number' }, 400)
+  }
+
+  const internshipsReceived = parseInteger(body.internships_received)
+  if (internshipsReceived === undefined) {
+    return json({ success: false, error: 'internships_received must be a valid whole number' }, 400)
+  }
+
+  const postGraduationOutcomes = parseNumeric(body.post_graduation_outcomes)
+  if (postGraduationOutcomes === undefined) {
+    return json({ success: false, error: 'post_graduation_outcomes must be a valid number' }, 400)
+  }
+
+  // Equity
+  const pctFirstGeneration = parseNumeric(body.pct_first_generation)
+  if (pctFirstGeneration === undefined) {
+    return json({ success: false, error: 'pct_first_generation must be a valid number' }, 400)
+  }
+
+  const pctUnderrepresentedLowIncome = parseNumeric(body.pct_underrepresented_low_income)
+  if (pctUnderrepresentedLowIncome === undefined) {
+    return json({ success: false, error: 'pct_underrepresented_low_income must be a valid number' }, 400)
+  }
+
+  // Stewardship
+  const pctDonationsToPrograms = parseNumeric(body.pct_donations_to_programs)
+  if (pctDonationsToPrograms === undefined) {
+    return json({ success: false, error: 'pct_donations_to_programs must be a valid number' }, 400)
+  }
+
   const row = {
     cycle_year: cycleYear,
     funds_granted: fundsGranted,
@@ -181,6 +253,19 @@ Deno.serve(async (req) => {
     scholarship_funds_awarded: scholarshipFundsAwarded,
     other_program_funds_awarded: otherProgramFundsAwarded,
     published,
+    workshops_held: workshopsHeld,
+    attendance_per_workshop: attendancePerWorkshop,
+    mentor_volunteer_hours: mentorVolunteerHours,
+    repeat_engagement: repeatEngagement,
+    students_sponsored_travel: studentsSponsoredTravel,
+    students_sponsored_certifications: studentsSponsoredCertifications,
+    retention_graduation_rate: retentionGraduationRate,
+    gpa_improvement: gpaImprovement,
+    internships_received: internshipsReceived,
+    post_graduation_outcomes: postGraduationOutcomes,
+    pct_first_generation: pctFirstGeneration,
+    pct_underrepresented_low_income: pctUnderrepresentedLowIncome,
+    pct_donations_to_programs: pctDonationsToPrograms,
   }
 
   const supabase = getServiceClient()
