@@ -1,94 +1,22 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { DONOR_IMPACT_METRICS, useDonorImpactStore } from '@/stores/donorImpact'
 
 const authStore = useAuthStore()
 const donorImpactStore = useDonorImpactStore()
 
-// The subset of metrics that are real columns (editable in the form,
-// selected/inserted by the store) as opposed to client-derived computed ones.
+// The subset of metrics that are real, selected/inserted-by-the-store
+// columns, as opposed to client-derived computed ones.
 const editableMetrics = DONOR_IMPACT_METRICS.filter((m) => m.editable)
 
 // Category tabs shown across the top of the detail panel, in display
-// order. Reach/Investment are real, DONOR_IMPACT_METRICS-backed
-// categories; the other four are placeholder-only (see PLACEHOLDER_METRICS
-// below) until their columns exist.
+// order. All six are real, DONOR_IMPACT_METRICS-backed categories.
 const CATEGORY_TABS = ['Reach', 'Investment', 'Engagement', 'Outcomes', 'Equity', 'Stewardship']
-const REAL_CATEGORIES = ['Reach', 'Investment']
 const activeCategory = ref('Reach')
 
-// Placeholder metrics for categories with no backing donor_impact columns
-// yet. Deliberately kept out of DONOR_IMPACT_METRICS/the store so the
-// store's contract stays honest -- it only ever describes real,
-// Supabase-backed data. Never read by CYCLE_COLUMNS/createCycle in the
-// store, so these values are structurally impossible to write to
-// donor_impact, not just excluded by convention.
-const PLACEHOLDER_METRICS = [
-  // -- Engagement --
-  { key: 'workshops_held', label: 'Number of Workshops/Events Held', category: 'Engagement', format: 'number' },
-  { key: 'attendance_per_workshop', label: 'Attendance Per Workshop', category: 'Engagement', format: 'number' },
-  { key: 'mentor_volunteer_hours', label: 'Mentor/Volunteer Hours', category: 'Engagement', format: 'number' },
-  {
-    key: 'repeat_engagement',
-    label: 'Repeat Engagement (2+ Programs)',
-    category: 'Engagement',
-    format: 'number',
-  },
-  {
-    key: 'students_sponsored_travel',
-    label: 'Students Sponsored for Travel',
-    category: 'Engagement',
-    format: 'number',
-  },
-  {
-    key: 'students_sponsored_certifications',
-    label: 'Students Sponsored for Certifications',
-    category: 'Engagement',
-    format: 'number',
-  },
-
-  // -- Outcomes --
-  { key: 'retention_graduation_rate', label: 'Retention/Graduation Rate', category: 'Outcomes', format: 'percent' },
-  { key: 'gpa_improvement', label: 'GPA Improvement', category: 'Outcomes', format: 'number' },
-  { key: 'internships_received', label: 'Internships Received', category: 'Outcomes', format: 'number' },
-  {
-    key: 'post_graduation_outcomes',
-    label: 'Post-Graduation Outcomes',
-    category: 'Outcomes',
-    format: 'percent',
-  },
-
-  // -- Equity --
-  { key: 'pct_first_generation', label: '% First-Generation Students', category: 'Equity', format: 'percent' },
-  {
-    key: 'pct_underrepresented_low_income',
-    label: '% Underrepresented/Low-Income',
-    category: 'Equity',
-    format: 'percent',
-  },
-
-  // -- Stewardship --
-  {
-    key: 'pct_donations_to_programs',
-    label: '% of Donations to Programs vs. Overhead',
-    category: 'Stewardship',
-    format: 'percent',
-  },
-]
-
-// In-memory only -- not tied to any donor_impact column or reporting
-// cycle, so it deliberately does NOT reset when the selected cycle
-// changes. Gone on refresh; never sent anywhere.
-const placeholderDraft = reactive(Object.fromEntries(PLACEHOLDER_METRICS.map((m) => [m.key, 0])))
-
-// Placeholder metrics for the currently active category (empty while a
-// real category is active).
-const activePlaceholderMetrics = computed(() =>
-  PLACEHOLDER_METRICS.filter((m) => m.category === activeCategory.value),
-)
-
-// Reach/Investment's editable metrics for the currently active category.
+// The active category's editable metrics -- covers all six tabs, not just
+// Reach/Investment, since every category is now backed by real columns.
 const activeCategoryMetrics = computed(() =>
   editableMetrics.filter((m) => m.category === activeCategory.value),
 )
@@ -124,8 +52,7 @@ const chartMetricKey = ref('students_reached')
 // reset the chart selection to that category's first metric if the
 // current one doesn't belong there anymore -- otherwise you could land on
 // a category whose chart-tab row doesn't even include the previously
-// selected metric. For placeholder categories (no chart section at all)
-// this just clears the selection; it's never read while one is active.
+// selected metric.
 watch(activeCategory, (category) => {
   const categoryMetrics = DONOR_IMPACT_METRICS.filter((m) => m.category === category)
   if (!categoryMetrics.some((m) => m.key === chartMetricKey.value)) {
@@ -200,11 +127,14 @@ function barHeight(cycle) {
   return `${(metricValue(cycle, chartMetric.value) / maxChartValue.value) * 100}%`
 }
 
-// Formats a cycle's bar-top label for the selected metric — currency for
-// currency-format metrics, a plain thousands-separated number otherwise.
+// Formats a cycle's bar-top label for the selected metric — currency gets
+// a leading "$", percent gets a trailing "%", everything else is a plain
+// thousands-separated number.
 function formatBarValue(cycle) {
   const value = metricValue(cycle, chartMetric.value)
-  return chartMetric.value.format === 'currency' ? `$${value.toLocaleString()}` : value.toLocaleString()
+  if (chartMetric.value.format === 'currency') return `$${value.toLocaleString()}`
+  if (chartMetric.value.format === 'percent') return `${value.toLocaleString()}%`
+  return value.toLocaleString()
 }
 
 </script>
@@ -262,73 +192,60 @@ function formatBarValue(cycle) {
           </div>
 
           <div class="category-panel">
-            <template v-if="REAL_CATEGORIES.includes(activeCategory)">
-              <div class="metrics-group-fields">
-                <div v-for="metric in activeCategoryMetrics" :key="metric.key" class="metric-field">
-                  <span class="metric-label">{{ metric.label }}</span>
+            <div class="metrics-group-fields">
+              <div v-for="metric in activeCategoryMetrics" :key="metric.key" class="metric-field">
+                <span class="metric-label">{{ metric.label }}</span>
+                <span class="value-with-suffix">
                   <span class="metric-value">{{ metricValue(selectedCycle, metric) }}</span>
+                  <span v-if="metric.format === 'percent'" class="value-suffix">%</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Applicant Pool Comparison is inherently a comparison, not a
+                 single metric -- reuses the 2 Equity fields above in a
+                 side-by-side layout rather than adding a fake 3rd field. -->
+            <div v-if="activeCategory === 'Equity'" class="applicant-pool-comparison">
+              <h4 class="metrics-group-header">Applicant Pool Comparison</h4>
+              <div class="comparison-row">
+                <div class="comparison-item">
+                  <span class="comparison-label">% First-Generation Students</span>
+                  <span class="comparison-value">{{ selectedCycle.pct_first_generation ?? 0 }}%</span>
+                </div>
+                <div class="comparison-item">
+                  <span class="comparison-label">% Underrepresented/Low-Income</span>
+                  <span class="comparison-value">{{ selectedCycle.pct_underrepresented_low_income ?? 0 }}%</span>
                 </div>
               </div>
+            </div>
 
-              <div class="chart">
-                <h3>{{ chartMetric?.label }} by Year</h3>
+            <div class="chart">
+              <h3>{{ chartMetric?.label }} by Year</h3>
 
-                <div class="chart-tabs">
-                  <button
-                    v-for="metric in chartMetricsForCategory"
-                    :key="metric.key"
-                    type="button"
-                    class="chart-tab"
-                    :class="{ 'chart-tab--active': metric.key === chartMetricKey }"
-                    @click="chartMetricKey = metric.key"
-                  >
-                    {{ metric.label }}
-                  </button>
-                </div>
-
-                <p v-if="publishedCycles.length === 0" class="chart-empty">
-                  No published cycles yet.
-                </p>
-                <div v-else class="bars">
-                  <div v-for="cycle in publishedCycles" :key="cycle.metric_id" class="bar-col">
-                    <span class="bar-value">{{ formatBarValue(cycle) }}</span>
-                    <div class="bar" :style="{ height: barHeight(cycle) }"></div>
-                    <span class="bar-label">{{ cycle.cycle_year }}</span>
-                  </div>
-                </div>
-              </div>
-            </template>
-
-            <template v-else>
-              <p class="not-connected-note">Not yet connected to saved data — values shown are placeholders.</p>
-
-              <div class="metrics-group-fields">
-                <div v-for="metric in activePlaceholderMetrics" :key="metric.key" class="metric-field">
-                  <span class="metric-label">{{ metric.label }}</span>
-                  <span class="value-with-suffix">
-                    <span class="metric-value">{{ placeholderDraft[metric.key] }}</span>
-                    <span v-if="metric.format === 'percent'" class="value-suffix">%</span>
-                  </span>
-                </div>
+              <div class="chart-tabs">
+                <button
+                  v-for="metric in chartMetricsForCategory"
+                  :key="metric.key"
+                  type="button"
+                  class="chart-tab"
+                  :class="{ 'chart-tab--active': metric.key === chartMetricKey }"
+                  @click="chartMetricKey = metric.key"
+                >
+                  {{ metric.label }}
+                </button>
               </div>
 
-              <!-- Applicant Pool Comparison is inherently a comparison, not
-                   a single metric -- reuses the 2 Equity fields above in a
-                   side-by-side layout rather than adding a fake 3rd field. -->
-              <div v-if="activeCategory === 'Equity'" class="applicant-pool-comparison">
-                <h4 class="metrics-group-header">Applicant Pool Comparison</h4>
-                <div class="comparison-row">
-                  <div class="comparison-item">
-                    <span class="comparison-label">% First-Generation Students</span>
-                    <span class="comparison-value">{{ placeholderDraft.pct_first_generation }}%</span>
-                  </div>
-                  <div class="comparison-item">
-                    <span class="comparison-label">% Underrepresented/Low-Income</span>
-                    <span class="comparison-value">{{ placeholderDraft.pct_underrepresented_low_income }}%</span>
-                  </div>
+              <p v-if="publishedCycles.length === 0" class="chart-empty">
+                No published cycles yet.
+              </p>
+              <div v-else class="bars">
+                <div v-for="cycle in publishedCycles" :key="cycle.metric_id" class="bar-col">
+                  <span class="bar-value">{{ formatBarValue(cycle) }}</span>
+                  <div class="bar" :style="{ height: barHeight(cycle) }"></div>
+                  <span class="bar-label">{{ cycle.cycle_year }}</span>
                 </div>
               </div>
-            </template>
+            </div>
           </div>
         </div>
       </div>
@@ -460,13 +377,6 @@ function formatBarValue(cycle) {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.not-connected-note {
-  margin: 0;
-  font-size: 12px;
-  font-style: italic;
-  color: #8a8a85;
 }
 
 .metrics-group-header {
