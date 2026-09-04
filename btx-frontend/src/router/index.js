@@ -31,7 +31,11 @@ const router = createRouter({
         },
         placeholderRoute('alerts', 'alerts', 'Alert Center'),
         placeholderRoute('awardee-workflow', 'awardee-workflow', 'Awardee Workflow'),
-        placeholderRoute('progress-to-goal', 'progress-to-goal', 'Progress-to-Goal'),
+        {
+          path: 'progress-to-goal',
+          name: 'progress-to-goal',
+          component: () => import('../views/ProgressToGoalView.vue'),
+        },
         {
           path: 'donor-impact',
           name: 'donor-impact',
