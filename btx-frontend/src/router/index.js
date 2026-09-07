@@ -29,7 +29,11 @@ const router = createRouter({
           name: 'tasks',
           component: () => import('../views/TasksApprovalView.vue'),
         },
-        placeholderRoute('alerts', 'alerts', 'Alert Center'),
+        {
+          path: 'alerts',
+          name: 'alerts',
+          component: () => import('../views/AlertCenterView.vue'),
+        },
         placeholderRoute('awardee-workflow', 'awardee-workflow', 'Awardee Workflow'),
         {
           path: 'progress-to-goal',
