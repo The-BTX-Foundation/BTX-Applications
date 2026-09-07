@@ -2,11 +2,49 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+import { useEventTrackerEventsStore } from '@/stores/eventTrackerEvents'
 
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
+const eventTrackerEventsStore = useEventTrackerEventsStore()
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Max number of entries (events + tasks combined) shown directly in a day
+// cell before the rest collapse into a "+N more" indicator -- matches
+// Apple Calendar's own small-month-cell behavior, and fits this grid's
+// tight cell padding better than trying to shrink text indefinitely.
+const DAY_CELL_ENTRY_CAP = 3
+
+// Curated pastel-background/dark-text pairs for event_tracker_events
+// category chips, in the fixed order they're assigned (see categoryColors
+// below) -- not random/hashed colors, so the same set of categories always
+// renders the same way. Amber (#faeeda/#854f0b) and red (#fbdede/#b3261e)
+// are deliberately left out of this palette even though they'd otherwise
+// fit the same pastel-bg/dark-text formula as the rest: those two hues are
+// reserved for task-urgency signaling elsewhere in this component (the
+// due-today/due-tomorrow badge and the overdue badge, and the matching dot
+// color on task entries in the grid -- see taskDotColor below). If a
+// category chip could also render amber or red, it would visually collide
+// with "this task is due soon/overdue," a meaning categories don't carry.
+const CATEGORY_PALETTE = [
+  { bg: '#e3edfb', text: '#1d4ed8' }, // blue
+  { bg: '#e2f3e6', text: '#1e6b3a' }, // green
+  { bg: '#f0e7fb', text: '#6b21a8' }, // purple
+  { bg: '#e0f5f3', text: '#0f766e' }, // teal
+  { bg: '#fce7f3', text: '#9d174d' }, // pink
+  { bg: '#e6e9fc', text: '#3730a3' }, // indigo
+  { bg: '#fde8d7', text: '#9a3412' }, // orange
+  { bg: '#eef7d9', text: '#4d7c0f' }, // lime
+  { bg: '#dff5fb', text: '#0e7490' }, // cyan
+  { bg: '#eceef1', text: '#334155' }, // slate
+  { bg: '#f0e6db', text: '#7c4a1e' }, // brown
+  { bg: '#fdf6d8', text: '#92720a' }, // yellow
+  { bg: '#ece4fb', text: '#5b21b6' }, // violet
+  { bg: '#f7e2e6', text: '#8a2846' }, // maroon
+  { bg: '#e4edf0', text: '#2b5566' }, // steel
+  { bg: '#eef0d9', text: '#5c5f1f' }, // olive
+]
 
 // Space left below the grid so it doesn't run flush to the bottom of the
 // viewport — matches the page/panel's existing 32px padding rhythm. Same
@@ -47,6 +85,15 @@ const viewedMonth = ref(today.getMonth())
 // if no modal is open.
 const selectedDayKey = ref(null)
 
+// True while either source is still loading -- the grid waits for both
+// tasks_alerts and event_tracker_events before rendering, same as
+// AlertCenter's anyLoading over its four sources.
+const anyLoading = computed(() => tasksAlertsStore.loading || eventTrackerEventsStore.loading)
+
+// The first load error found across the two sources, or null if neither
+// failed.
+const firstError = computed(() => tasksAlertsStore.error ?? eventTrackerEventsStore.error)
+
 onMounted(() => {
   authStore.init()
   updateGridHeight()
@@ -61,23 +108,21 @@ onUnmounted(() => {
 // finishes — see MarketingCalendar.vue's identical watcher for why
 // onMounted's own call isn't enough (fetchTasks sets loading synchronously
 // during setup, before the grid's first real render).
-watch(
-  () => tasksAlertsStore.loading,
-  (isLoading) => {
-    if (!isLoading) {
-      nextTick(updateGridHeight)
-    }
-  },
-)
+watch(anyLoading, (isLoading) => {
+  if (!isLoading) {
+    nextTick(updateGridHeight)
+  }
+})
 
-// Refetch whenever the signed-in user changes (sign in, sign out, switch
-// accounts) — same pattern as Marketing Calendar. Calendar is read-only so
-// it only ever needs fetchTasks(), never the write methods.
+// Refetch both sources whenever the signed-in user changes (sign in, sign
+// out, switch accounts) — same pattern as Marketing Calendar. Calendar is
+// read-only so it only ever needs the two fetches, never any write method.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
     if (userId) {
       tasksAlertsStore.fetchTasks()
+      eventTrackerEventsStore.fetchEvents()
     }
   },
   { immediate: true },
@@ -89,7 +134,8 @@ function pad(n) {
 }
 
 // Formats a Date as the 'YYYY-MM-DD' string Postgres' `date` type returns
-// via PostgREST, so it can be used as a lookup key against task.due_date.
+// via PostgREST, so it can be used as a lookup key against task.due_date
+// and event.event_date alike.
 function dateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
@@ -99,15 +145,51 @@ function dateKey(date) {
 // as Marketing Calendar's visibleTasks. Complete rows do show.
 const visibleTasks = computed(() => tasksAlertsStore.tasks.filter((task) => task.status !== 'Declined'))
 
-// Groups visible tasks by due date for O(1) lookup per grid cell.
-// tasks_alerts uses due_date, not the `date` column name
-// marketing_tasks/budgeting_tasks/fundraising_tasks all share.
+// Groups both sources by date for O(1) lookup per grid cell. Events are
+// pushed first and tasks second so that, wherever this merged array is
+// consumed (cell cap slicing below, and the day modal), category chips —
+// the actual point of this build — always sort ahead of task/alert rows on
+// a busy day rather than getting pushed out by them. Each entry keeps its
+// original columns (task_id/due_date/status/... or id/event_date/category/
+// event_name) plus a `source` tag and a globally-unique `key` for v-for,
+// since task_id and event id are drawn from different tables and could
+// otherwise collide.
 const entriesByDate = computed(() => {
   const map = {}
+  for (const event of eventTrackerEventsStore.events) {
+    if (!map[event.event_date]) map[event.event_date] = []
+    map[event.event_date].push({ source: 'event', key: `event-${event.id}`, ...event })
+  }
   for (const task of visibleTasks.value) {
     if (!map[task.due_date]) map[task.due_date] = []
-    map[task.due_date].push(task)
+    map[task.due_date].push({ source: 'task', key: `task-${task.task_id}`, ...task })
   }
+  return map
+})
+
+// Assigns each distinct category a color from CATEGORY_PALETTE in
+// alphabetical order -- deterministic and not random/hashed, so a given
+// set of categories always renders the same way. This is recomputed from
+// whatever categories are actually present each time the underlying data
+// changes, which has one honest tradeoff worth flagging: because the
+// order is "alphabetical over the current set" rather than "permanently
+// pinned per category," inserting a brand-new category that sorts earlier
+// than existing ones shifts every category after it to the next palette
+// slot, changing colors that were previously assigned. That's accepted
+// here as the cost of a deterministic, human-predictable order instead of a
+// hash (which would avoid the shift but risks two categories landing on
+// the same or a visually clashing color). Category churn in this table is
+// low (synced periodically from a spreadsheet, not live-edited), so the
+// tradeoff favors predictability. Beyond CATEGORY_PALETTE.length distinct
+// categories, colors cycle and repeat.
+const categoryColors = computed(() => {
+  const categories = [...new Set(eventTrackerEventsStore.events.map((event) => event.category))].sort((a, b) =>
+    a.localeCompare(b),
+  )
+  const map = {}
+  categories.forEach((category, index) => {
+    map[category] = CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]
+  })
   return map
 })
 
@@ -123,11 +205,17 @@ const calendarDays = computed(() => {
   for (let i = 0; i < 42; i++) {
     const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i)
     const key = dateKey(date)
+    const entries = entriesByDate.value[key] ?? []
     days.push({
       key,
       dayNumber: date.getDate(),
       isCurrentMonth: date.getMonth() === viewedMonth.value,
-      entries: entriesByDate.value[key] ?? [],
+      entries,
+      // Events-then-tasks order is already guaranteed by entriesByDate, so
+      // slicing the first DAY_CELL_ENTRY_CAP here keeps chips visible ahead
+      // of task rows on a busy day.
+      visibleEntries: entries.slice(0, DAY_CELL_ENTRY_CAP),
+      overflowCount: Math.max(entries.length - DAY_CELL_ENTRY_CAP, 0),
     })
   }
   return days
@@ -170,8 +258,9 @@ function closeDayModal() {
   selectedDayKey.value = null
 }
 
-// Entries for the currently open day modal, or an empty array if none is
-// open.
+// Full (uncapped) entries for the currently open day modal, or an empty
+// array if none is open -- unlike the grid cell, the modal has room to show
+// every item for the day, not just the first DAY_CELL_ENTRY_CAP.
 const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.value] ?? [])
 
 // Formats a task's due date as a relative label ("Due today"/"Due
@@ -185,6 +274,10 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 // this modal's own heading (built from the same dateKey() used for grid
 // placement) doesn't have that bug, so the badge disagreeing with the
 // heading it sits next to would be a visible, confusing inconsistency.
+// event_tracker_events' event_date never runs through this function (there
+// is no due-soon concept for a calendar event), but any future date math
+// added for it must follow this same split-then-construct-local pattern
+// rather than ever calling `new Date(dateStr)` directly.
 function dueLabel(dateStr) {
   const [year, month, day] = dateStr.split('-').map(Number)
   const due = new Date(year, month - 1, day)
@@ -212,6 +305,19 @@ function badgeFor(task) {
   const variant = label === 'Due today' || label === 'Due tomorrow' ? 'amber' : 'default'
   return { text: label, variant }
 }
+
+// Picks the small status dot color shown next to a task/alert entry in the
+// grid (never a category entry -- those get a solid palette chip instead).
+// Reuses the exact same urgency colors as the modal's badge classes
+// (.badge--overdue/.badge--amber/.badge--default) instead of introducing a
+// separate color scale, so the dot and the badge always agree about a
+// given task's urgency.
+function taskDotColor(task) {
+  const variant = badgeFor(task).variant
+  if (variant === 'overdue') return '#b3261e'
+  if (variant === 'amber') return '#c9932a'
+  return '#8a8a85'
+}
 </script>
 
 <template>
@@ -233,8 +339,8 @@ function badgeFor(task) {
         <button type="button" class="nav-btn" @click="goToNextMonth">Next &rarr;</button>
       </div>
 
-      <p v-if="tasksAlertsStore.loading">Loading calendar…</p>
-      <p v-else-if="tasksAlertsStore.error" class="error">{{ tasksAlertsStore.error }}</p>
+      <p v-if="anyLoading">Loading calendar…</p>
+      <p v-else-if="firstError" class="error">{{ firstError }}</p>
 
       <template v-else>
         <!-- Wraps the header row and grid together (no width cap of its
@@ -259,25 +365,57 @@ function badgeFor(task) {
               @click="handleDayClick(day)"
             >
               <span class="day-number">{{ day.dayNumber }}</span>
-              <span v-if="day.entries.length > 0" class="day-count">{{ day.entries.length }}</span>
+
+              <!-- Apple-Calendar-style entries: category events render as
+                   solid colored chips, tasks/alerts render as plain text
+                   with a small urgency dot -- no separate legend, the chips
+                   and text are the legend. -->
+              <div v-if="day.visibleEntries.length > 0" class="day-entries">
+                <span
+                  v-for="entry in day.visibleEntries"
+                  :key="entry.key"
+                  class="day-entry"
+                  :class="entry.source === 'event' ? 'day-entry--event' : 'day-entry--task'"
+                  :style="
+                    entry.source === 'event'
+                      ? { background: categoryColors[entry.category]?.bg, color: categoryColors[entry.category]?.text }
+                      : {}
+                  "
+                >
+                  <span v-if="entry.source === 'task'" class="task-dot" :style="{ background: taskDotColor(entry) }" />
+                  {{ entry.source === 'event' ? entry.category : entry.title }}
+                </span>
+                <span v-if="day.overflowCount > 0" class="day-entry day-entry--overflow"
+                  >+{{ day.overflowCount }} more</span
+                >
+              </div>
             </button>
           </div>
         </div>
       </template>
 
-      <!-- Day modal: title + due-date badge (the same pill style
-           TasksAlertsList.vue uses) — there's no type field on tasks_alerts
-           to fill a second visual slot the way Marketing's colored type
-           label does, so due-date urgency fills it instead. Read-only, no
-           action buttons — creation/status changes only happen via
-           Task & Approval. -->
+      <!-- Day modal: full details for both sources, not the truncated grid
+           chip text. Event rows show the full category chip plus the full
+           event_name; task/alert rows keep the existing title + due-date
+           badge pairing. Read-only, no action buttons — creation/status
+           changes only happen via Task & Approval. -->
       <div v-if="selectedDayKey" class="overlay" @click.self="closeDayModal">
         <div class="modal">
           <h3 class="modal-heading">{{ selectedDayKey }}</h3>
           <ul class="entry-list">
-            <li v-for="entry in selectedDayEntries" :key="entry.task_id" class="entry-row">
-              <span class="entry-title">{{ entry.title }}</span>
-              <span class="badge" :class="`badge--${badgeFor(entry).variant}`">{{ badgeFor(entry).text }}</span>
+            <li v-for="entry in selectedDayEntries" :key="entry.key" class="entry-row">
+              <template v-if="entry.source === 'event'">
+                <span
+                  class="entry-chip"
+                  :style="{ background: categoryColors[entry.category]?.bg, color: categoryColors[entry.category]?.text }"
+                  >{{ entry.category }}</span
+                >
+                <span class="entry-title">{{ entry.event_name }}</span>
+              </template>
+              <template v-else>
+                <span class="entry-title">{{ entry.title }}</span>
+                <span class="badge" :class="`badge--${badgeFor(entry).variant}`">{{ badgeFor(entry).text }}</span>
+              </template>
             </li>
           </ul>
           <button type="button" class="btn btn--outline" @click="closeDayModal">Close</button>
@@ -365,6 +503,7 @@ function badgeFor(task) {
   padding: 4px 5px;
   font-family: inherit;
   cursor: default;
+  overflow: hidden;
 }
 
 .day-cell--muted {
@@ -385,17 +524,57 @@ function badgeFor(task) {
   font-size: 12px;
   font-weight: 500;
   color: inherit;
+  flex-shrink: 0;
 }
 
-.day-count {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  background: #c9932a;
-  color: #fff;
-  font-size: 9px;
-  border-radius: 8px;
-  padding: 1px 5px;
+/* Holds the capped list of chip/text rows plus the optional overflow
+   indicator, stacked below the day number. */
+.day-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.day-entry {
+  display: block;
+  width: 100%;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Category events: solid pastel chip, the color coming from
+   categoryColors via inline style. */
+.day-entry--event {
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 600;
+}
+
+/* Tasks/alerts: plain text (no background), distinguished from category
+   chips by shape rather than just color -- a small colored dot stands in
+   for the badge's urgency color at this size. */
+.day-entry--task {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #4a4a46;
+}
+
+.task-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.day-entry--overflow {
+  color: #8a8a85;
+  font-weight: 500;
 }
 
 .overlay {
@@ -436,13 +615,25 @@ function badgeFor(task) {
 .entry-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
 .entry-title {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-chip {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .badge {
