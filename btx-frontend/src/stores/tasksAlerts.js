@@ -7,8 +7,10 @@ import { supabase } from '@/lib/supabaseClient'
 // consistent with rows loaded from the initial fetch. `assigned_to` is
 // selected raw (not aliased to the profiles join) so components can compare
 // it against the signed-in user's id for button-visibility checks; the
-// joined name is exposed separately as `profiles`.
-const TASK_COLUMNS = 'task_id, title, due_date, status, type, assigned_to, completed_at, profiles(name)'
+// joined name is exposed separately as `profiles`. `created_at` is only
+// used by Alert Center's New Items section, not by anything in this store
+// itself.
+const TASK_COLUMNS = 'task_id, title, due_date, status, type, assigned_to, completed_at, created_at, profiles(name)'
 
 // Pinia store for the Tasks & Approvals list. Reads go through Supabase's
 // RLS SELECT policy on `tasks_alerts`, so the rows returned here are already

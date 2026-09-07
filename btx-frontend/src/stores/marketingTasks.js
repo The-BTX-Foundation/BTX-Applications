@@ -10,7 +10,10 @@ import { supabase } from '@/lib/supabaseClient'
 // joined name is exposed separately as `profiles`. Unlike tasks_alerts, the
 // primary key is `id` (not `task_id`) and the date column is `date` (not
 // `due_date`).
-const MARKETING_TASK_COLUMNS = 'id, title, type, date, assigned_to, description, status, completed_at, profiles(name)'
+// `created_at` is only used by Alert Center's New Items section, not by
+// anything in this store itself.
+const MARKETING_TASK_COLUMNS =
+  'id, title, type, date, assigned_to, description, status, completed_at, created_at, profiles(name)'
 
 // Pinia store for the Marketing Tasks list. Mirrors tasksAlerts.js's
 // pattern closely: reads go through Supabase's RLS SELECT policy on

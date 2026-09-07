@@ -6,7 +6,10 @@ import { supabase } from '@/lib/supabaseClient'
 // shaped rows. Same shape as marketingTasks.js's columns minus `type` —
 // fundraising_tasks has no type column at all, unlike marketing_tasks where
 // it exists purely for Calendar color-coding.
-const FUNDRAISING_TASK_COLUMNS = 'id, title, date, assigned_to, description, status, completed_at, profiles(name)'
+// `created_at` is only used by Alert Center's New Items section, not by
+// anything in this store itself.
+const FUNDRAISING_TASK_COLUMNS =
+  'id, title, date, assigned_to, description, status, completed_at, created_at, profiles(name)'
 
 // Pinia store for the Fundraising Tasks list. Mirrors marketingTasks.js's
 // pattern closely: reads go through Supabase's RLS SELECT policy on
