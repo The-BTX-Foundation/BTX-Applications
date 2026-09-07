@@ -1,14 +1,19 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useFundraisingHealthDraft } from '@/stores/fundraisingHealthDraft'
+import { useFundraisingHealthStore } from '@/stores/fundraisingHealth'
+import { useBudgetTrackingStore } from '@/stores/budgetTracking'
+import { useGrantPipelineStore } from '@/stores/grantPipeline'
 import HistoryBrowser from '@/components/HistoryBrowser.vue'
 
 const authStore = useAuthStore()
-// Cost to Raise a Dollar reads this page's own fundraising_expenses against
-// the OTHER page's revenue total -- a live cross-store read, not a copy, so
-// it updates the instant Fundraising Health's fields change.
-const fundraisingStore = useFundraisingHealthDraft()
+const budgetTrackingStore = useBudgetTrackingStore()
+const grantPipelineStore = useGrantPipelineStore()
+// Cost to Raise a Dollar reads this page's own fundraising_expenses
+// against Fundraising Health's most-recently-synced revenue total (not
+// necessarily the current calendar month) -- a live cross-store read, not
+// a copy, so it updates the instant a new fundraising_health row syncs.
+const fundraisingHealthStore = useFundraisingHealthStore()
 
 // Matches Donor Impact/Marketing's view convention. This page has no write
 // actions of its own -- everything on it, including Grant Pipeline, is
@@ -19,6 +24,13 @@ const canView = computed(() => authStore.isAdmin || authStore.isBoard || authSto
 
 onMounted(() => {
   authStore.init()
+  budgetTrackingStore.fetchAll()
+  // Fetched here too, independently of whether Fundraising Health's own
+  // page has ever been visited this session -- Pinia state only populates
+  // once its fetch actually runs, so Cost to Raise a Dollar can't assume
+  // the other page loaded it first.
+  fundraisingHealthStore.fetchAll()
+  grantPipelineStore.fetchAll()
 })
 
 // -- Field definitions for the Budget & Spend tab --
@@ -43,51 +55,60 @@ const VARIANCE_ROWS = [
   { key: 'marketing', label: 'Marketing' },
 ]
 
-// Flat draft holding Budget & Spend's fields plus the variance rows.
-// Revenue & Fundraising Health's fields now live in the separate
-// fundraisingStore (see costToRaiseADollar below for the one place that
-// still reads across into it).
-const draft = reactive({
-  ...Object.fromEntries(BUDGET_FIELDS.map((f) => [f.key, 0])),
-  ...Object.fromEntries(
-    VARIANCE_ROWS.flatMap((r) => [
-      [`${r.key}_budgeted`, 0],
-      [`${r.key}_actual`, 0],
-    ]),
-  ),
-})
+// Reads a field off a budget_tracking row, defaulting a still-null column
+// to 0 for display -- same reasoning as Fundraising Health's fieldValue.
+function fieldValue(row, key) {
+  return row?.[key] ?? 0
+}
+
+// Today's month label, used only for the main view's empty state when no
+// row has synced for the current month yet.
+const today = new Date()
+const todayLabel = today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 
 const programExpenseRatio = computed(() => {
-  const total = draft.program_expenses + draft.overhead_expenses
-  return total > 0 ? (draft.program_expenses / total) * 100 : 0
+  const row = budgetTrackingStore.currentMonthRow
+  const programs = fieldValue(row, 'program_expenses')
+  const overhead = fieldValue(row, 'overhead_expenses')
+  const total = programs + overhead
+  return total > 0 ? (programs / total) * 100 : 0
 })
 
-// Reads totalRevenue from the separate Fundraising Health store (a Pinia
-// singleton), not local state -- this is what makes it update live when
-// revenue fields change on the other page, without a reload.
-const costToRaiseADollar = computed(() =>
-  fundraisingStore.totalRevenue > 0 ? draft.fundraising_expenses / fundraisingStore.totalRevenue : 0,
-)
+// Reads mostRecentTotalRevenue from the separate Fundraising Health store
+// (a Pinia singleton), not local state -- this is what makes it update
+// live when a new fundraising_health row syncs, without a reload. Uses
+// the most-recently-synced row rather than requiring an exact
+// current-month match: this is a supporting ratio, not the main
+// Fundraising Health view, so it should read the best real data available
+// instead of showing 0 just because the current month hasn't synced yet.
+const costToRaiseADollar = computed(() => {
+  const revenue = fundraisingHealthStore.mostRecentTotalRevenue
+  const expenses = fieldValue(budgetTrackingStore.currentMonthRow, 'fundraising_expenses')
+  return revenue > 0 ? expenses / revenue : 0
+})
 
 // The one thing that gets its own top-of-page callout instead of living
 // inside a tab. Its two inputs (current_funds_on_hand,
 // monthly_operating_expense) are still just normal Budget & Spend fields --
-// this is a read-only computed display over the same draft, not a
-// separate data source.
-const burnRateMonths = computed(() =>
-  draft.monthly_operating_expense > 0 ? draft.current_funds_on_hand / draft.monthly_operating_expense : 0,
-)
+// this is a read-only computed display over the same row, not a separate
+// data source.
+const burnRateMonths = computed(() => {
+  const row = budgetTrackingStore.currentMonthRow
+  const funds = fieldValue(row, 'current_funds_on_hand')
+  const monthly = fieldValue(row, 'monthly_operating_expense')
+  return monthly > 0 ? funds / monthly : 0
+})
 
 // $ variance for a row. Positive means over budget.
-function varianceDollar(row) {
-  return draft[`${row.key}_actual`] - draft[`${row.key}_budgeted`]
+function varianceDollar(row, variance) {
+  return fieldValue(row, `${variance.key}_actual`) - fieldValue(row, `${variance.key}_budgeted`)
 }
 
 // % variance for a row, or null when budgeted is 0 -- avoids displaying an
 // Infinity/NaN result for a row that hasn't been budgeted yet.
-function variancePercent(row) {
-  const budgeted = draft[`${row.key}_budgeted`]
-  return budgeted !== 0 ? (varianceDollar(row) / budgeted) * 100 : null
+function variancePercent(row, variance) {
+  const budgeted = fieldValue(row, `${variance.key}_budgeted`)
+  return budgeted !== 0 ? (varianceDollar(row, variance) / budgeted) * 100 : null
 }
 
 // Formats a variance $ amount with the sign before the "$", not after --
@@ -110,12 +131,6 @@ function formatVariancePercent(value) {
   return '0.0%'
 }
 
-// -- Grant Pipeline: client-side only, same non-persisting pattern as the
-// rest of this page's placeholder fields -- no store, no Supabase call, and
-// (now that Add/Remove are gone) no way to populate this list at all; it
-// only exists to display grants once there's a real data source to read.
-const grants = ref([])
-
 // Toggles the shared HistoryBrowser (see components/HistoryBrowser.vue).
 // Its drill-down state lives inside that component and resets for free on
 // every toggle, since v-if/v-else below unmounts/remounts it each time.
@@ -134,109 +149,188 @@ const showHistory = ref(false)
       </button>
     </div>
 
-    <template v-if="!showHistory">
-      <!-- Page-level instance: governs the whole "Today" view below, shown
-           once here rather than repeated per field. -->
-      <p class="not-connected-note">Not yet connected to saved data — values shown are placeholders.</p>
+    <p v-if="budgetTrackingStore.loading">Loading…</p>
+    <p v-else-if="budgetTrackingStore.error" class="error">{{ budgetTrackingStore.error }}</p>
 
-      <div class="burn-rate-callout">
-        <span class="burn-rate-label">Burn Rate / Runway</span>
-        <span class="burn-rate-value">{{ burnRateMonths.toFixed(1) }} months of runway</span>
-      </div>
+    <template v-else>
+      <template v-if="!showHistory">
+        <p v-if="!budgetTrackingStore.currentMonthRow" class="not-connected-note">
+          No budget tracking data recorded for {{ todayLabel }} yet.
+        </p>
 
-      <div class="tabs">
-        <button
-          v-for="category in CATEGORY_TABS"
-          :key="category"
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': activeCategory === category }"
-          @click="activeCategory = category"
-        >
-          {{ category }}
-        </button>
-      </div>
-
-      <div class="category-panel">
-        <template v-if="activeCategory === 'Budget & Spend'">
-          <div class="metrics-group-fields">
-            <div v-for="field in BUDGET_FIELDS" :key="field.key" class="metric-field">
-              <span class="metric-label">{{ field.label }}</span>
-              <span class="metric-value">{{ draft[field.key] }}</span>
-            </div>
-          </div>
-
-          <div class="computed-row">
-            <div class="computed-display">
-              <span class="computed-label">Program Expense Ratio</span>
-              <span class="computed-value">{{ programExpenseRatio.toFixed(1) }}%</span>
-            </div>
-            <div class="computed-display">
-              <span class="computed-label">Cost to Raise a Dollar</span>
-              <span class="computed-value">${{ costToRaiseADollar.toFixed(2) }}</span>
-            </div>
-          </div>
-
-          <div class="variance-panel">
-            <h4 class="metrics-group-header">Budget Variance</h4>
-            <table class="variance-table">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Budgeted</th>
-                  <th>Actual</th>
-                  <th>Variance $</th>
-                  <th>Variance %</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in VARIANCE_ROWS" :key="row.key">
-                  <td class="variance-label">{{ row.label }}</td>
-                  <td>{{ draft[`${row.key}_budgeted`] }}</td>
-                  <td>{{ draft[`${row.key}_actual`] }}</td>
-                  <td :class="varianceDollar(row) > 0 ? 'variance--over' : 'variance--under'">
-                    {{ formatVarianceDollar(varianceDollar(row)) }}
-                  </td>
-                  <td
-                    :class="
-                      variancePercent(row) === null ? '' : variancePercent(row) > 0 ? 'variance--over' : 'variance--under'
-                    "
-                  >
-                    {{ formatVariancePercent(variancePercent(row)) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </template>
-
-        <div v-else class="grant-pipeline">
-          <h3 class="grant-pipeline-title">Grant Pipeline</h3>
-
-          <p v-if="grants.length === 0" class="chart-empty">No grants added yet.</p>
-          <table v-else class="grant-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Funder</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="grant in grants" :key="grant.id">
-                <td>{{ grant.name }}</td>
-                <td>{{ grant.funder }}</td>
-                <td>${{ grant.amount.toLocaleString() }}</td>
-                <td><span class="badge badge--default">{{ grant.status }}</span></td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="burn-rate-callout">
+          <span class="burn-rate-label">Burn Rate / Runway</span>
+          <span class="burn-rate-value">{{ burnRateMonths.toFixed(1) }} months of runway</span>
         </div>
-      </div>
-    </template>
 
-    <HistoryBrowser v-else />
+        <div class="tabs">
+          <button
+            v-for="category in CATEGORY_TABS"
+            :key="category"
+            type="button"
+            class="tab"
+            :class="{ 'tab--active': activeCategory === category }"
+            @click="activeCategory = category"
+          >
+            {{ category }}
+          </button>
+        </div>
+
+        <div class="category-panel">
+          <template v-if="activeCategory === 'Budget & Spend'">
+            <div class="metrics-group-fields">
+              <div v-for="field in BUDGET_FIELDS" :key="field.key" class="metric-field">
+                <span class="metric-label">{{ field.label }}</span>
+                <span class="metric-value">{{ fieldValue(budgetTrackingStore.currentMonthRow, field.key) }}</span>
+              </div>
+            </div>
+
+            <div class="computed-row">
+              <div class="computed-display">
+                <span class="computed-label">Program Expense Ratio</span>
+                <span class="computed-value">{{ programExpenseRatio.toFixed(1) }}%</span>
+              </div>
+              <div class="computed-display">
+                <span class="computed-label">Cost to Raise a Dollar</span>
+                <span class="computed-value">${{ costToRaiseADollar.toFixed(2) }}</span>
+              </div>
+            </div>
+
+            <div class="variance-panel">
+              <h4 class="metrics-group-header">Budget Variance</h4>
+              <table class="variance-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Budgeted</th>
+                    <th>Actual</th>
+                    <th>Variance $</th>
+                    <th>Variance %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in VARIANCE_ROWS" :key="row.key">
+                    <td class="variance-label">{{ row.label }}</td>
+                    <td>{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_budgeted`) }}</td>
+                    <td>{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_actual`) }}</td>
+                    <td
+                      :class="
+                        varianceDollar(budgetTrackingStore.currentMonthRow, row) > 0 ? 'variance--over' : 'variance--under'
+                      "
+                    >
+                      {{ formatVarianceDollar(varianceDollar(budgetTrackingStore.currentMonthRow, row)) }}
+                    </td>
+                    <td
+                      :class="
+                        variancePercent(budgetTrackingStore.currentMonthRow, row) === null
+                          ? ''
+                          : variancePercent(budgetTrackingStore.currentMonthRow, row) > 0
+                            ? 'variance--over'
+                            : 'variance--under'
+                      "
+                    >
+                      {{ formatVariancePercent(variancePercent(budgetTrackingStore.currentMonthRow, row)) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <div v-else class="grant-pipeline">
+            <h3 class="grant-pipeline-title">Grant Pipeline</h3>
+
+            <p v-if="grantPipelineStore.loading">Loading…</p>
+            <p v-else-if="grantPipelineStore.error" class="error">{{ grantPipelineStore.error }}</p>
+            <template v-else>
+              <p v-if="grantPipelineStore.grants.length === 0" class="chart-empty">No grants added yet.</p>
+              <table v-else class="grant-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Funder</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="grant in grantPipelineStore.grants" :key="grant.id">
+                    <td>{{ grant.grant_name }}</td>
+                    <td>{{ grant.funder }}</td>
+                    <td>{{ grant.amount != null ? `$${grant.amount.toLocaleString()}` : '—' }}</td>
+                    <td><span class="badge badge--default">{{ grant.status ?? '—' }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- month is 0-based (see HistoryBrowser.vue's slot contract) -- +1
+           to match reporting_month's 1-based value before looking up a
+           row. Program Expense Ratio/Cost to Raise a Dollar aren't
+           reproduced here -- the latter also cross-references Fundraising
+           Health's most-recent row, not this specific historical month --
+           so this view shows the stored historical fields only. -->
+      <HistoryBrowser v-else>
+        <template #detail="{ year, month }">
+          <template v-if="budgetTrackingStore.rowFor(year, month + 1)">
+            <div class="metrics-group-fields">
+              <div v-for="field in BUDGET_FIELDS" :key="field.key" class="metric-field">
+                <span class="metric-label">{{ field.label }}</span>
+                <span class="metric-value">{{
+                  fieldValue(budgetTrackingStore.rowFor(year, month + 1), field.key)
+                }}</span>
+              </div>
+            </div>
+
+            <div class="variance-panel">
+              <h4 class="metrics-group-header">Budget Variance</h4>
+              <table class="variance-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Budgeted</th>
+                    <th>Actual</th>
+                    <th>Variance $</th>
+                    <th>Variance %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in VARIANCE_ROWS" :key="row.key">
+                    <td class="variance-label">{{ row.label }}</td>
+                    <td>{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_budgeted`) }}</td>
+                    <td>{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_actual`) }}</td>
+                    <td
+                      :class="
+                        varianceDollar(budgetTrackingStore.rowFor(year, month + 1), row) > 0
+                          ? 'variance--over'
+                          : 'variance--under'
+                      "
+                    >
+                      {{ formatVarianceDollar(varianceDollar(budgetTrackingStore.rowFor(year, month + 1), row)) }}
+                    </td>
+                    <td
+                      :class="
+                        variancePercent(budgetTrackingStore.rowFor(year, month + 1), row) === null
+                          ? ''
+                          : variancePercent(budgetTrackingStore.rowFor(year, month + 1), row) > 0
+                            ? 'variance--over'
+                            : 'variance--under'
+                      "
+                    >
+                      {{ formatVariancePercent(variancePercent(budgetTrackingStore.rowFor(year, month + 1), row)) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <p v-else class="not-connected-note">No budget tracking data recorded for this month.</p>
+        </template>
+      </HistoryBrowser>
+    </template>
   </template>
 </template>
 
@@ -467,6 +561,10 @@ const showHistory = ref(false)
   background: #fff;
   color: #2d3142;
   border: 1px solid #d8d6cf;
+}
+
+.error {
+  color: #b3261e;
 }
 
 .access-denied {
