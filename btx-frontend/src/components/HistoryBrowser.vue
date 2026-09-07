@@ -2,11 +2,14 @@
 import { ref } from 'vue'
 
 // Year->Month drill-down state machine (null/null = year list, year/null =
-// month list, year/month = detail view). Fully self-contained: takes no
-// props and reads no page-specific data, since there's no real historical
-// dataset behind it yet -- the lists below are a fixed static range rather
-// than anything data-derived. Shared by BudgetTracking.vue and
-// FundraisingHealth.vue, each with its own independent instance/state.
+// month list, year/month = detail view). The year/month lists themselves
+// are still a fixed static range with no page-specific data awareness --
+// this component owns navigation only. The detail view's actual content
+// is supplied by each consumer via the "detail" scoped slot below, since
+// Fundraising Health and Budget Tracking have completely different field
+// shapes and neither should be baked into this shared shell. Shared by
+// BudgetTracking.vue and FundraisingHealth.vue, each with its own
+// independent instance/state.
 const selectedYear = ref(null)
 const selectedMonth = ref(null)
 
@@ -48,7 +51,16 @@ const historyMonths = Array.from({ length: 12 }, (_, i) => ({ index: i, label: m
         ← Back to Months
       </button>
       <h3 class="history-detail-heading">{{ monthLabel(selectedMonth) }} {{ selectedYear }}</h3>
-      <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
+      <!-- year/month passed to the consumer exactly as this component
+           holds them: selectedYear is a real calendar year (e.g. 2026),
+           but selectedMonth is the 0-based index historyMonths was built
+           from (0 = January), NOT a 1-based reporting_month/period_month
+           value. Consumers matching against a Supabase row's month column
+           must add 1 -- forgetting this is an easy off-by-one that would
+           silently look up the wrong month's row instead of erroring. -->
+      <slot name="detail" :year="selectedYear" :month="selectedMonth">
+        <p class="not-connected-note">Not yet connected to saved data — this won't persist.</p>
+      </slot>
     </template>
   </div>
 </template>
