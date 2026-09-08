@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFundraisingHealthStore } from '@/stores/fundraisingHealth'
+import HistoryBrowser from '@/components/HistoryBrowser.vue'
 
 const authStore = useAuthStore()
 const fundraisingHealthStore = useFundraisingHealthStore()
@@ -39,32 +40,20 @@ function fieldValue(row, key) {
 }
 
 // Formats a 1-based month number as its full month name (e.g. 9 ->
-// "September"). Used by both the left panel's month chips and the detail
+// "September"). Used by both the left panel's month cards and the detail
 // heading.
 function monthName(month) {
   return new Date(2000, month - 1, 1).toLocaleDateString(undefined, { month: 'long' })
 }
 
-// Selection state for the Year -> Month left panel. Both start on the real
-// current year/month so the page opens on "today" exactly like the old
-// flat page did -- no fetch needs to complete first since "today" is known
-// client-side immediately, unlike Donor Impact/Progress-to-Goal's
-// auto-select-most-recent (which has to wait on fetched data to know what
-// "most recent" even is).
+// Selection state for the flat month-card left panel. Both start on the
+// real current year/month so the page opens on "today" exactly like the
+// pre-history-button flat page did -- no fetch needs to complete first
+// since "today" is known client-side immediately, unlike Donor
+// Impact/Progress-to-Goal's auto-select-most-recent (which has to wait on
+// fetched data to know what "most recent" even is).
 const selectedYear = ref(fundraisingHealthStore.currentYear)
 const selectedMonth = ref(fundraisingHealthStore.currentMonth)
-
-// Which year's month chips are expanded in the accordion -- only one year
-// open at a time keeps the panel compact given the larger row count months
-// bring vs. Donor Impact/Progress-to-Goal's one-card-per-year lists. Starts
-// on the current year to match the default selection above.
-const expandedYear = ref(fundraisingHealthStore.currentYear)
-
-// Toggles a year's month chips open/closed; clicking the already-expanded
-// year collapses it instead of doing nothing.
-function toggleYear(year) {
-  expandedYear.value = expandedYear.value === year ? null : year
-}
 
 // Selects a given year/month as the detail panel's current subject.
 function selectMonth(year, month) {
@@ -77,14 +66,23 @@ const selectedRow = computed(() => fundraisingHealthStore.rowFor(selectedYear.va
 // True only when the selection is the real current calendar month, not just
 // any month a user clicked to -- gates the Fundraising Goal Progress card
 // below, since that stat is deliberately "today's" progress only and isn't
-// recomputed for arbitrary past months (matching what the old
-// HistoryBrowser-based detail view already did by omitting it entirely
-// outside the main view).
+// recomputed for arbitrary past months.
 const isCurrentMonthSelected = computed(
   () =>
     selectedYear.value === fundraisingHealthStore.currentYear &&
     selectedMonth.value === fundraisingHealthStore.currentMonth,
 )
+
+// Builds a month card's badge text/variant -- a plain calendar check
+// against the store's real "today", not DonorImpact's inferred
+// most-recent-published-year logic, since every month here (including one
+// that hasn't synced yet) has an unambiguous real/not-real "current month"
+// answer.
+function badgeFor(entry) {
+  return entry.year === fundraisingHealthStore.currentYear && entry.month === fundraisingHealthStore.currentMonth
+    ? { text: 'Live', variant: 'live' }
+    : { text: 'Archived', variant: 'default' }
+}
 
 // Goal progress for the CURRENT month specifically -- reads
 // currentMonthTotalRevenue/currentMonthRow, not the selected row (that
@@ -96,6 +94,26 @@ const fundraisingGoalProgress = computed(() => {
   const goal = fundraisingHealthStore.currentMonthRow?.annual_goal
   return goal > 0 ? (fundraisingHealthStore.currentMonthTotalRevenue / goal) * 100 : 0
 })
+
+// Revenue Sources table rows -- the four raw revenue columns that make up
+// a row's total, in the same order as FIELDS above.
+const REVENUE_SOURCES = [
+  { key: 'individual_donors', label: 'Individual Donors' },
+  { key: 'corporate_partnerships', label: 'Corporate Partnerships' },
+  { key: 'grants_revenue', label: 'Grants' },
+  { key: 'events_revenue', label: 'Events' },
+]
+
+// A source's % share of a row's total revenue -- takes row explicitly
+// (like fieldValue, and like BudgetTracking's varianceDollar/
+// variancePercent) rather than closing over selectedRow, so both the main
+// detail column and the HistoryBrowser slot below can reuse it for
+// whichever row they're each showing. 0% (not NaN/Infinity) when the row
+// has no revenue at all yet.
+function revenueShare(row, key) {
+  const total = fundraisingHealthStore.sumRevenue(row)
+  return total > 0 ? (fieldValue(row, key) / total) * 100 : 0
+}
 
 // Chart tab definitions, each keyed to a real fundraising_health column.
 const CHART_TABS = [
@@ -140,6 +158,12 @@ function barLabel(row) {
     year: '2-digit',
   })
 }
+
+// Toggles the shared HistoryBrowser (see components/HistoryBrowser.vue).
+// Its drill-down state lives inside that component and resets for free on
+// every toggle, since v-if/v-else below unmounts/remounts it each time.
+// Matches BudgetTracking.vue's own showHistory toggle exactly.
+const showHistory = ref(false)
 </script>
 
 <template>
@@ -147,136 +171,216 @@ function barLabel(row) {
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
 
   <template v-else>
+    <div class="page-header">
+      <h2>Fundraising Health</h2>
+      <button type="button" class="btn btn--outline" @click="showHistory = !showHistory">
+        {{ showHistory ? '← Back to Today' : 'View Fundraising History' }}
+      </button>
+    </div>
+
     <p v-if="fundraisingHealthStore.loading">Loading…</p>
     <p v-else-if="fundraisingHealthStore.error" class="error">{{ fundraisingHealthStore.error }}</p>
 
-    <div v-else class="fundraising-health">
-      <div class="year-column">
-        <div class="year-column-header">
-          <h2>Fundraising Health</h2>
-        </div>
-
-        <ul class="year-list">
-          <li v-for="entry in fundraisingHealthStore.yearMonthTree" :key="entry.year">
-            <button
-              type="button"
-              class="year-card"
-              :class="{ 'year-card--active': entry.year === selectedYear }"
-              @click="toggleYear(entry.year)"
-            >
-              <span class="year-label">{{ entry.year }}</span>
-              <span class="year-toggle">{{ expandedYear === entry.year ? '−' : '+' }}</span>
-            </button>
-
-            <ul v-if="expandedYear === entry.year" class="month-list">
-              <li v-for="month in entry.months" :key="month">
-                <button
-                  type="button"
-                  class="month-chip"
-                  :class="{ 'month-chip--active': entry.year === selectedYear && month === selectedMonth }"
-                  @click="selectMonth(entry.year, month)"
-                >
-                  {{ monthName(month) }}
-                </button>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-
-      <div class="detail-column">
-        <h2>{{ monthName(selectedMonth) }} {{ selectedYear }}</h2>
-
-        <p v-if="!selectedRow" class="not-connected-note">
-          No fundraising health data recorded for {{ monthName(selectedMonth) }} {{ selectedYear }} yet.
-        </p>
-
-        <div class="metrics-group-fields">
-          <div v-for="field in FIELDS" :key="field.key" class="metric-field">
-            <span class="metric-label">{{ field.label }}</span>
-            <span class="value-with-suffix">
-              <span class="metric-value">{{ fieldValue(selectedRow, field.key) }}</span>
-              <span v-if="field.format === 'percent'" class="value-suffix">%</span>
-            </span>
-          </div>
-        </div>
-
-        <div v-if="isCurrentMonthSelected" class="computed-row">
-          <div class="computed-display">
-            <span class="computed-label">Fundraising Goal Progress</span>
-            <span class="computed-value">{{ fundraisingGoalProgress.toFixed(1) }}%</span>
-          </div>
-        </div>
-
-        <div class="chart">
-          <h3>{{ chartMetric?.label }} by Month</h3>
-
-          <div class="chart-tabs">
-            <button
-              v-for="tab in CHART_TABS"
-              :key="tab.key"
-              type="button"
-              class="chart-tab"
-              :class="{ 'chart-tab--active': tab.key === chartMetricKey }"
-              @click="chartMetricKey = tab.key"
-            >
-              {{ tab.label }}
-            </button>
+    <template v-else>
+      <div v-if="!showHistory" class="fundraising-health">
+        <div class="month-column">
+          <div class="month-column-header">
+            <h2>Reporting Months</h2>
           </div>
 
-          <p v-if="fundraisingHealthStore.chartRows.length === 0" class="chart-empty">
-            No fundraising health data synced yet.
-          </p>
-          <div v-else class="bars-scroll">
-            <div class="bars">
-              <div
-                v-for="row in fundraisingHealthStore.chartRows"
-                :key="`${row.period_year}-${row.period_month}`"
-                class="bar-col"
+          <ul class="month-list">
+            <li v-for="entry in fundraisingHealthStore.monthEntries" :key="`${entry.year}-${entry.month}`">
+              <button
+                type="button"
+                class="month-card"
+                :class="{ 'month-card--active': entry.year === selectedYear && entry.month === selectedMonth }"
+                @click="selectMonth(entry.year, entry.month)"
               >
-                <span class="bar-value">{{ formatBarValue(row) }}</span>
-                <div class="bar" :style="{ height: barHeight(row) }"></div>
-                <span class="bar-label">{{ barLabel(row) }}</span>
+                <span class="month-label">{{ monthName(entry.month) }} {{ entry.year }}</span>
+                <span class="badge" :class="`badge--${badgeFor(entry).variant}`">
+                  {{ badgeFor(entry).text }}
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="detail-column">
+          <h2>{{ monthName(selectedMonth) }} {{ selectedYear }}</h2>
+
+          <p v-if="!selectedRow" class="not-connected-note">
+            No fundraising health data recorded for {{ monthName(selectedMonth) }} {{ selectedYear }} yet.
+          </p>
+
+          <div class="metrics-group-fields">
+            <div v-for="field in FIELDS" :key="field.key" class="metric-field">
+              <span class="metric-label">{{ field.label }}</span>
+              <span class="value-with-suffix">
+                <span class="metric-value">{{ fieldValue(selectedRow, field.key) }}</span>
+                <span v-if="field.format === 'percent'" class="value-suffix">%</span>
+              </span>
+            </div>
+          </div>
+
+          <div v-if="isCurrentMonthSelected" class="computed-row">
+            <div class="computed-display">
+              <span class="computed-label">Fundraising Goal Progress</span>
+              <span class="computed-value">{{ fundraisingGoalProgress.toFixed(1) }}%</span>
+            </div>
+          </div>
+
+          <div class="revenue-panel">
+            <h4 class="metrics-group-header">Revenue Sources</h4>
+            <table class="revenue-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Amount</th>
+                  <th>% of Total Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="source in REVENUE_SOURCES" :key="source.key">
+                  <td class="revenue-label">{{ source.label }}</td>
+                  <td>${{ fieldValue(selectedRow, source.key).toLocaleString() }}</td>
+                  <td>{{ revenueShare(selectedRow, source.key).toFixed(1) }}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="chart">
+            <h3>{{ chartMetric?.label }} by Month</h3>
+
+            <div class="chart-tabs">
+              <button
+                v-for="tab in CHART_TABS"
+                :key="tab.key"
+                type="button"
+                class="chart-tab"
+                :class="{ 'chart-tab--active': tab.key === chartMetricKey }"
+                @click="chartMetricKey = tab.key"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+
+            <p v-if="fundraisingHealthStore.chartRows.length === 0" class="chart-empty">
+              No fundraising health data synced yet.
+            </p>
+            <div v-else class="bars-scroll">
+              <div class="bars">
+                <div
+                  v-for="row in fundraisingHealthStore.chartRows"
+                  :key="`${row.period_year}-${row.period_month}`"
+                  class="bar-col"
+                >
+                  <span class="bar-value">{{ formatBarValue(row) }}</span>
+                  <div class="bar" :style="{ height: barHeight(row) }"></div>
+                  <span class="bar-label">{{ barLabel(row) }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- month is 0-based (see HistoryBrowser.vue's slot contract) -- +1
+           to match period_month's 1-based value before looking up a row.
+           Fundraising Goal Progress and the by-month chart aren't
+           reproduced here -- both are "today"/across-every-month features,
+           not single-arbitrary-month ones, matching BudgetTracking.vue's
+           own exclusion of Program Expense Ratio/Cost to Raise a Dollar
+           from this same slot. Revenue Sources IS reproduced, since it's a
+           pure per-row computation with no "today" dependency, matching
+           BudgetTracking's Budget Variance table being reproduced here for
+           the same reason. -->
+      <HistoryBrowser v-else>
+        <template #detail="{ year, month }">
+          <template v-if="fundraisingHealthStore.rowFor(year, month + 1)">
+            <div class="metrics-group-fields">
+              <div v-for="field in FIELDS" :key="field.key" class="metric-field">
+                <span class="metric-label">{{ field.label }}</span>
+                <span class="value-with-suffix">
+                  <span class="metric-value">{{
+                    fieldValue(fundraisingHealthStore.rowFor(year, month + 1), field.key)
+                  }}</span>
+                  <span v-if="field.format === 'percent'" class="value-suffix">%</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="revenue-panel">
+              <h4 class="metrics-group-header">Revenue Sources</h4>
+              <table class="revenue-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Amount</th>
+                    <th>% of Total Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="source in REVENUE_SOURCES" :key="source.key">
+                    <td class="revenue-label">{{ source.label }}</td>
+                    <td>${{ fieldValue(fundraisingHealthStore.rowFor(year, month + 1), source.key).toLocaleString() }}</td>
+                    <td>{{ revenueShare(fundraisingHealthStore.rowFor(year, month + 1), source.key).toFixed(1) }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <p v-else class="not-connected-note">No fundraising health data recorded for this month.</p>
+        </template>
+      </HistoryBrowser>
+    </template>
   </template>
 </template>
 
 <style scoped>
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
 .fundraising-health {
   display: flex;
   gap: 24px;
   align-items: flex-start;
 }
 
-.year-column {
+.month-column {
   flex-shrink: 0;
   width: 220px;
 }
 
-.year-column-header {
+.month-column-header {
   margin-bottom: 12px;
 }
 
-.year-column-header h2 {
+.month-column-header h2 {
   margin: 0;
   font-size: 18px;
 }
 
-.year-list {
+.month-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.year-card {
+.month-card {
   width: 100%;
   display: flex;
   align-items: center;
@@ -284,53 +388,41 @@ function barLabel(row) {
   gap: 8px;
   background: #fff;
   border: 0.5px solid #e5e3dd;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
   cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
-.year-card--active {
+.month-card--active {
   border: 1px solid #c9932a;
 }
 
-.year-label {
-  font-size: 14px;
+.month-label {
+  font-size: 15px;
   font-weight: 500;
   color: #2d3142;
 }
 
-.year-toggle {
-  font-size: 14px;
-  color: #8a8a85;
-}
-
-.month-list {
-  list-style: none;
-  padding: 6px 0 2px 8px;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.month-chip {
+/* Same badge styling as DonorImpact.vue's Live/Archived cycle badges. */
+.badge {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
-  font-weight: 500;
-  padding: 5px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
-  border: 0.5px solid #e5e3dd;
-  background: #faf9f6;
-  color: #5f5e5a;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
-.month-chip--active {
-  background: #faeeda;
-  color: #854f0b;
-  border-color: #c9932a;
-  font-weight: 600;
+.badge--live {
+  background: #e3f1e1;
+  color: #2e7d32;
+}
+
+.badge--default {
+  background: #f1efe8;
+  color: #5f5e5a;
 }
 
 .detail-column {
@@ -408,9 +500,52 @@ function barLabel(row) {
   color: #c9932a;
 }
 
-/* Card wrapper reusing the year-card/month-chip border treatment, so the
-   chart reads as a grouped panel consistent with Donor Impact/Progress-to-
-   Goal's own .chart cards. */
+.metrics-group-header {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8a8a85;
+}
+
+/* Same panel/table chrome as BudgetTracking.vue's .variance-panel/
+   .variance-table -- adapted to this table's own Source/Amount/% columns
+   rather than copying Budgeted/Actual/Variance verbatim. */
+.revenue-panel {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.revenue-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.revenue-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a8a85;
+  padding: 0 8px 8px 0;
+}
+
+.revenue-table td {
+  padding: 6px 8px 6px 0;
+  font-size: 14px;
+  color: #2d3142;
+}
+
+.revenue-label {
+  font-weight: 500;
+}
+
+/* Card wrapper reusing the month-card/revenue-panel border treatment, so
+   the chart reads as a grouped panel consistent with Donor Impact/
+   Progress-to-Goal's own .chart cards. */
 .chart {
   border: 0.5px solid #e5e3dd;
   border-radius: 12px;
@@ -495,6 +630,20 @@ function barLabel(row) {
   margin-top: 8px;
   font-size: 13px;
   color: #2d3142;
+}
+
+.btn {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn--outline {
+  background: #fff;
+  color: #2d3142;
+  border: 1px solid #d8d6cf;
 }
 
 .error {

@@ -62,14 +62,16 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   const mostRecentRow = computed(() => rows.value[0] ?? null)
 
   // Looks up the row for an arbitrary (year, 1-based month) pair. Takes a
-  // 1-based month, matching period_month's own convention. Two callers,
-  // two different calling conventions: FundraisingHealth.vue owns its own
-  // Year/Month selection state directly (already 1-based, see its
-  // selectedMonth ref), so it calls this with no translation.
-  // BudgetTracking.vue still drills down through HistoryBrowser's shared
-  // 0-based selectedMonth slot (0 = January), so it must add 1 before
-  // calling -- forgetting that add-1 there would silently look up the
-  // wrong month's row instead of erroring.
+  // 1-based month, matching period_month's own convention. Two calling
+  // conventions meet here, and FundraisingHealth.vue now uses both: its
+  // own flat month-card list owns 1-based selectedYear/selectedMonth
+  // state directly, so calls from there need no translation, while its
+  // "View Fundraising History" button switches in HistoryBrowser's shared
+  // 0-based selectedMonth slot (0 = January), whose calls must add 1
+  // first. BudgetTracking.vue only ever goes through that same
+  // HistoryBrowser slot, so it always adds 1 too. Forgetting that add-1 on
+  // either HistoryBrowser call site would silently look up the wrong
+  // month's row instead of erroring.
   function rowFor(year, month) {
     return rows.value.find((row) => row.period_year === year && row.period_month === month) ?? null
   }
@@ -77,7 +79,10 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   // Sums a row's four revenue fields. Nullable columns are safe to add
   // directly -- `null + number` evaluates as `0 + number` in JS -- so no
   // extra guarding is needed even before every field has been synced for
-  // a given month.
+  // a given month. Exported (not just used internally below) because
+  // FundraisingHealth.vue's Revenue Sources table also needs this same
+  // total as the denominator for each source's % share, for whichever
+  // month is currently selected -- not just the current or most-recent one.
   function sumRevenue(row) {
     if (!row) return 0
     return row.individual_donors + row.corporate_partnerships + row.grants_revenue + row.events_revenue
@@ -86,33 +91,26 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   const currentMonthTotalRevenue = computed(() => sumRevenue(currentMonthRow.value))
   const mostRecentTotalRevenue = computed(() => sumRevenue(mostRecentRow.value))
 
-  // Builds the left panel's Year -> Months tree from whatever rows actually
-  // exist, instead of a hardcoded range like the old HistoryBrowser's fixed
-  // 5-year/12-month arrays -- a year/month only appears here if a row was
-  // really synced for it. The real current year/month is always injected
-  // even if nothing has synced for it yet: FundraisingHealth.vue's default
-  // view is always "today", so the list's entry point must exist on first
-  // load exactly like currentMonthRow already tolerates being null instead
-  // of the page having nothing to select. Years sort newest-first and
-  // months sort newest-first within a year, matching fetchAll's own
+  // Builds the left panel's flat, most-recent-first month card list from
+  // whatever rows actually exist, instead of a hardcoded range like the old
+  // HistoryBrowser's fixed 5-year/12-month arrays -- a (year, month) pair
+  // only appears here if a row was really synced for it. The real current
+  // year/month is always injected even if nothing has synced for it yet:
+  // FundraisingHealth.vue's default view is always "today", so the list's
+  // entry point must exist on first load exactly like currentMonthRow
+  // already tolerates being null instead of the page having nothing to
+  // select. Sorted newest-first by (year, month), matching fetchAll's own
   // ORDER BY direction.
-  const yearMonthTree = computed(() => {
-    const monthsByYear = new Map()
+  const monthEntries = computed(() => {
+    const seen = new Set(rows.value.map((row) => `${row.period_year}-${row.period_month}`))
+    seen.add(`${currentYear}-${currentMonth}`)
 
-    for (const row of rows.value) {
-      if (!monthsByYear.has(row.period_year)) monthsByYear.set(row.period_year, new Set())
-      monthsByYear.get(row.period_year).add(row.period_month)
-    }
-
-    if (!monthsByYear.has(currentYear)) monthsByYear.set(currentYear, new Set())
-    monthsByYear.get(currentYear).add(currentMonth)
-
-    return Array.from(monthsByYear.entries())
-      .sort(([yearA], [yearB]) => yearB - yearA)
-      .map(([year, months]) => ({
-        year,
-        months: Array.from(months).sort((a, b) => b - a),
-      }))
+    return Array.from(seen)
+      .map((key) => {
+        const [year, month] = key.split('-').map(Number)
+        return { year, month }
+      })
+      .sort((a, b) => b.year - a.year || b.month - a.month)
   })
 
   // Every synced row, oldest first -- feeds the chart's left-to-right
@@ -135,7 +133,8 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
     rowFor,
     currentMonthTotalRevenue,
     mostRecentTotalRevenue,
-    yearMonthTree,
+    monthEntries,
     chartRows,
+    sumRevenue,
   }
 })
