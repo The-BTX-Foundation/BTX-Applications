@@ -2,9 +2,11 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProgramPlanProgressStore } from '@/stores/programPlanProgress'
+import { useProgramPlanMilestonesStore } from '@/stores/programPlanMilestones'
 
 const authStore = useAuthStore()
 const programPlanProgressStore = useProgramPlanProgressStore()
+const programPlanMilestonesStore = useProgramPlanMilestonesStore()
 
 // Same page-access gate as DonorImpact.vue/FundraisingHealth.vue: admin,
 // board, and reviewer can view; applicant is blocked. Matches
@@ -18,12 +20,16 @@ onMounted(() => {
 // Refetch whenever the signed-in user changes (sign in, sign out, switch
 // accounts). Skips the fetch entirely while signed out or for a role that
 // can't view this page, since RLS would just reject it with a
-// permission-denied error before the user ever gets a chance to act.
+// permission-denied error before the user ever gets a chance to act. Fetches
+// both stores -- the plan cards/stats/chart need programPlanProgressStore,
+// the new milestone list needs programPlanMilestonesStore -- since both are
+// gated by the exact same canView check and RLS policy.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
     if (userId && canView.value) {
       programPlanProgressStore.fetchPlans()
+      programPlanMilestonesStore.fetchMilestones()
     }
   },
   { immediate: true },
@@ -63,6 +69,46 @@ function badgeFor(plan) {
     ? { text: 'Live', variant: 'live' }
     : { text: 'Archived', variant: 'default' }
 }
+
+// Chart tabs, each keyed to one of program_plan_progress's own count
+// columns directly -- unlike DonorImpact.vue's DONOR_IMPACT_METRICS (which
+// needs a `computed` fn per metric for things like Average Scholarship
+// Size), every value plotted here is already a raw stored count, so a
+// plain label map is enough.
+const CHART_TABS = [
+  { key: 'milestones_complete', label: 'Milestones Complete' },
+  { key: 'tasks_complete', label: 'Tasks Complete' },
+  { key: 'tasks_in_progress', label: 'In Progress' },
+  { key: 'tasks_not_started', label: 'Not Yet Started' },
+]
+const chartMetricKey = ref('milestones_complete')
+
+// Every fetched plan year, oldest first, for the chart's left-to-right
+// timeline -- same ascending-by-year ordering as DonorImpact.vue's
+// publishedCycles, but over every plan year rather than a "published"
+// subset: program_plan_progress has no draft/live flag (see liveYear's own
+// comment above), so there's no equivalent filter to apply here.
+const chartPlans = computed(() =>
+  [...programPlanProgressStore.plans].sort((a, b) => a.plan_year - b.plan_year),
+)
+
+const maxChartValue = computed(() =>
+  Math.max(...chartPlans.value.map((plan) => plan[chartMetricKey.value]), 1),
+)
+
+// Bar height as a percentage of the highest value for the selected tab
+// across every plotted plan year.
+function barHeight(plan) {
+  return `${(plan[chartMetricKey.value] / maxChartValue.value) * 100}%`
+}
+
+// Every milestone for the currently selected plan year, alphabetical --
+// programPlanMilestonesStore.milestones already comes back
+// alphabetically ordered (see its own fetchMilestones), so this only needs
+// to filter by year, not re-sort.
+const selectedPlanMilestones = computed(() =>
+  programPlanMilestonesStore.milestones.filter((milestone) => milestone.plan_year === selectedPlanYear.value),
+)
 </script>
 
 <template>
@@ -122,6 +168,58 @@ function badgeFor(plan) {
             <span class="stat-label">Not Yet Started</span>
             <span class="stat-value">{{ selectedPlan.tasks_not_started }}</span>
           </div>
+        </div>
+
+        <!-- Same chart shape as DonorImpact.vue's .chart card: title, tab
+             row, then bar columns -- reuses those class names verbatim
+             (see the shared style comment below) so the two pages read as
+             one visual system. Plots raw counts across every fetched plan
+             year, not just the one currently selected above. -->
+        <div class="chart">
+          <h3>{{ CHART_TABS.find((tab) => tab.key === chartMetricKey)?.label }} by Year</h3>
+
+          <div class="chart-tabs">
+            <button
+              v-for="tab in CHART_TABS"
+              :key="tab.key"
+              type="button"
+              class="chart-tab"
+              :class="{ 'chart-tab--active': tab.key === chartMetricKey }"
+              @click="chartMetricKey = tab.key"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+
+          <p v-if="chartPlans.length === 0" class="chart-empty">No program plans yet.</p>
+          <div v-else class="bars">
+            <div v-for="plan in chartPlans" :key="plan.plan_year" class="bar-col">
+              <span class="bar-value">{{ plan[chartMetricKey].toLocaleString() }}</span>
+              <div class="bar" :style="{ height: barHeight(plan) }"></div>
+              <span class="bar-label">{{ plan.plan_year }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Milestone list: every program_plan_milestones row for the
+             selected plan year, name + complete/incomplete status. Reuses
+             the plan cards' own Live/Archived badge classes (badge--live
+             reads as a natural "done" green here too) instead of inventing
+             a third badge color for this one section. -->
+        <div class="milestone-list-section">
+          <h3>Milestones</h3>
+
+          <p v-if="selectedPlanMilestones.length === 0" class="chart-empty">
+            No milestones synced for this plan year yet.
+          </p>
+          <ul v-else class="milestone-list">
+            <li v-for="milestone in selectedPlanMilestones" :key="milestone.id" class="milestone-row">
+              <span class="milestone-name">{{ milestone.milestone_name }}</span>
+              <span class="badge" :class="milestone.is_complete ? 'badge--live' : 'badge--default'">
+                {{ milestone.is_complete ? 'Complete' : 'Incomplete' }}
+              </span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -228,6 +326,7 @@ function badgeFor(plan) {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+  margin-bottom: 20px;
 }
 
 .stat {
@@ -249,6 +348,127 @@ function badgeFor(plan) {
 .stat-value {
   font-size: 22px;
   font-weight: 600;
+  color: #2d3142;
+}
+
+/* Chart card: same shape/class names as DonorImpact.vue's own .chart --
+   card wrapper reusing .plan-card's border treatment so it reads as a
+   grouped panel consistent with the plan-list cards already on this page. */
+.chart {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.chart h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+}
+
+.chart-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chart-tab {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #8a8a85;
+  cursor: pointer;
+}
+
+.chart-tab--active {
+  background: #faeeda;
+  color: #854f0b;
+  font-weight: 600;
+}
+
+.chart-empty {
+  margin: 0;
+  color: #8a8a85;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  height: 180px;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  width: 48px;
+}
+
+.bar-value {
+  font-size: 12px;
+  color: #8a8a85;
+  margin-bottom: 4px;
+}
+
+.bar {
+  width: 100%;
+  background: #c9932a;
+  border-radius: 4px 4px 0 0;
+}
+
+.bar-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #2d3142;
+}
+
+/* Milestone list card: same card treatment as .chart above, its own
+   section since it's a list rather than a bar chart. */
+.milestone-list-section {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+}
+
+.milestone-list-section h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+}
+
+.milestone-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.milestone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.milestone-name {
+  font-size: 14px;
   color: #2d3142;
 }
 
