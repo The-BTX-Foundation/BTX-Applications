@@ -61,12 +61,15 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   // simply the first element.
   const mostRecentRow = computed(() => rows.value[0] ?? null)
 
-  // Looks up the row for an arbitrary (year, 1-based month) pair -- used
-  // by the History browser's per-month detail view, which needs to look
-  // up whichever month the user drills into, not just the current one.
-  // Takes a 1-based month (matching period_month's own convention) --
-  // callers translating from HistoryBrowser's 0-based selectedMonth must
-  // add 1 before calling.
+  // Looks up the row for an arbitrary (year, 1-based month) pair. Takes a
+  // 1-based month, matching period_month's own convention. Two callers,
+  // two different calling conventions: FundraisingHealth.vue owns its own
+  // Year/Month selection state directly (already 1-based, see its
+  // selectedMonth ref), so it calls this with no translation.
+  // BudgetTracking.vue still drills down through HistoryBrowser's shared
+  // 0-based selectedMonth slot (0 = January), so it must add 1 before
+  // calling -- forgetting that add-1 there would silently look up the
+  // wrong month's row instead of erroring.
   function rowFor(year, month) {
     return rows.value.find((row) => row.period_year === year && row.period_month === month) ?? null
   }
@@ -83,15 +86,56 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   const currentMonthTotalRevenue = computed(() => sumRevenue(currentMonthRow.value))
   const mostRecentTotalRevenue = computed(() => sumRevenue(mostRecentRow.value))
 
+  // Builds the left panel's Year -> Months tree from whatever rows actually
+  // exist, instead of a hardcoded range like the old HistoryBrowser's fixed
+  // 5-year/12-month arrays -- a year/month only appears here if a row was
+  // really synced for it. The real current year/month is always injected
+  // even if nothing has synced for it yet: FundraisingHealth.vue's default
+  // view is always "today", so the list's entry point must exist on first
+  // load exactly like currentMonthRow already tolerates being null instead
+  // of the page having nothing to select. Years sort newest-first and
+  // months sort newest-first within a year, matching fetchAll's own
+  // ORDER BY direction.
+  const yearMonthTree = computed(() => {
+    const monthsByYear = new Map()
+
+    for (const row of rows.value) {
+      if (!monthsByYear.has(row.period_year)) monthsByYear.set(row.period_year, new Set())
+      monthsByYear.get(row.period_year).add(row.period_month)
+    }
+
+    if (!monthsByYear.has(currentYear)) monthsByYear.set(currentYear, new Set())
+    monthsByYear.get(currentYear).add(currentMonth)
+
+    return Array.from(monthsByYear.entries())
+      .sort(([yearA], [yearB]) => yearB - yearA)
+      .map(([year, months]) => ({
+        year,
+        months: Array.from(months).sort((a, b) => b - a),
+      }))
+  })
+
+  // Every synced row, oldest first -- feeds the chart's left-to-right
+  // timeline. rows is fetched newest-first for the list/lookups above, so
+  // this is a separate reversed-sort copy rather than reusing rows.value
+  // directly.
+  const chartRows = computed(() =>
+    [...rows.value].sort((a, b) => a.period_year - b.period_year || a.period_month - b.period_month),
+  )
+
   return {
     rows,
     loading,
     error,
     fetchAll,
+    currentYear,
+    currentMonth,
     currentMonthRow,
     mostRecentRow,
     rowFor,
     currentMonthTotalRevenue,
     mostRecentTotalRevenue,
+    yearMonthTree,
+    chartRows,
   }
 })
