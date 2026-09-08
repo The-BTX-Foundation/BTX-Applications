@@ -1,11 +1,22 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+import { useMergedTasks } from '@/composables/useMergedTasks'
 import { useEventTrackerEventsStore } from '@/stores/eventTrackerEvents'
 
 const authStore = useAuthStore()
-const tasksAlertsStore = useTasksAlertsStore()
+// useMergedTasks() fetches and normalizes all four task tables at once
+// (tasks_alerts/marketing_tasks/budgeting_tasks/fundraising_tasks) since
+// that fetch+normalize logic is shared, deliberately reusable infra (see
+// its own header comment). marketing_tasks is fetched here too and then
+// filtered back out in visibleTasks below -- Marketing already has its own
+// dedicated Marketing Calendar page with its own color scheme
+// (marketingTaskTypes.js), so showing marketing_tasks a second time on this
+// calendar would be redundant. The one tradeoff accepted: a marketing_tasks
+// fetch happens on this page even though its rows are discarded, rather
+// than duplicating useMergedTasks' task_id/id and due_date/date column
+// folding a second time just to avoid one extra query.
+const { allTasks, anyLoading: tasksLoading, firstError: tasksError } = useMergedTasks()
 const eventTrackerEventsStore = useEventTrackerEventsStore()
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -23,10 +34,11 @@ const DAY_CELL_ENTRY_CAP = 3
 // are deliberately left out of this palette even though they'd otherwise
 // fit the same pastel-bg/dark-text formula as the rest: those two hues are
 // reserved for task-urgency signaling elsewhere in this component (the
-// due-today/due-tomorrow badge and the overdue badge, and the matching dot
-// color on task entries in the grid -- see taskDotColor below). If a
-// category chip could also render amber or red, it would visually collide
-// with "this task is due soon/overdue," a meaning categories don't carry.
+// due-today/due-tomorrow badge and the overdue badge, and the matching
+// left-border strip on task chips in the grid -- see the
+// day-entry--urgency-* classes below). If a category chip could also
+// render amber or red, it would visually collide with "this task is due
+// soon/overdue," a meaning categories don't carry.
 const CATEGORY_PALETTE = [
   { bg: '#e3edfb', text: '#1d4ed8' }, // blue
   { bg: '#e2f3e6', text: '#1e6b3a' }, // green
@@ -45,6 +57,45 @@ const CATEGORY_PALETTE = [
   { bg: '#e4edf0', text: '#2b5566' }, // steel
   { bg: '#eef0d9', text: '#5c5f1f' }, // olive
 ]
+
+// Fixed, curated bg/text pair per task domain (not hashed/random), same
+// "small curated map" pattern as marketingTaskTypes.js's
+// MARKETING_TASK_TYPE_COLORS -- unlike CATEGORY_PALETTE these are assigned
+// by source key directly rather than by sorted index, since there are only
+// three domains and their identity (not an alphabetical position) is what
+// needs to stay stable. marketing_tasks has no entry: it's deliberately
+// excluded from this calendar (see useMergedTasks import above), so it
+// never needs a color here. None of these hexes match any CATEGORY_PALETTE
+// entry above, and none are amber/red -- those two are reserved for
+// urgency (see the day-entry--urgency-* classes below), not domain.
+const TASK_DOMAIN_COLORS = {
+  tasks_alerts: { bg: '#fae8ff', text: '#86198f' }, // fuchsia
+  budgeting_tasks: { bg: '#d1fae5', text: '#065f46' }, // emerald
+  fundraising_tasks: { bg: '#e8e8e6', text: '#3a3a36' }, // graphite
+}
+
+// Display label per task domain, shown in the legend and on each task's
+// chip in the day modal. Kept local to this component (not extracted to a
+// shared lib file like marketingTaskTypes.js) since there's no second
+// consumer today -- TasksAlertsList.vue defines its own SOURCE_LABELS
+// inline for the same reason.
+const SOURCE_LABELS = {
+  tasks_alerts: 'Task & Approval',
+  budgeting_tasks: 'Budgeting',
+  fundraising_tasks: 'Fundraising',
+}
+
+// Legend rows in the fixed order TASK_DOMAIN_COLORS/SOURCE_LABELS above are
+// declared -- one swatch+label per domain, since this is a small fixed set
+// of 3 (unlike Event Tracker's dynamic category palette, which deliberately
+// has no legend at all).
+const domainLegend = computed(() =>
+  Object.keys(SOURCE_LABELS).map((source) => ({
+    source,
+    label: SOURCE_LABELS[source],
+    ...TASK_DOMAIN_COLORS[source],
+  })),
+)
 
 // Space left below the grid so it doesn't run flush to the bottom of the
 // viewport — matches the page/panel's existing 32px padding rhythm. Same
@@ -85,14 +136,15 @@ const viewedMonth = ref(today.getMonth())
 // if no modal is open.
 const selectedDayKey = ref(null)
 
-// True while either source is still loading -- the grid waits for both
-// tasks_alerts and event_tracker_events before rendering, same as
+// True while either side is still loading -- the grid waits for both the
+// merged task sources (via useMergedTasks, which itself waits on all four
+// underlying stores) and event_tracker_events before rendering, same as
 // AlertCenter's anyLoading over its four sources.
-const anyLoading = computed(() => tasksAlertsStore.loading || eventTrackerEventsStore.loading)
+const anyLoading = computed(() => tasksLoading.value || eventTrackerEventsStore.loading)
 
-// The first load error found across the two sources, or null if neither
-// failed.
-const firstError = computed(() => tasksAlertsStore.error ?? eventTrackerEventsStore.error)
+// The first load error found across task sources or events, or null if
+// none failed.
+const firstError = computed(() => tasksError.value ?? eventTrackerEventsStore.error)
 
 onMounted(() => {
   authStore.init()
@@ -114,14 +166,15 @@ watch(anyLoading, (isLoading) => {
   }
 })
 
-// Refetch both sources whenever the signed-in user changes (sign in, sign
-// out, switch accounts) — same pattern as Marketing Calendar. Calendar is
-// read-only so it only ever needs the two fetches, never any write method.
+// Refetch event_tracker_events whenever the signed-in user changes (sign
+// in, sign out, switch accounts) — same pattern as Marketing Calendar.
+// useMergedTasks() already runs its own equivalent watcher for all four
+// task tables, so only the events fetch is needed here. Calendar is
+// read-only so it never needs any write method.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
     if (userId) {
-      tasksAlertsStore.fetchTasks()
       eventTrackerEventsStore.fetchEvents()
     }
   },
@@ -134,26 +187,34 @@ function pad(n) {
 }
 
 // Formats a Date as the 'YYYY-MM-DD' string Postgres' `date` type returns
-// via PostgREST, so it can be used as a lookup key against task.due_date
-// and event.event_date alike.
+// via PostgREST, so it can be used as a lookup key against task.date
+// (useMergedTasks' normalized field) and event.event_date alike.
 function dateKey(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+// The task side of the merge, narrowed from useMergedTasks' four-source
+// allTasks down to the three domains this calendar actually shows.
+// marketing_tasks is excluded on purpose (see the useMergedTasks import
+// comment above) -- Marketing Calendar already owns that domain's display.
 // Declined items must never render anywhere on the calendar, not even
 // muted — every computed below derives only from this filtered list, same
 // as Marketing Calendar's visibleTasks. Complete rows do show.
-const visibleTasks = computed(() => tasksAlertsStore.tasks.filter((task) => task.status !== 'Declined'))
+const visibleTasks = computed(() =>
+  allTasks.value.filter((task) => task.source !== 'marketing_tasks' && task.status !== 'Declined'),
+)
 
 // Groups both sources by date for O(1) lookup per grid cell. Events are
 // pushed first and tasks second so that, wherever this merged array is
 // consumed (cell cap slicing below, and the day modal), category chips —
 // the actual point of this build — always sort ahead of task/alert rows on
-// a busy day rather than getting pushed out by them. Each entry keeps its
-// original columns (task_id/due_date/status/... or id/event_date/category/
-// event_name) plus a `source` tag and a globally-unique `key` for v-for,
-// since task_id and event id are drawn from different tables and could
-// otherwise collide.
+// a busy day rather than getting pushed out by them. Events keep their
+// original columns (id/event_date/category/event_name) plus a `source` tag
+// and globally-unique `key`. Tasks are already normalized by
+// useMergedTasks (id/source/title/date/status/assigned_to/...), so they
+// only need a `key` added — built from source+id since useMergedTasks folds
+// three different tables' primary keys into one `id` field, which could
+// collide across domains without the source prefix.
 const entriesByDate = computed(() => {
   const map = {}
   for (const event of eventTrackerEventsStore.events) {
@@ -161,8 +222,8 @@ const entriesByDate = computed(() => {
     map[event.event_date].push({ source: 'event', key: `event-${event.id}`, ...event })
   }
   for (const task of visibleTasks.value) {
-    if (!map[task.due_date]) map[task.due_date] = []
-    map[task.due_date].push({ source: 'task', key: `task-${task.task_id}`, ...task })
+    if (!map[task.date]) map[task.date] = []
+    map[task.date].push({ ...task, key: `task-${task.source}-${task.id}` })
   }
   return map
 })
@@ -216,6 +277,14 @@ const calendarDays = computed(() => {
       // of task rows on a busy day.
       visibleEntries: entries.slice(0, DAY_CELL_ENTRY_CAP),
       overflowCount: Math.max(entries.length - DAY_CELL_ENTRY_CAP, 0),
+      // How many TASK-sourced entries on this day are assigned to the
+      // signed-in user -- events are excluded since they have no assignee
+      // concept at all. Same assigned_to-vs-signed-in-id comparison as
+      // TasksAlertsList.vue's isAssignee(), just counted per day instead of
+      // gating action buttons on a single row.
+      assignedToMeCount: entries.filter(
+        (entry) => entry.source !== 'event' && entry.assigned_to === authStore.session?.user?.id,
+      ).length,
     })
   }
   return days
@@ -266,9 +335,9 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 // Formats a task's due date as a relative label ("Due today"/"Due
 // tomorrow") for near-term dates, falling back to a short calendar date
 // otherwise — same relative-date logic as TasksAlertsList.vue's dueLabel,
-// adapted to read due_date directly since this page works with raw
-// tasks_alerts rows, not that component's normalized/merged shape. Parses
-// the Y/M/D components directly rather than `new Date(dateStr)`: the
+// called here with useMergedTasks' normalized `date` field (folded from
+// due_date/date across the three source tables). Parses the Y/M/D
+// components directly rather than `new Date(dateStr)`: the
 // latter treats a bare 'YYYY-MM-DD' string as UTC midnight per the ISO
 // 8601 spec, which then renders a day early in any timezone behind UTC —
 // this modal's own heading (built from the same dateKey() used for grid
@@ -301,22 +370,9 @@ function badgeFor(task) {
     return { text: 'Overdue', variant: 'overdue' }
   }
 
-  const label = dueLabel(task.due_date)
+  const label = dueLabel(task.date)
   const variant = label === 'Due today' || label === 'Due tomorrow' ? 'amber' : 'default'
   return { text: label, variant }
-}
-
-// Picks the small status dot color shown next to a task/alert entry in the
-// grid (never a category entry -- those get a solid palette chip instead).
-// Reuses the exact same urgency colors as the modal's badge classes
-// (.badge--overdue/.badge--amber/.badge--default) instead of introducing a
-// separate color scale, so the dot and the badge always agree about a
-// given task's urgency.
-function taskDotColor(task) {
-  const variant = badgeFor(task).variant
-  if (variant === 'overdue') return '#b3261e'
-  if (variant === 'amber') return '#c9932a'
-  return '#8a8a85'
 }
 </script>
 
@@ -337,6 +393,17 @@ function taskDotColor(task) {
         <button type="button" class="nav-btn" @click="goToPreviousMonth">&larr; Prev</button>
         <span class="month-label">{{ monthLabel }}</span>
         <button type="button" class="nav-btn" @click="goToNextMonth">Next &rarr;</button>
+      </div>
+
+      <!-- Task domain legend: unlike Event Tracker's category chips (a
+           dynamic, potentially-large set that deliberately has no legend),
+           there are only ever these 3 fixed task domains, so a small
+           swatch+label row is worth the space. -->
+      <div class="domain-legend">
+        <span v-for="domain in domainLegend" :key="domain.source" class="legend-item">
+          <span class="legend-swatch" :style="{ background: domain.bg, borderColor: domain.text }" />
+          {{ domain.label }}
+        </span>
       </div>
 
       <p v-if="anyLoading">Loading calendar…</p>
@@ -366,23 +433,38 @@ function taskDotColor(task) {
             >
               <span class="day-number">{{ day.dayNumber }}</span>
 
-              <!-- Apple-Calendar-style entries: category events render as
-                   solid colored chips, tasks/alerts render as plain text
-                   with a small urgency dot -- no separate legend, the chips
-                   and text are the legend. -->
+              <!-- Assigned-to-me count: top-right corner, deliberately away
+                   from both the day number (top-left) and the "+N more"
+                   overflow indicator (bottom of the entries list), so the
+                   three never compete for the same spot. Hidden entirely at
+                   0 rather than shown as "0" -- a badge that's usually
+                   absent is a much stronger signal than one that's usually
+                   zero. -->
+              <span v-if="day.assignedToMeCount > 0" class="assigned-badge">{{ day.assignedToMeCount }}</span>
+
+              <!-- Apple-Calendar-style entries: both event category chips
+                   and task domain chips render as solid colored pills (see
+                   TASK_DOMAIN_COLORS) -- the domain legend above replaces
+                   the old plain-text+dot task rendering. Urgency (was the
+                   dot's color) now shows as a left-border strip instead,
+                   since the chip's fill is spoken for by domain: see
+                   day-entry--urgency-* below. -->
               <div v-if="day.visibleEntries.length > 0" class="day-entries">
                 <span
                   v-for="entry in day.visibleEntries"
                   :key="entry.key"
                   class="day-entry"
-                  :class="entry.source === 'event' ? 'day-entry--event' : 'day-entry--task'"
+                  :class="
+                    entry.source === 'event'
+                      ? 'day-entry--event'
+                      : ['day-entry--task', `day-entry--urgency-${badgeFor(entry).variant}`]
+                  "
                   :style="
                     entry.source === 'event'
                       ? { background: categoryColors[entry.category]?.bg, color: categoryColors[entry.category]?.text }
-                      : {}
+                      : { background: TASK_DOMAIN_COLORS[entry.source]?.bg, color: TASK_DOMAIN_COLORS[entry.source]?.text }
                   "
                 >
-                  <span v-if="entry.source === 'task'" class="task-dot" :style="{ background: taskDotColor(entry) }" />
                   {{ entry.source === 'event' ? entry.category : entry.title }}
                 </span>
                 <span v-if="day.overflowCount > 0" class="day-entry day-entry--overflow"
@@ -396,9 +478,11 @@ function taskDotColor(task) {
 
       <!-- Day modal: full details for both sources, not the truncated grid
            chip text. Event rows show the full category chip plus the full
-           event_name; task/alert rows keep the existing title + due-date
-           badge pairing. Read-only, no action buttons — creation/status
-           changes only happen via Task & Approval. -->
+           event_name; task rows now show the same chip+title shape (domain
+           chip instead of category chip) plus the existing due-date badge,
+           so grid and modal stay visually consistent. Read-only, no action
+           buttons — creation/status changes only happen via Task &
+           Approval. -->
       <div v-if="selectedDayKey" class="overlay" @click.self="closeDayModal">
         <div class="modal">
           <h3 class="modal-heading">{{ selectedDayKey }}</h3>
@@ -413,6 +497,11 @@ function taskDotColor(task) {
                 <span class="entry-title">{{ entry.event_name }}</span>
               </template>
               <template v-else>
+                <span
+                  class="entry-chip"
+                  :style="{ background: TASK_DOMAIN_COLORS[entry.source]?.bg, color: TASK_DOMAIN_COLORS[entry.source]?.text }"
+                  >{{ SOURCE_LABELS[entry.source] }}</span
+                >
                 <span class="entry-title">{{ entry.title }}</span>
                 <span class="badge" :class="`badge--${badgeFor(entry).variant}`">{{ badgeFor(entry).text }}</span>
               </template>
@@ -462,6 +551,33 @@ function taskDotColor(task) {
   font-weight: 500;
   color: #2d3142;
   cursor: pointer;
+}
+
+/* Small fixed 3-item legend, centered above the grid like the month-nav
+   row above it -- unlike Event Tracker's category chips, the domain set
+   is small and fixed, so a legend is worth the space here. */
+.domain-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5f5e5a;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid;
 }
 
 /* No width cap — fills the panel's actual available width instead of
@@ -527,6 +643,27 @@ function taskDotColor(task) {
   flex-shrink: 0;
 }
 
+/* Top-right corner, opposite the day number -- .day-cell is already
+   position: relative, so this just anchors to its own padding box.
+   Deliberately not amber/red (those mean urgency elsewhere on this page)
+   and not any TASK_DOMAIN_COLORS value (this isn't a fourth domain), so it
+   reads as its own distinct "something of yours" signal. */
+.assigned-badge {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #2d3142;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+}
+
 /* Holds the capped list of chip/text rows plus the optional overflow
    indicator, stacked below the day number. */
 .day-entries {
@@ -555,21 +692,30 @@ function taskDotColor(task) {
   font-weight: 600;
 }
 
-/* Tasks/alerts: plain text (no background), distinguished from category
-   chips by shape rather than just color -- a small colored dot stands in
-   for the badge's urgency color at this size. */
+/* Tasks: same solid-pill shape as .day-entry--event now (color comes from
+   TASK_DOMAIN_COLORS via inline style instead of categoryColors). A 3px
+   transparent left border is always reserved, not added only when urgent,
+   so an overdue/due-soon chip getting its border color filled in doesn't
+   shift the chip's text by 3px relative to its neighbors. */
 .day-entry--task {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #4a4a46;
+  border-radius: 4px;
+  padding: 1px 4px 1px 3px;
+  font-weight: 600;
+  border-left: 3px solid transparent;
 }
 
-.task-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
+/* Urgency signal (used to be the dot's color) now lives on this border
+   instead of the chip's fill, since fill is spoken for by domain color.
+   Reuses the exact same hexes as the modal's .badge--overdue/.badge--amber
+   text so the strip and the badge never disagree about a task's urgency.
+   badge--default's variant intentionally has no matching class here --
+   .day-entry--task's own transparent border already covers it. */
+.day-entry--urgency-overdue {
+  border-left-color: #b3261e;
+}
+
+.day-entry--urgency-amber {
+  border-left-color: #c9932a;
 }
 
 .day-entry--overflow {
