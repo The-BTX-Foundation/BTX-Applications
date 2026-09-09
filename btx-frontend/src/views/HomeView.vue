@@ -74,13 +74,13 @@ function toggleSection(label) {
 }
 
 // Mobile drawer open/closed state. Only ever visually meaningful below the
-// 767px breakpoint (see the `max-width: 767px` query in <style> below) --
+// 850px breakpoint (see the `max-width: 850px` query in <style> below) --
 // correctness deliberately doesn't depend on this ref agreeing with any
 // JS-side width check. Every visual effect it drives (drawer transform,
 // backdrop, body scroll lock) is itself gated by that same media query, so
 // if a user opens the drawer on a narrow window and then widens the
 // browser past the breakpoint without closing it, this staying true is
-// harmless -- there's no CSS left above 767px for it to apply to.
+// harmless -- there's no CSS left above 850px for it to apply to.
 const drawerOpen = ref(false)
 
 function toggleDrawer() {
@@ -97,7 +97,7 @@ function closeDrawer() {
 // rewriting selectors to only hit elements this component actually
 // rendered. The `overflow: hidden` rule itself lives in the second,
 // unscoped <style> block at the bottom of this file for that reason, still
-// nested inside the same max-width: 767px query as everything else, for
+// nested inside the same max-width: 850px query as everything else, for
 // the same defensive reasoning as drawerOpen's own comment above.
 watch(drawerOpen, (open) => {
   document.body.classList.toggle('drawer-open', open)
@@ -370,7 +370,7 @@ onUnmounted(() => {
 }
 
 /* Hidden by default -- the only place this is ever shown is inside the
-   max-width: 767px query below, so it has zero effect above that width. */
+   max-width: 850px query below, so it has zero effect above that width. */
 .mobile-topbar {
   display: none;
   align-items: center;
@@ -405,7 +405,7 @@ onUnmounted(() => {
 /* display: none by default, same reasoning as .mobile-topbar above --
    `v-if="drawerOpen"` already keeps this out of the DOM on desktop in
    practice, but this is the belt-and-suspenders half: even if drawerOpen
-   were somehow true above 767px (see its own comment in <script>), there'd
+   were somehow true above 850px (see its own comment in <script>), there'd
    be no CSS left to make it visible. */
 .drawer-backdrop {
   display: none;
@@ -419,7 +419,7 @@ onUnmounted(() => {
    drawer, and reveals the hamburger/backdrop, lives in this one query --
    deliberately the only place any of it exists, so none of the default
    (desktop) rules above are touched by this feature at all. */
-@media (max-width: 767px) {
+@media (max-width: 850px) {
   .mobile-topbar {
     display: flex;
   }
@@ -457,11 +457,11 @@ onUnmounted(() => {
    is never one of those, so a scoped rule targeting it would simply never
    match anything. This block exists solely for that one selector -- see
    the drawerOpen watcher in <script> that toggles this class. Still nested
-   inside the same max-width: 767px query as the rest of the drawer CSS,
+   inside the same max-width: 850px query as the rest of the drawer CSS,
    for the same defensive reasoning as drawerOpen's own comment: if the
    class lingers on <body> after the window is widened past the breakpoint
    without closing the drawer, there's no rule here for it to match either. */
-@media (max-width: 767px) {
+@media (max-width: 850px) {
   body.drawer-open {
     overflow: hidden;
   }

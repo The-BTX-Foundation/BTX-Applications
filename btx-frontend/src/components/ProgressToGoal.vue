@@ -481,4 +481,35 @@ const selectedPlanMilestones = computed(() =>
   color: #b3261e;
   font-weight: 600;
 }
+
+/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
+   whole app switches to its mobile layout at one consistent width), the
+   plan list stacks above the detail column instead of beside it. The list
+   itself becomes a horizontal scroll row rather than a taller vertical
+   stack -- same overflow-x pattern Donor Impact/Fundraising Health's own
+   charts already use for a growing set of items -- so more plan years
+   accumulating over time doesn't push the selected plan's actual detail
+   content further down the page. Nothing above this query is touched, so
+   desktop layout is unaffected. */
+@media (max-width: 850px) {
+  .progress-to-goal {
+    flex-direction: column;
+  }
+
+  .plan-column {
+    width: 100%;
+  }
+
+  .plan-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .plan-card {
+    width: auto;
+    min-width: 200px;
+    flex-shrink: 0;
+  }
+}
 </style>

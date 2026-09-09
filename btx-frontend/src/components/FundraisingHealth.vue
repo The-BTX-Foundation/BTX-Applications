@@ -655,4 +655,37 @@ const showHistory = ref(false)
   color: #b3261e;
   font-weight: 600;
 }
+
+/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
+   whole app switches to its mobile layout at one consistent width), the
+   month list stacks above the detail column instead of beside it. The list
+   itself becomes a horizontal scroll row rather than a taller vertical
+   stack -- same overflow-x pattern this file's own .chart bars already use
+   -- since this list is the one most likely to keep growing every month,
+   a vertical stack here would only get worse over time. Nothing above this
+   query is touched, so desktop layout is unaffected. Only the two-column
+   .fundraising-health layout is affected -- .page-header (the title + View
+   Fundraising History button) is a sibling of it, not part of this flex
+   pair, so it's untouched here. */
+@media (max-width: 850px) {
+  .fundraising-health {
+    flex-direction: column;
+  }
+
+  .month-column {
+    width: 100%;
+  }
+
+  .month-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .month-card {
+    width: auto;
+    min-width: 200px;
+    flex-shrink: 0;
+  }
+}
 </style>

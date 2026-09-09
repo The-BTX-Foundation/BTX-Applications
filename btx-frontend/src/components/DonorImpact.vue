@@ -537,4 +537,34 @@ function formatBarValue(cycle) {
   color: #b3261e;
   font-weight: 600;
 }
+
+/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
+   whole app switches to its mobile layout at one consistent width), the
+   cycle list stacks above the detail column instead of beside it. The list
+   itself becomes a horizontal scroll row rather than a taller vertical
+   stack -- same overflow-x pattern this file's own .chart bars already use
+   for a growing set of items -- so a long cycle history doesn't push the
+   selected cycle's actual detail content further down the page. Nothing
+   above this query is touched, so desktop layout is unaffected. */
+@media (max-width: 850px) {
+  .donor-impact {
+    flex-direction: column;
+  }
+
+  .cycle-column {
+    width: 100%;
+  }
+
+  .cycle-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .cycle-card {
+    width: auto;
+    min-width: 200px;
+    flex-shrink: 0;
+  }
+}
 </style>
