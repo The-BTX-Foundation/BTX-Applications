@@ -546,7 +546,14 @@ function formatBarValue(cycle) {
    stack -- same overflow-x pattern this file's own .chart bars already use
    for a growing set of items -- so a long cycle history doesn't push the
    selected cycle's actual detail content further down the page. Nothing
-   above this query is touched, so desktop layout is unaffected. */
+   above this query is touched, so desktop layout is unaffected.
+
+   scrollbar-width/-ms-overflow-style/::-webkit-scrollbar below hide the
+   native horizontal scrollbar this row's overflow-x: auto produces --
+   with 5+ cards at min-width: 200px it always overflows a phone-width
+   screen, so the unstyled browser scrollbar painted as a persistent gray
+   bar under the cards. The row is still scrollable by touch/trackpad;
+   only the visible scrollbar affordance is removed. */
 @media (max-width: 850px) {
   .donor-impact {
     flex-direction: column;
@@ -560,6 +567,12 @@ function formatBarValue(cycle) {
     flex-direction: row;
     overflow-x: auto;
     padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .cycle-list::-webkit-scrollbar {
+    display: none;
   }
 
   .cycle-card {

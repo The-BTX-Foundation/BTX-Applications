@@ -211,9 +211,10 @@ const showHistory = ref(false)
                 <tbody>
                   <tr v-for="row in VARIANCE_ROWS" :key="row.key">
                     <td class="variance-label">{{ row.label }}</td>
-                    <td>{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_budgeted`) }}</td>
-                    <td>{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_actual`) }}</td>
+                    <td data-label="Budgeted">{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_budgeted`) }}</td>
+                    <td data-label="Actual">{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_actual`) }}</td>
                     <td
+                      data-label="Variance $"
                       :class="
                         varianceDollar(budgetTrackingStore.currentMonthRow, row) > 0 ? 'variance--over' : 'variance--under'
                       "
@@ -221,6 +222,7 @@ const showHistory = ref(false)
                       {{ formatVarianceDollar(varianceDollar(budgetTrackingStore.currentMonthRow, row)) }}
                     </td>
                     <td
+                      data-label="Variance %"
                       :class="
                         variancePercent(budgetTrackingStore.currentMonthRow, row) === null
                           ? ''
@@ -300,9 +302,10 @@ const showHistory = ref(false)
                 <tbody>
                   <tr v-for="row in VARIANCE_ROWS" :key="row.key">
                     <td class="variance-label">{{ row.label }}</td>
-                    <td>{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_budgeted`) }}</td>
-                    <td>{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_actual`) }}</td>
+                    <td data-label="Budgeted">{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_budgeted`) }}</td>
+                    <td data-label="Actual">{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_actual`) }}</td>
                     <td
+                      data-label="Variance $"
                       :class="
                         varianceDollar(budgetTrackingStore.rowFor(year, month + 1), row) > 0
                           ? 'variance--over'
@@ -312,6 +315,7 @@ const showHistory = ref(false)
                       {{ formatVarianceDollar(varianceDollar(budgetTrackingStore.rowFor(year, month + 1), row)) }}
                     </td>
                     <td
+                      data-label="Variance %"
                       :class="
                         variancePercent(budgetTrackingStore.rowFor(year, month + 1), row) === null
                           ? ''
@@ -572,5 +576,56 @@ const showHistory = ref(false)
   margin: 0;
   color: #b3261e;
   font-weight: 600;
+}
+
+/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint), the
+   Budget Variance table reflows into one card per category instead of
+   scrolling horizontally -- the standard CSS-only "table becomes cards"
+   technique: every table-role element is forced to display: block so
+   each <tr> lays out as its own bordered card, and each data <td>'s
+   data-label attribute (set in the template) is surfaced via ::before
+   content so the value is still labeled without the column headers.
+   .variance-label (the category name) is excluded from that rule and
+   styled as the card's heading instead, since it names the card rather
+   than being one of its labeled rows. Only .variance-table is touched --
+   .grant-table is a separate, narrower table not in scope here. Nothing
+   above this query is touched, so desktop layout is unaffected. */
+@media (max-width: 850px) {
+  .variance-table,
+  .variance-table thead,
+  .variance-table tbody,
+  .variance-table tr,
+  .variance-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .variance-table thead {
+    display: none;
+  }
+
+  .variance-table tr {
+    border: 0.5px solid #e5e3dd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  .variance-label {
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .variance-table td:not(.variance-label) {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+
+  .variance-table td:not(.variance-label)::before {
+    content: attr(data-label);
+    font-weight: 500;
+    color: #8a8a85;
+  }
 }
 </style>

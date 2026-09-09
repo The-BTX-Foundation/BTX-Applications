@@ -755,4 +755,31 @@ async function handleDecline(task) {
   color: #b3261e;
   font-weight: 600;
 }
+
+/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint), the
+   badge/outcome-pill, task-body, and actions column no longer share one
+   row -- at narrow widths their combined natural widths (badge/pill and
+   actions are both flex-shrink: 0) left too little room for task-body,
+   causing severe word-by-word wrapping and, in the worst cases, actions
+   overflowing past the card edge. flex-wrap alone isn't enough to fix
+   this deterministically: without a forced basis, the browser packs as
+   much onto each line as fits, so a short assignee name might still
+   share a line with the badge while a long one doesn't -- the exact
+   per-content inconsistency this fix needs to avoid. Giving both
+   task-body AND actions flex-basis: 100% forces each onto its own row
+   unconditionally, regardless of how long the title, assignee name, or
+   "awaiting ... review" text happens to be, so the stacked order (badge,
+   then task-body, then actions) is always the same. Nothing above this
+   query is touched, so desktop layout is unaffected. */
+@media (max-width: 850px) {
+  .task-card {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .task-body,
+  .actions {
+    flex-basis: 100%;
+  }
+}
 </style>
