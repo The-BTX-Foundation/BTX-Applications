@@ -512,4 +512,45 @@ const selectedPlanMilestones = computed(() =>
     flex-shrink: 0;
   }
 }
+
+/* Below 850px, .bars/.bar-col shrink to fit -- sized against the real
+   measured container width, not the naive "viewport minus a bit of
+   padding" estimate that would wrongly suggest plenty of room. At an
+   actual 375px phone width, .progress-to-goal's own box is only ~228px
+   wide (the page's 32px padding plus the panel's 32px padding already eat
+   128px off both sides, before .chart's own 20px padding is even
+   counted), leaving just ~188px for .bars itself. At the original 48px
+   bar-col width and 20px gap, 5 bars (matching Donor Impact's own real
+   published-cycle count, since both charts share this exact component
+   shape) would need 320px -- overflowing that real 188px budget by well
+   over 100px. 28px columns with a 6px gap total 164px for 5 bars,
+   comfortably inside the measured 188px with slack to spare (and more
+   slack still at 390px, where the same container measures ~243px). Font
+   sizes drop to 10px/11px to stay legible at the narrower column -- both
+   already within the app's existing minimum text sizes elsewhere
+   (.source-label uses 11px). overflow-wrap: anywhere on .bar-value is
+   needed on Donor Impact's currency-formatted values (e.g. "$200,000" has
+   no space or hyphen to wrap at, so without it the text overflows into
+   the neighboring column instead of dropping to a second line -- verified
+   there). Values here are plain counts, always short enough to never
+   trigger it, but the identical rule is applied regardless since both
+   files share this component shape exactly. */
+@media (max-width: 850px) {
+  .bars {
+    gap: 6px;
+  }
+
+  .bar-col {
+    width: 28px;
+  }
+
+  .bar-value {
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .bar-label {
+    font-size: 11px;
+  }
+}
 </style>

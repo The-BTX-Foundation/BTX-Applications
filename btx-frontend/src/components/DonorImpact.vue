@@ -581,4 +581,46 @@ function formatBarValue(cycle) {
     flex-shrink: 0;
   }
 }
+
+/* Below 850px, .bars/.bar-col shrink to fit -- sized against the real
+   measured container width, not the naive "viewport minus a bit of
+   padding" estimate that would wrongly suggest plenty of room. At an
+   actual 375px phone width, .donor-impact's own box is only ~228px wide
+   (the page's 32px padding plus the panel's 32px padding already eat
+   128px off both sides, before .chart's own 20px padding is even
+   counted), leaving just ~188px for .bars itself. At the original 48px
+   bar-col width and 20px gap, 5 published cycles need 320px -- overflowing
+   that real 188px budget by well over 100px, which is what the screenshot
+   showed. 28px columns with a 6px gap total 164px for 5 bars, comfortably
+   inside the measured 188px with slack to spare (and more slack still at
+   390px, where the same container measures ~243px). Font sizes drop to
+   10px/11px to stay legible at the narrower column -- both already within
+   the app's existing minimum text sizes elsewhere (.source-label uses
+   11px). Currency-formatted bar values (e.g. "$200,000" on the Investment
+   tab) need overflow-wrap: anywhere, not just a smaller font -- a string
+   like "$200,000" has no space or hyphen for the browser to wrap at, so
+   without it the text doesn't drop to a second line at all, it overflows
+   straight into the neighboring column (verified: adjacent values
+   overlapping by several px). overflow-wrap: anywhere forces a break
+   mid-string once it no longer fits, which only ever triggers when
+   content is actually too wide for 28px -- the plain short numbers used
+   elsewhere in both charts are unaffected. */
+@media (max-width: 850px) {
+  .bars {
+    gap: 6px;
+  }
+
+  .bar-col {
+    width: 28px;
+  }
+
+  .bar-value {
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .bar-label {
+    font-size: 11px;
+  }
+}
 </style>
