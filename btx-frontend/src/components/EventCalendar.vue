@@ -647,7 +647,10 @@ function badgeFor(task) {
    position: relative, so this just anchors to its own padding box.
    Deliberately not amber/red (those mean urgency elsewhere on this page)
    and not any TASK_DOMAIN_COLORS value (this isn't a fourth domain), so it
-   reads as its own distinct "something of yours" signal. */
+   reads as its own distinct "something of yours" signal. Reuses the same
+   pale-grey/dark-grey pairing as .badge--default rather than a new one-off
+   color, since a neutral grey is just as clash-free as any other choice
+   here. */
 .assigned-badge {
   position: absolute;
   top: 4px;
@@ -656,8 +659,8 @@ function badgeFor(task) {
   height: 14px;
   padding: 0 3px;
   border-radius: 999px;
-  background: #2d3142;
-  color: #fff;
+  background: #f1efe8;
+  color: #5f5e5a;
   font-size: 9px;
   font-weight: 600;
   line-height: 14px;
