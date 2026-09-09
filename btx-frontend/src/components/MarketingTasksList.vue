@@ -424,6 +424,7 @@ async function handleDecline(id) {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 16px;
   border-bottom: 1px solid #e5e3dd;

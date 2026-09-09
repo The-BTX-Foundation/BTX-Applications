@@ -382,6 +382,7 @@ const showHistory = ref(false)
    tabs), no new visual language introduced. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   border-bottom: 1px solid #e5e3dd;
   margin-bottom: 20px;

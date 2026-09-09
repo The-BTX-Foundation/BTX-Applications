@@ -447,4 +447,20 @@ function toggleCard(id) {
   font-size: 12px;
   color: #9a9a9a;
 }
+
+/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
+   whole app switches to its mobile layout at one consistent width), both
+   grids drop to a single column instead of the desktop grid-template-columns
+   counts above -- full stacking rather than an intermediate multi-column
+   layout, same as every other page's 850px query in this app. Nothing above
+   this query is touched, so desktop layout is unaffected. */
+@media (max-width: 850px) {
+  .metric-cards {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
 </style>

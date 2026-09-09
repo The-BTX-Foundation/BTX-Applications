@@ -352,6 +352,7 @@ function formatBarValue(cycle) {
    tab style. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   border-bottom: 1px solid #e5e3dd;
 }
