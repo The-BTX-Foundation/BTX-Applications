@@ -1,5 +1,5 @@
 <script setup>
-import { onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabaseClient'
@@ -58,7 +58,20 @@ const navSections = [
       { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
     ],
   },
+  // adminOnly is a new field only this entry uses today -- see
+  // visibleNavSections below for how it's enforced.
+  { label: 'Import', routeName: 'import', adminOnly: true },
 ]
+
+// Sidebar sections filtered by role. Only Import needs this today, gated
+// on isAdmin alone rather than the canView (admin/board/reviewer)
+// convention used everywhere else in the app -- Import can write to tables
+// board and reviewer have no INSERT/UPDATE access to at all (Phase 1 RLS
+// audit), so showing them a working-looking nav entry whose writes RLS
+// would silently reject is worse than not showing it at all.
+const visibleNavSections = computed(() =>
+  navSections.filter((section) => !section.adminOnly || authStore.isAdmin),
+)
 
 // Which nav groups are expanded; Program starts open to match the mockup,
 // the rest start collapsed.
@@ -148,7 +161,7 @@ onUnmounted(() => {
       <RouterLink :to="{ name: 'home' }" class="brand" @click="closeDrawer">BTX <span class="brand-accent">Ops Hub</span></RouterLink>
 
       <nav class="nav">
-        <div v-for="section in navSections" :key="section.label" class="nav-section">
+        <div v-for="section in visibleNavSections" :key="section.label" class="nav-section">
           <!-- Sections with `children` render as an expand/collapse group;
                sections without (e.g. Task & Approval) render as a single
                top-level link with no chevron or toggle behavior. -->

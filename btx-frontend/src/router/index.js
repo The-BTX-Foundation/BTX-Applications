@@ -88,6 +88,15 @@ const router = createRouter({
         placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),
         placeholderRoute('scholarship-interviews', 'scholarship-interviews', 'Interviews'),
         placeholderRoute('scholarship-applicant-records', 'scholarship-applicant-records', 'Applicant Records'),
+        // Admin-only bulk import tool -- gated inside ImportWizard.vue itself
+        // (authStore.isAdmin alone, not the app's usual canView convention),
+        // not at the router level, consistent with every other page's
+        // gating approach.
+        {
+          path: 'import',
+          name: 'import',
+          component: () => import('../views/ImportView.vue'),
+        },
       ],
     },
     {
