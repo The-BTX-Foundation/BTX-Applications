@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import ImportChooseTableStep from './ImportChooseTableStep.vue'
 import ImportProvideDataStep from './ImportProvideDataStep.vue'
 import ImportPreviewStep from './ImportPreviewStep.vue'
+import ImportConfirmStep from './ImportConfirmStep.vue'
 
 const authStore = useAuthStore()
 
@@ -75,11 +76,23 @@ const milestoneGroups = ref(null)
 // deletion count for a replace-set import.
 const isValidating = ref(false)
 
+// Populated once Confirm's "Confirm & Import" runs the executor -- one entry
+// per attempted row (or per plan-year group, for program_plan_milestones),
+// read by Results to build its summary/table/failed-rows export.
+const importResults = ref([])
+
+// True for the whole span of the executor's sequential writes, from click
+// to settle. Gates ImportWizard's own Back button below so the admin can't
+// navigate away mid-write, the same way isValidating already gates Preview's
+// Next.
+const isExecuting = ref(false)
+
 const currentStepIndex = computed(() => STEPS.indexOf(currentStep.value))
 
-// Per-step precondition for the Next button. confirm/results are still
-// placeholders at this sub-phase, so they default to true rather than
-// blocking on state that doesn't exist yet.
+// Per-step precondition for the shared Next button. confirm never reaches
+// this -- its own "Confirm & Import" button replaces Next entirely (see the
+// template below) -- and results is still a placeholder, so both default to
+// true rather than blocking on state that doesn't exist yet.
 const canAdvance = computed(() => {
   if (currentStep.value === 'choose-table') return selectedTable.value !== null
   if (currentStep.value === 'provide-data') return rawRows.value.length > 0
@@ -124,15 +137,28 @@ function goToPreviousStep() {
       v-model:milestone-groups="milestoneGroups"
       v-model:is-validating="isValidating"
     />
-    <div v-else-if="currentStep === 'confirm'">Confirm step goes here</div>
+    <ImportConfirmStep
+      v-else-if="currentStep === 'confirm'"
+      :selected-table="selectedTable"
+      :validated-rows="validatedRows"
+      :milestone-groups="milestoneGroups"
+      v-model:import-results="importResults"
+      v-model:is-executing="isExecuting"
+      @done="goToNextStep"
+    />
     <div v-else-if="currentStep === 'results'">Results step goes here</div>
 
     <div class="step-nav">
-      <button v-if="currentStepIndex > 0" type="button" class="btn btn--outline" @click="goToPreviousStep">
+      <button
+        v-if="currentStepIndex > 0 && currentStep !== 'results' && !isExecuting"
+        type="button"
+        class="btn btn--outline"
+        @click="goToPreviousStep"
+      >
         Back
       </button>
       <button
-        v-if="currentStepIndex < STEPS.length - 1"
+        v-if="currentStepIndex < STEPS.length - 1 && currentStep !== 'confirm'"
         type="button"
         class="btn btn--gold"
         :disabled="!canAdvance"
