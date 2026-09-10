@@ -154,12 +154,12 @@ async function buildGroupResult(group, spec) {
   return { planYear: group.plan_year, milestones: group.milestones, groupValid: true, groupError: null, staleCount: staleNames.length, staleNames }
 }
 
-let __debugCallCounter = 0
+// Re-validates every raw row against the current field spec/mapping,
+// rebuilding excludedFields and (for replace-set tables) milestoneGroups
+// alongside it. Triggered by the columnMapping watcher above.
 async function runValidation() {
-  const callId = ++__debugCallCounter
   const spec = fieldSpecModule.value
-  console.log(`[DEBUG#${callId} ENTRY]`, JSON.stringify({ hasSpec: !!spec, rawRowsLength: props.rawRows.length, columnMapping: columnMapping.value }))
-  if (!spec) { console.log(`[DEBUG#${callId} EARLY RETURN no spec]`); return }
+  if (!spec) return
 
   isValidating.value = true
   try {
@@ -173,15 +173,12 @@ async function runValidation() {
     if (spec.toPayloadGroups) {
       const validValues = rows.filter((row) => row.valid).map((row) => row.values)
       const groups = spec.toPayloadGroups(validValues)
-      console.log(`[DEBUG#${callId} DONE]`, JSON.stringify({ rowsLength: rows.length, validCount: rows.filter((r) => r.valid).length, validValuesLength: validValues.length, groupsLength: groups.length }))
       milestoneGroups.value = await Promise.all(groups.map((group) => buildGroupResult(group, spec)))
-      console.log(`[DEBUG#${callId} milestoneGroups SET]`, JSON.stringify(milestoneGroups.value))
     } else {
       milestoneGroups.value = null
     }
   } finally {
     isValidating.value = false
-    console.log(`[DEBUG#${callId} FINALLY]`, JSON.stringify({ finalValidatedRowsValidCount: validatedRows.value.filter((r) => r.valid).length, finalMilestoneGroups: milestoneGroups.value }))
   }
 }
 </script>
