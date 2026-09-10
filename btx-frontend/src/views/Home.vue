@@ -17,7 +17,7 @@ const cards = [
     id: 'finance-funding',
     title: 'Finance & Funding',
     description: 'Budget tracking & fundraising health',
-    meta: '→ 4 tabs (2 built, 2 concept)',
+    meta: 'See details →',
     subItems: [
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
@@ -29,7 +29,7 @@ const cards = [
     id: 'program',
     title: 'Program',
     description: 'Awardee workflows, progress tracking & donor impact',
-    meta: '→ 3 tabs',
+    meta: 'See details →',
     subItems: [
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Progress-to-Goal', routeName: 'progress-to-goal' },
@@ -40,7 +40,7 @@ const cards = [
     id: 'marketing',
     title: 'Marketing',
     description: 'Outreach & campaign tracking',
-    meta: '→ 2 tabs (1 built, 1 concept)',
+    meta: 'See details →',
     subItems: [
       { label: 'Calendar', routeName: 'marketing-calendar' },
       { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
@@ -50,7 +50,7 @@ const cards = [
     id: 'scholarship',
     title: 'Scholarship',
     description: 'Scoring, interviews & applicant records',
-    meta: '→ 3 tabs',
+    meta: 'See details →',
     subItems: [
       { label: 'Scoring', routeName: 'scholarship-scoring' },
       { label: 'Interviews', routeName: 'scholarship-interviews' },
@@ -61,7 +61,7 @@ const cards = [
     id: 'task-approval',
     title: 'Task & Approval',
     description: 'Review and act on tasks and approvals assigned to you',
-    meta: '→ 1 tab (built)',
+    meta: 'See details →',
     subItems: [{ label: 'Task & Approval', routeName: 'tasks' }],
   },
 ]
