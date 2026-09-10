@@ -9,12 +9,19 @@
 
 // Wraps a validator so an empty/missing cell is rejected instead of treated
 // as null. Every "required" field spec entry is required(someValidator)
-// rather than a separate hand-written implementation.
+// rather than a separate hand-written implementation. The returned function
+// is marked with .isRequired so callers (e.g. Preview's unmapped-optional-
+// field notice) can tell required and optional fields apart by checking the
+// actual validator, rather than needing a separate `required: true` flag on
+// each field spec entry that could silently drift out of sync with which
+// validator it's actually paired with.
 export function required(validateFn) {
-  return (raw, context) => {
+  const wrapped = (raw, context) => {
     if (raw === '' || raw == null) return { ok: false, error: 'This field is required' }
     return validateFn(raw, context)
   }
+  wrapped.isRequired = true
+  return wrapped
 }
 
 // Parses a decimal number. Empty cell -> null (field left blank on purpose).
