@@ -76,9 +76,13 @@ const milestoneGroups = ref(null)
 // deletion count for a replace-set import.
 const isValidating = ref(false)
 
-// Populated once Confirm's "Confirm & Import" runs the executor -- one entry
-// per attempted row (or per plan-year group, for program_plan_milestones),
-// read by Results to build its summary/table/failed-rows export.
+// Populated once Confirm's "Confirm & Import" runs the executor. Shaped
+// exactly as executeImport() returns it: { outcomes, rawByKey }. outcomes
+// is one entry per attempted row (or per plan-year group, for
+// program_plan_milestones), read by Results to build its summary/table.
+// rawByKey is the plan_year+milestone_name -> raw-row lookup replace-set
+// needs for its failed-rows CSV export; null for every other writeMode,
+// where each outcome's own .row.raw already covers that need directly.
 const importResults = ref([])
 
 // True for the whole span of the executor's sequential writes, from click

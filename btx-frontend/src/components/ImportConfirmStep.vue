@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
+import { executeImport } from '@/lib/importExecutor.js'
 
 const props = defineProps({
   selectedTable: { type: Object, required: true }, // the chosen IMPORT_TABLES entry -- read-only here, Confirm never changes it
@@ -107,19 +108,23 @@ watch(
   { immediate: true },
 )
 
-// Placeholder until the real executor (src/lib/importExecutor.js) lands in
-// the next sub-phase. Returning [] means Confirm & Import currently advances
-// straight to Results with an empty outcome list, not a completed write.
-async function executeImport() {
-  return []
-}
-
 // Runs the import and advances to Results once it settles. isExecuting also
 // blocks ImportWizard.vue's Back button (see its own template), so the
-// admin can't navigate away mid-write.
+// admin can't navigate away mid-write. importResults ends up shaped exactly
+// as executeImport returns it: { outcomes, rawByKey }. outcomes is the
+// per-row (or, for replace-set, per-plan-year-group) array every writeMode
+// produces -- Results reads this for its summary counts and results table.
+// rawByKey is the plan_year+milestone_name -> raw-row lookup replace-set
+// needs for its failed/partial-row CSV export; null for every other
+// writeMode, where each outcome's own .row.raw already covers that need
+// directly.
 async function runExecution() {
   isExecuting.value = true
-  importResults.value = await executeImport()
+  importResults.value = await executeImport({
+    selectedTable: props.selectedTable,
+    validatedRows: props.validatedRows,
+    milestoneGroups: props.milestoneGroups,
+  })
   isExecuting.value = false
   emit('done')
 }
