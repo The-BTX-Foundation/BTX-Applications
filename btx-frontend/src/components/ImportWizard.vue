@@ -5,6 +5,7 @@ import ImportChooseTableStep from './ImportChooseTableStep.vue'
 import ImportProvideDataStep from './ImportProvideDataStep.vue'
 import ImportPreviewStep from './ImportPreviewStep.vue'
 import ImportConfirmStep from './ImportConfirmStep.vue'
+import ImportResultsStep from './ImportResultsStep.vue'
 
 const authStore = useAuthStore()
 
@@ -93,10 +94,12 @@ const isExecuting = ref(false)
 
 const currentStepIndex = computed(() => STEPS.indexOf(currentStep.value))
 
-// Per-step precondition for the shared Next button. confirm never reaches
-// this -- its own "Confirm & Import" button replaces Next entirely (see the
-// template below) -- and results is still a placeholder, so both default to
-// true rather than blocking on state that doesn't exist yet.
+// Per-step precondition for the shared Next button. Neither confirm nor
+// results ever reaches this in practice -- their own "Confirm & Import" and
+// "Start New Import" buttons replace Next entirely (see the template
+// below), and Next itself is hidden outright for both steps -- so this
+// default of true is never actually read for either; kept only so the
+// computed has an exhaustive return for every step.
 const canAdvance = computed(() => {
   if (currentStep.value === 'choose-table') return selectedTable.value !== null
   if (currentStep.value === 'provide-data') return rawRows.value.length > 0
@@ -116,6 +119,30 @@ const canAdvance = computed(() => {
 function goToNextStep() {
   const next = STEPS[currentStepIndex.value + 1]
   if (next) currentStep.value = next
+}
+
+// Resets every piece of wizard state back to its initial value and returns
+// to the first step, so Results' "Start New Import" can begin a second
+// import without a manual page reload. Explicit about every ref rather than
+// relying on watch(selectedTable, ...) to cascade the reset -- that watcher
+// only fires on an actual value CHANGE, so choosing the same table again
+// for a second import would never re-trigger it, leaving rawRows and
+// everything downstream stale. Each child step's own local state (Preview's
+// columnMapping, Confirm's acknowledgeDelete, etc.) needs no explicit reset
+// here -- returning to 'choose-table' unmounts whichever step is currently
+// showing, and picking a table again mounts a fresh instance of Preview/
+// Confirm with none of that local state carried over.
+function startNewImport() {
+  selectedTable.value = null
+  rawRows.value = []
+  validationContext.value = {}
+  validatedRows.value = []
+  excludedFields.value = []
+  milestoneGroups.value = null
+  isValidating.value = false
+  importResults.value = []
+  isExecuting.value = false
+  currentStep.value = STEPS[0]
 }
 
 // Returns to the previous step in STEPS, if one exists.
@@ -150,7 +177,14 @@ function goToPreviousStep() {
       v-model:is-executing="isExecuting"
       @done="goToNextStep"
     />
-    <div v-else-if="currentStep === 'results'">Results step goes here</div>
+    <ImportResultsStep
+      v-else-if="currentStep === 'results'"
+      :selected-table="selectedTable"
+      :import-results="importResults"
+      :validated-rows="validatedRows"
+      :milestone-groups="milestoneGroups"
+      @start-new-import="startNewImport"
+    />
 
     <div class="step-nav">
       <button
