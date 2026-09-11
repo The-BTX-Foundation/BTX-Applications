@@ -77,21 +77,6 @@ const assignedCountLoaded = ref(false)
 // already allows each role to read.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
-// PLACEHOLDER — static bars matching the shape of DonorImpact.vue's
-// hand-rolled bar chart, until a real applications-by-month query exists.
-const applicationsByMonth = [
-  { label: 'Apr', value: 18 },
-  { label: 'May', value: 34 },
-  { label: 'Jun', value: 47 },
-  { label: 'Jul', value: 61 },
-]
-const maxMonthlyApplications = Math.max(...applicationsByMonth.map((m) => m.value))
-
-// Bar height as a percentage of the highest placeholder month value.
-function monthBarHeight(month) {
-  return `${(month.value / maxMonthlyApplications) * 100}%`
-}
-
 // Tracks whether the Headline Metrics section's real data (Total Raised,
 // Pending Tasks) has loaded yet, so those values don't flash "0" before the
 // fetch resolves — same guard pattern as assignedCountLoaded above.
@@ -154,8 +139,9 @@ function toggleCard(id) {
 
         <!-- PLACEHOLDER — static Scholarship rollup figures, not wired to any
              store or table. No Scholarship backing tables exist yet, so
-             these mirror applicationsByMonth below: hand-entered values kept
-             only until a real query can replace them. -->
+             these are hand-entered values kept only until a real query can
+             replace them (see the Program Allocation table below, which
+             ties back to these same figures). -->
         <div class="metric-cards">
           <div class="metric-card">
             <span class="metric-label">Total Program Funding Disbursed</span>
@@ -179,14 +165,71 @@ function toggleCard(id) {
           </div>
         </div>
 
-        <div class="chart">
-          <h3>Applications by Month</h3>
-          <div class="bars">
-            <div v-for="month in applicationsByMonth" :key="month.label" class="bar-col">
-              <span class="bar-value">{{ month.value }}</span>
-              <div class="bar" :style="{ height: monthBarHeight(month) }"></div>
-              <span class="bar-label">{{ month.label }}</span>
-            </div>
+        <!-- PLACEHOLDER — static Program Allocation rollup, not wired to any
+             store or table. No Scholarship backing tables exist yet, so
+             these mirror metric-cards above: hand-entered values kept only
+             until a real query can replace them. Split into two portfolios
+             -- Funding and Student Reach -- each summing independently to
+             ~100%, with a sub-header row above each group so "% of
+             Portfolio" is never ambiguous about which total it's measured
+             against. Every figure ties back to metric-cards above: the
+             $53,907.23 funding total (96.5% / 3.5% split) and the 288
+             Total Tracked Student Reach (13 + 3 + 272). -->
+        <div class="allocation-panel">
+          <h3>Program Allocation</h3>
+          <!-- Horizontal-scroll wrapper at narrow widths -- same overflow-x
+               pattern as .bars-scroll elsewhere in the app -- since the
+               4-column table (especially Key Milestone Highlights) doesn't
+               fit a mobile viewport without it. -->
+          <div class="allocation-table-scroll">
+            <table class="allocation-table">
+              <thead>
+                <tr>
+                  <th>Metric Category</th>
+                  <th>Disbursed/Tracked</th>
+                  <th>% of Portfolio</th>
+                  <th>Key Milestone Highlights</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="4" class="allocation-group-label">Funding</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Direct Academic Aid</td>
+                  <td>$52,020.48</td>
+                  <td>96.5%</td>
+                  <td>13 Scholars funded across 7 active scholarship cycles ($4,000 average disbursement)</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Conference Travel</td>
+                  <td>$1,886.75</td>
+                  <td>3.5%</td>
+                  <td>3 Travel Awardees supported for academic conference attendance</td>
+                </tr>
+                <tr>
+                  <td colspan="4" class="allocation-group-label">Student Reach</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Scholars Awarded</td>
+                  <td>13 Scholars</td>
+                  <td>4.5%</td>
+                  <td>Core award cohort within the 288 Total Tracked Student Reach</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Travel Awardees</td>
+                  <td>3 Students</td>
+                  <td>1.0%</td>
+                  <td>Conference travel recipients within the 288 Total Tracked Student Reach</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Campus Outreach</td>
+                  <td>272 Students</td>
+                  <td>94.4%</td>
+                  <td>Largest share of the 288 Total Tracked Student Reach, via on-campus engagement events</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </template>
@@ -315,45 +358,67 @@ function toggleCard(id) {
   color: #9a9a9a;
 }
 
-.chart h3 {
+/* Program Allocation card+table: reuses the app's established card/table
+   convention verbatim (same shape as FundraisingHealth.vue's
+   .revenue-panel/.revenue-table and BudgetTracking.vue's .variance-panel/
+   .variance-table) rather than inventing new styling. */
+.allocation-panel {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.allocation-panel h3 {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
   color: #2d3142;
 }
 
-.bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 20px;
-  height: 180px;
+/* Matches .bars-scroll's convention (FundraisingHealth.vue) -- harmless at
+   desktop widths since overflow-x: auto only activates once .allocation-table's
+   own min-width genuinely exceeds the panel. */
+.allocation-table-scroll {
+  overflow-x: auto;
 }
 
-.bar-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  width: 48px;
-}
-
-.bar-value {
-  font-size: 12px;
-  color: #8a8a85;
-  margin-bottom: 4px;
-}
-
-.bar {
+.allocation-table {
   width: 100%;
-  background: #c9932a;
-  border-radius: 4px 4px 0 0;
+  min-width: 640px;
+  border-collapse: collapse;
 }
 
-.bar-label {
-  margin-top: 8px;
-  font-size: 13px;
+.allocation-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a8a85;
+  padding: 0 8px 8px 0;
+}
+
+.allocation-table td {
+  padding: 6px 8px 6px 0;
+  font-size: 14px;
   color: #2d3142;
+}
+
+.allocation-category {
+  font-weight: 500;
+}
+
+/* Sub-header row separating the two portfolios (Funding vs. Student Reach)
+   so "% of Portfolio" is never ambiguous about which total it's measured
+   against -- matches .metrics-group-header's uppercase small-caps
+   convention (FundraisingHealth.vue's "REVENUE SOURCES" label). */
+.allocation-group-label {
+  padding: 12px 8px 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8a8a85;
 }
 
 .error {

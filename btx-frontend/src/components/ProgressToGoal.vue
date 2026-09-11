@@ -221,6 +221,73 @@ const selectedPlanMilestones = computed(() =>
             </li>
           </ul>
         </div>
+
+        <!-- PLACEHOLDER — static Program Allocation rollup, not wired to any
+             store or table. No Scholarship backing tables exist yet, so
+             these are hand-entered values kept only until a real query can
+             replace them -- identical to Home.vue's own Program Allocation
+             table (same figures, same markup, same styling). Split into
+             two portfolios -- Funding and Student Reach -- each summing
+             independently to ~100%, with a sub-header row above each group
+             so "% of Portfolio" is never ambiguous about which total it's
+             measured against. -->
+        <div class="allocation-panel">
+          <h3>Program Allocation</h3>
+          <!-- Horizontal-scroll wrapper at narrow widths -- same overflow-x
+               pattern as .bars-scroll elsewhere in the app -- since the
+               4-column table (especially Key Milestone Highlights) doesn't
+               fit a mobile viewport without it. -->
+          <div class="allocation-table-scroll">
+            <table class="allocation-table">
+              <thead>
+                <tr>
+                  <th>Metric Category</th>
+                  <th>Disbursed/Tracked</th>
+                  <th>% of Portfolio</th>
+                  <th>Key Milestone Highlights</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="4" class="allocation-group-label">Funding</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Direct Academic Aid</td>
+                  <td>$52,020.48</td>
+                  <td>96.5%</td>
+                  <td>13 Scholars funded across 7 active scholarship cycles ($4,000 average disbursement)</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Conference Travel</td>
+                  <td>$1,886.75</td>
+                  <td>3.5%</td>
+                  <td>3 Travel Awardees supported for academic conference attendance</td>
+                </tr>
+                <tr>
+                  <td colspan="4" class="allocation-group-label">Student Reach</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Scholars Awarded</td>
+                  <td>13 Scholars</td>
+                  <td>4.5%</td>
+                  <td>Core award cohort within the 288 Total Tracked Student Reach</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Travel Awardees</td>
+                  <td>3 Students</td>
+                  <td>1.0%</td>
+                  <td>Conference travel recipients within the 288 Total Tracked Student Reach</td>
+                </tr>
+                <tr>
+                  <td class="allocation-category">Campus Outreach</td>
+                  <td>272 Students</td>
+                  <td>94.4%</td>
+                  <td>Largest share of the 288 Total Tracked Student Reach, via on-campus engagement events</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </template>
@@ -472,6 +539,69 @@ const selectedPlanMilestones = computed(() =>
   color: #2d3142;
 }
 
+/* Program Allocation card+table: identical to Home.vue's own version
+   (same class names, same property values) rather than inventing separate
+   CSS -- both reuse the app's established card/table convention verbatim
+   (same shape as FundraisingHealth.vue's .revenue-panel/.revenue-table). */
+.allocation-panel {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.allocation-panel h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+}
+
+/* Matches .bars-scroll's convention (FundraisingHealth.vue) -- harmless at
+   desktop widths since overflow-x: auto only activates once .allocation-table's
+   own min-width genuinely exceeds the panel. */
+.allocation-table-scroll {
+  overflow-x: auto;
+}
+
+.allocation-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.allocation-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a8a85;
+  padding: 0 8px 8px 0;
+}
+
+.allocation-table td {
+  padding: 6px 8px 6px 0;
+  font-size: 14px;
+  color: #2d3142;
+}
+
+.allocation-category {
+  font-weight: 500;
+}
+
+/* Sub-header row separating the two portfolios (Funding vs. Student Reach)
+   so "% of Portfolio" is never ambiguous about which total it's measured
+   against -- matches .metrics-group-header's uppercase small-caps
+   convention (FundraisingHealth.vue's "REVENUE SOURCES" label). */
+.allocation-group-label {
+  padding: 12px 8px 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8a8a85;
+}
+
 .error {
   color: #b3261e;
 }
@@ -494,6 +624,17 @@ const selectedPlanMilestones = computed(() =>
 @media (max-width: 850px) {
   .progress-to-goal {
     flex-direction: column;
+    /* .progress-to-goal's own align-items: flex-start (above) is meant for
+       the desktop row layout, sizing plan-column/detail-column to their
+       content along the (vertical) cross axis -- harmless there since
+       neither child is ever wider than the other. Flipping to a column
+       direction here swaps the cross axis to horizontal, so without this
+       override the same flex-start would shrink-to-fit each child's width
+       to its own content instead of the container's -- invisible until
+       .allocation-panel's table (min-width: 640px, below) became the first
+       child wide enough to expose it, overflowing the whole page instead
+       of being contained by .allocation-table-scroll's own overflow-x. */
+    align-items: stretch;
   }
 
   .plan-column {
