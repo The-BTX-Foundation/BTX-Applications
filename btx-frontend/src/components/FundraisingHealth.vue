@@ -445,24 +445,33 @@ const showHistory = ref(false)
 .metrics-group-fields {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
+/* Boxed treatment matching ProgressToGoal.vue's .stat convention (same
+   border/background/radius), sized down from its padding/gaps since this
+   list packs 10 fields per row instead of 4. */
 .metric-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  background: #fff;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 10px;
+  padding: 10px 12px;
 }
 
 .metric-label {
-  font-size: 13px;
-  color: #8a8a85;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4a4a;
 }
 
 .metric-value {
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
   color: #2d3142;
 }
 
