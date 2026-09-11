@@ -21,6 +21,11 @@ async function handleSignOut() {
 // links instead (see the template below). Sub-items mirror the routes on
 // the Home.vue cards, except Alert Center, which only lives in the sidebar.
 const navSections = [
+  // Flat top-level links (no `children`) rather than expandable groups —
+  // the template below checks for `children` to decide which to render.
+  { label: 'Task & Approval', routeName: 'tasks' },
+  { label: 'Alert Center', routeName: 'alerts' },
+  { label: 'Event Calendar', routeName: 'event-calendar' },
   {
     label: 'Finance & Funding',
     children: [
@@ -38,24 +43,19 @@ const navSections = [
       { label: 'Donor Impact', routeName: 'donor-impact' },
     ],
   },
-  // Flat top-level links (no `children`) rather than expandable groups —
-  // the template below checks for `children` to decide which to render.
-  { label: 'Task & Approval', routeName: 'tasks' },
-  { label: 'Alert Center', routeName: 'alerts' },
-  { label: 'Event Calendar', routeName: 'event-calendar' },
-  {
-    label: 'Marketing',
-    children: [
-      { label: 'Calendar', routeName: 'marketing-calendar' },
-      { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
-    ],
-  },
   {
     label: 'Scholarship',
     children: [
       { label: 'Scoring', routeName: 'scholarship-scoring' },
       { label: 'Interviews', routeName: 'scholarship-interviews' },
       { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
+    ],
+  },
+  {
+    label: 'Marketing',
+    children: [
+      { label: 'Calendar', routeName: 'marketing-calendar' },
+      { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
     ],
   },
   // adminOnly is a new field only this entry uses today -- see
