@@ -77,12 +77,6 @@ const assignedCountLoaded = ref(false)
 // already allows each role to read.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
-// PLACEHOLDER — wire to the applications table once Scholarship Hub ships.
-const applicationsThisCycle = 128
-
-// PLACEHOLDER — wire to the interviews table once Scholarship Hub ships.
-const upcomingInterviews = 12
-
 // PLACEHOLDER — static bars matching the shape of DonorImpact.vue's
 // hand-rolled bar chart, until a real applications-by-month query exists.
 const applicationsByMonth = [
@@ -158,22 +152,30 @@ function toggleCard(id) {
       <template v-else>
         <h2 class="page-title">Headline Metrics</h2>
 
+        <!-- PLACEHOLDER — static Scholarship rollup figures, not wired to any
+             store or table. No Scholarship backing tables exist yet, so
+             these mirror applicationsByMonth below: hand-entered values kept
+             only until a real query can replace them. -->
         <div class="metric-cards">
           <div class="metric-card">
-            <span class="metric-label">Total Raised</span>
-            <span class="metric-value">${{ donorImpactStore.totalRaised.toLocaleString() }}</span>
+            <span class="metric-label">Total Program Funding Disbursed</span>
+            <span class="metric-value">$53,907.23</span>
+            <span class="metric-subtext">96.5% Direct Academic Aid | 3.5% Conference Travel</span>
           </div>
           <div class="metric-card">
-            <span class="metric-label">Applications This Cycle</span>
-            <span class="metric-value">{{ applicationsThisCycle.toLocaleString() }}</span>
+            <span class="metric-label">Total Scholars Awarded</span>
+            <span class="metric-value">13 Scholars</span>
+            <span class="metric-subtext">Across 7 active scholarship cycles ($4,000 average disbursement)</span>
           </div>
           <div class="metric-card">
-            <span class="metric-label">Pending Tasks</span>
-            <span class="metric-value">{{ tasksAlertsStore.globalOpenCount.toLocaleString() }}</span>
+            <span class="metric-label">Total Tracked Student Reach</span>
+            <span class="metric-value">288 Students</span>
+            <span class="metric-subtext">13 Scholars + 3 Travel Awardees + 272 Campus Outreach Attendees</span>
           </div>
           <div class="metric-card">
-            <span class="metric-label">Upcoming Interviews</span>
-            <span class="metric-value">{{ upcomingInterviews.toLocaleString() }}</span>
+            <span class="metric-label">Total Applicants Engaged</span>
+            <span class="metric-value">70 Applicants</span>
+            <span class="metric-subtext">~10 applicants per active award cycle</span>
           </div>
         </div>
 
@@ -304,6 +306,13 @@ function toggleCard(id) {
   font-size: 24px;
   font-weight: 600;
   color: #c9932a;
+}
+
+/* Reuses .card-counter's small-gray secondary-text convention below (same
+   size/color) rather than inventing a new subtext style. */
+.metric-subtext {
+  font-size: 12px;
+  color: #9a9a9a;
 }
 
 .chart h3 {
