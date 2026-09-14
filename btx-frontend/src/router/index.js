@@ -46,8 +46,11 @@ const router = createRouter({
           component: () => import('../views/DonorImpactView.vue'),
         },
         placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
-        // Finance & Funding's remaining planned tab. Headline Metrics moved
-        // into Home.vue directly and no longer has its own route.
+        {
+          path: 'finance-headline-metric-summary',
+          name: 'finance-headline-metric-summary',
+          component: () => import('../views/HeadlineMetricSummaryView.vue'),
+        },
         {
           path: 'finance-budget-tracking',
           name: 'finance-budget-tracking',
