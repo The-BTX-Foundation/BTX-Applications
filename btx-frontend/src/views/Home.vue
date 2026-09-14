@@ -72,13 +72,13 @@ function toggleCard(id) {
       <template v-for="card in cards" :key="card.id">
         <RouterLink v-if="card.flat" :to="{ name: card.routeName }" class="card card-header">
           <h2 class="card-title">{{ card.title }}</h2>
-          <p class="card-meta">See details →</p>
+          <p class="card-meta">See details&nbsp;→</p>
         </RouterLink>
 
         <div v-else class="card" :class="{ 'card--expanded': expandedCardIds.has(card.id) }">
           <button type="button" class="card-header" @click="toggleCard(card.id)">
             <h2 class="card-title">{{ card.title }}</h2>
-            <p class="card-meta">See details →</p>
+            <p class="card-meta">See details&nbsp;→</p>
             <svg
               class="chevron"
               width="18"
@@ -205,15 +205,16 @@ function toggleCard(id) {
   text-decoration: underline;
 }
 
-/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
-   whole app switches to its mobile layout at one consistent width), the
-   grid drops to a single column instead of the desktop grid-template-columns
-   count above -- full stacking rather than an intermediate multi-column
-   layout, same as every other page's 850px query in this app. Nothing above
-   this query is touched, so desktop layout is unaffected. */
-@media (max-width: 850px) {
+/* Independent of HomeView.vue's 850px sidebar-drawer breakpoint -- the
+   card grid stays 2 columns all the way down through phone widths now,
+   instead of collapsing to a single column below 850px like every other
+   page's breakpoint in this app. This rule is a deliberate, explicit
+   reinforcement of the base grid-template-columns value above (it's a
+   no-op at desktop widths) so the "never collapses" behavior reads as
+   intentional rather than as a missing breakpoint. */
+@media (max-width: 1000px) {
   .card-grid {
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
