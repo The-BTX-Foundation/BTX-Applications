@@ -1,47 +1,19 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { useTasksAlertsStore } from '@/stores/tasksAlerts'
+import { reactive } from 'vue'
 
-const authStore = useAuthStore()
-const tasksAlertsStore = useTasksAlertsStore()
-
-// The 7 landing-page cards. Task & Approval, Alert Center, and Event
-// Calendar are single-subItem "flat" cards -- still the same expand/
-// collapse card shape as every other card, just with exactly one sub-item
-// -- ordered first to mirror the sidebar's flat-links-first ordering.
-// Finance & Funding, Program, Scholarship, and Marketing follow in the
-// same order as their sidebar groups. subItems map to real routes for
-// Program and Task & Approval (which have built pages) and to placeholder
-// routes for the other multi-item sections, which don't have real
-// sub-pages yet.
+// The 7 landing-page tiles. Task & Approval, Alert Center, and Event
+// Calendar are flat, single-destination tiles -- rendered as direct links
+// (flat: true + routeName), no chevron/expand state, since each has only
+// one real destination. Finance & Funding, Program, Scholarship, and
+// Marketing keep the expand-to-reveal-sub-items behavior via subItems.
+// Order mirrors the sidebar's flat-links-first, then-groups convention.
 const cards = [
-  {
-    id: 'task-approval',
-    title: 'Task & Approval',
-    description: 'Review and act on tasks and approvals assigned to you',
-    meta: 'See details →',
-    subItems: [{ label: 'Task & Approval', routeName: 'tasks' }],
-  },
-  {
-    id: 'alert-center',
-    title: 'Alert Center',
-    description: 'Overdue items and new alerts across the platform',
-    meta: 'See details →',
-    subItems: [{ label: 'Alert Center', routeName: 'alerts' }],
-  },
-  {
-    id: 'event-calendar',
-    title: 'Event Calendar',
-    description: 'Upcoming events across all program areas',
-    meta: 'See details →',
-    subItems: [{ label: 'Event Calendar', routeName: 'event-calendar' }],
-  },
+  { id: 'task-approval', title: 'Task & Approval', flat: true, routeName: 'tasks' },
+  { id: 'alert-center', title: 'Alert Center', flat: true, routeName: 'alerts' },
+  { id: 'event-calendar', title: 'Event Calendar', flat: true, routeName: 'event-calendar' },
   {
     id: 'finance-funding',
     title: 'Finance & Funding',
-    description: 'Budget tracking & fundraising health',
-    meta: 'See details →',
     subItems: [
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
@@ -52,8 +24,6 @@ const cards = [
   {
     id: 'program',
     title: 'Program',
-    description: 'Progress tracking & program impact reporting',
-    meta: 'See details →',
     subItems: [
       { label: 'Program Planning', routeName: 'program-planning' },
       { label: 'Program Impact', routeName: 'program-impact' },
@@ -62,8 +32,6 @@ const cards = [
   {
     id: 'scholarship',
     title: 'Scholarship',
-    description: 'Scoring, interviews & applicant records',
-    meta: 'See details →',
     subItems: [
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Scoring', routeName: 'scholarship-scoring' },
@@ -74,34 +42,12 @@ const cards = [
   {
     id: 'marketing',
     title: 'Marketing',
-    description: 'Outreach & campaign tracking',
-    meta: 'See details →',
     subItems: [
       { label: 'Calendar', routeName: 'marketing-calendar' },
       { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
     ],
   },
 ]
-
-// Tracks whether the Program card's assigned-open-items count has loaded
-// yet, so the metric line doesn't flash "0" before the real value arrives.
-const assignedCountLoaded = ref(false)
-
-// Refetches the Program card's assigned count whenever the signed-in user
-// changes (sign in, sign out, switch accounts). Skips the fetch while
-// signed out.
-watch(
-  () => authStore.session?.user?.id ?? null,
-  async (userId) => {
-    if (userId) {
-      await tasksAlertsStore.fetchAssignedOpenCount(userId)
-      assignedCountLoaded.value = true
-    } else {
-      assignedCountLoaded.value = false
-    }
-  },
-  { immediate: true },
-)
 
 // Tracks which cards are expanded; multiple cards can be open at once.
 const expandedCardIds = reactive(new Set())
@@ -123,42 +69,36 @@ function toggleCard(id) {
     <p class="subtext">Select a section below, or from the sidebar, to get started.</p>
 
     <div class="card-grid">
-      <div v-for="card in cards" :key="card.id" class="card" :class="{ 'card--expanded': expandedCardIds.has(card.id) }">
-        <button type="button" class="card-header" @click="toggleCard(card.id)">
-          <div class="card-header-text">
-            <h2 class="card-title">{{ card.title }}</h2>
-            <p class="card-description">{{ card.description }}</p>
-            <p class="card-meta">{{ card.meta }}</p>
-            <!-- Lives on the card face (outside the expandable sub-item
-                 list below) so it's visible whether the card is expanded
-                 or collapsed. Gated on assignedCountLoaded to avoid a "0"
-                 flash before the real count arrives. -->
-            <p v-if="card.id === 'task-approval' && assignedCountLoaded" class="card-counter">
-              {{ tasksAlertsStore.assignedOpenCount }}
-              open item{{ tasksAlertsStore.assignedOpenCount === 1 ? '' : 's' }} assigned to you
-            </p>
-          </div>
-          <svg
-            class="chevron"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+      <template v-for="card in cards" :key="card.id">
+        <RouterLink v-if="card.flat" :to="{ name: card.routeName }" class="card card-header">
+          <h2 class="card-title">{{ card.title }}</h2>
+        </RouterLink>
 
-        <ul v-if="expandedCardIds.has(card.id)" class="sub-item-list">
-          <li v-for="item in card.subItems" :key="item.routeName">
-            <RouterLink :to="{ name: item.routeName }" class="sub-item-link">{{ item.label }}</RouterLink>
-          </li>
-        </ul>
-      </div>
+        <div v-else class="card" :class="{ 'card--expanded': expandedCardIds.has(card.id) }">
+          <button type="button" class="card-header" @click="toggleCard(card.id)">
+            <h2 class="card-title">{{ card.title }}</h2>
+            <svg
+              class="chevron"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          <ul v-if="expandedCardIds.has(card.id)" class="sub-item-list">
+            <li v-for="item in card.subItems" :key="item.routeName">
+              <RouterLink :to="{ name: item.routeName }" class="sub-item-link">{{ item.label }}</RouterLink>
+            </li>
+          </ul>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -192,45 +132,31 @@ function toggleCard(id) {
 }
 
 .card-header {
+  position: relative;
   width: 100%;
+  min-height: 160px;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   padding: 24px;
-  text-align: left;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.card-header-text {
-  min-width: 0;
-}
-
 .card-title {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
-.card-description {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: #6b6b6b;
-}
-
-.card-meta {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #d4a24e;
-}
-
 .chevron {
-  flex-shrink: 0;
-  margin-top: 4px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
   color: #8a8a8a;
   opacity: 0;
   transition:
@@ -267,12 +193,6 @@ function toggleCard(id) {
 
 .sub-item-link:hover {
   text-decoration: underline;
-}
-
-.card-counter {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: #9a9a9a;
 }
 
 /* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
