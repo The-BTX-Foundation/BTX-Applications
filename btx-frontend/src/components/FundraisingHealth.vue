@@ -446,21 +446,23 @@ const showHistory = ref(false)
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 20px;
 }
 
-/* Boxed treatment matching ProgramPlanning.vue's .stat convention (same
-   border/background/radius), sized down from its padding/gaps since this
-   list packs 10 fields per row instead of 4. */
+/* Shared dense boxed-widget spec (matching ProgramPlanning.vue's .stat,
+   BudgetTracking.vue's .metric-field/.computed-display, and
+   ProgramImpact.vue's .metric-field/.comparison-item) -- same
+   border/background/radius family across the app, tightened to one
+   common padding/gap/font-size standard app-wide. */
 .metric-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   background: #fff;
   border: 0.5px solid #e5e3dd;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .metric-label {
@@ -470,7 +472,7 @@ const showHistory = ref(false)
 }
 
 .metric-value {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #2d3142;
 }

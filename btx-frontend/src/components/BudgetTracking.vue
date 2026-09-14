@@ -428,40 +428,58 @@ const showHistory = ref(false)
 .metrics-group-fields {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
+/* Shared dense boxed-widget spec (matching ProgramPlanning.vue's .stat,
+   FundraisingHealth.vue's .metric-field, and ProgramImpact.vue's
+   .metric-field/.comparison-item) -- same border/background/radius/
+   padding/gap/font-size standard app-wide. */
 .metric-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  background: #fff;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .metric-label {
-  font-size: 13px;
-  color: #8a8a85;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4a4a;
 }
 
 .metric-value {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
   color: #2d3142;
 }
 
 .computed-row {
   display: flex;
-  gap: 24px;
+  gap: 10px;
 }
 
+/* Same boxed treatment as .metric-field above, but keeping its existing
+   gold/larger value styling as a deliberate highlight tier -- not shrunk
+   to the plain metric-field's 15px/navy. */
 .computed-display {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  background: #fff;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .computed-label {
-  font-size: 13px;
-  color: #8a8a85;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4a4a;
 }
 
 .computed-value {

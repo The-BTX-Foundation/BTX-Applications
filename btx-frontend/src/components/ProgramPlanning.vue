@@ -392,18 +392,23 @@ const selectedPlanMilestones = computed(() =>
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  gap: 10px;
   margin-bottom: 20px;
 }
 
+/* Shared dense boxed-widget spec (matching FundraisingHealth.vue's
+   .metric-field, BudgetTracking.vue's .metric-field/.computed-display,
+   and ProgramImpact.vue's .metric-field/.comparison-item) -- same
+   border/background/radius family across the app, tightened to one
+   common padding/gap/font-size standard app-wide. */
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   background: #fff;
   border: 0.5px solid #e5e3dd;
-  border-radius: 12px;
-  padding: 16px 18px;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .stat-label {
@@ -413,7 +418,7 @@ const selectedPlanMilestones = computed(() =>
 }
 
 .stat-value {
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 600;
   color: #2d3142;
 }
