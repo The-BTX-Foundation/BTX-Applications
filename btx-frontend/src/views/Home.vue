@@ -52,7 +52,7 @@ const cards = [
   {
     id: 'program',
     title: 'Program',
-    description: 'Awardee workflows, progress tracking & donor impact',
+    description: 'Progress tracking & program impact reporting',
     meta: 'See details →',
     subItems: [
       { label: 'Program Planning', routeName: 'program-planning' },
