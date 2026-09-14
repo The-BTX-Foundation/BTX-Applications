@@ -6,11 +6,37 @@ import { useTasksAlertsStore } from '@/stores/tasksAlerts'
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
 
-// The 5 landing-page cards. subItems map to real routes for Program and
-// Task & Approval (which have built pages) and to placeholder routes for
-// the other sections, which don't have real sub-pages yet. Alert Center is
-// deliberately absent — it lives only in the sidebar, not on the homepage.
+// The 7 landing-page cards. Task & Approval, Alert Center, and Event
+// Calendar are single-subItem "flat" cards -- still the same expand/
+// collapse card shape as every other card, just with exactly one sub-item
+// -- ordered first to mirror the sidebar's flat-links-first ordering.
+// Finance & Funding, Program, Scholarship, and Marketing follow in the
+// same order as their sidebar groups. subItems map to real routes for
+// Program and Task & Approval (which have built pages) and to placeholder
+// routes for the other multi-item sections, which don't have real
+// sub-pages yet.
 const cards = [
+  {
+    id: 'task-approval',
+    title: 'Task & Approval',
+    description: 'Review and act on tasks and approvals assigned to you',
+    meta: 'See details →',
+    subItems: [{ label: 'Task & Approval', routeName: 'tasks' }],
+  },
+  {
+    id: 'alert-center',
+    title: 'Alert Center',
+    description: 'Overdue items and new alerts across the platform',
+    meta: 'See details →',
+    subItems: [{ label: 'Alert Center', routeName: 'alerts' }],
+  },
+  {
+    id: 'event-calendar',
+    title: 'Event Calendar',
+    description: 'Upcoming events across all program areas',
+    meta: 'See details →',
+    subItems: [{ label: 'Event Calendar', routeName: 'event-calendar' }],
+  },
   {
     id: 'finance-funding',
     title: 'Finance & Funding',
@@ -35,16 +61,6 @@ const cards = [
     ],
   },
   {
-    id: 'marketing',
-    title: 'Marketing',
-    description: 'Outreach & campaign tracking',
-    meta: 'See details →',
-    subItems: [
-      { label: 'Calendar', routeName: 'marketing-calendar' },
-      { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
-    ],
-  },
-  {
     id: 'scholarship',
     title: 'Scholarship',
     description: 'Scoring, interviews & applicant records',
@@ -56,11 +72,14 @@ const cards = [
     ],
   },
   {
-    id: 'task-approval',
-    title: 'Task & Approval',
-    description: 'Review and act on tasks and approvals assigned to you',
+    id: 'marketing',
+    title: 'Marketing',
+    description: 'Outreach & campaign tracking',
     meta: 'See details →',
-    subItems: [{ label: 'Task & Approval', routeName: 'tasks' }],
+    subItems: [
+      { label: 'Calendar', routeName: 'marketing-calendar' },
+      { label: 'Marketing Tasks', routeName: 'marketing-tasks' },
+    ],
   },
 ]
 
