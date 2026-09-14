@@ -55,7 +55,6 @@ const cards = [
     description: 'Awardee workflows, progress tracking & donor impact',
     meta: 'See details →',
     subItems: [
-      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Program Planning', routeName: 'program-planning' },
       { label: 'Program Impact', routeName: 'program-impact' },
     ],
@@ -66,6 +65,7 @@ const cards = [
     description: 'Scoring, interviews & applicant records',
     meta: 'See details →',
     subItems: [
+      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Scoring', routeName: 'scholarship-scoring' },
       { label: 'Interviews', routeName: 'scholarship-interviews' },
       { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },

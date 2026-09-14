@@ -39,7 +39,6 @@ const navSections = [
   {
     label: 'Program',
     children: [
-      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Program Planning', routeName: 'program-planning' },
       { label: 'Program Impact', routeName: 'program-impact' },
     ],
@@ -47,6 +46,7 @@ const navSections = [
   {
     label: 'Scholarship',
     children: [
+      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
       { label: 'Scoring', routeName: 'scholarship-scoring' },
       { label: 'Interviews', routeName: 'scholarship-interviews' },
       { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
