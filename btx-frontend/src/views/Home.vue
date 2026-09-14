@@ -72,11 +72,13 @@ function toggleCard(id) {
       <template v-for="card in cards" :key="card.id">
         <RouterLink v-if="card.flat" :to="{ name: card.routeName }" class="card card-header">
           <h2 class="card-title">{{ card.title }}</h2>
+          <p class="card-meta">See details →</p>
         </RouterLink>
 
         <div v-else class="card" :class="{ 'card--expanded': expandedCardIds.has(card.id) }">
           <button type="button" class="card-header" @click="toggleCard(card.id)">
             <h2 class="card-title">{{ card.title }}</h2>
+            <p class="card-meta">See details →</p>
             <svg
               class="chevron"
               width="18"
@@ -136,6 +138,7 @@ function toggleCard(id) {
   width: 100%;
   min-height: 160px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: none;
@@ -151,6 +154,13 @@ function toggleCard(id) {
   font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
+}
+
+.card-meta {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d4a24e;
 }
 
 .chevron {
