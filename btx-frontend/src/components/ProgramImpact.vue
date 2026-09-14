@@ -147,7 +147,7 @@ function formatBarValue(cycle) {
     <p v-if="donorImpactStore.loading">Loading cycles…</p>
     <p v-else-if="donorImpactStore.error" class="error">{{ donorImpactStore.error }}</p>
 
-    <div v-else class="donor-impact">
+    <div v-else class="program-impact">
       <div class="cycle-column">
         <div class="cycle-column-header">
           <h2>Reporting Cycles</h2>
@@ -254,7 +254,7 @@ function formatBarValue(cycle) {
 </template>
 
 <style scoped>
-.donor-impact {
+.program-impact {
   display: flex;
   gap: 24px;
   align-items: flex-start;
@@ -555,7 +555,7 @@ function formatBarValue(cycle) {
    bar under the cards. The row is still scrollable by touch/trackpad;
    only the visible scrollbar affordance is removed. */
 @media (max-width: 850px) {
-  .donor-impact {
+  .program-impact {
     flex-direction: column;
   }
 
@@ -585,7 +585,7 @@ function formatBarValue(cycle) {
 /* Below 850px, .bars/.bar-col shrink to fit -- sized against the real
    measured container width, not the naive "viewport minus a bit of
    padding" estimate that would wrongly suggest plenty of room. At an
-   actual 375px phone width, .donor-impact's own box is only ~228px wide
+   actual 375px phone width, .program-impact's own box is only ~228px wide
    (the page's 32px padding plus the panel's 32px padding already eat
    128px off both sides, before .chart's own 20px padding is even
    counted), leaving just ~188px for .bars itself. At the original 48px

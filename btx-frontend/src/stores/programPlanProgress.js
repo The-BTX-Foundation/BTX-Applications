@@ -8,7 +8,7 @@ const PLAN_COLUMNS =
 
 // Pinia store for Program Plan Progress. Reads go through Supabase's RLS
 // SELECT policy on `program_plan_progress` (admin, board, and reviewer),
-// which matches ProgressToGoal.vue's own canView gate exactly -- so nothing
+// which matches ProgramPlanning.vue's own canView gate exactly -- so nothing
 // client-side needs to filter further. Read-only: the only writer is the
 // sync-program-plan-progress edge function (an external Apps Script sync),
 // not this app, so there's no create/update here the way donorImpact.js has.

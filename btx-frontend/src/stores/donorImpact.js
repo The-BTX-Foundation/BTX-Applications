@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
-// Single source of truth for every donor_impact metric. DonorImpact.vue's
+// Single source of truth for every donor_impact metric. ProgramImpact.vue's
 // field display, chart tabs, and this store's column list/insert defaults
 // are all derived from this array instead of being hand-duplicated in
 // several separate places — add a metric here and it appears everywhere
@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabaseClient'
 //   (both the field value and, for the metric's chart tab, the bar label).
 // - editable: true for real donor_impact columns (selected/inserted by
 //   this store); false for values derived client-side from other columns.
-//   Historically also meant "editable in the form" before DonorImpact.vue
+//   Historically also meant "editable in the form" before ProgramImpact.vue
 //   became read-only display -- the name is a holdover from that, but the
 //   selected/inserted meaning below is still exactly what it drives.
 // - computed: for non-editable metrics, a fn(cycle) deriving its value —

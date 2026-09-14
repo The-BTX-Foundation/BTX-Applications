@@ -8,7 +8,7 @@ const authStore = useAuthStore()
 const programPlanProgressStore = useProgramPlanProgressStore()
 const programPlanMilestonesStore = useProgramPlanMilestonesStore()
 
-// Same page-access gate as DonorImpact.vue/FundraisingHealth.vue: admin,
+// Same page-access gate as ProgramImpact.vue/FundraisingHealth.vue: admin,
 // board, and reviewer can view; applicant is blocked. Matches
 // program_plan_progress's own RLS SELECT policy exactly.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
@@ -55,7 +55,7 @@ const selectedPlan = computed(() =>
 // program_plan_progress has no published/live-vs-archived column -- every
 // row here is a real synced progress snapshot, not a draft/live state like
 // donor_impact's `published` flag. Live is inferred the same way
-// DonorImpact.vue infers its own Live badge for a column that doesn't
+// ProgramImpact.vue infers its own Live badge for a column that doesn't
 // exist: the single most recent plan year gets "Live", every other plan
 // year gets "Archived".
 const liveYear = computed(() => {
@@ -71,7 +71,7 @@ function badgeFor(plan) {
 }
 
 // Chart tabs, each keyed to one of program_plan_progress's own count
-// columns directly -- unlike DonorImpact.vue's DONOR_IMPACT_METRICS (which
+// columns directly -- unlike ProgramImpact.vue's DONOR_IMPACT_METRICS (which
 // needs a `computed` fn per metric for things like Average Scholarship
 // Size), every value plotted here is already a raw stored count, so a
 // plain label map is enough.
@@ -84,7 +84,7 @@ const CHART_TABS = [
 const chartMetricKey = ref('milestones_complete')
 
 // Every fetched plan year, oldest first, for the chart's left-to-right
-// timeline -- same ascending-by-year ordering as DonorImpact.vue's
+// timeline -- same ascending-by-year ordering as ProgramImpact.vue's
 // publishedCycles, but over every plan year rather than a "published"
 // subset: program_plan_progress has no draft/live flag (see liveYear's own
 // comment above), so there's no equivalent filter to apply here.
@@ -119,7 +119,7 @@ const selectedPlanMilestones = computed(() =>
     <p v-if="programPlanProgressStore.loading">Loading plans…</p>
     <p v-else-if="programPlanProgressStore.error" class="error">{{ programPlanProgressStore.error }}</p>
 
-    <div v-else class="progress-to-goal">
+    <div v-else class="program-planning">
       <div class="plan-column">
         <div class="plan-column-header">
           <h2>Program Plans</h2>
@@ -170,7 +170,7 @@ const selectedPlanMilestones = computed(() =>
           </div>
         </div>
 
-        <!-- Same chart shape as DonorImpact.vue's .chart card: title, tab
+        <!-- Same chart shape as ProgramImpact.vue's .chart card: title, tab
              row, then bar columns -- reuses those class names verbatim
              (see the shared style comment below) so the two pages read as
              one visual system. Plots raw counts across every fetched plan
@@ -294,7 +294,7 @@ const selectedPlanMilestones = computed(() =>
 </template>
 
 <style scoped>
-.progress-to-goal {
+.program-planning {
   display: flex;
   gap: 24px;
   align-items: flex-start;
@@ -359,7 +359,7 @@ const selectedPlanMilestones = computed(() =>
   color: #2d3142;
 }
 
-/* Same badge styling as DonorImpact.vue's Live/Archived cycle badges. */
+/* Same badge styling as ProgramImpact.vue's Live/Archived cycle badges. */
 .badge {
   flex-shrink: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -418,7 +418,7 @@ const selectedPlanMilestones = computed(() =>
   color: #2d3142;
 }
 
-/* Chart card: same shape/class names as DonorImpact.vue's own .chart --
+/* Chart card: same shape/class names as ProgramImpact.vue's own .chart --
    card wrapper reusing .plan-card's border treatment so it reads as a
    grouped panel consistent with the plan-list cards already on this page. */
 .chart {
@@ -616,15 +616,15 @@ const selectedPlanMilestones = computed(() =>
    whole app switches to its mobile layout at one consistent width), the
    plan list stacks above the detail column instead of beside it. The list
    itself becomes a horizontal scroll row rather than a taller vertical
-   stack -- same overflow-x pattern Donor Impact/Fundraising Health's own
+   stack -- same overflow-x pattern Program Impact/Fundraising Health's own
    charts already use for a growing set of items -- so more plan years
    accumulating over time doesn't push the selected plan's actual detail
    content further down the page. Nothing above this query is touched, so
    desktop layout is unaffected. */
 @media (max-width: 850px) {
-  .progress-to-goal {
+  .program-planning {
     flex-direction: column;
-    /* .progress-to-goal's own align-items: flex-start (above) is meant for
+    /* .program-planning's own align-items: flex-start (above) is meant for
        the desktop row layout, sizing plan-column/detail-column to their
        content along the (vertical) cross axis -- harmless there since
        neither child is ever wider than the other. Flipping to a column
@@ -657,11 +657,11 @@ const selectedPlanMilestones = computed(() =>
 /* Below 850px, .bars/.bar-col shrink to fit -- sized against the real
    measured container width, not the naive "viewport minus a bit of
    padding" estimate that would wrongly suggest plenty of room. At an
-   actual 375px phone width, .progress-to-goal's own box is only ~228px
+   actual 375px phone width, .program-planning's own box is only ~228px
    wide (the page's 32px padding plus the panel's 32px padding already eat
    128px off both sides, before .chart's own 20px padding is even
    counted), leaving just ~188px for .bars itself. At the original 48px
-   bar-col width and 20px gap, 5 bars (matching Donor Impact's own real
+   bar-col width and 20px gap, 5 bars (matching Program Impact's own real
    published-cycle count, since both charts share this exact component
    shape) would need 320px -- overflowing that real 188px budget by well
    over 100px. 28px columns with a 6px gap total 164px for 5 bars,
@@ -670,7 +670,7 @@ const selectedPlanMilestones = computed(() =>
    sizes drop to 10px/11px to stay legible at the narrower column -- both
    already within the app's existing minimum text sizes elsewhere
    (.source-label uses 11px). overflow-wrap: anywhere on .bar-value is
-   needed on Donor Impact's currency-formatted values (e.g. "$200,000" has
+   needed on Program Impact's currency-formatted values (e.g. "$200,000" has
    no space or hyphen to wrap at, so without it the text overflows into
    the neighboring column instead of dropping to a second line -- verified
    there). Values here are plain counts, always short enough to never

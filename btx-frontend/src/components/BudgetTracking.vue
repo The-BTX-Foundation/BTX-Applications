@@ -15,7 +15,7 @@ const grantPipelineStore = useGrantPipelineStore()
 // a copy, so it updates the instant a new fundraising_health row syncs.
 const fundraisingHealthStore = useFundraisingHealthStore()
 
-// Matches Donor Impact/Marketing's view convention. This page has no write
+// Matches Program Impact/Marketing's view convention. This page has no write
 // actions of its own -- everything on it, including Grant Pipeline, is
 // read-only display, so there's nothing a stricter role split would
 // actually be protecting, matching EventCalendar.vue's precedent of only
@@ -381,7 +381,7 @@ const showHistory = ref(false)
   color: #c9932a;
 }
 
-/* Category tab bar — same underline pattern used on Donor Impact
+/* Category tab bar — same underline pattern used on Program Impact
    (itself reused from TasksAlertsList.vue's Active/Pending/Completed
    tabs), no new visual language introduced. */
 .tabs {

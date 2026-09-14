@@ -7,7 +7,7 @@ const MILESTONE_COLUMNS = 'id, plan_year, milestone_name, is_complete'
 
 // Pinia store for Program Plan Milestones. Reads go through Supabase's RLS
 // SELECT policy on `program_plan_milestones` (admin, board, and reviewer),
-// which matches ProgressToGoal.vue's own canView gate exactly -- so nothing
+// which matches ProgramPlanning.vue's own canView gate exactly -- so nothing
 // client-side needs to filter further. Read-only: the only writer is the
 // sync-program-plan-milestones edge function (an external Apps Script
 // sync), not this app, same as programPlanProgress.js.
@@ -17,7 +17,7 @@ export const useProgramPlanMilestonesStore = defineStore('programPlanMilestones'
   const error = ref(null)
 
   // Loads every milestone row visible under RLS, across all plan years --
-  // ProgressToGoal.vue filters this client-side down to the selected plan
+  // ProgramPlanning.vue filters this client-side down to the selected plan
   // year, the same way it already filters programPlanProgressStore.plans
   // down to a single selected row, rather than this store taking a
   // plan_year argument and re-fetching per selection.

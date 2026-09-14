@@ -6,7 +6,7 @@ import { useMergedTasks } from '@/composables/useMergedTasks'
 const authStore = useAuthStore()
 const { allTasks, anyLoading, firstError } = useMergedTasks()
 
-// Matches the donor_impact/DonorImpact.vue convention: admin, board, and
+// Matches the donor_impact/ProgramImpact.vue convention: admin, board, and
 // reviewer can all view; applicant cannot. This page has no write actions
 // at all, so there's no separate assignee-style gate beyond this.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)

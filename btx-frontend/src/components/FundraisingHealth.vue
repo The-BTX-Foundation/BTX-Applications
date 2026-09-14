@@ -49,8 +49,8 @@ function monthName(month) {
 // Selection state for the flat month-card left panel. Both start on the
 // real current year/month so the page opens on "today" exactly like the
 // pre-history-button flat page did -- no fetch needs to complete first
-// since "today" is known client-side immediately, unlike Donor
-// Impact/Progress-to-Goal's auto-select-most-recent (which has to wait on
+// since "today" is known client-side immediately, unlike Program
+// Impact/Program Planning's auto-select-most-recent (which has to wait on
 // fetched data to know what "most recent" even is).
 const selectedYear = ref(fundraisingHealthStore.currentYear)
 const selectedMonth = ref(fundraisingHealthStore.currentMonth)
@@ -74,7 +74,7 @@ const isCurrentMonthSelected = computed(
 )
 
 // Builds a month card's badge text/variant -- a plain calendar check
-// against the store's real "today", not DonorImpact's inferred
+// against the store's real "today", not ProgramImpact's inferred
 // most-recent-published-year logic, since every month here (including one
 // that hasn't synced yet) has an unambiguous real/not-real "current month"
 // answer.
@@ -149,7 +149,7 @@ function formatBarValue(row) {
 }
 
 // Compact "Mon 'YY" bar-bottom label (e.g. "Sep '26") rather than a bare
-// year -- unlike Donor Impact/Progress-to-Goal's one-bar-per-year charts,
+// year -- unlike Program Impact/Program Planning's one-bar-per-year charts,
 // this one can realistically grow to dozens of monthly bars, so labels need
 // to stay narrow as the dataset grows.
 function barLabel(row) {
@@ -405,7 +405,7 @@ const showHistory = ref(false)
   color: #2d3142;
 }
 
-/* Same badge styling as DonorImpact.vue's Live/Archived cycle badges. */
+/* Same badge styling as ProgramImpact.vue's Live/Archived cycle badges. */
 .badge {
   flex-shrink: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -450,7 +450,7 @@ const showHistory = ref(false)
   margin-bottom: 20px;
 }
 
-/* Boxed treatment matching ProgressToGoal.vue's .stat convention (same
+/* Boxed treatment matching ProgramPlanning.vue's .stat convention (same
    border/background/radius), sized down from its padding/gaps since this
    list packs 10 fields per row instead of 4. */
 .metric-field {
@@ -553,8 +553,8 @@ const showHistory = ref(false)
 }
 
 /* Card wrapper reusing the month-card/revenue-panel border treatment, so
-   the chart reads as a grouped panel consistent with Donor Impact/
-   Progress-to-Goal's own .chart cards. */
+   the chart reads as a grouped panel consistent with Program Impact/
+   Program Planning's own .chart cards. */
 .chart {
   border: 0.5px solid #e5e3dd;
   border-radius: 12px;
@@ -599,8 +599,8 @@ const showHistory = ref(false)
 }
 
 /* Horizontal scroll container -- monthly data can realistically outgrow a
-   fixed-width chart (5 years = 60 bars) in a way Donor Impact/Progress-to-
-   Goal's yearly charts never do, so bars overflow into a scrollbar instead
+   fixed-width chart (5 years = 60 bars) in a way Program Impact/Program
+   Planning's yearly charts never do, so bars overflow into a scrollbar instead
    of being squeezed to fit. */
 .bars-scroll {
   overflow-x: auto;

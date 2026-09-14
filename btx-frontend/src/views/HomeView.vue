@@ -40,8 +40,8 @@ const navSections = [
     label: 'Program',
     children: [
       { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
-      { label: 'Progress-to-Goal', routeName: 'progress-to-goal' },
-      { label: 'Donor Impact', routeName: 'donor-impact' },
+      { label: 'Program Planning', routeName: 'program-planning' },
+      { label: 'Program Impact', routeName: 'program-impact' },
     ],
   },
   {
