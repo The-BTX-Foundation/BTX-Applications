@@ -184,8 +184,10 @@ function toggleCard(id) {
 
 .card {
   background: #fff;
-  border: 1px solid #ececec;
-  border-radius: 12px;
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(45, 49, 66, 0.06),
+    0 8px 24px rgba(45, 49, 66, 0.08);
   overflow: hidden;
 }
 
@@ -197,7 +199,7 @@ function toggleCard(id) {
   gap: 12px;
   background: none;
   border: none;
-  padding: 20px;
+  padding: 24px;
   text-align: left;
   cursor: pointer;
 }
@@ -248,7 +250,7 @@ function toggleCard(id) {
 .sub-item-list {
   list-style: none;
   margin: 0;
-  padding: 0 20px 16px;
+  padding: 0 24px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
