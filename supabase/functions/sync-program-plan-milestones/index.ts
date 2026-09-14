@@ -10,6 +10,11 @@
 // no Supabase session to attach a JWT to, so the x-sync-secret header below
 // is the real authentication here, not Supabase's own JWT check.
 //
+// Each milestone entry also carries an optional due_date, sourced from the
+// WBS sheet's own "Due Date" column (added 20260914120000 -- see that
+// migration for why it's nullable: a WBS milestone commonly has no due date
+// assigned yet).
+//
 // Runs with the service role key (see getServiceClient below), so it
 // bypasses RLS entirely -- required here since there's no signed-in user
 // for this request to act as, same as sync-program-plan-progress.
@@ -75,10 +80,35 @@ function parseInteger(value: unknown): number | null | undefined {
   return Number.isInteger(n) ? n : undefined
 }
 
+// Parses a per-milestone due_date -- same UTC-safe YYYY-MM-DD extraction as
+// sync-event-tracker-events' parseEventDate (handles both a bare date
+// string and the full ISO timestamp JSON.stringify(Date) produces from a
+// Sheets date cell), but nullable-tolerant: a WBS milestone commonly has no
+// due date yet, so undefined/null/'' all map to `null` (matching
+// tasks_alerts.due_date's own nullable convention) rather than being
+// rejected. A non-empty value that isn't a real calendar date still maps to
+// `undefined` -- the null-vs-undefined split mirrors parseInteger's above
+// (missing is fine, invalid is a 400).
+function parseMilestoneDueDate(value: unknown): string | null | undefined {
+  if (value === undefined || value === null || value === '') return null
+  if (typeof value !== 'string') return undefined
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return undefined
+  const [, yearStr, monthStr, dayStr] = match
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+  const check = new Date(Date.UTC(year, month - 1, day))
+  const isValidCalendarDate =
+    check.getUTCFullYear() === year && check.getUTCMonth() === month - 1 && check.getUTCDate() === day
+  if (!isValidCalendarDate) return undefined
+  return `${yearStr}-${monthStr}-${dayStr}`
+}
+
 // Validates and normalizes one raw milestone entry from the request body.
-// Returns the cleaned { milestoneName, isComplete } pair, or a string
-// naming what was wrong with it -- the caller turns that string into a 400
-// that identifies which array index failed, rather than a generic
+// Returns the cleaned { milestoneName, isComplete, dueDate } triple, or a
+// string naming what was wrong with it -- the caller turns that string into
+// a 400 that identifies which array index failed, rather than a generic
 // "milestones is invalid" that would leave the Apps Script author guessing.
 // milestone_name must be non-empty after trimming (an all-whitespace name
 // would otherwise upsert successfully but be unselectable/confusing in the
@@ -86,7 +116,9 @@ function parseInteger(value: unknown): number | null | undefined {
 // the Apps Script always sends a genuine JS boolean here (see
 // bucket.milestoneComplete), so accepting e.g. the string 'true' would only
 // mask a caller bug instead of catching it.
-function parseMilestoneEntry(entry: unknown): { milestoneName: string; isComplete: boolean } | string {
+function parseMilestoneEntry(
+  entry: unknown,
+): { milestoneName: string; isComplete: boolean; dueDate: string | null } | string {
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
     return 'must be an object'
   }
@@ -101,7 +133,12 @@ function parseMilestoneEntry(entry: unknown): { milestoneName: string; isComplet
     return 'is_complete is required and must be a boolean'
   }
 
-  return { milestoneName: rawName.trim(), isComplete: record.is_complete }
+  const dueDate = parseMilestoneDueDate(record.due_date)
+  if (dueDate === undefined) {
+    return 'due_date must be a valid YYYY-MM-DD date, or omitted/blank for no due date'
+  }
+
+  return { milestoneName: rawName.trim(), isComplete: record.is_complete, dueDate }
 }
 
 Deno.serve(async (req) => {
@@ -145,7 +182,7 @@ Deno.serve(async (req) => {
   // cleanup step's point of view), permanently losing a real milestone row
   // over what might just be a sheet typo. Rejecting the whole request lets
   // the Apps Script author fix the sheet and re-run instead.
-  const milestones: { milestoneName: string; isComplete: boolean }[] = []
+  const milestones: { milestoneName: string; isComplete: boolean; dueDate: string | null }[] = []
   for (let i = 0; i < body.milestones.length; i++) {
     const parsed = parseMilestoneEntry(body.milestones[i])
     if (typeof parsed === 'string') {
@@ -179,6 +216,7 @@ Deno.serve(async (req) => {
       plan_year: planYear,
       milestone_name: m.milestoneName,
       is_complete: m.isComplete,
+      due_date: m.dueDate,
     }))
 
     const { error: upsertError } = await supabase

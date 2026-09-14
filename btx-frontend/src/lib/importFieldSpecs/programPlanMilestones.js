@@ -5,13 +5,20 @@
 // group per distinct plan_year found anywhere in the file. See
 // importTables.js's writeMode comment for the upsert+delete-stale
 // mechanism this feeds.
-import { required, parseIntegerCell, parseOptionalStringCell, parseBooleanCell } from '../importValidators.js'
+import {
+  required,
+  parseIntegerCell,
+  parseOptionalStringCell,
+  parseBooleanCell,
+  parseDateCell,
+} from '../importValidators.js'
 
 export default {
   fields: [
     { column: 'plan_year', label: 'Plan Year', validate: required(parseIntegerCell) },
     { column: 'milestone_name', label: 'Milestone Name', validate: required(parseOptionalStringCell) },
     { column: 'is_complete', label: 'Is Complete', validate: required(parseBooleanCell) },
+    { column: 'due_date', label: 'Due Date', validate: parseDateCell }, // nullable at the DB level
   ],
 
   // Runs after every row above has passed its own field validators. Groups
@@ -20,7 +27,9 @@ export default {
     const groups = new Map()
     for (const row of rows) {
       if (!groups.has(row.plan_year)) groups.set(row.plan_year, [])
-      groups.get(row.plan_year).push({ milestone_name: row.milestone_name, is_complete: row.is_complete })
+      groups
+        .get(row.plan_year)
+        .push({ milestone_name: row.milestone_name, is_complete: row.is_complete, due_date: row.due_date })
     }
     return Array.from(groups, ([plan_year, milestones]) => ({ plan_year, milestones }))
   },
