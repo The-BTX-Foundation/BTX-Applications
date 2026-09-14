@@ -138,7 +138,7 @@ export const useTasksAlertsStore = defineStore('tasksAlerts', () => {
   }
 
   // Counts every Open row platform-wide (not scoped to any one user), for
-  // the Finance & Funding Headline Metric page's "Pending Tasks" card.
+  // the Program group's Headline Metric Summary page's "Pending Tasks" card.
   // tasks_alerts' SELECT policy grants board/admin/reviewer unrestricted
   // read access (unlike UPDATE, which is assignee-gated), so this already
   // sees the full table — no extra filtering needed for a true global count.

@@ -50,7 +50,6 @@ const router = createRouter({
           name: 'program-headline-metric-summary',
           component: () => import('../views/HeadlineMetricSummaryView.vue'),
         },
-        placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
         {
           path: 'finance-budget-tracking',
           name: 'finance-budget-tracking',
@@ -87,7 +86,8 @@ const router = createRouter({
           component: () => import('../views/EventCalendarView.vue'),
         },
         placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
-        // Scholarship's 3 planned tabs, same treatment as Finance & Funding above.
+        // Scholarship's 3 planned tabs, same treatment as the Finance/Funding
+        // groups above.
         placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),
         placeholderRoute('scholarship-interviews', 'scholarship-interviews', 'Interviews'),
         placeholderRoute('scholarship-applicant-records', 'scholarship-applicant-records', 'Applicant Records'),

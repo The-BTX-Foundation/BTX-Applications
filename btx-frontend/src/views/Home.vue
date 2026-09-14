@@ -1,10 +1,10 @@
 <script setup>
 import { reactive } from 'vue'
 
-// The 7 landing-page tiles. Task & Approval, Alert Center, and Event
+// The 8 landing-page tiles. Task & Approval, Alert Center, and Event
 // Calendar are flat, single-destination tiles -- rendered as direct links
 // (flat: true + routeName), no chevron/expand state, since each has only
-// one real destination. Finance & Funding, Program, Scholarship, and
+// one real destination. Finance, Funding, Program, Scholarship, and
 // Marketing keep the expand-to-reveal-sub-items behavior via subItems.
 // Order mirrors the sidebar's flat-links-first, then-groups convention.
 const cards = [
@@ -12,11 +12,17 @@ const cards = [
   { id: 'alert-center', title: 'Alert Center', flat: true, routeName: 'alerts' },
   { id: 'event-calendar', title: 'Event Calendar', flat: true, routeName: 'event-calendar' },
   {
-    id: 'finance-funding',
-    title: 'Finance & Funding',
+    id: 'finance',
+    title: 'Finance',
     subItems: [
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
+    ],
+  },
+  {
+    id: 'funding',
+    title: 'Funding',
+    subItems: [
       { label: 'Fundraising Health', routeName: 'finance-fundraising-health' },
       { label: 'Fundraising Tasks', routeName: 'finance-fundraising-tasks' },
     ],

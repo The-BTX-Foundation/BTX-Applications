@@ -27,10 +27,15 @@ const navSections = [
   { label: 'Alert Center', routeName: 'alerts' },
   { label: 'Event Calendar', routeName: 'event-calendar' },
   {
-    label: 'Finance & Funding',
+    label: 'Finance',
     children: [
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
+    ],
+  },
+  {
+    label: 'Funding',
+    children: [
       { label: 'Fundraising Health', routeName: 'finance-fundraising-health' },
       { label: 'Fundraising Tasks', routeName: 'finance-fundraising-tasks' },
     ],
