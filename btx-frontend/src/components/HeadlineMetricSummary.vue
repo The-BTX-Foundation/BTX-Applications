@@ -8,7 +8,7 @@ const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
 const donorImpactStore = useDonorImpactStore()
 
-// Page-access gate matching every other Finance & Funding page -- admin,
+// Page-access gate matching every other page in this app -- admin,
 // board, and reviewer only, mirroring donor_impact's and tasks_alerts' RLS
 // SELECT policies, so this reflects (rather than restricts beyond) what the
 // backend already allows each role to read.

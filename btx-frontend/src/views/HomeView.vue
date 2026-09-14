@@ -29,7 +29,6 @@ const navSections = [
   {
     label: 'Finance & Funding',
     children: [
-      { label: 'Headline Metric Summary', routeName: 'finance-headline-metric-summary' },
       { label: 'Budget Tracking', routeName: 'finance-budget-tracking' },
       { label: 'Budgeting Tasks', routeName: 'finance-budgeting-tasks' },
       { label: 'Fundraising Health', routeName: 'finance-fundraising-health' },
@@ -39,6 +38,7 @@ const navSections = [
   {
     label: 'Program',
     children: [
+      { label: 'Headline Metric Summary', routeName: 'program-headline-metric-summary' },
       { label: 'Program Planning', routeName: 'program-planning' },
       { label: 'Program Impact', routeName: 'program-impact' },
     ],

@@ -45,12 +45,12 @@ const router = createRouter({
           name: 'program-impact',
           component: () => import('../views/ProgramImpactView.vue'),
         },
-        placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
         {
-          path: 'finance-headline-metric-summary',
-          name: 'finance-headline-metric-summary',
+          path: 'program-headline-metric-summary',
+          name: 'program-headline-metric-summary',
           component: () => import('../views/HeadlineMetricSummaryView.vue'),
         },
+        placeholderRoute('finance-funding', 'finance-funding', 'Finance & Funding'),
         {
           path: 'finance-budget-tracking',
           name: 'finance-budget-tracking',

@@ -25,6 +25,7 @@ const cards = [
     id: 'program',
     title: 'Program',
     subItems: [
+      { label: 'Headline Metric Summary', routeName: 'program-headline-metric-summary' },
       { label: 'Program Planning', routeName: 'program-planning' },
       { label: 'Program Impact', routeName: 'program-impact' },
     ],
