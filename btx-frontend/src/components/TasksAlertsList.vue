@@ -538,7 +538,7 @@ async function handleDecline(task) {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .tabs {

@@ -156,6 +156,15 @@ function toggleCard(id) {
   cursor: pointer;
 }
 
+/* Flat cards (see `cards` above) put .card and .card-header on the same
+   RouterLink, so .card-header's `background: none` -- needed to strip the
+   plain <button> case's native chrome -- would otherwise win the same-
+   element tie and hide .card's white fill. Higher specificity here beats
+   that regardless of declaration order, without touching the button case. */
+.card.card-header {
+  background: #fff;
+}
+
 .card-title {
   margin: 0;
   font-size: 16px;

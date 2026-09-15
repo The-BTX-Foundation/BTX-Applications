@@ -497,12 +497,17 @@ const showHistory = ref(false)
 .computed-display {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  background: #fff;
+  border: 0.5px solid #e5e3dd;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .computed-label {
-  font-size: 13px;
-  color: #8a8a85;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4a4a;
 }
 
 .computed-value {
