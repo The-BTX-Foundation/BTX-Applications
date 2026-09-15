@@ -234,7 +234,7 @@ async function handleDecline(id) {
 
     <template v-else>
       <div class="header-row">
-        <h2>Fundraising Tasks</h2>
+        <h2 data-page-heading>Fundraising Tasks</h2>
       </div>
 
       <div class="tabs">

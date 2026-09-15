@@ -386,7 +386,7 @@ function badgeFor(task) {
 
     <template v-else>
       <div class="header-row">
-        <h2>Event Calendar</h2>
+        <h2 data-page-heading>Event Calendar</h2>
       </div>
 
       <div class="month-nav">

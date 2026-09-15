@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabaseClient'
@@ -136,6 +136,112 @@ watch(
 onUnmounted(() => {
   document.body.classList.remove('drawer-open')
 })
+
+// Flattens navSections into a routeName -> label lookup -- the sticky
+// page-name bar's source of truth for what text to show, same labels the
+// sidebar itself uses. Built once as a plain object (navSections is a
+// static array, not reactive) rather than a computed with no real reactive
+// dependency. 'home' gets an explicit fallback since it's the one real
+// route navSections has no entry for at all (it's the dashboard root, not
+// a sidebar link).
+const ROUTE_LABELS = navSections.reduce(
+  (labels, section) => {
+    if (section.children) {
+      for (const child of section.children) {
+        labels[child.routeName] = child.label
+      }
+    } else {
+      labels[section.routeName] = section.label
+    }
+    return labels
+  },
+  { home: 'Home' },
+)
+
+const currentPageLabel = computed(() => ROUTE_LABELS[route.name] ?? '')
+
+// Template ref on .panel (RouterView's mount point), watched below for
+// whichever [data-page-heading] element the current page rendered.
+const panelEl = ref(null)
+
+// Whether the sticky page-name bar is showing -- true once the current
+// page's own data-page-heading element has scrolled out of view. Mobile-
+// only in effect (see .sticky-page-bar's own `display: none` default,
+// same pattern as drawerOpen above), but this logic runs regardless of
+// viewport width; there's simply no CSS above 850px for it to show
+// through.
+const showStickyBar = ref(false)
+
+// The element currently being watched, and the observer watching it —
+// module-scope-ish closures (not refs) since neither needs to be
+// reactive; only showStickyBar itself drives the template.
+let watchedHeading = null
+let headingObserver = null
+let panelObserver = null
+
+// (Re)points the IntersectionObserver at whichever [data-page-heading]
+// element is currently rendered inside .panel, if any. Bails out early
+// when it's the same element as last time -- .panel's subtree re-renders
+// constantly for reasons that have nothing to do with the heading itself
+// (task lists reloading, chart tab switches, drill-down state, etc.), and
+// without this check every one of those would needlessly tear down and
+// recreate the observer, risking a visible flicker even though the actual
+// heading element never moved.
+function syncHeadingObserver() {
+  const heading = panelEl.value?.querySelector('[data-page-heading]') ?? null
+  if (heading === watchedHeading) return
+
+  headingObserver?.disconnect()
+  watchedHeading = heading
+
+  if (!heading) {
+    // Nothing to watch yet -- either the route has no tagged heading at
+    // all, or (ProgramPlanning.vue/ProgramImpact.vue) it's conditionally
+    // rendered and hasn't appeared yet because its data hasn't loaded.
+    // Fails safe: bar stays hidden until a later mutation finds one.
+    showStickyBar.value = false
+    return
+  }
+
+  headingObserver = new IntersectionObserver(
+    ([entry]) => {
+      showStickyBar.value = !entry.isIntersecting
+    },
+    // Shrinks the observed viewport by the fixed mobile topbar's own 56px
+    // height, so a heading that's scrolled behind the topbar counts as
+    // "out of view" as soon as it's covered -- not only once it's cleared
+    // the entire viewport, which is what the unmodified default root
+    // would otherwise require.
+    { rootMargin: '-56px 0px 0px 0px' },
+  )
+  headingObserver.observe(heading)
+}
+
+// MutationObserver on .panel catches every case a plain "re-query once
+// per route change" wouldn't: the route changing (old heading removed,
+// new one added), a conditional heading appearing later once its page's
+// data finishes loading, or (in principle) disappearing again -- all
+// without any individual page needing to know this feature exists beyond
+// the one data-page-heading attribute.
+onMounted(() => {
+  syncHeadingObserver() // catches whatever's already rendered on first load
+
+  // panelEl.value is normally already bound by the time onMounted fires
+  // (verified: HMR hot-swapping this file mid-session threw exactly this
+  // null case in practice -- MutationObserver.observe() rejects a null
+  // target outright). HMR doesn't exist in the production build, but the
+  // guard is free and fails safe either way: without it, the sticky bar
+  // just never activates for that mount instead of a crash.
+  if (panelEl.value) {
+    panelObserver = new MutationObserver(syncHeadingObserver)
+    panelObserver.observe(panelEl.value, { childList: true, subtree: true })
+  }
+})
+
+onUnmounted(() => {
+  panelObserver?.disconnect()
+  headingObserver?.disconnect()
+})
 </script>
 
 <template>
@@ -153,6 +259,14 @@ onUnmounted(() => {
       <RouterLink :to="{ name: 'home' }" class="mobile-brand" @click="closeDrawer">
         BTX <span class="brand-accent">Ops Hub</span>
       </RouterLink>
+    </div>
+
+    <!-- Mobile-only sticky bar showing the current page's name, shown once
+         its own heading (data-page-heading, tagged on the one heading each
+         page component considers its real title) scrolls out of view --
+         see the MutationObserver/IntersectionObserver setup in <script>. -->
+    <div class="sticky-page-bar" :class="{ 'sticky-page-bar--visible': showStickyBar }">
+      {{ currentPageLabel }}
     </div>
 
     <!-- Sits above the mobile topbar (not just the page content), so
@@ -224,7 +338,7 @@ onUnmounted(() => {
     </aside>
 
     <main class="page">
-      <div class="panel">
+      <div class="panel" ref="panelEl">
         <RouterView />
       </div>
     </main>
@@ -419,6 +533,31 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
+/* Mobile-only sticky bar showing the current page's name -- same
+   dark/gold palette as .mobile-topbar/.nav-label, no new colors. Hidden
+   by default (same pattern as .mobile-topbar/.drawer-backdrop above),
+   only switched on inside the max-width: 850px query below. Overlays
+   scrolled content rather than pushing .page's own padding down further
+   -- it only ever appears once the user has already scrolled past the
+   real heading, so there's already content in that vertical region. */
+.sticky-page-bar {
+  display: none;
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  align-items: center;
+  padding: 0 16px;
+  background: #1a1a1a;
+  color: #d4a24e;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 19;
+  transform: translateY(-100%);
+  transition: transform 0.2s ease;
+}
+
 /* display: none by default, same reasoning as .mobile-topbar above --
    `v-if="drawerOpen"` already keeps this out of the DOM on desktop in
    practice, but this is the belt-and-suspenders half: even if drawerOpen
@@ -439,6 +578,14 @@ onUnmounted(() => {
 @media (max-width: 850px) {
   .mobile-topbar {
     display: flex;
+  }
+
+  .sticky-page-bar {
+    display: flex;
+  }
+
+  .sticky-page-bar--visible {
+    transform: translateY(0);
   }
 
   .drawer-backdrop {

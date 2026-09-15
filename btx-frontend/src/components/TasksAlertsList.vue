@@ -360,7 +360,7 @@ async function handleDecline(task) {
 
     <template v-else>
       <div class="header-row">
-        <h2>Tasks &amp; Approvals</h2>
+        <h2 data-page-heading>Tasks &amp; Approvals</h2>
         <button
           v-if="authStore.isBoard || authStore.isAdmin || authStore.isReviewer"
           type="button"

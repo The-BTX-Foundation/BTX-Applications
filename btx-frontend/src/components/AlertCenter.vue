@@ -73,7 +73,7 @@ function agoLabel(createdAt) {
 
   <template v-else>
     <div class="header-row">
-      <h2>Alert Center</h2>
+      <h2 data-page-heading>Alert Center</h2>
       <span class="overdue-count-badge">{{ overdueItems.length }}</span>
     </div>
 

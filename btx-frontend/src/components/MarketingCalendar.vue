@@ -213,7 +213,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 
     <template v-else>
       <div class="header-row">
-        <h2>Marketing Calendar</h2>
+        <h2 data-page-heading>Marketing Calendar</h2>
       </div>
 
       <div class="month-nav">

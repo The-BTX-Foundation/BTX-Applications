@@ -154,7 +154,7 @@ function goToPreviousStep() {
 
 <template>
   <section v-if="isAdmin" class="import-wizard">
-    <h1 class="heading">Import</h1>
+    <h1 class="heading" data-page-heading>Import</h1>
 
     <ImportChooseTableStep v-if="currentStep === 'choose-table'" v-model="selectedTable" />
     <ImportProvideDataStep v-else-if="currentStep === 'provide-data'" v-model="rawRows" />

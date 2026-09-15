@@ -175,7 +175,7 @@ function formatBarValue(cycle) {
       </div>
 
       <div v-if="selectedCycle" class="detail-column">
-        <h2>{{ selectedCycle.cycle_year }} Metrics</h2>
+        <h2 data-page-heading>{{ selectedCycle.cycle_year }} Metrics</h2>
 
         <div class="metrics-form">
           <div class="tabs">

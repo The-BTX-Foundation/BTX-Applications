@@ -244,7 +244,7 @@ const activeMilestone = computed(
       </div>
 
       <div v-if="selectedPlan" class="detail-column">
-        <h2>{{ selectedPlan.plan_year }} Program Plan</h2>
+        <h2 data-page-heading>{{ selectedPlan.plan_year }} Program Plan</h2>
 
         <div class="stats-grid">
           <div class="stat">

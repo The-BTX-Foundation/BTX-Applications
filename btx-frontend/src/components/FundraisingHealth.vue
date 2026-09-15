@@ -172,7 +172,7 @@ const showHistory = ref(false)
 
   <template v-else>
     <div class="page-header">
-      <h2>Fundraising Health</h2>
+      <h2 data-page-heading>Fundraising Health</h2>
       <button type="button" class="btn btn--outline" @click="showHistory = !showHistory">
         {{ showHistory ? '← Back to Today' : 'View Fundraising History' }}
       </button>

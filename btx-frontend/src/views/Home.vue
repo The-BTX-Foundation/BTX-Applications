@@ -71,7 +71,7 @@ function toggleCard(id) {
 
 <template>
   <div class="home">
-    <h1 class="heading">Welcome to BTX Ops Hub</h1>
+    <h1 class="heading" data-page-heading>Welcome to BTX Ops Hub</h1>
 
     <p class="subtext">Select a section below, or from the sidebar, to get started.</p>
 

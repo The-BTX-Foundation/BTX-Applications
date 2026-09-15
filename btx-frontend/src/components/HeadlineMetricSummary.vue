@@ -44,7 +44,7 @@ watch(
     <p v-else-if="donorImpactStore.error" class="error">{{ donorImpactStore.error }}</p>
 
     <template v-else>
-      <h2 class="page-title">Headline Metrics</h2>
+      <h2 class="page-title" data-page-heading>Headline Metrics</h2>
 
       <!-- PLACEHOLDER — static Scholarship rollup figures, not wired to any
            store or table. No Scholarship backing tables exist yet, so

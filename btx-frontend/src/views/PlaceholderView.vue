@@ -11,7 +11,7 @@ defineProps({
 
 <template>
   <div class="placeholder">
-    <h2>{{ title }}</h2>
+    <h2 data-page-heading>{{ title }}</h2>
     <p>Coming soon.</p>
   </div>
 </template>
