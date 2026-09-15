@@ -379,12 +379,10 @@ onUnmounted(() => {
 }
 
 .panel {
-  background: #fff;
   /* Explicit dark text so nothing inside inherits var(--color-text), which
      flips to a light color under prefers-color-scheme: dark and becomes
-     unreadable against this white panel. */
+     unreadable against the beige page background. */
   color: #2d3142;
-  border-radius: 12px;
   padding: 32px;
 }
 
