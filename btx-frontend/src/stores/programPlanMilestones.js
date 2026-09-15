@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
 // Shared column list so fetchMilestones always returns identically shaped rows.
-const MILESTONE_COLUMNS = 'id, plan_year, milestone_name, is_complete'
+const MILESTONE_COLUMNS = 'id, plan_year, milestone_name, due_date, is_complete'
 
 // Pinia store for Program Plan Milestones. Reads go through Supabase's RLS
 // SELECT policy on `program_plan_milestones` (admin, board, and reviewer),

@@ -109,6 +109,105 @@ function barHeight(plan) {
 const selectedPlanMilestones = computed(() =>
   programPlanMilestonesStore.milestones.filter((milestone) => milestone.plan_year === selectedPlanYear.value),
 )
+
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+function isLeapYear(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+}
+
+function daysInYear(year) {
+  return isLeapYear(year) ? 366 : 365
+}
+
+// Converts a `due_date` string ("YYYY-MM-DD") to a 0-indexed day-of-year via
+// pure calendar arithmetic -- deliberately not `new Date(dueDate)`, which
+// parses the string as UTC midnight and can then render as the previous
+// day once formatted back out in a negative-UTC-offset browser, silently
+// shifting every date on the timeline by one.
+function dayOfYear(dueDate) {
+  const [year, month, day] = dueDate.split('-').map(Number)
+  let days = day - 1
+  for (let m = 0; m < month - 1; m++) {
+    days += m === 1 && isLeapYear(year) ? 29 : DAYS_IN_MONTH[m]
+  }
+  return days
+}
+
+// Same string-split approach as dayOfYear, for the same timezone-safety
+// reason -- formats a due_date for the click-to-reveal detail line and the
+// native `title` hover fallback.
+function formatMilestoneDate(dueDate) {
+  const [year, month, day] = dueDate.split('-').map(Number)
+  return `${MONTH_LABELS[month - 1]} ${day}, ${year}`
+}
+
+// Basis the row-stacking algorithm below measures pixel gaps against --
+// matches .timeline-track's own CSS min-width, so this is the guaranteed
+// worst-case render width. A wider render only adds slack between markers,
+// never removes it, so computing against this fixed minimum is safe.
+const TIMELINE_TRACK_WIDTH_PX = 900
+const MARKER_MIN_GAP_PX = 20
+const MARKER_ROW_HEIGHT_PX = 18
+
+// Greedy left-to-right row assignment: markers whose calendar dates are
+// close enough to visually collide (< MARKER_MIN_GAP_PX apart in pixels, at
+// the track's minimum rendered width) stack onto a taller row instead of
+// overlapping, while every marker still sits at its true calendar x
+// position -- only its stem height (row) changes, never its xPercent.
+// `markers` must already be sorted by date ascending, since each row's
+// collision check only ever looks at the last marker placed on it.
+function assignTimelineRows(markers) {
+  const rows = [] // rows[i] = x-position (px) of the last marker placed on row i
+  return markers.map((marker) => {
+    const xPx = (marker.xPercent / 100) * TIMELINE_TRACK_WIDTH_PX
+    let row = rows.findIndex((lastX) => xPx - lastX >= MARKER_MIN_GAP_PX)
+    if (row === -1) {
+      row = rows.length
+      rows.push(xPx)
+    } else {
+      rows[row] = xPx
+    }
+    return { ...marker, row }
+  })
+}
+
+// Dated milestones for the selected plan year, positioned by due_date and
+// row-stacked to avoid overlap (see assignTimelineRows above). Sorted by
+// date first since the stacking algorithm is order-dependent.
+const timelineMarkers = computed(() => {
+  const year = selectedPlanYear.value
+  const dated = selectedPlanMilestones.value
+    .filter((milestone) => milestone.due_date)
+    .map((milestone) => ({
+      id: milestone.id,
+      name: milestone.milestone_name,
+      isComplete: milestone.is_complete,
+      dateLabel: formatMilestoneDate(milestone.due_date),
+      xPercent: (dayOfYear(milestone.due_date) / daysInYear(year)) * 100,
+      sortKey: milestone.due_date,
+    }))
+    .sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
+
+  return assignTimelineRows(dated)
+})
+
+// Milestones with no due_date -- can't be plotted on a date axis, so they
+// get their own list instead of being silently dropped from the page.
+const selectedPlanUnscheduledMilestones = computed(() =>
+  selectedPlanMilestones.value.filter((milestone) => !milestone.due_date),
+)
+
+// Which timeline marker (if any) the click-to-reveal detail line below the
+// track is currently showing. Resets implicitly on plan-year change since
+// timelineMarkers is scoped to selectedPlanMilestones -- a stale id just
+// fails to match and activeMilestone below falls back to null.
+const activeMilestoneId = ref(null)
+
+const activeMilestone = computed(
+  () => timelineMarkers.value.find((marker) => marker.id === activeMilestoneId.value) ?? null,
+)
 </script>
 
 <template>
@@ -198,6 +297,77 @@ const selectedPlanMilestones = computed(() =>
               <div class="bar" :style="{ height: barHeight(plan) }"></div>
               <span class="bar-label">{{ plan.plan_year }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Milestone timeline: dated milestones for the selected plan year,
+             plotted by due_date across the Jan-Dec year; undated ones can't
+             be positioned on a date axis, so they get their own compact
+             list below instead of being silently dropped. Reuses the
+             milestone list's own badge--live/badge--default colors for
+             complete/incomplete instead of inventing a third color pair. -->
+        <div class="timeline-section">
+          <h3>Milestone Timeline</h3>
+
+          <p v-if="selectedPlanMilestones.length === 0" class="chart-empty">
+            No milestones synced for this plan year yet.
+          </p>
+
+          <template v-else>
+            <p v-if="timelineMarkers.length === 0" class="chart-empty">
+              No dated milestones for this plan year yet.
+            </p>
+            <div v-else class="timeline-scroll">
+              <div class="timeline-track">
+                <div class="timeline-line"></div>
+
+                <span
+                  v-for="(month, i) in MONTH_LABELS"
+                  :key="month"
+                  class="timeline-month"
+                  :style="{
+                    left: `${(i / 12) * 100}%`,
+                    transform: i === 0 ? 'translateX(0)' : i === MONTH_LABELS.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
+                  }"
+                >{{ month }}</span>
+
+                <button
+                  v-for="marker in timelineMarkers"
+                  :key="marker.id"
+                  type="button"
+                  class="timeline-marker"
+                  :class="marker.isComplete ? 'timeline-marker--complete' : 'timeline-marker--incomplete'"
+                  :style="{ left: `${marker.xPercent}%` }"
+                  :title="`${marker.name} — ${marker.dateLabel}`"
+                  @click="activeMilestoneId = activeMilestoneId === marker.id ? null : marker.id"
+                >
+                  <span class="timeline-stem" :style="{ height: `${marker.row * MARKER_ROW_HEIGHT_PX}px` }"></span>
+                  <span class="timeline-dot"></span>
+                </button>
+              </div>
+            </div>
+
+            <p class="timeline-detail">
+              <template v-if="activeMilestone">
+                <strong>{{ activeMilestone.name }}</strong> — {{ activeMilestone.dateLabel }}
+                <span class="badge" :class="activeMilestone.isComplete ? 'badge--live' : 'badge--default'">
+                  {{ activeMilestone.isComplete ? 'Complete' : 'Incomplete' }}
+                </span>
+              </template>
+              <template v-else>Click a milestone marker for its name and date.</template>
+            </p>
+          </template>
+
+          <div v-if="selectedPlanUnscheduledMilestones.length > 0" class="unscheduled-panel">
+            <h4>Unscheduled</h4>
+            <ul class="milestone-list">
+              <li v-for="milestone in selectedPlanUnscheduledMilestones" :key="milestone.id" class="milestone-row">
+                <span class="milestone-name">{{ milestone.milestone_name }}</span>
+                <span class="badge" :class="milestone.is_complete ? 'badge--live' : 'badge--default'">
+                  {{ milestone.is_complete ? 'Complete' : 'Incomplete' }}
+                </span>
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -467,6 +637,116 @@ const selectedPlanMilestones = computed(() =>
 
 .chart-empty {
   margin: 0;
+  color: #8a8a85;
+}
+
+/* Timeline card: same card convention as .chart/.milestone-list-section
+   above. */
+.timeline-section {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.timeline-section h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+}
+
+/* Same horizontal-scroll convention as .bars-scroll/.allocation-table-scroll
+   elsewhere in the app -- .timeline-track's min-width is also the basis
+   assignTimelineRows measures pixel gaps against, so a wider render only
+   ever adds slack between markers, never removes it. */
+.timeline-scroll {
+  overflow-x: auto;
+}
+
+.timeline-track {
+  position: relative;
+  min-width: 900px;
+  /* Baseline + room for stacked rows: real 2021/2026 data tops out at 4
+     stacked rows (see assignTimelineRows' own review trace), this leaves
+     headroom for a 5th before it gets tight. */
+  height: 140px;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  height: 1px;
+  background: #e5e3dd;
+}
+
+.timeline-month {
+  position: absolute;
+  bottom: 8px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #8a8a85;
+}
+
+.timeline-marker {
+  position: absolute;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column-reverse; /* stem renders at the baseline, dot stacks above it */
+  align-items: center;
+  transform: translateX(-50%);
+  background: none;
+  border: none;
+  padding: 6px; /* enlarges the click/touch target beyond the 12px visual dot */
+  cursor: pointer;
+}
+
+.timeline-stem {
+  width: 1px;
+  background: #e5e3dd;
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+/* Dot fill reuses badge--live/badge--default's own text colors (not their
+   pale backgrounds, which would barely register at 12px) -- same 2-color
+   system as the existing milestone list, no new colors introduced. */
+.timeline-marker--complete .timeline-dot {
+  background: #2e7d32;
+}
+
+.timeline-marker--incomplete .timeline-dot {
+  background: #5f5e5a;
+}
+
+.timeline-detail {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #2d3142;
+}
+
+/* Subsection within the same card, not a new top-level panel -- separated
+   by a rule rather than its own border/shadow. Reuses .milestone-list/
+   .milestone-row/.milestone-name verbatim below (see template) rather than
+   inventing separate list styling. */
+.unscheduled-panel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 0.5px solid #e5e3dd;
+}
+
+.unscheduled-panel h4 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
   color: #8a8a85;
 }
 
