@@ -77,7 +77,6 @@ function badgeFor(plan) {
 // plain label map is enough.
 const CHART_TABS = [
   { key: 'milestones_complete', label: 'Milestones Complete' },
-  { key: 'tasks_complete', label: 'Tasks Complete' },
   { key: 'tasks_in_progress', label: 'In Progress' },
   { key: 'tasks_not_started', label: 'Not Yet Started' },
 ]

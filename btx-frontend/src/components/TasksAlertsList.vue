@@ -212,6 +212,53 @@ function completedTasksForYearMonth(year, month) {
   return [...tasks].sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
 }
 
+// "Tasks Completed by Month" chart data: strictly status === 'Complete'
+// (not Declined -- a declined item isn't "completed"), respecting the same
+// domain filter (sourceFilteredTasks) as the rest of the page. Grouped by
+// completed_at's year/month and sorted chronologically ascending (oldest
+// first, left to right) -- shows every month with a real completion, same
+// "every month/year with real data" convention as ProgramPlanning.vue's/
+// FundraisingHealth.vue's own charts, not a fixed window.
+const completedByMonth = computed(() => {
+  const groups = {}
+  for (const task of sourceFilteredTasks.value) {
+    if (task.status !== 'Complete' || !task.completed_at) continue
+    const date = new Date(task.completed_at)
+    const key = `${date.getFullYear()}-${date.getMonth()}`
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        sortDate: new Date(date.getFullYear(), date.getMonth(), 1),
+        label: new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString(undefined, {
+          month: 'short',
+          year: '2-digit',
+        }),
+        count: 0,
+      }
+    }
+    groups[key].count++
+  }
+  return Object.values(groups).sort((a, b) => a.sortDate - b.sortDate)
+})
+
+// Complete rows with no completed_at -- can't be bucketed into any month
+// (see completedGroups' own comment above: bulk-seeded rows that bypassed
+// updateStatus, the only path that ever sets completed_at). Surfaced as a
+// count beneath the chart instead of being silently skipped the way
+// completedGroups itself already is, matching the transparency
+// ProgramPlanning.vue's timeline gives its own undated milestones.
+const excludedCompletedCount = computed(
+  () => sourceFilteredTasks.value.filter((task) => task.status === 'Complete' && !task.completed_at).length,
+)
+
+const maxCompletedByMonth = computed(() => Math.max(...completedByMonth.value.map((month) => month.count), 1))
+
+// Bar height as a percentage of the highest month's count -- same
+// convention as ProgramPlanning.vue's own barHeight.
+function barHeightFor(month) {
+  return `${(month.count / maxCompletedByMonth.value) * 100}%`
+}
+
 // Switches tabs. Always resets the Completed drill-down back to the year
 // list so re-opening it later doesn't leave the user stuck deep in a stale
 // month.
@@ -461,18 +508,45 @@ async function handleDecline(task) {
            month of completed_at. Never shows action buttons — these rows
            are terminal. -->
       <template v-else>
-        <div v-if="selectedYear === null" class="drill-list">
-          <p v-if="completedYears.length === 0">No completed items yet.</p>
-          <button
-            v-for="year in completedYears"
-            :key="year"
-            type="button"
-            class="drill-row"
-            @click="selectYear(year)"
-          >
-            <span>{{ year }}</span>
-            <span class="drill-count">{{ completedCountForYear(year) }}</span>
-          </button>
+        <div v-if="selectedYear === null">
+          <!-- Tasks Completed by Month: strictly status === 'Complete' rows
+               (not Declined), respecting the domain filter above. Shown only
+               at this top drill level -- once a year/month is selected below,
+               the chart would just be redundant clutter above the specific
+               list the user already drilled into. Reuses .chart/.bars/
+               .bar-col verbatim from ProgramPlanning.vue; no .chart-tabs
+               since there's only one metric plotted here. -->
+          <div class="chart">
+            <h3>Tasks Completed by Month</h3>
+
+            <p v-if="completedByMonth.length === 0" class="chart-empty">No completed tasks yet.</p>
+            <div v-else class="bars">
+              <div v-for="month in completedByMonth" :key="month.key" class="bar-col">
+                <span class="bar-value">{{ month.count }}</span>
+                <div class="bar" :style="{ height: barHeightFor(month) }"></div>
+                <span class="bar-label">{{ month.label }}</span>
+              </div>
+            </div>
+
+            <p v-if="excludedCompletedCount > 0" class="chart-empty">
+              {{ excludedCompletedCount }} completed task{{ excludedCompletedCount === 1 ? '' : 's' }}
+              have no completion date on record and aren't shown here.
+            </p>
+          </div>
+
+          <div class="drill-list">
+            <p v-if="completedYears.length === 0">No completed items yet.</p>
+            <button
+              v-for="year in completedYears"
+              :key="year"
+              type="button"
+              class="drill-row"
+              @click="selectYear(year)"
+            >
+              <span>{{ year }}</span>
+              <span class="drill-count">{{ completedCountForYear(year) }}</span>
+            </button>
+          </div>
         </div>
 
         <div v-else-if="selectedMonth === null" class="drill-list">
@@ -564,6 +638,64 @@ async function handleDecline(task) {
 .tab--active {
   color: #2d3142;
   border-bottom-color: #c9932a;
+}
+
+/* Chart card: same shape/class names as ProgramPlanning.vue's/
+   ProgramImpact.vue's own .chart -- reuses the established convention
+   verbatim rather than inventing new chart styling for this page's first
+   chart. */
+.chart {
+  border: 0.5px solid #e5e3dd;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.chart h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3142;
+}
+
+.chart-empty {
+  margin: 0;
+  color: #8a8a85;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  height: 180px;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  width: 48px;
+}
+
+.bar-value {
+  font-size: 12px;
+  color: #8a8a85;
+  margin-bottom: 4px;
+}
+
+.bar {
+  width: 100%;
+  background: #c9932a;
+  border-radius: 4px 4px 0 0;
+}
+
+.bar-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #2d3142;
 }
 
 .drill-list {
@@ -780,6 +912,37 @@ async function handleDecline(task) {
   .task-body,
   .actions {
     flex-basis: 100%;
+  }
+}
+
+/* Below 850px, .bars/.bar-col shrink to fit -- same values as
+   ProgramPlanning.vue's own version of this rule (matching Program
+   Impact/Program Planning's shared component shape), verified against
+   this file's own container instead of assumed. .tasks-alerts has no
+   sidebar column to account for (unlike ProgramPlanning.vue's
+   plan-column), but measuring .bars directly at an actual 390px phone
+   width gives ~203px available (390 minus .page/.panel padding on each
+   side, .chart's own 20px padding, and the viewport scrollbar). At 28px
+   columns with a 6px gap, up to 6 bars (34px each) fit within 198px --
+   headroom past today's single real month of data as more months of
+   completions accumulate; a 7th bar (232px) would be the first to
+   overflow. */
+@media (max-width: 850px) {
+  .bars {
+    gap: 6px;
+  }
+
+  .bar-col {
+    width: 28px;
+  }
+
+  .bar-value {
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .bar-label {
+    font-size: 11px;
   }
 }
 </style>
