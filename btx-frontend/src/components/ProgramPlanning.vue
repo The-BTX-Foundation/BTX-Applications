@@ -70,37 +70,6 @@ function badgeFor(plan) {
     : { text: 'Archived', variant: 'default' }
 }
 
-// Chart tabs, each keyed to one of program_plan_progress's own count
-// columns directly -- unlike ProgramImpact.vue's DONOR_IMPACT_METRICS (which
-// needs a `computed` fn per metric for things like Average Scholarship
-// Size), every value plotted here is already a raw stored count, so a
-// plain label map is enough.
-const CHART_TABS = [
-  { key: 'milestones_complete', label: 'Milestones Complete' },
-  { key: 'tasks_in_progress', label: 'In Progress' },
-  { key: 'tasks_not_started', label: 'Not Yet Started' },
-]
-const chartMetricKey = ref('milestones_complete')
-
-// Every fetched plan year, oldest first, for the chart's left-to-right
-// timeline -- same ascending-by-year ordering as ProgramImpact.vue's
-// publishedCycles, but over every plan year rather than a "published"
-// subset: program_plan_progress has no draft/live flag (see liveYear's own
-// comment above), so there's no equivalent filter to apply here.
-const chartPlans = computed(() =>
-  [...programPlanProgressStore.plans].sort((a, b) => a.plan_year - b.plan_year),
-)
-
-const maxChartValue = computed(() =>
-  Math.max(...chartPlans.value.map((plan) => plan[chartMetricKey.value]), 1),
-)
-
-// Bar height as a percentage of the highest value for the selected tab
-// across every plotted plan year.
-function barHeight(plan) {
-  return `${(plan[chartMetricKey.value] / maxChartValue.value) * 100}%`
-}
-
 // Every milestone for the currently selected plan year, alphabetical --
 // programPlanMilestonesStore.milestones already comes back
 // alphabetically ordered (see its own fetchMilestones), so this only needs
@@ -265,37 +234,6 @@ const activeMilestone = computed(
           <div class="stat">
             <span class="stat-label">Not Yet Started</span>
             <span class="stat-value">{{ selectedPlan.tasks_not_started }}</span>
-          </div>
-        </div>
-
-        <!-- Same chart shape as ProgramImpact.vue's .chart card: title, tab
-             row, then bar columns -- reuses those class names verbatim
-             (see the shared style comment below) so the two pages read as
-             one visual system. Plots raw counts across every fetched plan
-             year, not just the one currently selected above. -->
-        <div class="chart">
-          <h3>{{ CHART_TABS.find((tab) => tab.key === chartMetricKey)?.label }} by Year</h3>
-
-          <div class="chart-tabs">
-            <button
-              v-for="tab in CHART_TABS"
-              :key="tab.key"
-              type="button"
-              class="chart-tab"
-              :class="{ 'chart-tab--active': tab.key === chartMetricKey }"
-              @click="chartMetricKey = tab.key"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-
-          <p v-if="chartPlans.length === 0" class="chart-empty">No program plans yet.</p>
-          <div v-else class="bars">
-            <div v-for="plan in chartPlans" :key="plan.plan_year" class="bar-col">
-              <span class="bar-value">{{ plan[chartMetricKey].toLocaleString() }}</span>
-              <div class="bar" :style="{ height: barHeight(plan) }"></div>
-              <span class="bar-label">{{ plan.plan_year }}</span>
-            </div>
           </div>
         </div>
 
@@ -592,48 +530,6 @@ const activeMilestone = computed(
   color: #2d3142;
 }
 
-/* Chart card: same shape/class names as ProgramImpact.vue's own .chart --
-   card wrapper reusing .plan-card's border treatment so it reads as a
-   grouped panel consistent with the plan-list cards already on this page. */
-.chart {
-  border: 0.5px solid #e5e3dd;
-  border-radius: 12px;
-  padding: 20px;
-  background: #fff;
-  margin-bottom: 20px;
-}
-
-.chart h3 {
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #2d3142;
-}
-
-.chart-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.chart-tab {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: #8a8a85;
-  cursor: pointer;
-}
-
-.chart-tab--active {
-  background: #faeeda;
-  color: #854f0b;
-  font-weight: 600;
-}
-
 .chart-empty {
   margin: 0;
   color: #8a8a85;
@@ -749,41 +645,7 @@ const activeMilestone = computed(
   color: #8a8a85;
 }
 
-.bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 20px;
-  height: 180px;
-}
-
-.bar-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  width: 48px;
-}
-
-.bar-value {
-  font-size: 12px;
-  color: #8a8a85;
-  margin-bottom: 4px;
-}
-
-.bar {
-  width: 100%;
-  background: #c9932a;
-  border-radius: 4px 4px 0 0;
-}
-
-.bar-label {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #2d3142;
-}
-
-/* Milestone list card: same card treatment as .chart above, its own
+/* Milestone list card: same card treatment as the timeline section above, its own
    section since it's a list rather than a bar chart. */
 .milestone-list-section {
   border: 0.5px solid #e5e3dd;
@@ -938,44 +800,4 @@ const activeMilestone = computed(
   }
 }
 
-/* Below 850px, .bars/.bar-col shrink to fit -- sized against the real
-   measured container width, not the naive "viewport minus a bit of
-   padding" estimate that would wrongly suggest plenty of room. At an
-   actual 375px phone width, .program-planning's own box is only ~228px
-   wide (the page's 32px padding plus the panel's 32px padding already eat
-   128px off both sides, before .chart's own 20px padding is even
-   counted), leaving just ~188px for .bars itself. At the original 48px
-   bar-col width and 20px gap, 5 bars (matching Program Impact's own real
-   published-cycle count, since both charts share this exact component
-   shape) would need 320px -- overflowing that real 188px budget by well
-   over 100px. 28px columns with a 6px gap total 164px for 5 bars,
-   comfortably inside the measured 188px with slack to spare (and more
-   slack still at 390px, where the same container measures ~243px). Font
-   sizes drop to 10px/11px to stay legible at the narrower column -- both
-   already within the app's existing minimum text sizes elsewhere
-   (.source-label uses 11px). overflow-wrap: anywhere on .bar-value is
-   needed on Program Impact's currency-formatted values (e.g. "$200,000" has
-   no space or hyphen to wrap at, so without it the text overflows into
-   the neighboring column instead of dropping to a second line -- verified
-   there). Values here are plain counts, always short enough to never
-   trigger it, but the identical rule is applied regardless since both
-   files share this component shape exactly. */
-@media (max-width: 850px) {
-  .bars {
-    gap: 6px;
-  }
-
-  .bar-col {
-    width: 28px;
-  }
-
-  .bar-value {
-    font-size: 10px;
-    overflow-wrap: anywhere;
-  }
-
-  .bar-label {
-    font-size: 11px;
-  }
-}
 </style>
