@@ -2,11 +2,13 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { supabase } from '@/lib/supabaseClient'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 // Signs the current user out and sends them to /login. The router guard
 // only re-evaluates on navigation (not reactively when the session clears),
@@ -331,6 +333,50 @@ onUnmounted(() => {
       </nav>
 
       <div class="sidebar-footer">
+        <!-- Grouped with the other session-utility controls (divider/email/
+             sign-out) below rather than a new sidebar zone of its own. Label
+             names the action the click performs (what theme you'll switch
+             TO), not the current state -- same convention as a play/pause
+             button, avoids the user having to mentally invert a status
+             label to figure out what clicking it does. -->
+        <button type="button" class="theme-toggle-btn" @click="themeStore.toggle()">
+          <svg
+            v-if="themeStore.theme === 'dark'"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <svg
+            v-else
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+          </svg>
+          <span class="nav-label">{{ themeStore.theme === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
+        </button>
+
         <div class="sidebar-divider"></div>
         <p class="user-email">{{ authStore.session?.user?.email }}</p>
         <button type="button" class="sign-out-btn" @click="handleSignOut">Sign Out</button>
@@ -456,6 +502,25 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+/* Same flat icon+label row shape as .nav-top-link, and the same
+   background:none/border:none/cursor:pointer treatment as .sign-out-btn
+   below -- reuses .nav-label's own gold for the text (applied via that
+   class in the template) rather than a one-off color, and matches
+   .nav-chevron's muted rgba(255,255,255,.4) for the icon so it reads as
+   secondary next to the label, not competing with it. */
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 20px;
@@ -488,15 +553,12 @@ onUnmounted(() => {
 .page {
   flex: 1;
   min-width: 0;
-  background: #f7f6f3;
+  background: var(--color-page-bg);
   padding: 32px;
 }
 
 .panel {
-  /* Explicit dark text so nothing inside inherits var(--color-text), which
-     flips to a light color under prefers-color-scheme: dark and becomes
-     unreadable against the beige page background. */
-  color: #2d3142;
+  color: var(--color-text-primary);
   padding: 32px;
 }
 
