@@ -431,16 +431,22 @@ function badgeFor(task) {
               :disabled="!day.isCurrentMonth || day.entries.length === 0"
               @click="handleDayClick(day)"
             >
-              <span class="day-number">{{ day.dayNumber }}</span>
+              <!-- Number + assigned-badge share a flex row (space-between)
+                   rather than the badge being absolutely positioned over the
+                   number -- at narrow mobile cell widths (a two-digit day
+                   number plus the badge's own fixed 14px width can exceed
+                   the cell's content box) an absolute badge visually
+                   collided with the digits instead of sitting clear of them.
+                   A flex row can't overlap this way at any width: the two
+                   elements simply divide whatever space exists between them. -->
+              <div class="day-cell-header">
+                <span class="day-number">{{ day.dayNumber }}</span>
 
-              <!-- Assigned-to-me count: top-right corner, deliberately away
-                   from both the day number (top-left) and the "+N more"
-                   overflow indicator (bottom of the entries list), so the
-                   three never compete for the same spot. Hidden entirely at
-                   0 rather than shown as "0" -- a badge that's usually
-                   absent is a much stronger signal than one that's usually
-                   zero. -->
-              <span v-if="day.assignedToMeCount > 0" class="assigned-badge">{{ day.assignedToMeCount }}</span>
+                <!-- Assigned-to-me count: hidden entirely at 0 rather than
+                     shown as "0" -- a badge that's usually absent is a much
+                     stronger signal than one that's usually zero. -->
+                <span v-if="day.assignedToMeCount > 0" class="assigned-badge">{{ day.assignedToMeCount }}</span>
+              </div>
 
               <!-- Apple-Calendar-style entries: both event category chips
                    and task domain chips render as solid colored pills (see
@@ -636,6 +642,18 @@ function badgeFor(task) {
   outline-offset: -1px;
 }
 
+/* Row for the day number + assigned-badge (see the template comment above
+   this pair) -- width: 100% so justify-content: space-between actually has
+   the cell's full content width to divide between its two ends, since
+   .day-cell's own align-items: flex-start would otherwise shrink this row
+   to its content width instead of stretching it. */
+.day-cell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
 .day-number {
   font-size: 12px;
   font-weight: 500;
@@ -643,18 +661,14 @@ function badgeFor(task) {
   flex-shrink: 0;
 }
 
-/* Top-right corner, opposite the day number -- .day-cell is already
-   position: relative, so this just anchors to its own padding box.
-   Deliberately not amber/red (those mean urgency elsewhere on this page)
-   and not any TASK_DOMAIN_COLORS value (this isn't a fourth domain), so it
-   reads as its own distinct "something of yours" signal. Reuses the same
-   pale-grey/dark-grey pairing as .badge--default rather than a new one-off
-   color, since a neutral grey is just as clash-free as any other choice
-   here. */
+/* Opposite end of .day-cell-header from the day number. Deliberately not
+   amber/red (those mean urgency elsewhere on this page) and not any
+   TASK_DOMAIN_COLORS value (this isn't a fourth domain), so it reads as its
+   own distinct "something of yours" signal. Reuses the same pale-grey/
+   dark-grey pairing as .badge--default rather than a new one-off color,
+   since a neutral grey is just as clash-free as any other choice here. */
 .assigned-badge {
-  position: absolute;
-  top: 4px;
-  right: 5px;
+  flex-shrink: 0;
   min-width: 14px;
   height: 14px;
   padding: 0 3px;

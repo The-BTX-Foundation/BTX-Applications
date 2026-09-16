@@ -607,10 +607,20 @@ onUnmounted(() => {
     transform: translateX(0);
   }
 
-  /* Clears the fixed 56px topbar; left/right/bottom stay at the 32px from
-     .page's own base rule above -- this only overrides the top side. */
+  /* Clears the fixed 56px topbar on top; left/right/bottom drop from the
+     desktop 32px to 16px -- half the desktop margin, matching the 16px
+     spacing unit already used elsewhere in the app (Apple HIG/Material
+     both default to a 16pt/dp screen margin too), freeing up real content
+     width on narrow viewports without touching the desktop rule above. */
   .page {
-    padding-top: calc(56px + 32px);
+    padding: calc(56px + 32px) 16px 16px;
+  }
+
+  /* No mobile override existed for .panel before -- same 32px -> 16px halving
+     as .page above, for the same reason (this is the second of the two
+     nested 32px paddings that were eating width on mobile). */
+  .panel {
+    padding: 16px;
   }
 }
 </style>
