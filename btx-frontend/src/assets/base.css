@@ -25,14 +25,20 @@
      - Login.vue: the whole page is a fixed light-card-on-dark-page design
        that never reads data-theme, by the same "brand surface" logic as
        the sidebar above.
+     - HomeView.vue's mobile topbar (.mobile-topbar/.sticky-page-bar) and
+       its avatar (.topbar-avatar), and Home.vue's own alert hero
+       (HomeAlertHero.vue) and its "Review overdue items" button: the same
+       fixed-dark/gold brand surface as the sidebar, just repeated in two
+       more places the toggle was never meant to reach.
      - Modal/overlay backdrop scrims (rgba(0, 0, 0, 0.4) / rgba(0, 0, 0, 0.5)
        in EventCalendar.vue, MarketingCalendar.vue, NewTaskModal.vue,
        HomeView.vue): a black scrim darkens either theme's content the same
        way, so there's nothing for a variable to switch between.
      - AlertCenter.vue's solid overdue-count badge (#b3261e background,
-       white text): a fixed urgency color by design, not a themed badge --
-       don't confuse it with --color-danger-badge-bg/-text above, which is
-       the pale tinted-pill style used elsewhere.
+       white text), and HomeSectionRow.vue's identical count-pill on Home's
+       Alert Center row: a fixed urgency color by design, not a themed
+       badge -- don't confuse either with --color-danger-badge-bg/-text
+       above, which is the pale tinted-pill style used elsewhere.
      - Per-category/per-domain chip colors (EventCalendar.vue's
        CATEGORY_PALETTE and TASK_DOMAIN_COLORS, marketingTaskTypes.js's
        MARKETING_TASK_TYPE_COLORS): curated palettes where each category
