@@ -424,11 +424,11 @@ const activeMilestone = computed(
 .column-subtitle {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .empty {
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-size: 13px;
 }
 
@@ -447,8 +447,8 @@ const activeMilestone = computed(
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 14px;
   cursor: pointer;
@@ -457,13 +457,13 @@ const activeMilestone = computed(
 }
 
 .plan-card--active {
-  border: 1px solid #c9932a;
+  border: 1px solid var(--color-accent);
 }
 
 .plan-name {
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Same badge styling as ProgramImpact.vue's Live/Archived cycle badges. */
@@ -481,6 +481,8 @@ const activeMilestone = computed(
   color: #2e7d32;
 }
 
+/* Neutral badge colors aren't part of the CSS-variable system yet
+   (see base.css's header comment) -- left hardcoded until that lands. */
 .badge--default {
   background: #f1efe8;
   color: #5f5e5a;
@@ -512,8 +514,8 @@ const activeMilestone = computed(
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -521,27 +523,27 @@ const activeMilestone = computed(
 .stat-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .stat-value {
   font-size: 15px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .chart-empty {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 /* Timeline card: same card convention as .chart/.milestone-list-section
    above. */
 .timeline-section {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
   margin-bottom: 20px;
 }
 
@@ -549,7 +551,7 @@ const activeMilestone = computed(
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Same horizontal-scroll convention as .bars-scroll/.allocation-table-scroll
@@ -575,7 +577,7 @@ const activeMilestone = computed(
   right: 0;
   bottom: 30px;
   height: 1px;
-  background: #e5e3dd;
+  background: var(--color-border);
 }
 
 .timeline-month {
@@ -583,7 +585,7 @@ const activeMilestone = computed(
   bottom: 8px;
   transform: translateX(-50%);
   font-size: 11px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .timeline-marker {
@@ -601,14 +603,14 @@ const activeMilestone = computed(
 
 .timeline-stem {
   width: 1px;
-  background: #e5e3dd;
+  background: var(--color-border);
 }
 
 .timeline-dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
 }
 
 /* Dot fill reuses badge--live/badge--default's own text colors (not their
@@ -625,7 +627,7 @@ const activeMilestone = computed(
 .timeline-detail {
   margin: 12px 0 0;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Subsection within the same card, not a new top-level panel -- separated
@@ -635,30 +637,30 @@ const activeMilestone = computed(
 .unscheduled-panel {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 0.5px solid #e5e3dd;
+  border-top: 0.5px solid var(--color-border);
 }
 
 .unscheduled-panel h4 {
   margin: 0 0 12px;
   font-size: 13px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 /* Milestone list card: same card treatment as the timeline section above, its own
    section since it's a list rather than a bar chart. */
 .milestone-list-section {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .milestone-list-section h3 {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .milestone-list {
@@ -675,14 +677,14 @@ const activeMilestone = computed(
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 10px 14px;
 }
 
 .milestone-name {
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Program Allocation card+table: identical to Home.vue's own version
@@ -690,10 +692,10 @@ const activeMilestone = computed(
    CSS -- both reuse the app's established card/table convention verbatim
    (same shape as FundraisingHealth.vue's .revenue-panel/.revenue-table). */
 .allocation-panel {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
   margin-bottom: 20px;
 }
 
@@ -701,7 +703,7 @@ const activeMilestone = computed(
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Matches .bars-scroll's convention (FundraisingHealth.vue) -- harmless at
@@ -721,14 +723,14 @@ const activeMilestone = computed(
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .allocation-table td {
   padding: 6px 8px 6px 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .allocation-category {
@@ -745,16 +747,16 @@ const activeMilestone = computed(
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 

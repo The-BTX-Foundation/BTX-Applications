@@ -543,19 +543,19 @@ function badgeFor(task) {
 .month-label {
   font-size: 16px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
   min-width: 160px;
   text-align: center;
 }
 
 .nav-btn {
-  background: #fff;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
@@ -602,7 +602,7 @@ function badgeFor(task) {
   text-align: center;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 /* Same hairline-via-gap-background technique as Marketing Calendar. */
@@ -620,7 +620,7 @@ function badgeFor(task) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 4px;
   padding: 4px 5px;
   font-family: inherit;
@@ -629,7 +629,7 @@ function badgeFor(task) {
 }
 
 .day-cell--muted {
-  background: #f7f6f3;
+  background: var(--color-page-bg);
   color: #b5b3ac;
 }
 
@@ -638,7 +638,7 @@ function badgeFor(task) {
 }
 
 .day-cell--clickable:hover {
-  outline: 1px solid #c9932a;
+  outline: 1px solid var(--color-accent);
   outline-offset: -1px;
 }
 
@@ -673,6 +673,8 @@ function badgeFor(task) {
   height: 14px;
   padding: 0 3px;
   border-radius: 999px;
+  /* Neutral badge colors aren't part of the CSS-variable system yet
+     (see base.css's header comment) -- left hardcoded until that lands. */
   background: #f1efe8;
   color: #5f5e5a;
   font-size: 9px;
@@ -728,15 +730,15 @@ function badgeFor(task) {
    badge--default's variant intentionally has no matching class here --
    .day-entry--task's own transparent border already covers it. */
 .day-entry--urgency-overdue {
-  border-left-color: #b3261e;
+  border-left-color: var(--color-danger-text);
 }
 
 .day-entry--urgency-amber {
-  border-left-color: #c9932a;
+  border-left-color: var(--color-accent);
 }
 
 .day-entry--overflow {
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
@@ -753,17 +755,17 @@ function badgeFor(task) {
 .modal {
   width: 100%;
   max-width: 360px;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 24px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .modal-heading {
   margin: 0 0 16px;
   font-size: 15px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .entry-list {
@@ -809,8 +811,8 @@ function badgeFor(task) {
 }
 
 .badge--amber {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
 }
 
 .badge--default {
@@ -819,8 +821,8 @@ function badgeFor(task) {
 }
 
 .badge--overdue {
-  background: #fbdede;
-  color: #b3261e;
+  background: var(--color-danger-badge-bg);
+  color: var(--color-danger-badge-text);
 }
 
 .btn {
@@ -832,18 +834,18 @@ function badgeFor(task) {
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 </style>

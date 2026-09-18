@@ -162,21 +162,21 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 16px;
 }
 
 .metric-label {
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .metric-value {
   font-size: 24px;
   font-weight: 600;
-  color: #c9932a;
+  color: var(--color-accent);
 }
 
 /* Reuses Home.vue's .card-counter small-gray secondary-text convention
@@ -191,10 +191,10 @@ watch(
    .revenue-panel/.revenue-table and BudgetTracking.vue's .variance-panel/
    .variance-table) rather than inventing new styling. */
 .allocation-panel {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
   margin-bottom: 20px;
 }
 
@@ -202,7 +202,7 @@ watch(
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Matches .bars-scroll's convention (FundraisingHealth.vue) -- harmless at
@@ -222,14 +222,14 @@ watch(
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .allocation-table td {
   padding: 6px 8px 6px 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .allocation-category {
@@ -246,17 +246,17 @@ watch(
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 /* Matches FundraisingHealth.vue's/BudgetTracking.vue's access-denied styling. */
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 

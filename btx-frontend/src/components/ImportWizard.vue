@@ -237,20 +237,20 @@ function goToPreviousStep() {
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border: 1px solid var(--color-accent);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 </style>

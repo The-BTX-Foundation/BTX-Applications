@@ -199,10 +199,10 @@ async function handleSubmit() {
 .modal {
   width: 100%;
   max-width: 360px;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 24px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .heading {
@@ -226,24 +226,24 @@ form {
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .field input,
 .field select,
 .field textarea {
-  border: 1px solid #d8d6cf;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
   font-family: inherit;
   resize: vertical;
 }
 
 .error {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-size: 13px;
 }
 
@@ -268,14 +268,14 @@ form {
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border: 1px solid var(--color-accent);
 }
 </style>

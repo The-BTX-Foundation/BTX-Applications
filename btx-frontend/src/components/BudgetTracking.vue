@@ -356,15 +356,15 @@ const showHistory = ref(false)
   margin: 0 0 20px;
   font-size: 12px;
   font-style: italic;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .burn-rate-callout {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
@@ -372,13 +372,13 @@ const showHistory = ref(false)
 
 .burn-rate-label {
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .burn-rate-value {
   font-size: 32px;
   font-weight: 700;
-  color: #c9932a;
+  color: var(--color-accent);
 }
 
 /* Category tab bar — same underline pattern used on Program Impact
@@ -388,7 +388,7 @@ const showHistory = ref(false)
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  border-bottom: 1px solid #e5e3dd;
+  border-bottom: 1px solid var(--color-border);
   margin-bottom: 20px;
 }
 
@@ -400,13 +400,13 @@ const showHistory = ref(false)
   margin-right: 20px;
   font-size: 14px;
   font-weight: 500;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
 .tab--active {
-  color: #2d3142;
-  border-bottom-color: #c9932a;
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
 }
 
 .category-panel {
@@ -422,7 +422,7 @@ const showHistory = ref(false)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .metrics-group-fields {
@@ -440,8 +440,8 @@ const showHistory = ref(false)
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -449,13 +449,13 @@ const showHistory = ref(false)
 .metric-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .metric-value {
   font-size: 15px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .computed-row {
@@ -470,8 +470,8 @@ const showHistory = ref(false)
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -479,20 +479,20 @@ const showHistory = ref(false)
 .computed-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .computed-value {
   font-size: 20px;
   font-weight: 600;
-  color: #c9932a;
+  color: var(--color-accent);
 }
 
 .variance-panel {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .variance-table {
@@ -504,14 +504,14 @@ const showHistory = ref(false)
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .variance-table td {
   padding: 6px 8px 6px 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .variance-label {
@@ -519,7 +519,7 @@ const showHistory = ref(false)
 }
 
 .variance--over {
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 
@@ -535,7 +535,7 @@ const showHistory = ref(false)
 
 .chart-empty {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .grant-table {
@@ -547,14 +547,14 @@ const showHistory = ref(false)
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .grant-table td {
   padding: 8px 8px 8px 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
   border-top: 1px solid #f1efe8;
 }
 
@@ -567,6 +567,8 @@ const showHistory = ref(false)
   white-space: nowrap;
 }
 
+/* Neutral badge colors aren't part of the CSS-variable system yet
+   (see base.css's header comment) -- left hardcoded until that lands. */
 .badge--default {
   background: #f1efe8;
   color: #5f5e5a;
@@ -581,18 +583,18 @@ const showHistory = ref(false)
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 
@@ -623,7 +625,7 @@ const showHistory = ref(false)
   }
 
   .variance-table tr {
-    border: 0.5px solid #e5e3dd;
+    border: 0.5px solid var(--color-border);
     border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 10px;
@@ -643,7 +645,7 @@ const showHistory = ref(false)
   .variance-table td:not(.variance-label)::before {
     content: attr(data-label);
     font-weight: 500;
-    color: #8a8a85;
+    color: var(--color-text-secondary);
   }
 }
 </style>

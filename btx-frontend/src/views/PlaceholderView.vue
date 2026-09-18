@@ -23,6 +23,6 @@ defineProps({
 
 .placeholder p {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 </style>

@@ -140,11 +140,11 @@ function agoLabel(createdAt) {
 .alert-section h3 {
   margin: 0 0 10px;
   font-size: 15px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .empty {
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-size: 13px;
 }
 
@@ -161,8 +161,8 @@ function agoLabel(createdAt) {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 14px 18px;
 }
@@ -177,13 +177,13 @@ function agoLabel(createdAt) {
 }
 
 .badge--overdue {
-  background: #fbdede;
-  color: #b3261e;
+  background: var(--color-danger-badge-bg);
+  color: var(--color-danger-badge-text);
 }
 
 .badge--new {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
 }
 
 .alert-body {
@@ -195,22 +195,22 @@ function agoLabel(createdAt) {
   margin: 0;
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .assignee {
   margin: 0;
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 </style>

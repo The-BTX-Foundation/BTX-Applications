@@ -386,8 +386,8 @@ const showHistory = ref(false)
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 14px;
   cursor: pointer;
@@ -396,13 +396,13 @@ const showHistory = ref(false)
 }
 
 .month-card--active {
-  border: 1px solid #c9932a;
+  border: 1px solid var(--color-accent);
 }
 
 .month-label {
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 /* Same badge styling as ProgramImpact.vue's Live/Archived cycle badges. */
@@ -420,6 +420,8 @@ const showHistory = ref(false)
   color: #2e7d32;
 }
 
+/* Neutral badge colors aren't part of the CSS-variable system yet
+   (see base.css's header comment) -- left hardcoded until that lands. */
 .badge--default {
   background: #f1efe8;
   color: #5f5e5a;
@@ -439,7 +441,7 @@ const showHistory = ref(false)
   margin: 0 0 20px;
   font-size: 12px;
   font-style: italic;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .metrics-group-fields {
@@ -459,8 +461,8 @@ const showHistory = ref(false)
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -468,13 +470,13 @@ const showHistory = ref(false)
 .metric-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .metric-value {
   font-size: 15px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .value-with-suffix {
@@ -485,7 +487,7 @@ const showHistory = ref(false)
 
 .value-suffix {
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .computed-row {
@@ -498,8 +500,8 @@ const showHistory = ref(false)
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -507,13 +509,13 @@ const showHistory = ref(false)
 .computed-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .computed-value {
   font-size: 20px;
   font-weight: 600;
-  color: #c9932a;
+  color: var(--color-accent);
 }
 
 .metrics-group-header {
@@ -522,17 +524,17 @@ const showHistory = ref(false)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 /* Same panel/table chrome as BudgetTracking.vue's .variance-panel/
    .variance-table -- adapted to this table's own Source/Amount/% columns
    rather than copying Budgeted/Actual/Variance verbatim. */
 .revenue-panel {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
   margin-bottom: 20px;
 }
 
@@ -545,14 +547,14 @@ const showHistory = ref(false)
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .revenue-table td {
   padding: 6px 8px 6px 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .revenue-label {
@@ -563,17 +565,17 @@ const showHistory = ref(false)
    the chart reads as a grouped panel consistent with Program Impact/
    Program Planning's own .chart cards. */
 .chart {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .chart h3 {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .chart-tabs {
@@ -590,19 +592,19 @@ const showHistory = ref(false)
   border-radius: 999px;
   border: none;
   background: transparent;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
 .chart-tab--active {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
   font-weight: 600;
 }
 
 .chart-empty {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 /* Horizontal scroll container -- monthly data can realistically outgrow a
@@ -632,20 +634,20 @@ const showHistory = ref(false)
 
 .bar-value {
   font-size: 12px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 
 .bar {
   width: 100%;
-  background: #c9932a;
+  background: var(--color-accent);
   border-radius: 4px 4px 0 0;
 }
 
 .bar-label {
   margin-top: 8px;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .btn {
@@ -657,18 +659,18 @@ const showHistory = ref(false)
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 

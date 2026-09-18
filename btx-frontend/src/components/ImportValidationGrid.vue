@@ -115,16 +115,16 @@ function formatValue(value) {
 .summary {
   margin: 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .info-box {
-  background: #f7f6f3;
-  border: 1px solid #e5e3dd;
+  background: var(--color-page-bg);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 13px;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .milestone-groups {
@@ -134,31 +134,31 @@ function formatValue(value) {
 }
 
 .milestone-group {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 14px;
 }
 
 .milestone-group--invalid {
-  border: 1px solid #b3261e;
+  border: 1px solid var(--color-danger-text);
 }
 
 .group-title {
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .group-error {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-size: 13px;
 }
 
 .group-warning {
   margin: 0;
-  color: #854f0b;
+  color: var(--color-amber-text);
   font-size: 13px;
 }
 
@@ -171,14 +171,14 @@ function formatValue(value) {
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .rows-table td {
   padding: 6px 8px 6px 0;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
   vertical-align: top;
 }
 
@@ -188,12 +188,12 @@ function formatValue(value) {
 }
 
 .status-error {
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 500;
 }
 
 .cell-error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .row-error-row td {
@@ -201,7 +201,7 @@ function formatValue(value) {
 }
 
 .row-error {
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-size: 12px;
   font-style: italic;
 }

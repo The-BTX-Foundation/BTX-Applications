@@ -309,19 +309,19 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 .month-label {
   font-size: 16px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
   min-width: 160px;
   text-align: center;
 }
 
 .nav-btn {
-  background: #fff;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
@@ -341,7 +341,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   text-align: center;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 /* The grid's own background shows through the 1px gaps as a hairline
@@ -369,7 +369,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 4px;
   padding: 4px 5px;
   font-family: inherit;
@@ -377,7 +377,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 }
 
 .day-cell--muted {
-  background: #f7f6f3;
+  background: var(--color-page-bg);
   color: #b5b3ac;
 }
 
@@ -388,7 +388,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 /* outline (not border) so the hover affordance doesn't add to the box's
    rendered size and perturb the tight 48px cell height. */
 .day-cell--clickable:hover {
-  outline: 1px solid #c9932a;
+  outline: 1px solid var(--color-accent);
   outline-offset: -1px;
 }
 
@@ -405,8 +405,8 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   position: absolute;
   top: 3px;
   right: 3px;
-  background: #c9932a;
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-surface);
   font-size: 9px;
   border-radius: 8px;
   padding: 1px 5px;
@@ -437,17 +437,17 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 .modal {
   width: 100%;
   max-width: 360px;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 24px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .modal-heading {
   margin: 0 0 16px;
   font-size: 15px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .entry-list {
@@ -486,18 +486,18 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 </style>

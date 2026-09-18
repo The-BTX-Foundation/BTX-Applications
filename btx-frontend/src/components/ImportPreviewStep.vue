@@ -217,12 +217,12 @@ async function runValidation() {
   margin: 12px 0 0;
   font-size: 16px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .validating {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-size: 13px;
 }
 </style>

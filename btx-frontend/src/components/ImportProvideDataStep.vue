@@ -125,16 +125,16 @@ function handleFileChange(event) {
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .paste-area {
-  border: 1px solid #d8d6cf;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #2d3142;
+  color: var(--color-text-primary);
   resize: vertical;
 }
 
@@ -146,7 +146,7 @@ function handleFileChange(event) {
 
 .divider-label {
   font-size: 12px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .file-btn {
@@ -154,9 +154,9 @@ function handleFileChange(event) {
   align-items: center;
   justify-content: center;
   width: fit-content;
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 13px;
@@ -181,7 +181,7 @@ function handleFileChange(event) {
 
 .error {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-size: 13px;
 }
 

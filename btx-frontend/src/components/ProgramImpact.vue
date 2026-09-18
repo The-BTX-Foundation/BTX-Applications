@@ -293,8 +293,8 @@ function formatBarValue(cycle) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 14px;
   cursor: pointer;
@@ -303,13 +303,13 @@ function formatBarValue(cycle) {
 }
 
 .cycle-card--active {
-  border: 1px solid #c9932a;
+  border: 1px solid var(--color-accent);
 }
 
 .cycle-year {
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .badge {
@@ -326,6 +326,8 @@ function formatBarValue(cycle) {
   color: #2e7d32;
 }
 
+/* Neutral badge colors aren't part of the CSS-variable system yet
+   (see base.css's header comment) -- left hardcoded until that lands. */
 .badge--default {
   background: #f1efe8;
   color: #5f5e5a;
@@ -354,7 +356,7 @@ function formatBarValue(cycle) {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  border-bottom: 1px solid #e5e3dd;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .tab {
@@ -365,13 +367,13 @@ function formatBarValue(cycle) {
   margin-right: 20px;
   font-size: 14px;
   font-weight: 500;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
 .tab--active {
-  color: #2d3142;
-  border-bottom-color: #c9932a;
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
 }
 
 .category-panel {
@@ -386,7 +388,7 @@ function formatBarValue(cycle) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .metrics-group-fields {
@@ -404,8 +406,8 @@ function formatBarValue(cycle) {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -413,13 +415,13 @@ function formatBarValue(cycle) {
 .metric-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .metric-value {
   font-size: 15px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .value-with-suffix {
@@ -430,7 +432,7 @@ function formatBarValue(cycle) {
 
 .value-suffix {
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .applicant-pool-comparison {
@@ -449,8 +451,8 @@ function formatBarValue(cycle) {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -458,30 +460,30 @@ function formatBarValue(cycle) {
 .comparison-label {
   font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--color-text-label);
 }
 
 .comparison-value {
   font-size: 20px;
   font-weight: 600;
-  color: #c9932a;
+  color: var(--color-accent);
 }
 
 /* Card wrapper reusing .cycle-card's existing border treatment, so the
    chart reads as a grouped panel consistent with the cycle-list cards
    already on this page. */
 .chart {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .chart h3 {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .chart-tabs {
@@ -498,19 +500,19 @@ function formatBarValue(cycle) {
   border-radius: 999px;
   border: none;
   background: transparent;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
 .chart-tab--active {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
   font-weight: 600;
 }
 
 .chart-empty {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .bars {
@@ -531,29 +533,29 @@ function formatBarValue(cycle) {
 
 .bar-value {
   font-size: 12px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 
 .bar {
   width: 100%;
-  background: #c9932a;
+  background: var(--color-accent);
   border-radius: 4px 4px 0 0;
 }
 
 .bar-label {
   margin-top: 8px;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 

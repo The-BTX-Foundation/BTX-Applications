@@ -49,22 +49,22 @@ const columnMapping = defineModel({ required: true })
 }
 
 .mapping-row--unmapped .field-name {
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .field-name {
   font-size: 13px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .mapping-select {
-  border: 1px solid #d8d6cf;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   padding: 6px 8px;
   font-size: 13px;
   font-family: inherit;
-  color: #2d3142;
+  color: var(--color-text-primary);
   min-width: 200px;
 }
 </style>

@@ -191,24 +191,24 @@ async function runExecution() {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .validating {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-size: 13px;
 }
 
 .summary-line {
   margin: 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .skipped-line {
   margin: 0;
-  color: #854f0b;
+  color: var(--color-amber-text);
   font-size: 13px;
 }
 
@@ -219,7 +219,7 @@ async function runExecution() {
 }
 
 .milestone-group {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -228,12 +228,12 @@ async function runExecution() {
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .group-warning {
   margin: 0;
-  color: #854f0b;
+  color: var(--color-amber-text);
   font-size: 13px;
 }
 
@@ -242,7 +242,7 @@ async function runExecution() {
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
@@ -265,8 +265,8 @@ async function runExecution() {
 }
 
 .btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border: 1px solid var(--color-accent);
 }
 </style>

@@ -53,8 +53,8 @@ function titleCase(column) {
   align-items: flex-start;
   gap: 4px;
   width: 100%;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 14px;
   cursor: pointer;
@@ -63,17 +63,17 @@ function titleCase(column) {
 }
 
 .table-card--active {
-  border: 1px solid #c9932a;
+  border: 1px solid var(--color-accent);
 }
 
 .table-label {
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .table-hint {
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 </style>

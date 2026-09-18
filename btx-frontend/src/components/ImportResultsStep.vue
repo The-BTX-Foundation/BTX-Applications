@@ -185,18 +185,18 @@ function downloadFailedRows() {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .summary-line {
   margin: 0;
   font-size: 14px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .partial-line {
   margin: 0;
-  color: #854f0b;
+  color: var(--color-amber-text);
   font-size: 13px;
 }
 
@@ -209,14 +209,14 @@ function downloadFailedRows() {
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   padding: 0 8px 8px 0;
 }
 
 .results-table td {
   padding: 6px 8px 6px 0;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
   vertical-align: top;
 }
 
@@ -226,22 +226,22 @@ function downloadFailedRows() {
 }
 
 .status-error {
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 500;
 }
 
 .status-partial {
-  color: #854f0b;
+  color: var(--color-amber-text);
   font-weight: 500;
 }
 
 .cell-error {
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-size: 12px;
 }
 
 .cell-warning {
-  color: #854f0b;
+  color: var(--color-amber-text);
   font-size: 12px;
 }
 
@@ -255,14 +255,14 @@ function downloadFailedRows() {
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border: 1px solid var(--color-accent);
 }
 </style>

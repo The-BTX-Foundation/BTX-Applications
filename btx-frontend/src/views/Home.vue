@@ -121,7 +121,7 @@ function toggleCard(id) {
 
 .subtext {
   margin: 0 0 20px;
-  color: #6b6b6b;
+  color: var(--color-text-secondary);
   font-size: 14px;
 }
 
@@ -132,7 +132,7 @@ function toggleCard(id) {
 }
 
 .card {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 14px;
   box-shadow:
     0 1px 2px rgba(45, 49, 66, 0.06),
@@ -162,28 +162,28 @@ function toggleCard(id) {
    element tie and hide .card's white fill. Higher specificity here beats
    that regardless of declaration order, without touching the button case. */
 .card.card-header {
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .card-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--color-text-primary);
 }
 
 .card-meta {
   margin: 6px 0 0;
   font-size: 13px;
   font-weight: 600;
-  color: #d4a24e;
+  color: var(--color-accent);
 }
 
 .chevron {
   position: absolute;
   top: 12px;
   right: 12px;
-  color: #8a8a8a;
+  color: var(--color-text-secondary);
   opacity: 0;
   transition:
     opacity 0.15s ease,
@@ -211,7 +211,7 @@ function toggleCard(id) {
 }
 
 .sub-item-link {
-  color: #d4a24e;
+  color: var(--color-accent);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;

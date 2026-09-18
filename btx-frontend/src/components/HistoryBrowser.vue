@@ -75,16 +75,16 @@ const historyMonths = Array.from({ length: 12 }, (_, i) => ({ index: i, label: m
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .not-connected-note {
   margin: 0 0 20px;
   font-size: 12px;
   font-style: italic;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .history-list {
@@ -98,8 +98,8 @@ const historyMonths = Array.from({ length: 12 }, (_, i) => ({ index: i, label: m
 
 .history-card {
   width: 100%;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 14px;
   cursor: pointer;
@@ -110,7 +110,7 @@ const historyMonths = Array.from({ length: 12 }, (_, i) => ({ index: i, label: m
 .history-label {
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .back-btn {
@@ -120,6 +120,6 @@ const historyMonths = Array.from({ length: 12 }, (_, i) => ({ index: i, label: m
 .history-detail-heading {
   margin: 0 0 8px;
   font-size: 16px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 </style>
