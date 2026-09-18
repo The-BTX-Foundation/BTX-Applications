@@ -38,14 +38,19 @@
      6.49:1 on --color-amber-badge-bg (both also clear 5.6:1+ against
      --color-surface and --color-page-bg, which is never the binding
      constraint). Light-mode values below are unchanged from the existing
-     app-wide badge/error convention. Success/neutral badge colors aren't
-     part of this system yet; deferred to their own pass. */
+     app-wide badge/error convention. Success/neutral badge dark values
+     follow the same convention: chosen for contrast against their own
+     badge background, not derived from the light-mode values. */
   --color-danger-text: #b3261e;
   --color-amber-text: #854f0b;
   --color-danger-badge-bg: #fbdede;
   --color-danger-badge-text: #b3261e;
   --color-amber-badge-bg: #faeeda;
   --color-amber-badge-text: #854f0b;
+  --color-success-badge-bg: #e3f1e1;
+  --color-success-badge-text: #2e7d32;
+  --color-neutral-badge-bg: #f1efe8;
+  --color-neutral-badge-text: #5f5e5a;
 }
 
 :root[data-theme='dark'] {
@@ -64,6 +69,10 @@
   --color-danger-badge-text: #ff6b6b;
   --color-amber-badge-bg: #3d2e14;
   --color-amber-badge-text: #f0a83e;
+  --color-success-badge-bg: #1f3a24;
+  --color-success-badge-text: #81c784;
+  --color-neutral-badge-bg: #2c2c2a;
+  --color-neutral-badge-text: #b4b2a9;
 }
 
 *,

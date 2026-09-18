@@ -524,7 +524,7 @@ const showHistory = ref(false)
 }
 
 .variance--under {
-  color: #2e7d32;
+  color: var(--color-success-badge-text);
   font-weight: 600;
 }
 
@@ -555,7 +555,9 @@ const showHistory = ref(false)
   padding: 8px 8px 8px 0;
   font-size: 14px;
   color: var(--color-text-primary);
-  border-top: 1px solid #f1efe8;
+  /* Row divider -- border variable, not the neutral-badge tint it happened
+     to match by coincidence in light mode. */
+  border-top: 1px solid var(--color-border);
 }
 
 .badge {
@@ -567,11 +569,9 @@ const showHistory = ref(false)
   white-space: nowrap;
 }
 
-/* Neutral badge colors aren't part of the CSS-variable system yet
-   (see base.css's header comment) -- left hardcoded until that lands. */
 .badge--default {
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .btn {

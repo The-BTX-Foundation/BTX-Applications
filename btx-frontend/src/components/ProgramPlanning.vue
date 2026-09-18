@@ -477,15 +477,13 @@ const activeMilestone = computed(
 }
 
 .badge--live {
-  background: #e3f1e1;
-  color: #2e7d32;
+  background: var(--color-success-badge-bg);
+  color: var(--color-success-badge-text);
 }
 
-/* Neutral badge colors aren't part of the CSS-variable system yet
-   (see base.css's header comment) -- left hardcoded until that lands. */
 .badge--default {
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .detail-column {
@@ -617,11 +615,11 @@ const activeMilestone = computed(
    pale backgrounds, which would barely register at 12px) -- same 2-color
    system as the existing milestone list, no new colors introduced. */
 .timeline-marker--complete .timeline-dot {
-  background: #2e7d32;
+  background: var(--color-success-badge-text);
 }
 
 .timeline-marker--incomplete .timeline-dot {
-  background: #5f5e5a;
+  background: var(--color-neutral-badge-text);
 }
 
 .timeline-detail {

@@ -769,10 +769,8 @@ async function handleDecline(task) {
 }
 
 .badge--default {
-  /* Neutral badge colors aren't part of the CSS-variable system yet
-     (see base.css's header comment) -- left hardcoded until that lands. */
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .badge--overdue {
@@ -790,15 +788,13 @@ async function handleDecline(task) {
 }
 
 .outcome-pill--complete {
-  /* Success badge colors aren't part of the CSS-variable system yet
-     (see base.css's header comment) -- left hardcoded until that lands. */
-  background: #e3f1e4;
-  color: #2e7d32;
+  background: var(--color-success-badge-bg);
+  color: var(--color-success-badge-text);
 }
 
 .outcome-pill--declined {
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .task-body {
@@ -825,8 +821,8 @@ async function handleDecline(task) {
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .row-error {

@@ -680,10 +680,8 @@ function badgeFor(task) {
   height: 14px;
   padding: 0 3px;
   border-radius: 999px;
-  /* Neutral badge colors aren't part of the CSS-variable system yet
-     (see base.css's header comment) -- left hardcoded until that lands. */
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
   font-size: 9px;
   font-weight: 600;
   line-height: 14px;
@@ -823,8 +821,8 @@ function badgeFor(task) {
 }
 
 .badge--default {
-  background: #f1efe8;
-  color: #5f5e5a;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .badge--overdue {

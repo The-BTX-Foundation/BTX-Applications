@@ -187,7 +187,7 @@ function handleFileChange(event) {
 
 .success {
   margin: 0;
-  color: #2e7d32;
+  color: var(--color-success-badge-text);
   font-size: 13px;
 }
 </style>
