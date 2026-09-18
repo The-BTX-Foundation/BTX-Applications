@@ -620,7 +620,7 @@ async function handleDecline(task) {
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 16px;
-  border-bottom: 1px solid #e5e3dd;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .tab {
@@ -631,13 +631,13 @@ async function handleDecline(task) {
   margin-right: 20px;
   font-size: 14px;
   font-weight: 500;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
 .tab--active {
-  color: #2d3142;
-  border-bottom-color: #c9932a;
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
 }
 
 /* Chart card: same shape/class names as ProgramPlanning.vue's/
@@ -645,10 +645,10 @@ async function handleDecline(task) {
    verbatim rather than inventing new chart styling for this page's first
    chart. */
 .chart {
-  border: 0.5px solid #e5e3dd;
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  background: #fff;
+  background: var(--color-surface);
   margin-bottom: 20px;
 }
 
@@ -656,12 +656,12 @@ async function handleDecline(task) {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .chart-empty {
   margin: 0;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .bars {
@@ -682,20 +682,20 @@ async function handleDecline(task) {
 
 .bar-value {
   font-size: 12px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 
 .bar {
   width: 100%;
-  background: #c9932a;
+  background: var(--color-accent);
   border-radius: 4px 4px 0 0;
 }
 
 .bar-label {
   margin-top: 8px;
   font-size: 13px;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .drill-list {
@@ -708,18 +708,18 @@ async function handleDecline(task) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 14px 18px;
   font-size: 14px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
 .drill-count {
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 400;
 }
@@ -730,7 +730,7 @@ async function handleDecline(task) {
   border: none;
   padding: 0 0 4px;
   margin-bottom: 4px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
 }
@@ -748,8 +748,8 @@ async function handleDecline(task) {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: #fff;
-  border: 0.5px solid #e5e3dd;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
   border-radius: 12px;
   padding: 14px 18px;
 }
@@ -764,18 +764,20 @@ async function handleDecline(task) {
 }
 
 .badge--amber {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
 }
 
 .badge--default {
+  /* Neutral badge colors aren't part of the CSS-variable system yet
+     (see base.css's header comment) -- left hardcoded until that lands. */
   background: #f1efe8;
   color: #5f5e5a;
 }
 
 .badge--overdue {
-  background: #fbdede;
-  color: #b3261e;
+  background: var(--color-danger-badge-bg);
+  color: var(--color-danger-badge-text);
 }
 
 .outcome-pill {
@@ -788,6 +790,8 @@ async function handleDecline(task) {
 }
 
 .outcome-pill--complete {
+  /* Success badge colors aren't part of the CSS-variable system yet
+     (see base.css's header comment) -- left hardcoded until that lands. */
   background: #e3f1e4;
   color: #2e7d32;
 }
@@ -806,13 +810,13 @@ async function handleDecline(task) {
   margin: 0;
   font-size: 15px;
   font-weight: 500;
-  color: #2d3142;
+  color: var(--color-text-primary);
 }
 
 .assignee {
   margin: 0;
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
 }
 
 .source-label {
@@ -828,7 +832,7 @@ async function handleDecline(task) {
 .row-error {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .actions {
@@ -840,7 +844,7 @@ async function handleDecline(task) {
 
 .awaiting {
   font-size: 13px;
-  color: #8a8a85;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
@@ -858,15 +862,15 @@ async function handleDecline(task) {
 }
 
 .btn--outline {
-  background: #fff;
-  color: #2d3142;
-  border: 1px solid #d8d6cf;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
 }
 
 .btn--gold {
-  background: #c9932a;
-  color: #fff;
-  border: 1px solid #c9932a;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border: 1px solid var(--color-accent);
 }
 
 .outcome {
@@ -875,16 +879,16 @@ async function handleDecline(task) {
 }
 
 .outcome--approved {
-  color: #854f0b;
+  color: var(--color-amber-text);
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .access-denied {
   margin: 0;
-  color: #b3261e;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 
