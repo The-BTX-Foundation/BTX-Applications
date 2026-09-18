@@ -355,12 +355,15 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
    allotted space, so nothing should overflow it, but this guarantees a
    future content change (e.g. unusually long badge text) clips instead
    of silently introducing a second scrollbar. */
+/* Hairline-via-gap-background technique; border variable is the closest
+   themed fit for a hairline (page/surface tokens would vanish or invert
+   the gap in dark mode). */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   grid-auto-rows: 1fr;
   gap: 1px;
-  background: #ececec;
+  background: var(--color-border);
   overflow: hidden;
 }
 
@@ -378,7 +381,8 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
 
 .day-cell--muted {
   background: var(--color-page-bg);
-  color: #b5b3ac;
+  /* Muted adjacent-month day number -- secondary-text variable. */
+  color: var(--color-text-secondary);
 }
 
 .day-cell--clickable {

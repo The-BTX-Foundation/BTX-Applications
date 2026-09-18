@@ -576,7 +576,9 @@ function badgeFor(task) {
   gap: 6px;
   font-size: 12px;
   font-weight: 500;
-  color: #5f5e5a;
+  /* Legend label text -- muted/secondary, not a badge, so it follows the
+     themed secondary-text variable rather than the deferred badge pair. */
+  color: var(--color-text-secondary);
 }
 
 .legend-swatch {
@@ -605,13 +607,16 @@ function badgeFor(task) {
   color: var(--color-text-secondary);
 }
 
-/* Same hairline-via-gap-background technique as Marketing Calendar. */
+/* Same hairline-via-gap-background technique as Marketing Calendar. Uses
+   the border variable (closest themed fit for a hairline) rather than
+   the page/surface tokens, which would either vanish the gap or invert
+   it in dark mode. */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   grid-auto-rows: 1fr;
   gap: 1px;
-  background: #ececec;
+  background: var(--color-border);
   overflow: hidden;
 }
 
@@ -630,7 +635,9 @@ function badgeFor(task) {
 
 .day-cell--muted {
   background: var(--color-page-bg);
-  color: #b5b3ac;
+  /* Muted adjacent-month day number -- secondary-text variable, same as
+     the legend label above. */
+  color: var(--color-text-secondary);
 }
 
 .day-cell--clickable {

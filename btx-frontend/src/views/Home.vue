@@ -206,7 +206,8 @@ function toggleCard(id) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-top: 1px solid #ececec;
+  /* Hairline divider -- border variable, not a fixed light-mode gray. */
+  border-top: 1px solid var(--color-border);
   padding-top: 12px;
 }
 

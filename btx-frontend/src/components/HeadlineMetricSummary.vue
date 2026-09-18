@@ -179,11 +179,11 @@ watch(
   color: var(--color-accent);
 }
 
-/* Reuses Home.vue's .card-counter small-gray secondary-text convention
-   (same size/color) rather than inventing a new subtext style. */
+/* Reuses the app's small-gray secondary-text convention (same size/color
+   as other muted subtext) rather than inventing a new subtext style. */
 .metric-subtext {
   font-size: 12px;
-  color: #9a9a9a;
+  color: var(--color-text-secondary);
 }
 
 /* Program Allocation card+table: reuses the app's established card/table
