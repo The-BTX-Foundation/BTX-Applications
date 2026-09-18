@@ -134,7 +134,7 @@ export function useHomeSummary() {
   const heroError = computed(() => merged?.firstError.value ?? null)
 
   const alertSubtitle = computed(() => {
-    if (heroError.value) return '—'
+    if (heroLoading.value || heroError.value) return '—'
     if (overdueCount.value === 0) return 'Nothing overdue'
     return `Oldest item ${dayLabel(oldestOverdueDays.value)} overdue`
   })
@@ -147,7 +147,7 @@ export function useHomeSummary() {
     return monthly > 0 ? funds / monthly : 0
   })
   const runwayDisplay = computed(() =>
-    budgetTrackingStore.error ? '—' : `${burnRateMonths.value.toFixed(1)} mo`,
+    !sectionsLoaded.value || budgetTrackingStore.error ? '—' : `${burnRateMonths.value.toFixed(1)} mo`,
   )
 
   // Unchanged from FundraisingHealth.vue's own fundraisingGoalProgress:
@@ -158,7 +158,7 @@ export function useHomeSummary() {
     return goal > 0 ? (fundraisingHealthStore.currentMonthTotalRevenue / goal) * 100 : 0
   })
   const goalPercentDisplay = computed(() =>
-    fundraisingHealthStore.error ? '—' : `${fundraisingGoalProgress.value.toFixed(1)}%`,
+    !sectionsLoaded.value || fundraisingHealthStore.error ? '—' : `${fundraisingGoalProgress.value.toFixed(1)}%`,
   )
 
   // The plan_year matching the current calendar year, falling back to the
@@ -174,7 +174,7 @@ export function useHomeSummary() {
     return plans.find((plan) => plan.plan_year === currentYear) ?? plans[0]
   })
   const milestonesDisplay = computed(() => {
-    if (programPlanProgressStore.error) return '—'
+    if (!sectionsLoaded.value || programPlanProgressStore.error) return '—'
     if (!currentPlan.value) return '—'
     return `${currentPlan.value.milestones_complete} / ${currentPlan.value.milestones_total}`
   })
@@ -184,7 +184,7 @@ export function useHomeSummary() {
 
   // -- Section row subtitles --
   const taskSubtitle = computed(() => {
-    if (tasksAlertsStore.error) return '—'
+    if (!sectionsLoaded.value || tasksAlertsStore.error) return '—'
     const n = tasksAlertsStore.globalOpenCount
     return `${n} pending task${n === 1 ? '' : 's'}`
   })
@@ -195,7 +195,7 @@ export function useHomeSummary() {
     return eventTrackerEventsStore.events.find((event) => new Date(event.event_date) >= startOfToday) ?? null
   })
   const eventSubtitle = computed(() => {
-    if (eventTrackerEventsStore.error) return '—'
+    if (!sectionsLoaded.value || eventTrackerEventsStore.error) return '—'
     if (!nextEvent.value) return 'No upcoming events'
     const label = new Date(nextEvent.value.event_date).toLocaleDateString(undefined, {
       month: 'short',
@@ -212,7 +212,7 @@ export function useHomeSummary() {
   )
   const financeOverBudget = computed(() => financeVariance.value > 0)
   const financeSubtitle = computed(() => {
-    if (budgetTrackingStore.error) return '—'
+    if (!sectionsLoaded.value || budgetTrackingStore.error) return '—'
     return `${formatVarianceDollar(financeVariance.value)} program budget variance`
   })
 
@@ -227,7 +227,7 @@ export function useHomeSummary() {
       .reduce((sum, row) => sum + fundraisingHealthStore.sumRevenue(row), 0)
   })
   const fundingSubtitle = computed(() => {
-    if (fundraisingHealthStore.error) return '—'
+    if (!sectionsLoaded.value || fundraisingHealthStore.error) return '—'
     return `${formatCompactCurrency(fundingYtdTotal.value)} raised YTD`
   })
 
@@ -243,7 +243,7 @@ export function useHomeSummary() {
     return programPlanMilestonesStore.milestones.filter((m) => m.plan_year === year && !m.is_complete)
   })
   const programSubtitle = computed(() => {
-    if (programPlanMilestonesStore.error || programPlanProgressStore.error) return '—'
+    if (!sectionsLoaded.value || programPlanMilestonesStore.error || programPlanProgressStore.error) return '—'
     if (!programRemaining.value) return '—'
     const n = programRemaining.value.length
     return `${n} milestone${n === 1 ? '' : 's'} remaining`
@@ -253,7 +253,7 @@ export function useHomeSummary() {
     () => marketingTasksStore.tasks.filter((task) => ['Open', 'Overdue', 'Approved'].includes(task.status)).length,
   )
   const marketingSubtitle = computed(() => {
-    if (marketingTasksStore.error) return '—'
+    if (!sectionsLoaded.value || marketingTasksStore.error) return '—'
     if (marketingOpenCount.value === 0) return 'No open tasks'
     return `${marketingOpenCount.value} open task${marketingOpenCount.value === 1 ? '' : 's'}`
   })

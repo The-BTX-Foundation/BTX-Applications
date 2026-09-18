@@ -5,10 +5,52 @@ import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { supabase } from '@/lib/supabaseClient'
 
+// The signed-in user's own display name, for the mobile topbar avatar's
+// initials. A separate targeted query (not tasksAlerts.js's
+// fetchAssignableUsers, which loads every board/admin/reviewer profile for
+// an assignment dropdown -- this needs just one row, the caller's own).
+// profiles' SELECT policy is board/admin/reviewer only, so this silently
+// returns no row for an applicant rather than an error -- avatarInitials
+// below already falls back to the email in that case, so nothing extra is
+// needed to handle it here.
+const avatarName = ref(null)
+
+async function loadAvatarName(userId) {
+  if (!userId) {
+    avatarName.value = null
+    return
+  }
+  const { data } = await supabase.from('profiles').select('name').eq('id', userId).maybeSingle()
+  avatarName.value = data?.name ?? null
+}
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+
+// Refetches whenever the signed-in user changes, matching every store's own
+// convention elsewhere in the app.
+watch(() => authStore.session?.user?.id ?? null, loadAvatarName, { immediate: true })
+
+// "MJ" from "Maria Jones" -- first letter of up to the first two words, so
+// a single-word name still resolves to one letter rather than erroring.
+// Falls back to the account email's first letter when there's no
+// profiles.name at all (no row, or a null name column).
+const avatarInitials = computed(() => {
+  const name = avatarName.value
+  if (name) {
+    return name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+  }
+  const email = authStore.session?.user?.email
+  return email ? email[0].toUpperCase() : '?'
+})
 
 // Signs the current user out and sends them to /login. The router guard
 // only re-evaluates on navigation (not reactively when the session clears),
@@ -261,13 +303,23 @@ onUnmounted(() => {
       <RouterLink :to="{ name: 'home' }" class="mobile-brand" @click="closeDrawer">
         BTX <span class="brand-accent">Ops Hub</span>
       </RouterLink>
+      <span class="topbar-avatar" aria-hidden="true">{{ avatarInitials }}</span>
     </div>
 
     <!-- Mobile-only sticky bar showing the current page's name, shown once
          its own heading (data-page-heading, tagged on the one heading each
          page component considers its real title) scrolls out of view --
-         see the MutationObserver/IntersectionObserver setup in <script>. -->
-    <div class="sticky-page-bar" :class="{ 'sticky-page-bar--visible': showStickyBar }">
+         see the MutationObserver/IntersectionObserver setup in <script>.
+         Home has no single scrolling "page name" of its own the way every
+         other route does (it's a mix of a hero/stats/rows, not one
+         heading-topped view) and already repeats its own title in the
+         topbar's "Ops Hub" brand text, so it's excluded here entirely
+         rather than showing a redundant/confusing bar on scroll. -->
+    <div
+      v-if="route.name !== 'home'"
+      class="sticky-page-bar"
+      :class="{ 'sticky-page-bar--visible': showStickyBar }"
+    >
       {{ currentPageLabel }}
     </div>
 
@@ -589,10 +641,27 @@ onUnmounted(() => {
 }
 
 .mobile-brand {
+  flex: 1;
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* Display-only -- same fixed-dark/gold brand pair as the rest of the
+   topbar, not a themed surface (see base.css's header comment). */
+.topbar-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #d4a24e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Mobile-only sticky bar showing the current page's name -- same
