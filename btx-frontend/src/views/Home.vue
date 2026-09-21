@@ -137,7 +137,9 @@ function toggleSection(id) {
   <div v-else class="home">
     <p class="date-line">{{ todayLabel }}</p>
     <h1 class="heading" data-page-heading>Here's what needs attention</h1>
-    <p class="subtext">A quick look across every section before you dive in.</p>
+    <p class="subtext">
+      A quick read on where things stand across every team, before you dive into a section.
+    </p>
 
     <HomeMissionHero
       :scholars-display="summary.missionScholarsDisplay"
@@ -220,22 +222,41 @@ function toggleSection(id) {
 }
 
 .date-line {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: 12px;
+  font-weight: 700;
   color: var(--color-text-secondary);
 }
 
+/* 27px keeps this exact heading text on one line at both 390px and 428px
+   with real margin to spare (measured against the actual rendered box:
+   ~14px of slack at 390px, vs. 28px's own ~1px -- too tight to trust
+   across different platforms' font hinting/anti-aliasing) -- against
+   Home's own tightened side margins (see HomeView.vue's .page--home).
+   Playfair Display runs noticeably wider than a generic serif at the same
+   size, so this reads smaller than the 30px cap below might suggest.
+   Below 360px it's expected to wrap onto two lines; from 600px up, where
+   the extra width comfortably fits, it steps up to the full 30px. */
 .heading {
-  margin: 0 0 4px;
-  font-size: 22px;
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-size: 27px;
   font-weight: 700;
+  line-height: 1.15;
   color: var(--color-text-primary);
+}
+
+@media (min-width: 600px) {
+  .heading {
+    font-size: 30px;
+  }
 }
 
 .subtext {
   margin: 0 0 20px;
   color: var(--color-text-secondary);
   font-size: 14px;
+  line-height: 1.5;
 }
 
 /* Holds the 7 non-Scholarship cards (Scholarship itself is the full-width
