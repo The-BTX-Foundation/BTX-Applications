@@ -133,8 +133,19 @@ defineProps({
   color: #d4a24e;
 }
 
+/* Capped rather than left to its natural single-line width: three
+   full-width labels ("Direct academic aid", "Applicants engaged",
+   "Students reached") sum to a hair more than a 390-428px card's content
+   width, and flex-wrap on .stats-row drops the whole third column to a
+   second row rather than shrinking anything in place (flex line-breaking
+   uses items' unshrunk hypothetical size, so flex-shrink alone can't
+   prevent that). Capping the label lets it wrap onto two lines instead,
+   which is enough for all three columns to fit on one row -- the numeral
+   above it is unconstrained and stays on one line, since even the widest
+   realistic dollar figure here is under this cap. */
 .stat-label {
   margin: 0;
+  max-width: 70px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
 }
