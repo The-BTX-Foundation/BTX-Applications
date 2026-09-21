@@ -17,11 +17,26 @@ const todayLabel = computed(() =>
   new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
 )
 
-// The 8 sections, in the mockup's fixed order. The first three are flat,
-// single-destination rows (routeName); the rest expand to reveal
+// The 8 sections. Scholarship leads the list; the next three (Alert
+// Center, Task & Approval, Event Calendar) are flat, single-destination
+// rows (routeName); the rest -- including Scholarship -- expand to reveal
 // subItems, same shape as the old card grid's own `cards` array. Icon/
-// color pairing matches the mockup's icon-tile spec.
+// color pairing matches the mockup's icon-tile spec. This order is Home's
+// own -- the desktop sidebar (HomeView.vue's navSections) is a separate
+// array and keeps its own order.
 const SECTIONS = [
+  {
+    id: 'scholarship',
+    title: 'Scholarship',
+    icon: 'graduation-cap',
+    color: 'amber',
+    subItems: [
+      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
+      { label: 'Scoring', routeName: 'scholarship-scoring' },
+      { label: 'Interviews', routeName: 'scholarship-interviews' },
+      { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
+    ],
+  },
   { id: 'alert-center', title: 'Alert Center', icon: 'warning', color: 'danger', flat: true, routeName: 'alerts' },
   { id: 'task-approval', title: 'Task & Approval', icon: 'checkbox', color: 'amber', flat: true, routeName: 'tasks' },
   {
@@ -61,18 +76,6 @@ const SECTIONS = [
       { label: 'Headline Metric Summary', routeName: 'program-headline-metric-summary' },
       { label: 'Program Planning', routeName: 'program-planning' },
       { label: 'Program Impact', routeName: 'program-impact' },
-    ],
-  },
-  {
-    id: 'scholarship',
-    title: 'Scholarship',
-    icon: 'graduation-cap',
-    color: 'amber',
-    subItems: [
-      { label: 'Awardee Workflow', routeName: 'awardee-workflow' },
-      { label: 'Scoring', routeName: 'scholarship-scoring' },
-      { label: 'Interviews', routeName: 'scholarship-interviews' },
-      { label: 'Applicant Records', routeName: 'scholarship-applicant-records' },
     ],
   },
   {
