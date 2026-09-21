@@ -85,6 +85,12 @@ defineProps({
   margin: 12px 0 0;
 }
 
+/* lining-nums -- Playfair Display's default figures are old-style (3/4/
+   5/7/9 descend below the baseline), but the reference design wants every
+   digit the same height here. font-feature-settings is the fallback for
+   browsers/builds that don't honor the shorthand font-variant-numeric
+   property itself. Not applied to .quote below -- the tagline has no
+   digits and isn't meant to match this treatment anyway. */
 .headline {
   margin: 0;
   font-family: var(--font-serif);
@@ -92,6 +98,8 @@ defineProps({
   font-weight: 700;
   line-height: 1;
   color: #fff;
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
 }
 
 .headline-caption {
@@ -135,6 +143,8 @@ defineProps({
   font-size: 20px;
   font-weight: 600;
   color: #d4a24e;
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
 }
 
 .stat-label {

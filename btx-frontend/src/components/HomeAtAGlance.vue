@@ -59,8 +59,12 @@ defineProps({
    (same var(--font-serif), same weight 700 -- .value above already sets
    700, so this only swaps the family). Extending this to Runway/2026
    milestones later is just adding this same class to their own <p
-   class="value">; size and color stay governed by .value regardless. */
+   class="value">; size and color stay governed by .value regardless.
+   lining-nums matches the mission card's own numerals -- see
+   HomeMissionHero.vue's identical pair for why both properties are set. */
 .value--serif {
   font-family: var(--font-serif);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
 }
 </style>
