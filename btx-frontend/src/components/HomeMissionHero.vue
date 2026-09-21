@@ -32,7 +32,7 @@ defineProps({
       <p class="headline-caption">scholars funded to date</p>
     </div>
 
-    <p class="quote">"Every dollar we raise exists to put a student in a classroom."</p>
+    <p class="quote">Empower. Engineer. Exceed.</p>
 
     <div class="stats-row">
       <div class="stat">
@@ -112,9 +112,15 @@ defineProps({
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* nowrap keeps all three columns on one row at 390-428px (the app's own
+   Home-route side margins are now tight enough, see HomeView.vue's
+   .page--home, that they fit unwrapped at 428px) -- combined with each
+   .stat's min-width: 0 below, a too-narrow viewport (e.g. 390px) shrinks
+   the columns and wraps their labels onto two lines instead of breaking
+   the row itself. */
 .stats-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 21px;
   margin: 18px 0 0;
 }
@@ -123,6 +129,7 @@ defineProps({
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 
 .stat-value {
@@ -133,19 +140,8 @@ defineProps({
   color: #d4a24e;
 }
 
-/* Capped rather than left to its natural single-line width: three
-   full-width labels ("Direct academic aid", "Applicants engaged",
-   "Students reached") sum to a hair more than a 390-428px card's content
-   width, and flex-wrap on .stats-row drops the whole third column to a
-   second row rather than shrinking anything in place (flex line-breaking
-   uses items' unshrunk hypothetical size, so flex-shrink alone can't
-   prevent that). Capping the label lets it wrap onto two lines instead,
-   which is enough for all three columns to fit on one row -- the numeral
-   above it is unconstrained and stays on one line, since even the widest
-   realistic dollar figure here is under this cap. */
 .stat-label {
   margin: 0;
-  max-width: 70px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
 }

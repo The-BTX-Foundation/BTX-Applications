@@ -146,6 +146,7 @@ function toggleSection(id) {
       :oldest-days-label="summary.oldestOverdue.value ? summary.dayLabel(summary.oldestOverdueDays.value) : null"
     />
 
+    <h2 class="section-heading heading-glance">At a glance</h2>
     <HomeAtAGlance
       :runway="summary.runwayDisplay.value"
       :goal-percent="summary.goalPercentDisplay.value"
@@ -153,6 +154,7 @@ function toggleSection(id) {
       :milestones-label="summary.milestonesLabel.value"
     />
 
+    <h2 class="section-heading heading-sections">Sections</h2>
     <div class="section-list">
       <template v-for="section in SECTIONS" :key="section.id">
         <HomeSectionRow
@@ -213,10 +215,30 @@ function toggleSection(id) {
 }
 
 .section-list {
-  margin-top: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Neither heading takes data-page-heading -- Home's own <h1> above is
+   still the page's one real heading for the sticky mobile bar/scroll
+   tracking (see HomeView.vue); these two are just section labels. Margins
+   carry all the spacing between the banner/tiles/rows above and below
+   each one, rather than gaps on the tiles/section-list themselves, so
+   HomeAtAGlance.vue and .section-list's own 10px gap stay untouched. */
+.section-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.heading-glance {
+  margin: 22px 0 10px;
+}
+
+.heading-sections {
+  margin: 24px 0 10px;
 }
 
 .sub-item-link {

@@ -435,7 +435,7 @@ onUnmounted(() => {
       </div>
     </aside>
 
-    <main class="page">
+    <main class="page" :class="{ 'page--home': route.name === 'home' }">
       <div class="panel" ref="panelEl">
         <RouterView />
       </div>
@@ -744,7 +744,7 @@ onUnmounted(() => {
      both default to a 16pt/dp screen margin too), freeing up real content
      width on narrow viewports without touching the desktop rule above. */
   .page {
-    padding: calc(56px + 32px) 16px 16px;
+    padding: calc(56px + 32px) var(--page-h-padding, 16px) 16px;
   }
 
   /* No mobile override existed for .panel before -- same 32px -> 16px halving
@@ -752,6 +752,27 @@ onUnmounted(() => {
      nested 32px paddings that were eating width on mobile). */
   .panel {
     padding: 16px;
+  }
+}
+
+/* Home only, and only below its own narrower 600px breakpoint (not the
+   850px mobile-layout switch above): tightens Home's side margins to
+   ~8px total, matching the reference design's near-edge-to-edge phone
+   margins. Two nested paddings stack into that margin -- .page's own
+   (read from --page-h-padding above) and .panel's separate 16px -- so
+   both are addressed here: .page's contributes the full 8px via the
+   variable (the one line to change to retune Home's margin), and
+   .panel's horizontal padding is zeroed out for Home specifically so it
+   doesn't add another 16px on top. Every other route/width keeps both
+   defaults untouched. */
+@media (max-width: 600px) {
+  .page--home {
+    --page-h-padding: 8px;
+  }
+
+  .page--home .panel {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 </style>
