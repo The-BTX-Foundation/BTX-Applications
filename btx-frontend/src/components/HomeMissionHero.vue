@@ -3,9 +3,6 @@
 // sidebar/topbar (see base.css's header comment) -- always dark/gold/white
 // regardless of the light/dark toggle, so its colors are hardcoded here
 // rather than reading the themed page/surface variables.
-import '@fontsource/playfair-display/latin-600.css'
-import '@fontsource/playfair-display/latin-700.css'
-import '@fontsource/playfair-display/latin-400-italic.css'
 import HomeSectionIcon from '@/components/HomeSectionIcon.vue'
 
 defineProps({
@@ -90,7 +87,7 @@ defineProps({
 
 .headline {
   margin: 0;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 54px;
   font-weight: 700;
   line-height: 1;
@@ -105,7 +102,7 @@ defineProps({
 
 .quote {
   margin: 14px 0 0;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-style: italic;
   font-size: 18px;
   line-height: 1.4;
@@ -134,7 +131,7 @@ defineProps({
 
 .stat-value {
   margin: 0;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 600;
   color: #d4a24e;

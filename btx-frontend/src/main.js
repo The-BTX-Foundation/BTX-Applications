@@ -1,5 +1,12 @@
 import './assets/main.css'
 
+// The app's one serif face (var(--font-serif) in base.css) -- imported
+// once here rather than per-component, so any component can use the
+// variable without also needing its own @fontsource import.
+import '@fontsource/playfair-display/latin-600.css'
+import '@fontsource/playfair-display/latin-700.css'
+import '@fontsource/playfair-display/latin-400-italic.css'
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 

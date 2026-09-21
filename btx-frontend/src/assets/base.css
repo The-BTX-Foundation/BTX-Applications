@@ -62,6 +62,12 @@
   --color-border-strong: #d8d6cf;
   --color-accent: #c9932a;
 
+  /* Not theme-specific -- lives in the plain :root (not duplicated under
+     :root[data-theme='dark']) since the serif choice doesn't change with
+     the toggle, only colors do. Font files themselves are imported once in
+     main.js, not per-component, so any component can use this stack. */
+  --font-serif: 'Playfair Display', Georgia, serif;
+
   /* Status colors: dark-mode values are real, measured WCAG numbers, not
      guesses -- #ff6b6b (danger) and #f0a83e (amber) each clear 4.5:1 against
      every dark background they actually render on, including the tightest

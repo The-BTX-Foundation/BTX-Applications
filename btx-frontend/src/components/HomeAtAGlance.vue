@@ -18,7 +18,7 @@ defineProps({
     </div>
     <div class="tile">
       <p class="label">Fundraising goal</p>
-      <p class="value">{{ goalPercent }}</p>
+      <p class="value value--serif">{{ goalPercent }}</p>
     </div>
     <div class="tile">
       <p class="label">{{ milestonesLabel }}</p>
@@ -53,5 +53,14 @@ defineProps({
   font-size: 18px;
   font-weight: 700;
   color: var(--color-accent);
+}
+
+/* Fundraising goal's own value only, matching the mission card's "13"
+   (same var(--font-serif), same weight 700 -- .value above already sets
+   700, so this only swaps the family). Extending this to Runway/2026
+   milestones later is just adding this same class to their own <p
+   class="value">; size and color stay governed by .value regardless. */
+.value--serif {
+  font-family: var(--font-serif);
 }
 </style>
