@@ -134,10 +134,21 @@ export function useHomeSummary() {
   const heroLoading = computed(() => merged?.anyLoading.value ?? false)
   const heroError = computed(() => merged?.firstError.value ?? null)
 
-  const alertSubtitle = computed(() => {
+  // Short "value + label" pill text/tone pairs shown on Home's section
+  // cards, replacing the old full-sentence subtitles. Tone drives which
+  // themed badge-bg/-text pair HomeSectionCard.vue's pill uses (danger/
+  // amber/success/neutral); loading or a failed source always falls back
+  // to a neutral "—", the same convention as every other figure in this
+  // composable -- a legitimate 0 count gets its own friendly phrase
+  // ("All clear", "None pending", ...) instead, so it's never confused
+  // with a failed fetch.
+  const alertPillText = computed(() => {
     if (heroLoading.value || heroError.value) return '—'
-    if (overdueCount.value === 0) return 'Nothing overdue'
-    return `Oldest item ${dayLabel(oldestOverdueDays.value)} overdue`
+    return overdueCount.value === 0 ? 'All clear' : `${overdueCount.value} overdue`
+  })
+  const alertPillTone = computed(() => {
+    if (heroLoading.value || heroError.value) return 'neutral'
+    return overdueCount.value === 0 ? 'success' : 'danger'
   })
 
   // -- Mission hero (Home's top card) --
@@ -148,6 +159,11 @@ export function useHomeSummary() {
   const missionDirectAidDisplay = formatWholeDollars(MISSION_STATS.directAcademicAidTotal)
   const missionApplicantsDisplay = `${MISSION_STATS.applicantsEngagedTotal}`
   const missionStudentsDisplay = `${MISSION_STATS.studentsReachedTotal}`
+
+  // Scholarship's own featured-card pill -- same static PLACEHOLDER
+  // convention as the mission figures above.
+  const scholarshipPillText = `${MISSION_STATS.scholarsFundedToDate} Active`
+  const scholarshipPillTone = 'success'
 
   // -- At a glance --
   const burnRateMonths = computed(() => {
@@ -192,11 +208,15 @@ export function useHomeSummary() {
     currentPlan.value ? `${currentPlan.value.plan_year} milestones` : 'Milestones',
   )
 
-  // -- Section row subtitles --
-  const taskSubtitle = computed(() => {
+  // -- Section card pills --
+  const taskPillText = computed(() => {
     if (!sectionsLoaded.value || tasksAlertsStore.error) return '—'
     const n = tasksAlertsStore.globalOpenCount
-    return `${n} pending task${n === 1 ? '' : 's'}`
+    return n === 0 ? 'None pending' : `${n} Pending`
+  })
+  const taskPillTone = computed(() => {
+    if (!sectionsLoaded.value || tasksAlertsStore.error) return 'neutral'
+    return tasksAlertsStore.globalOpenCount === 0 ? 'neutral' : 'amber'
   })
 
   const nextEvent = computed(() => {
@@ -204,15 +224,18 @@ export function useHomeSummary() {
     startOfToday.setHours(0, 0, 0, 0)
     return eventTrackerEventsStore.events.find((event) => new Date(event.event_date) >= startOfToday) ?? null
   })
-  const eventSubtitle = computed(() => {
+  const eventPillText = computed(() => {
     if (!sectionsLoaded.value || eventTrackerEventsStore.error) return '—'
-    if (!nextEvent.value) return 'No upcoming events'
+    if (!nextEvent.value) return 'No upcoming'
     const label = new Date(nextEvent.value.event_date).toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
     })
     return `Next: ${label}`
   })
+  // Always neutral -- unlike Alert Center/Task & Approval/Finance, nothing
+  // about an upcoming (or missing) event is itself good or bad news.
+  const eventPillTone = 'neutral'
 
   // Positive means over budget -- same convention as BudgetTracking.vue's
   // own varianceDollar/.variance--over.
@@ -221,9 +244,13 @@ export function useHomeSummary() {
     fieldValue(budgetTrackingStore.currentMonthRow, 'programs_budgeted'),
   )
   const financeOverBudget = computed(() => financeVariance.value > 0)
-  const financeSubtitle = computed(() => {
+  const financePillText = computed(() => {
     if (!sectionsLoaded.value || budgetTrackingStore.error) return '—'
-    return `${formatVarianceDollar(financeVariance.value)} program budget variance`
+    return `${formatVarianceDollar(financeVariance.value)} Variance`
+  })
+  const financePillTone = computed(() => {
+    if (!sectionsLoaded.value || budgetTrackingStore.error) return 'neutral'
+    return financeOverBudget.value ? 'danger' : 'success'
   })
 
   // Monthly amounts (confirmed against the synced data, not assumed -- see
@@ -236,10 +263,11 @@ export function useHomeSummary() {
       .filter((row) => row.period_year === currentYear)
       .reduce((sum, row) => sum + fundraisingHealthStore.sumRevenue(row), 0)
   })
-  const fundingSubtitle = computed(() => {
+  const fundingPillText = computed(() => {
     if (!sectionsLoaded.value || fundraisingHealthStore.error) return '—'
-    return `${formatCompactCurrency(fundingYtdTotal.value)} raised YTD`
+    return `${formatCompactCurrency(fundingYtdTotal.value)} YTD`
   })
+  const fundingPillTone = 'neutral'
 
   // program_plan_milestones has no start-date column (only a nullable
   // due_date, added later -- see 20260914120000's own migration comment),
@@ -252,21 +280,21 @@ export function useHomeSummary() {
     if (year == null) return null
     return programPlanMilestonesStore.milestones.filter((m) => m.plan_year === year && !m.is_complete)
   })
-  const programSubtitle = computed(() => {
+  const programPillText = computed(() => {
     if (!sectionsLoaded.value || programPlanMilestonesStore.error || programPlanProgressStore.error) return '—'
     if (!programRemaining.value) return '—'
-    const n = programRemaining.value.length
-    return `${n} milestone${n === 1 ? '' : 's'} remaining`
+    return `${programRemaining.value.length} remaining`
   })
+  const programPillTone = 'neutral'
 
   const marketingOpenCount = computed(
     () => marketingTasksStore.tasks.filter((task) => ['Open', 'Overdue', 'Approved'].includes(task.status)).length,
   )
-  const marketingSubtitle = computed(() => {
+  const marketingPillText = computed(() => {
     if (!sectionsLoaded.value || marketingTasksStore.error) return '—'
-    if (marketingOpenCount.value === 0) return 'No open tasks'
-    return `${marketingOpenCount.value} open task${marketingOpenCount.value === 1 ? '' : 's'}`
+    return marketingOpenCount.value === 0 ? 'None open' : `${marketingOpenCount.value} open`
   })
+  const marketingPillTone = 'neutral'
 
   return {
     canView,
@@ -277,21 +305,29 @@ export function useHomeSummary() {
     oldestOverdue,
     oldestOverdueDays,
     dayLabel,
-    alertSubtitle,
+    alertPillText,
+    alertPillTone,
     missionScholarsDisplay,
     missionDirectAidDisplay,
     missionApplicantsDisplay,
     missionStudentsDisplay,
+    scholarshipPillText,
+    scholarshipPillTone,
     runwayDisplay,
     goalPercentDisplay,
     milestonesDisplay,
     milestonesLabel,
-    taskSubtitle,
-    eventSubtitle,
-    financeSubtitle,
-    financeOverBudget,
-    fundingSubtitle,
-    programSubtitle,
-    marketingSubtitle,
+    taskPillText,
+    taskPillTone,
+    eventPillText,
+    eventPillTone,
+    financePillText,
+    financePillTone,
+    fundingPillText,
+    fundingPillTone,
+    programPillText,
+    programPillTone,
+    marketingPillText,
+    marketingPillTone,
   }
 }
