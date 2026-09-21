@@ -33,6 +33,7 @@ const MIN_PLAN_YEAR = 2000
 const MAX_PLAN_YEAR = 2100
 const MAX_TASKS = 500
 const MAX_TASK_NAME_LENGTH = 300
+const MAX_DELIVERABLE_LENGTH = 300
 
 // Wraps a JSON body and status into a Response, used for every reply
 // this function makes.
@@ -143,11 +144,18 @@ function normalizeMilestoneCode(value: unknown): string | null | undefined {
   return code === '' ? null : code
 }
 
-// One normalized, ready-to-insert deliverable row.
+// One normalized, ready-to-insert deliverable row. Naming note: "deliverable"
+// here is the WBS sheet's own short format label (e.g. "PPT / Form"), a
+// separate field from task_name (the long task description) -- both
+// describe one WBS row, which this project also colloquially calls "a
+// deliverable" elsewhere (see ProgramPlanning.vue's own "Deliverables"
+// section/tile wording). The two uses of the word are unrelated; this
+// comment exists once, here, rather than at every call site.
 interface ParsedTask {
   milestone_code: string | null
   milestone_name: string | null
   task_name: string
+  deliverable: string | null
   status: string
   due_date: string | null
   sort_order: number
@@ -173,6 +181,24 @@ function parseTask(entry: unknown, index: number): ParsedTask | string {
   const taskName = rawTaskName.trim()
   if (taskName.length > MAX_TASK_NAME_LENGTH) {
     return `tasks[${index}].task_name must be ${MAX_TASK_NAME_LENGTH} characters or fewer`
+  }
+
+  // Optional -- a blank/absent deliverable maps to null (never invented),
+  // same convention as milestone_name below. Trimmed but not
+  // case-normalized: unlike status, this is free-form display text
+  // ("PPT / Form", "Web Page / API Route"), not a fixed set of values.
+  let deliverable: string | null = null
+  if (record.deliverable !== undefined && record.deliverable !== null && record.deliverable !== '') {
+    if (typeof record.deliverable !== 'string') {
+      return `tasks[${index}].deliverable must be a string`
+    }
+    deliverable = record.deliverable.trim()
+    if (deliverable.length > MAX_DELIVERABLE_LENGTH) {
+      return `tasks[${index}].deliverable must be ${MAX_DELIVERABLE_LENGTH} characters or fewer`
+    }
+    if (deliverable === '') {
+      deliverable = null
+    }
   }
 
   const status = normalizeStatus(record.status)
@@ -212,6 +238,7 @@ function parseTask(entry: unknown, index: number): ParsedTask | string {
     milestone_code: milestoneCode,
     milestone_name: milestoneName,
     task_name: taskName,
+    deliverable,
     status,
     due_date: dueDate,
     sort_order: sortOrder,
