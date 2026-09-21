@@ -57,18 +57,19 @@ defineProps({
 
 /* Fundraising goal's own value only (same var(--font-serif) as the
    mission card's "13"). Extending this to Runway/2026 milestones later is
-   just adding this same class to their own <p class="value">; size and
-   color stay governed by .value regardless. lining-nums matches the
-   mission card's own numerals -- see HomeMissionHero.vue's identical pair
-   for why both properties are set. font-weight: 700 matches .value's own
-   weight exactly -- Runway's "6.0 mo" (plain .value, sans) and this tile's
-   "37.3%" (serif) are meant to read equally bold, not just share the same
-   CSS number, so this stays explicit here rather than only inheriting
-   .value's 700, in case that ever changes for one but not the other. The
-   "%" shares this same element/weight since it's part of the same
-   interpolated string, not a separate span. */
+   just adding this same class to their own <p class="value">; color stays
+   governed by .value regardless. lining-nums matches the mission card's
+   own numerals -- see HomeMissionHero.vue's identical pair for why both
+   properties are set. font-size: 20px matches HomeMissionHero.vue's
+   .stat-value (the "70" applicants-engaged stat) exactly, and font-weight:
+   700 is deliberately bolder than that same .stat-value's 600 -- both
+   comparisons are against that stat, not against Runway/2026 milestones'
+   plain .value anymore, so this overrides .value's own size as well as its
+   weight. The "%" shares this same element/weight since it's part of the
+   same interpolated string, not a separate span. */
 .value--serif {
   font-family: var(--font-serif);
+  font-size: 20px;
   font-weight: 700;
   font-variant-numeric: lining-nums;
   font-feature-settings: 'lnum' 1;
