@@ -5,7 +5,6 @@ import './assets/main.css'
 // variable without also needing its own @fontsource import.
 import '@fontsource/playfair-display/latin-600.css'
 import '@fontsource/playfair-display/latin-700.css'
-import '@fontsource/playfair-display/latin-800.css'
 import '@fontsource/playfair-display/latin-400-italic.css'
 
 import { createApp } from 'vue'

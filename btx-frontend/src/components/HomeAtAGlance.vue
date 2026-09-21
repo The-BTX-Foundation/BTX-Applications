@@ -60,14 +60,16 @@ defineProps({
    just adding this same class to their own <p class="value">; size and
    color stay governed by .value regardless. lining-nums matches the
    mission card's own numerals -- see HomeMissionHero.vue's identical pair
-   for why both properties are set. Bumped past .value's own 700 to 800
-   (see main.js's own latin-800 import) since Playfair Display at 700
-   didn't read as visibly bold enough for this figure at 18px; the "%"
-   shares this same element/weight since it's part of the same
+   for why both properties are set. font-weight: 700 matches .value's own
+   weight exactly -- Runway's "6.0 mo" (plain .value, sans) and this tile's
+   "37.3%" (serif) are meant to read equally bold, not just share the same
+   CSS number, so this stays explicit here rather than only inheriting
+   .value's 700, in case that ever changes for one but not the other. The
+   "%" shares this same element/weight since it's part of the same
    interpolated string, not a separate span. */
 .value--serif {
   font-family: var(--font-serif);
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: lining-nums;
   font-feature-settings: 'lnum' 1;
 }
