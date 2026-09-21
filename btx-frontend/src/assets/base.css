@@ -102,6 +102,15 @@
      everywhere else. */
   --color-header-strong: #1c1a17;
   --color-header-muted: #57534e;
+
+  /* Impact to Date page only (Headline Metric Summary's redesign) -- a
+     deeper gold/green pair for its serif values and progress-bar fills,
+     plus the pale track/tint they sit on. Not general-purpose: everywhere
+     else keeps using --color-accent/--color-success-badge-text/etc. */
+  --color-gold-strong: #b6832e;
+  --color-green-strong: #3f6b4f;
+  --color-track: #ede6d7;
+  --color-tint-green: #e3ece5;
 }
 
 :root[data-theme='dark'] {
@@ -131,6 +140,14 @@
      palette. */
   --color-header-strong: #ece9e3;
   --color-header-muted: #9c9a92;
+
+  /* Matches this theme's own --color-accent/--color-success-badge-text/
+     --color-border/--color-success-badge-bg above -- see the light
+     block's comment for why these aren't just reused directly. */
+  --color-gold-strong: #c9932a;
+  --color-green-strong: #81c784;
+  --color-track: #3a3733;
+  --color-tint-green: #1f3a24;
 }
 
 *,

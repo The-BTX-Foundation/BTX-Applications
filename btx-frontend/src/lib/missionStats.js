@@ -12,6 +12,11 @@ export const MISSION_STATS = {
   // studentsReachedTotal above (13 + 3 + 272 = 288).
   travelAwardees: 3,
   campusOutreachAttendees: 272,
+  // Funding breakdown -- directAcademicAidTotal + conferenceTravelTotal
+  // should equal Impact to Date's own $53,907.23 total funding figure.
+  conferenceTravelTotal: 1886.75,
+  // "Across 7 cycles" on Impact to Date's Scholars Awarded card.
+  scholarshipCycles: 7,
 }
 
 // "$52,020" -- whole-dollar display for Home's mission card. Headline
