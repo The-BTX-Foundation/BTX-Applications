@@ -425,7 +425,8 @@ function deliverablePillClass(status) {
                         <li v-for="task in deliverablesFor(milestone)" :key="task.id" class="deliverable-row">
                           <span class="deliverable-info">
                             <span class="deliverable-name">{{ task.task_name }}</span>
-                            <span v-if="task.due_date" class="deliverable-date">{{ formatFullDate(task.due_date) }}</span>
+                            <span v-if="task.deliverable" class="deliverable-meta-line">Deliverable: {{ task.deliverable }}</span>
+                            <span v-if="task.due_date" class="deliverable-meta-line">{{ formatFullDate(task.due_date) }}</span>
                           </span>
                           <span class="pill" :class="deliverablePillClass(task.status)">
                             <span class="pill-dot"></span>{{ task.status }}
@@ -481,7 +482,8 @@ function deliverablePillClass(status) {
               <li v-for="task in taskGrouping.unassigned" :key="task.id" class="deliverable-row">
                 <span class="deliverable-info">
                   <span class="deliverable-name">{{ task.task_name }}</span>
-                  <span v-if="task.due_date" class="deliverable-date">{{ formatFullDate(task.due_date) }}</span>
+                  <span v-if="task.deliverable" class="deliverable-meta-line">Deliverable: {{ task.deliverable }}</span>
+                  <span v-if="task.due_date" class="deliverable-meta-line">{{ formatFullDate(task.due_date) }}</span>
                 </span>
                 <span class="pill" :class="deliverablePillClass(task.status)">
                   <span class="pill-dot"></span>{{ task.status }}
@@ -914,7 +916,9 @@ function deliverablePillClass(status) {
   color: var(--color-header-strong);
 }
 
-.deliverable-date {
+/* Shared by both the "Deliverable: {…}" line and the due-date line below
+   the task name -- same size/color for either, just different text. */
+.deliverable-meta-line {
   font-size: 11px;
   color: var(--color-header-muted);
 }

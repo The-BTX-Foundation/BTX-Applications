@@ -3,7 +3,8 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabaseClient'
 
 // Shared column list so fetchTasks always returns identically shaped rows.
-const TASK_COLUMNS = 'id, plan_year, milestone_code, milestone_name, task_name, status, due_date, sort_order'
+const TASK_COLUMNS =
+  'id, plan_year, milestone_code, milestone_name, task_name, deliverable, status, due_date, sort_order'
 
 // Pinia store for Program Plan Tasks (WBS deliverables). Reads go through
 // Supabase's RLS SELECT policy on `program_plan_tasks` (admin, board, and
