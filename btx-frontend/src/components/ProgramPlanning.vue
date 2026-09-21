@@ -3,9 +3,11 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { useAuthStore } from '@/stores/auth'
 import { useProgramPlanProgressStore } from '@/stores/programPlanProgress'
 import { useProgramPlanMilestonesStore } from '@/stores/programPlanMilestones'
+import { useProgramPlanTasksStore } from '@/stores/programPlanTasks'
 import {
   formatFullDate,
   groupMilestonesByQuarter,
+  groupTasksByMilestone,
   milestoneStatus,
   monthAbbreviation,
   splitMilestoneCode,
@@ -14,6 +16,7 @@ import {
 const authStore = useAuthStore()
 const programPlanProgressStore = useProgramPlanProgressStore()
 const programPlanMilestonesStore = useProgramPlanMilestonesStore()
+const programPlanTasksStore = useProgramPlanTasksStore()
 
 // Same page-access gate as ProgramImpact.vue/FundraisingHealth.vue: admin,
 // board, and reviewer can view; applicant is blocked. Matches
@@ -33,15 +36,26 @@ onMounted(() => {
 // Refetch whenever the signed-in user changes (sign in, sign out, switch
 // accounts). Skips the fetch entirely while signed out or for a role that
 // can't view this page, since RLS would just reject it before the user
-// ever gets a chance to act. Both stores load together in one Promise.all
-// -- the plan strip/tiles need programPlanProgressStore, the roadmap needs
-// programPlanMilestonesStore, and both are gated by the same canView check
-// and RLS policy, so there's no reason to sequence them.
+// ever gets a chance to act. All three stores load together in one
+// Promise.all -- the plan strip/tiles need programPlanProgressStore, the
+// roadmap needs programPlanMilestonesStore, and the per-milestone
+// deliverable lists need programPlanTasksStore -- and all three are gated
+// by the same canView check and RLS policy, so there's no reason to
+// sequence them. fetchTasks() never rejects (a failed or missing-table
+// fetch just sets programPlanTasksStore.error, same as the other two
+// stores), so a program_plan_tasks problem can never fail this Promise.all
+// or block the plans/milestones that did load -- see the template's own
+// page-level error check, which deliberately omits
+// programPlanTasksStore.error.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
     if (userId && canView.value) {
-      Promise.all([programPlanProgressStore.fetchPlans(), programPlanMilestonesStore.fetchMilestones()])
+      Promise.all([
+        programPlanProgressStore.fetchPlans(),
+        programPlanMilestonesStore.fetchMilestones(),
+        programPlanTasksStore.fetchTasks(),
+      ])
     }
   },
   { immediate: true },
@@ -89,6 +103,22 @@ const selectedPlanMilestones = computed(() =>
   programPlanMilestonesStore.milestones.filter((milestone) => milestone.plan_year === selectedPlanYear.value),
 )
 
+// Every WBS deliverable row for the selected plan year.
+const selectedPlanTasks = computed(() =>
+  programPlanTasksStore.tasks.filter((task) => task.plan_year === selectedPlanYear.value),
+)
+
+// Matches this plan's deliverables to their milestones (code first, then
+// normalized name -- see programRoadmap.js's matchMilestoneForTask), plus
+// the leftover list that matched no milestone at all. Both the roadmap's
+// per-milestone status/expanded lists and the "Unassigned deliverables"
+// card below read from this single computed rather than re-matching.
+const taskGrouping = computed(() => groupTasksByMilestone(selectedPlanTasks.value, selectedPlanMilestones.value))
+
+function deliverablesFor(milestone) {
+  return taskGrouping.value.byMilestoneId.get(milestone.id) ?? []
+}
+
 // -- Status tiles --
 // Milestones complete/total come from the milestone ROWS for this plan
 // year (not program_plan_progress's own milestones_complete/
@@ -100,13 +130,76 @@ const milestonesCompleteCount = computed(
 )
 const milestonesTotalCount = computed(() => selectedPlanMilestones.value.length)
 
-const deliverablesComplete = computed(() => selectedPlan.value?.tasks_complete ?? null)
-const deliverablesTotal = computed(() => selectedPlan.value?.tasks_total ?? null)
-const deliverablesInProgress = computed(() => selectedPlan.value?.tasks_in_progress ?? null)
-const deliverablesRemaining = computed(() => selectedPlan.value?.tasks_not_started ?? null)
+// Once program_plan_tasks actually has rows for this plan, the tiles and
+// the roadmap's own deliverable lists both derive from the exact same
+// rows -- they literally cannot disagree with each other. Before that (no
+// rows synced yet for this plan year), falls back to
+// program_plan_progress's own plan-level counters, same as before
+// program_plan_tasks existed.
+const hasTaskRowsForPlan = computed(() => selectedPlanTasks.value.length > 0)
+
+const deliverableCountsFromRows = computed(() => {
+  const rows = selectedPlanTasks.value
+  return {
+    complete: rows.filter((task) => task.status === 'Complete').length,
+    total: rows.length,
+    inProgress: rows.filter((task) => task.status === 'In progress').length,
+    remaining: rows.filter((task) => task.status === 'Not started').length,
+  }
+})
+
+const deliverablesComplete = computed(() =>
+  hasTaskRowsForPlan.value ? deliverableCountsFromRows.value.complete : (selectedPlan.value?.tasks_complete ?? null),
+)
+const deliverablesTotal = computed(() =>
+  hasTaskRowsForPlan.value ? deliverableCountsFromRows.value.total : (selectedPlan.value?.tasks_total ?? null),
+)
+const deliverablesInProgress = computed(() =>
+  hasTaskRowsForPlan.value
+    ? deliverableCountsFromRows.value.inProgress
+    : (selectedPlan.value?.tasks_in_progress ?? null),
+)
+const deliverablesRemaining = computed(() =>
+  hasTaskRowsForPlan.value
+    ? deliverableCountsFromRows.value.remaining
+    : (selectedPlan.value?.tasks_not_started ?? null),
+)
+
+// One console.warn per plan year, the first time its program_plan_tasks
+// rows are found to disagree with program_plan_progress's own plan-level
+// counters -- a real discrepancy worth a developer's attention (the two
+// sources should describe the same plan), but not something to show end
+// users, and not worth repeating on every render once already logged.
+const warnedDisagreementPlanYears = new Set()
+watch(
+  () => (hasTaskRowsForPlan.value && selectedPlan.value ? selectedPlanYear.value : null),
+  (year) => {
+    if (year === null || warnedDisagreementPlanYears.has(year)) return
+    warnedDisagreementPlanYears.add(year)
+    const rows = deliverableCountsFromRows.value
+    const plan = selectedPlan.value
+    if (
+      rows.complete !== plan.tasks_complete ||
+      rows.total !== plan.tasks_total ||
+      rows.inProgress !== plan.tasks_in_progress ||
+      rows.remaining !== plan.tasks_not_started
+    ) {
+      console.warn(
+        `Program Planning: program_plan_tasks rows for plan_year ${year} disagree with program_plan_progress's own counts`,
+        { fromRows: rows, fromProgress: {
+          complete: plan.tasks_complete,
+          total: plan.tasks_total,
+          inProgress: plan.tasks_in_progress,
+          remaining: plan.tasks_not_started,
+        } },
+      )
+    }
+  },
+  { immediate: true },
+)
 
 // -- Roadmap --
-const quarterGroups = computed(() => groupMilestonesByQuarter(selectedPlanMilestones.value))
+const quarterGroups = computed(() => groupMilestonesByQuarter(selectedPlanMilestones.value, selectedPlanTasks.value))
 
 // Tracks which milestone cards are expanded in place; multiple can be
 // open at once, same convention as Home's own section cards.
@@ -119,6 +212,11 @@ function toggleMilestone(id) {
     expandedMilestoneIds.add(id)
   }
 }
+
+// Expand state for the "Unassigned deliverables" card -- a single flag
+// rather than a Set entry like the milestone cards above, since there's
+// only ever one such card per plan.
+const unassignedExpanded = ref(false)
 
 // -- Plan strip "swipe for more" hint --
 // Only shown once the strip has actually overflowed its own width -- a
@@ -165,15 +263,29 @@ function milestoneMonth(milestone) {
 
 // 'complete' | 'in-progress' | 'not-started' -> the pill/accent-bar
 // modifier class suffix used by both .milestone-card and .status-pill.
+// Now derived from this milestone's own matched deliverables (see
+// deliverablesFor above) rather than is_complete alone, so a milestone
+// with a started-but-not-finished deliverable correctly shows as In
+// progress instead of Not started.
 function statusModifier(milestone) {
-  return milestoneStatus(milestone)
+  return milestoneStatus(milestone, deliverablesFor(milestone))
 }
 
 function statusLabel(milestone) {
-  const status = milestoneStatus(milestone)
+  const status = statusModifier(milestone)
   if (status === 'complete') return 'Complete'
   if (status === 'in-progress') return 'In progress'
   return 'Not started'
+}
+
+// Deliverable-row pill class -- program_plan_tasks.status is already the
+// exact display string ('Complete'/'In progress'/'Not started'), unlike
+// milestoneStatus's own lowercase-hyphenated result, so this is a direct
+// lookup rather than sharing statusModifier's mapping.
+function deliverablePillClass(status) {
+  if (status === 'Complete') return 'pill--success'
+  if (status === 'In progress') return 'pill--amber'
+  return 'pill--neutral'
 }
 </script>
 
@@ -295,10 +407,87 @@ function statusLabel(milestone) {
                 </button>
 
                 <div v-if="expandedMilestoneIds.has(milestone.id)" class="milestone-body">
-                  <p>{{ milestone.due_date ? `Due ${formatFullDate(milestone.due_date)}` : 'No due date set' }}</p>
+                  <p class="due-line">{{ milestone.due_date ? `Due ${formatFullDate(milestone.due_date)}` : 'No due date set' }}</p>
+
+                  <div class="deliverables-section">
+                    <p v-if="programPlanTasksStore.error || selectedPlanTasks.length === 0" class="deliverables-empty">
+                      Deliverable details haven't been synced yet.
+                    </p>
+                    <p v-else-if="deliverablesFor(milestone).length === 0" class="deliverables-empty">
+                      No deliverables listed
+                    </p>
+                    <template v-else>
+                      <p class="deliverables-caption">
+                        {{ deliverablesFor(milestone).filter((task) => task.status === 'Complete').length }} of
+                        {{ deliverablesFor(milestone).length }} complete
+                      </p>
+                      <ul class="deliverable-list">
+                        <li v-for="task in deliverablesFor(milestone)" :key="task.id" class="deliverable-row">
+                          <span class="deliverable-info">
+                            <span class="deliverable-name">{{ task.task_name }}</span>
+                            <span v-if="task.due_date" class="deliverable-date">{{ formatFullDate(task.due_date) }}</span>
+                          </span>
+                          <span class="pill" :class="deliverablePillClass(task.status)">
+                            <span class="pill-dot"></span>{{ task.status }}
+                          </span>
+                        </li>
+                      </ul>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Deliverables that matched no milestone at all (see
+             groupTasksByMilestone's own comment) -- shown as its own card
+             so a code/name mismatch between the WBS sheet's milestone
+             column and program_plan_milestones never silently drops rows
+             from the page. Reuses the milestone card's own styling
+             (.milestone-card/.milestone-header/.milestone-body) rather
+             than inventing a parallel card style for what's structurally
+             the same "header + expand-in-place list" shape. -->
+        <div v-if="taskGrouping.unassigned.length > 0" class="milestone-card unassigned-card">
+          <button
+            type="button"
+            class="milestone-header"
+            :aria-expanded="unassignedExpanded"
+            @click="unassignedExpanded = !unassignedExpanded"
+          >
+            <span class="milestone-left">
+              <span class="milestone-title">Unassigned deliverables ({{ taskGrouping.unassigned.length }})</span>
+            </span>
+            <span class="milestone-right">
+              <svg
+                class="chevron"
+                :class="{ 'chevron--open': unassignedExpanded }"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          </button>
+
+          <div v-if="unassignedExpanded" class="milestone-body">
+            <ul class="deliverable-list">
+              <li v-for="task in taskGrouping.unassigned" :key="task.id" class="deliverable-row">
+                <span class="deliverable-info">
+                  <span class="deliverable-name">{{ task.task_name }}</span>
+                  <span v-if="task.due_date" class="deliverable-date">{{ formatFullDate(task.due_date) }}</span>
+                </span>
+                <span class="pill" :class="deliverablePillClass(task.status)">
+                  <span class="pill-dot"></span>{{ task.status }}
+                </span>
+              </li>
+            </ul>
           </div>
         </div>
       </template>
@@ -672,6 +861,66 @@ function statusLabel(milestone) {
 
 .milestone-body p {
   margin: 0;
+}
+
+.due-line {
+  margin: 0;
+}
+
+/* Its own hairline divider below the due-date line -- a second one,
+   separate from .milestone-body's own border-top above (which separates
+   the whole expanded body from the header row). */
+.deliverables-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.deliverables-empty {
+  margin: 0;
+}
+
+.deliverables-caption {
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+
+.deliverable-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deliverable-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.deliverable-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deliverable-name {
+  font-size: 13px;
+  color: var(--color-header-strong);
+}
+
+.deliverable-date {
+  font-size: 11px;
+  color: var(--color-header-muted);
+}
+
+.unassigned-card {
+  margin-top: 10px;
 }
 
 /* Neutral pulsing placeholders -- same footprint as the real content so

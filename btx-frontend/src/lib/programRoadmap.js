@@ -80,16 +80,73 @@ export function splitMilestoneCode(milestoneName) {
   return { code: match[2], title: match[1] }
 }
 
-// Complete/Not started only -- program_plan_milestones has no
-// per-deliverable or progress column of any kind (schema: id, plan_year,
-// milestone_name, is_complete, due_date, updated_at), so "In progress"
-// can never be derived for an individual milestone today. This function
-// is intentionally the one place that would change if such a column
-// (e.g. a per-milestone task-completion fraction) is ever added -- every
-// caller below already handles an 'in-progress' result correctly, it
-// simply never occurs yet.
-export function milestoneStatus(milestone) {
-  return milestone.is_complete ? 'complete' : 'not-started'
+// Trim + lowercase + collapse internal whitespace runs to a single space
+// -- the fallback match key when a program_plan_tasks row has no
+// milestone_code (or its code doesn't match any milestone in this plan).
+// Same normalization convention as sync-program-plan-tasks' own status
+// normalization, applied here on the frontend side of the same match.
+export function normalizeMilestoneName(name) {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+// Finds the one milestone (from this plan year) a program_plan_tasks row
+// belongs to -- milestone_code first (compared against each milestone's
+// own code, parsed from its name's trailing "(MS-010)" via
+// splitMilestoneCode), falling back to a normalized milestone_name match
+// only when the task has no code or its code didn't match anything here.
+// Returns null when neither matches -- the caller (groupTasksByMilestone)
+// treats that as "unassigned" rather than silently dropping the row.
+export function matchMilestoneForTask(task, milestones) {
+  if (task.milestone_code) {
+    const byCode = milestones.find((milestone) => splitMilestoneCode(milestone.milestone_name).code === task.milestone_code)
+    if (byCode) return byCode
+  }
+  if (task.milestone_name) {
+    const normalized = normalizeMilestoneName(task.milestone_name)
+    const byName = milestones.find((milestone) => normalizeMilestoneName(milestone.milestone_name) === normalized)
+    if (byName) return byName
+  }
+  return null
+}
+
+// Buckets every program_plan_tasks row for a plan year by which milestone
+// it belongs to (matchMilestoneForTask above), plus a separate
+// "unassigned" list for rows that matched nothing -- surfaced by the UI
+// as its own card (see ProgramPlanning.vue's "Unassigned deliverables")
+// instead of being silently dropped. Keyed by milestone.id rather than
+// milestone_name/code so a lookup is a single Map.get, no re-matching per
+// render.
+export function groupTasksByMilestone(tasks, milestones) {
+  const byMilestoneId = new Map()
+  const unassigned = []
+
+  for (const task of tasks) {
+    const milestone = matchMilestoneForTask(task, milestones)
+    if (!milestone) {
+      unassigned.push(task)
+      continue
+    }
+    if (!byMilestoneId.has(milestone.id)) {
+      byMilestoneId.set(milestone.id, [])
+    }
+    byMilestoneId.get(milestone.id).push(task)
+  }
+
+  return { byMilestoneId, unassigned }
+}
+
+// Complete if is_complete. Otherwise In progress if at least one matched
+// deliverable (a program_plan_tasks row, via groupTasksByMilestone) is
+// itself In progress or Complete -- a milestone with 2 of 5 deliverables
+// already done isn't "not started" just because its own is_complete flag
+// hasn't flipped yet. No deliverables at all -- none synced for this plan,
+// or none matched this milestone -- falls back to Not started, the only
+// state derivable with no deliverable data (this used to be the only
+// state possible at all, before program_plan_tasks existed).
+export function milestoneStatus(milestone, deliverables = []) {
+  if (milestone.is_complete) return 'complete'
+  const hasStartedDeliverable = deliverables.some((task) => task.status === 'In progress' || task.status === 'Complete')
+  return hasStartedDeliverable ? 'in-progress' : 'not-started'
 }
 
 // Groups a plan's milestones into quarter buckets (only quarters that
@@ -101,8 +158,13 @@ export function milestoneStatus(milestone) {
 // Each bucket also carries its own summary (complete/total, whether any
 // milestone in it is 'in-progress') and whether its timeline node should
 // render filled -- used directly by the template, so it doesn't
-// recompute this per render.
-export function groupMilestonesByQuarter(milestones) {
+// recompute this per render. `tasks` (this plan year's program_plan_tasks
+// rows, defaulting to none) feeds milestoneStatus below via
+// groupTasksByMilestone -- omitting it entirely still works, every
+// milestone just falls back to Not started, the same as before
+// program_plan_tasks existed.
+export function groupMilestonesByQuarter(milestones, tasks = []) {
+  const { byMilestoneId } = groupTasksByMilestone(tasks, milestones)
   const buckets = new Map()
 
   function bucketFor(key, label) {
@@ -136,12 +198,8 @@ export function groupMilestonesByQuarter(milestones) {
       return aCode < bCode ? -1 : aCode > bCode ? 1 : 0
     })
 
-    const statuses = bucket.milestones.map(milestoneStatus)
+    const statuses = bucket.milestones.map((milestone) => milestoneStatus(milestone, byMilestoneId.get(milestone.id) ?? []))
     const completeCount = statuses.filter((s) => s === 'complete').length
-    // Always 0 today (see milestoneStatus's own comment), kept as a real
-    // count rather than a boolean so the quarter-header text ("N in
-    // progress" vs. "X of Y complete") is already correct the moment a
-    // real per-milestone progress source exists.
     bucket.inProgressCount = statuses.filter((s) => s === 'in-progress').length
     bucket.completeCount = completeCount
     bucket.totalCount = bucket.milestones.length
