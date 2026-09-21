@@ -100,14 +100,9 @@ const milestonesCompleteCount = computed(
 )
 const milestonesTotalCount = computed(() => selectedPlanMilestones.value.length)
 
-// Always null -- program_plan_milestones has no per-deliverable/progress
-// column of any kind (see programRoadmap.js's milestoneStatus comment),
-// so there's no real data source for a milestone-level "in progress"
-// count. Rendered as an em-dash, never a fake 0.
-const milestonesInProgressCount = null
-
 const deliverablesComplete = computed(() => selectedPlan.value?.tasks_complete ?? null)
 const deliverablesTotal = computed(() => selectedPlan.value?.tasks_total ?? null)
+const deliverablesInProgress = computed(() => selectedPlan.value?.tasks_in_progress ?? null)
 const deliverablesRemaining = computed(() => selectedPlan.value?.tasks_not_started ?? null)
 
 // -- Roadmap --
@@ -232,8 +227,8 @@ function statusLabel(milestone) {
             <p class="tile-label">Deliverables complete</p>
           </div>
           <div class="tile">
-            <p class="tile-value tile-value--gold">{{ milestonesInProgressCount ?? '—' }}</p>
-            <p class="tile-label">Milestones in progress</p>
+            <p class="tile-value tile-value--gold">{{ deliverablesInProgress ?? '—' }}</p>
+            <p class="tile-label">Deliverables in progress</p>
           </div>
           <div class="tile">
             <p class="tile-value tile-value--muted">{{ deliverablesRemaining ?? '—' }}</p>
