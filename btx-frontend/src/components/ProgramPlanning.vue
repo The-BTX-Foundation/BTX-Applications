@@ -1,8 +1,15 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProgramPlanProgressStore } from '@/stores/programPlanProgress'
 import { useProgramPlanMilestonesStore } from '@/stores/programPlanMilestones'
+import {
+  formatFullDate,
+  groupMilestonesByQuarter,
+  milestoneStatus,
+  monthAbbreviation,
+  splitMilestoneCode,
+} from '@/lib/programRoadmap'
 
 const authStore = useAuthStore()
 const programPlanProgressStore = useProgramPlanProgressStore()
@@ -10,26 +17,31 @@ const programPlanMilestonesStore = useProgramPlanMilestonesStore()
 
 // Same page-access gate as ProgramImpact.vue/FundraisingHealth.vue: admin,
 // board, and reviewer can view; applicant is blocked. Matches
-// program_plan_progress's own RLS SELECT policy exactly.
+// program_plan_progress's/program_plan_milestones' own RLS SELECT policy
+// exactly.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
+// Loads the session and subscribes to future auth changes -- nothing else
+// in this app calls this globally (App.vue only inits the theme store), so
+// each gated page is responsible for its own call. Idempotent (see
+// auth.js's own `initialized` guard), so this is safe even though several
+// other pages make the same call.
 onMounted(() => {
   authStore.init()
 })
 
 // Refetch whenever the signed-in user changes (sign in, sign out, switch
 // accounts). Skips the fetch entirely while signed out or for a role that
-// can't view this page, since RLS would just reject it with a
-// permission-denied error before the user ever gets a chance to act. Fetches
-// both stores -- the plan cards/stats/chart need programPlanProgressStore,
-// the new milestone list needs programPlanMilestonesStore -- since both are
-// gated by the exact same canView check and RLS policy.
+// can't view this page, since RLS would just reject it before the user
+// ever gets a chance to act. Both stores load together in one Promise.all
+// -- the plan strip/tiles need programPlanProgressStore, the roadmap needs
+// programPlanMilestonesStore, and both are gated by the same canView check
+// and RLS policy, so there's no reason to sequence them.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
     if (userId && canView.value) {
-      programPlanProgressStore.fetchPlans()
-      programPlanMilestonesStore.fetchMilestones()
+      Promise.all([programPlanProgressStore.fetchPlans(), programPlanMilestonesStore.fetchMilestones()])
     }
   },
   { immediate: true },
@@ -37,8 +49,9 @@ watch(
 
 const selectedPlanYear = ref(null)
 
-// Auto-select the most recent plan year (plans are fetched newest-year-
-// first) once they load, if nothing is selected yet.
+// Auto-select the Live plan once plans load, if nothing is selected yet.
+// plans[0] already IS the Live plan -- fetchPlans orders plan_year
+// descending, the same ordering liveYear below computes Math.max from.
 watch(
   () => programPlanProgressStore.plans,
   (plans) => {
@@ -57,699 +70,649 @@ const selectedPlan = computed(() =>
 // donor_impact's `published` flag. Live is inferred the same way
 // ProgramImpact.vue infers its own Live badge for a column that doesn't
 // exist: the single most recent plan year gets "Live", every other plan
-// year gets "Archived".
+// year gets "Archived". Unlike Home's own useHomeSummary.js (which picks
+// the plan matching the real calendar year, falling back to the most
+// recent), this is a plain max -- the two happen to agree today (both
+// resolve to 2026), but they're independent computations, not shared
+// logic, and Home is intentionally not touched here.
 const liveYear = computed(() => {
   const years = programPlanProgressStore.plans.map((plan) => plan.plan_year)
   return years.length > 0 ? Math.max(...years) : null
 })
 
-// Builds a plan card's badge text/variant from the inferred liveYear above.
-function badgeFor(plan) {
+function planIsLive(plan) {
   return plan.plan_year === liveYear.value
-    ? { text: 'Live', variant: 'live' }
-    : { text: 'Archived', variant: 'default' }
 }
 
-// Every milestone for the currently selected plan year, alphabetical --
-// programPlanMilestonesStore.milestones already comes back
-// alphabetically ordered (see its own fetchMilestones), so this only needs
-// to filter by year, not re-sort.
+// Every milestone row for the selected plan year.
 const selectedPlanMilestones = computed(() =>
   programPlanMilestonesStore.milestones.filter((milestone) => milestone.plan_year === selectedPlanYear.value),
 )
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+// -- Status tiles --
+// Milestones complete/total come from the milestone ROWS for this plan
+// year (not program_plan_progress's own milestones_complete/
+// milestones_total columns) per the spec's own tie-break rule -- in the
+// live data these already agree (1/9 both ways for 2026), so this is
+// belt-and-suspenders rather than a fix for an observed mismatch.
+const milestonesCompleteCount = computed(
+  () => selectedPlanMilestones.value.filter((milestone) => milestone.is_complete).length,
+)
+const milestonesTotalCount = computed(() => selectedPlanMilestones.value.length)
 
-function isLeapYear(year) {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
-}
+// Always null -- program_plan_milestones has no per-deliverable/progress
+// column of any kind (see programRoadmap.js's milestoneStatus comment),
+// so there's no real data source for a milestone-level "in progress"
+// count. Rendered as an em-dash, never a fake 0.
+const milestonesInProgressCount = null
 
-function daysInYear(year) {
-  return isLeapYear(year) ? 366 : 365
-}
+const deliverablesComplete = computed(() => selectedPlan.value?.tasks_complete ?? null)
+const deliverablesTotal = computed(() => selectedPlan.value?.tasks_total ?? null)
+const deliverablesRemaining = computed(() => selectedPlan.value?.tasks_not_started ?? null)
 
-// Converts a `due_date` string ("YYYY-MM-DD") to a 0-indexed day-of-year via
-// pure calendar arithmetic -- deliberately not `new Date(dueDate)`, which
-// parses the string as UTC midnight and can then render as the previous
-// day once formatted back out in a negative-UTC-offset browser, silently
-// shifting every date on the timeline by one.
-function dayOfYear(dueDate) {
-  const [year, month, day] = dueDate.split('-').map(Number)
-  let days = day - 1
-  for (let m = 0; m < month - 1; m++) {
-    days += m === 1 && isLeapYear(year) ? 29 : DAYS_IN_MONTH[m]
+// -- Roadmap --
+const quarterGroups = computed(() => groupMilestonesByQuarter(selectedPlanMilestones.value))
+
+// Tracks which milestone cards are expanded in place; multiple can be
+// open at once, same convention as Home's own section cards.
+const expandedMilestoneIds = reactive(new Set())
+
+function toggleMilestone(id) {
+  if (expandedMilestoneIds.has(id)) {
+    expandedMilestoneIds.delete(id)
+  } else {
+    expandedMilestoneIds.add(id)
   }
-  return days
 }
 
-// Same string-split approach as dayOfYear, for the same timezone-safety
-// reason -- formats a due_date for the click-to-reveal detail line and the
-// native `title` hover fallback.
-function formatMilestoneDate(dueDate) {
-  const [year, month, day] = dueDate.split('-').map(Number)
-  return `${MONTH_LABELS[month - 1]} ${day}, ${year}`
+// -- Plan strip "swipe for more" hint --
+// Only shown once the strip has actually overflowed its own width -- a
+// scroll hint for a row that already shows every card in full would just
+// be noise. Rechecked on window resize and whenever the plan list itself
+// changes (a plan year is added/removed), not just once on mount.
+const planStripEl = ref(null)
+const planStripOverflows = ref(false)
+
+function checkPlanStripOverflow() {
+  const el = planStripEl.value
+  planStripOverflows.value = !!el && el.scrollWidth > el.clientWidth + 1
 }
 
-// Basis the row-stacking algorithm below measures pixel gaps against --
-// matches .timeline-track's own CSS min-width, so this is the guaranteed
-// worst-case render width. A wider render only adds slack between markers,
-// never removes it, so computing against this fixed minimum is safe.
-const TIMELINE_TRACK_WIDTH_PX = 900
-const MARKER_MIN_GAP_PX = 20
-const MARKER_ROW_HEIGHT_PX = 18
-
-// Greedy left-to-right row assignment: markers whose calendar dates are
-// close enough to visually collide (< MARKER_MIN_GAP_PX apart in pixels, at
-// the track's minimum rendered width) stack onto a taller row instead of
-// overlapping, while every marker still sits at its true calendar x
-// position -- only its stem height (row) changes, never its xPercent.
-// `markers` must already be sorted by date ascending, since each row's
-// collision check only ever looks at the last marker placed on it.
-function assignTimelineRows(markers) {
-  const rows = [] // rows[i] = x-position (px) of the last marker placed on row i
-  return markers.map((marker) => {
-    const xPx = (marker.xPercent / 100) * TIMELINE_TRACK_WIDTH_PX
-    let row = rows.findIndex((lastX) => xPx - lastX >= MARKER_MIN_GAP_PX)
-    if (row === -1) {
-      row = rows.length
-      rows.push(xPx)
-    } else {
-      rows[row] = xPx
-    }
-    return { ...marker, row }
-  })
-}
-
-// Dated milestones for the selected plan year, positioned by due_date and
-// row-stacked to avoid overlap (see assignTimelineRows above). Sorted by
-// date first since the stacking algorithm is order-dependent.
-const timelineMarkers = computed(() => {
-  const year = selectedPlanYear.value
-  const dated = selectedPlanMilestones.value
-    .filter((milestone) => milestone.due_date)
-    .map((milestone) => ({
-      id: milestone.id,
-      name: milestone.milestone_name,
-      isComplete: milestone.is_complete,
-      dateLabel: formatMilestoneDate(milestone.due_date),
-      xPercent: (dayOfYear(milestone.due_date) / daysInYear(year)) * 100,
-      sortKey: milestone.due_date,
-    }))
-    .sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
-
-  return assignTimelineRows(dated)
+onMounted(() => {
+  window.addEventListener('resize', checkPlanStripOverflow)
 })
 
-// Milestones with no due_date -- can't be plotted on a date axis, so they
-// get their own list instead of being silently dropped from the page.
-const selectedPlanUnscheduledMilestones = computed(() =>
-  selectedPlanMilestones.value.filter((milestone) => !milestone.due_date),
+onUnmounted(() => {
+  window.removeEventListener('resize', checkPlanStripOverflow)
+})
+
+watch(
+  () => programPlanProgressStore.plans,
+  () => nextTick(checkPlanStripOverflow),
 )
 
-// Which timeline marker (if any) the click-to-reveal detail line below the
-// track is currently showing. Resets implicitly on plan-year change since
-// timelineMarkers is scoped to selectedPlanMilestones -- a stale id just
-// fails to match and activeMilestone below falls back to null.
-const activeMilestoneId = ref(null)
+// -- Per-milestone display helpers --
+// Thin wrappers around programRoadmap.js's pure functions, kept here
+// rather than calling the imports directly in the template so the
+// template reads as "what" not "how" (milestoneCode(m), not
+// splitMilestoneCode(m.milestone_name).code).
+function milestoneCode(milestone) {
+  return splitMilestoneCode(milestone.milestone_name).code
+}
 
-const activeMilestone = computed(
-  () => timelineMarkers.value.find((marker) => marker.id === activeMilestoneId.value) ?? null,
-)
+function milestoneTitle(milestone) {
+  return splitMilestoneCode(milestone.milestone_name).title
+}
+
+function milestoneMonth(milestone) {
+  return monthAbbreviation(milestone.due_date)
+}
+
+// 'complete' | 'in-progress' | 'not-started' -> the pill/accent-bar
+// modifier class suffix used by both .milestone-card and .status-pill.
+function statusModifier(milestone) {
+  return milestoneStatus(milestone)
+}
+
+function statusLabel(milestone) {
+  const status = milestoneStatus(milestone)
+  if (status === 'complete') return 'Complete'
+  if (status === 'in-progress') return 'In progress'
+  return 'Not started'
+}
 </script>
 
 <template>
   <h2 v-if="!authStore.session">Sign in</h2>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
 
-  <template v-else>
-    <p v-if="programPlanProgressStore.loading">Loading plans…</p>
-    <p v-else-if="programPlanProgressStore.error" class="error">{{ programPlanProgressStore.error }}</p>
+  <section v-else class="program-planning">
+    <h1 class="page-title" data-page-heading>Program Planning</h1>
+    <p class="subline">Milestones and deliverables for the active program plan, laid out by quarter.</p>
 
-    <div v-else class="program-planning">
-      <div class="plan-column">
-        <div class="plan-column-header">
-          <h2>Program Plans</h2>
-          <p class="column-subtitle">Drives the homepage widget</p>
+    <p v-if="programPlanProgressStore.error || programPlanMilestonesStore.error" class="page-error">
+      Couldn't load program plans.
+    </p>
+
+    <template v-else>
+      <h2 class="section-heading heading-plans">Program plans - drives the homepage widget</h2>
+
+      <div v-if="programPlanProgressStore.loading" class="skeleton skeleton--strip"></div>
+      <p v-else-if="programPlanProgressStore.plans.length === 0" class="empty">No program plans yet.</p>
+      <template v-else>
+        <div ref="planStripEl" class="plan-strip">
+          <button
+            v-for="plan in programPlanProgressStore.plans"
+            :key="plan.plan_year"
+            type="button"
+            class="plan-card"
+            :class="{ 'plan-card--selected': plan.plan_year === selectedPlanYear }"
+            :aria-pressed="plan.plan_year === selectedPlanYear"
+            @click="selectedPlanYear = plan.plan_year"
+          >
+            <span class="plan-card-title">{{ plan.plan_year }} Plan</span>
+            <span class="pill" :class="planIsLive(plan) ? 'pill--success' : 'pill--neutral'">
+              <span class="pill-dot"></span>{{ planIsLive(plan) ? 'Live' : 'Archived' }}
+            </span>
+          </button>
+        </div>
+        <p v-if="planStripOverflows" class="swipe-hint">Swipe for more plans →</p>
+      </template>
+
+      <template v-if="selectedPlan">
+        <h2 class="section-heading heading-status">{{ selectedPlan.plan_year }} plan status</h2>
+
+        <div class="tiles">
+          <div class="tile">
+            <p class="tile-value tile-value--green">{{ milestonesCompleteCount }}/{{ milestonesTotalCount }}</p>
+            <p class="tile-label">Milestones complete</p>
+          </div>
+          <div class="tile">
+            <p class="tile-value tile-value--strong">{{ deliverablesComplete ?? '—' }}/{{ deliverablesTotal ?? '—' }}</p>
+            <p class="tile-label">Deliverables complete</p>
+          </div>
+          <div class="tile">
+            <p class="tile-value tile-value--gold">{{ milestonesInProgressCount ?? '—' }}</p>
+            <p class="tile-label">Milestones in progress</p>
+          </div>
+          <div class="tile">
+            <p class="tile-value tile-value--muted">{{ deliverablesRemaining ?? '—' }}</p>
+            <p class="tile-label">Deliverables remaining</p>
+          </div>
         </div>
 
-        <p v-if="programPlanProgressStore.plans.length === 0" class="empty">No program plans yet.</p>
+        <h2 class="section-heading heading-roadmap">Roadmap by quarter</h2>
 
-        <ul v-else class="plan-list">
-          <li v-for="plan in programPlanProgressStore.plans" :key="plan.plan_year">
-            <button
-              type="button"
-              class="plan-card"
-              :class="{ 'plan-card--active': plan.plan_year === selectedPlanYear }"
-              @click="selectedPlanYear = plan.plan_year"
-            >
-              <span class="plan-name">{{ plan.plan_year }} Program Plan</span>
-              <span class="badge" :class="`badge--${badgeFor(plan).variant}`">
-                {{ badgeFor(plan).text }}
+        <div v-if="programPlanMilestonesStore.loading" class="skeleton skeleton--roadmap"></div>
+        <p v-else-if="selectedPlanMilestones.length === 0" class="empty">No milestones for this plan yet.</p>
+        <div v-else class="roadmap">
+          <div v-for="(group, i) in quarterGroups" :key="group.key" class="quarter-block">
+            <div v-if="i !== quarterGroups.length - 1" class="quarter-rail" aria-hidden="true"></div>
+
+            <div class="quarter-header">
+              <span class="quarter-node" :class="{ 'quarter-node--filled': group.nodeFilled }" aria-hidden="true"></span>
+              <span class="quarter-title">{{ group.label }}</span>
+              <span class="quarter-summary">
+                {{ group.inProgressCount > 0 ? `${group.inProgressCount} in progress` : `${group.completeCount} of ${group.totalCount} complete` }}
               </span>
-            </button>
-          </li>
-        </ul>
-      </div>
-
-      <div v-if="selectedPlan" class="detail-column">
-        <h2 data-page-heading>{{ selectedPlan.plan_year }} Program Plan</h2>
-
-        <div class="stats-grid">
-          <div class="stat">
-            <span class="stat-label">Milestones Complete</span>
-            <span class="stat-value">{{ selectedPlan.milestones_complete }} / {{ selectedPlan.milestones_total }}</span>
-          </div>
-
-          <div class="stat">
-            <span class="stat-label">Tasks Complete</span>
-            <span class="stat-value">{{ selectedPlan.tasks_complete }} / {{ selectedPlan.tasks_total }}</span>
-          </div>
-
-          <div class="stat">
-            <span class="stat-label">In Progress</span>
-            <span class="stat-value">{{ selectedPlan.tasks_in_progress }}</span>
-          </div>
-
-          <div class="stat">
-            <span class="stat-label">Not Yet Started</span>
-            <span class="stat-value">{{ selectedPlan.tasks_not_started }}</span>
-          </div>
-        </div>
-
-        <!-- Milestone timeline: dated milestones for the selected plan year,
-             plotted by due_date across the Jan-Dec year; undated ones can't
-             be positioned on a date axis, so they get their own compact
-             list below instead of being silently dropped. Reuses the
-             milestone list's own badge--live/badge--default colors for
-             complete/incomplete instead of inventing a third color pair. -->
-        <div class="timeline-section">
-          <h3>Milestone Timeline</h3>
-
-          <p v-if="selectedPlanMilestones.length === 0" class="chart-empty">
-            No milestones synced for this plan year yet.
-          </p>
-
-          <template v-else>
-            <p v-if="timelineMarkers.length === 0" class="chart-empty">
-              No dated milestones for this plan year yet.
-            </p>
-            <div v-else class="timeline-scroll">
-              <div class="timeline-track">
-                <div class="timeline-line"></div>
-
-                <span
-                  v-for="(month, i) in MONTH_LABELS"
-                  :key="month"
-                  class="timeline-month"
-                  :style="{
-                    left: `${(i / 12) * 100}%`,
-                    transform: i === 0 ? 'translateX(0)' : i === MONTH_LABELS.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
-                  }"
-                >{{ month }}</span>
-
-                <button
-                  v-for="marker in timelineMarkers"
-                  :key="marker.id"
-                  type="button"
-                  class="timeline-marker"
-                  :class="marker.isComplete ? 'timeline-marker--complete' : 'timeline-marker--incomplete'"
-                  :style="{ left: `${marker.xPercent}%` }"
-                  :title="`${marker.name} — ${marker.dateLabel}`"
-                  @click="activeMilestoneId = activeMilestoneId === marker.id ? null : marker.id"
-                >
-                  <span class="timeline-stem" :style="{ height: `${marker.row * MARKER_ROW_HEIGHT_PX}px` }"></span>
-                  <span class="timeline-dot"></span>
-                </button>
-              </div>
             </div>
 
-            <p class="timeline-detail">
-              <template v-if="activeMilestone">
-                <strong>{{ activeMilestone.name }}</strong> — {{ activeMilestone.dateLabel }}
-                <span class="badge" :class="activeMilestone.isComplete ? 'badge--live' : 'badge--default'">
-                  {{ activeMilestone.isComplete ? 'Complete' : 'Incomplete' }}
-                </span>
-              </template>
-              <template v-else>Click a milestone marker for its name and date.</template>
-            </p>
-          </template>
+            <div class="milestone-list">
+              <div
+                v-for="milestone in group.milestones"
+                :key="milestone.id"
+                class="milestone-card"
+                :class="`milestone-card--${statusModifier(milestone)}`"
+              >
+                <button
+                  type="button"
+                  class="milestone-header"
+                  :aria-expanded="expandedMilestoneIds.has(milestone.id)"
+                  @click="toggleMilestone(milestone.id)"
+                >
+                  <span class="milestone-left">
+                    <span class="milestone-meta">
+                      <span v-if="milestoneCode(milestone)" class="milestone-code">{{ milestoneCode(milestone) }}</span>
+                      <span v-if="milestoneMonth(milestone)" class="month-chip">{{ milestoneMonth(milestone) }}</span>
+                    </span>
+                    <span class="milestone-title">{{ milestoneTitle(milestone) }}</span>
+                  </span>
 
-          <div v-if="selectedPlanUnscheduledMilestones.length > 0" class="unscheduled-panel">
-            <h4>Unscheduled</h4>
-            <ul class="milestone-list">
-              <li v-for="milestone in selectedPlanUnscheduledMilestones" :key="milestone.id" class="milestone-row">
-                <span class="milestone-name">{{ milestone.milestone_name }}</span>
-                <span class="badge" :class="milestone.is_complete ? 'badge--live' : 'badge--default'">
-                  {{ milestone.is_complete ? 'Complete' : 'Incomplete' }}
-                </span>
-              </li>
-            </ul>
+                  <span class="milestone-right">
+                    <span class="pill" :class="`pill--${statusModifier(milestone) === 'complete' ? 'success' : statusModifier(milestone) === 'in-progress' ? 'amber' : 'neutral'}`">
+                      <span class="pill-dot"></span>{{ statusLabel(milestone) }}
+                    </span>
+                    <svg
+                      class="chevron"
+                      :class="{ 'chevron--open': expandedMilestoneIds.has(milestone.id) }"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
+                </button>
+
+                <div v-if="expandedMilestoneIds.has(milestone.id)" class="milestone-body">
+                  <p>{{ milestone.due_date ? `Due ${formatFullDate(milestone.due_date)}` : 'No due date set' }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </template>
+    </template>
 
-        <!-- Milestone list: every program_plan_milestones row for the
-             selected plan year, name + complete/incomplete status. Reuses
-             the plan cards' own Live/Archived badge classes (badge--live
-             reads as a natural "done" green here too) instead of inventing
-             a third badge color for this one section. -->
-        <div class="milestone-list-section">
-          <h3>Milestones</h3>
-
-          <p v-if="selectedPlanMilestones.length === 0" class="chart-empty">
-            No milestones synced for this plan year yet.
-          </p>
-          <ul v-else class="milestone-list">
-            <li v-for="milestone in selectedPlanMilestones" :key="milestone.id" class="milestone-row">
-              <span class="milestone-name">{{ milestone.milestone_name }}</span>
-              <span class="badge" :class="milestone.is_complete ? 'badge--live' : 'badge--default'">
-                {{ milestone.is_complete ? 'Complete' : 'Incomplete' }}
-              </span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- PLACEHOLDER — static Program Allocation rollup, not wired to any
-             store or table. No Scholarship backing tables exist yet, so
-             these are hand-entered values kept only until a real query can
-             replace them -- identical to Home.vue's own Program Allocation
-             table (same figures, same markup, same styling). Split into
-             two portfolios -- Funding and Student Reach -- each summing
-             independently to ~100%, with a sub-header row above each group
-             so "% of Portfolio" is never ambiguous about which total it's
-             measured against. -->
-        <div class="allocation-panel">
-          <h3>Program Allocation</h3>
-          <!-- Horizontal-scroll wrapper at narrow widths -- same overflow-x
-               pattern as .bars-scroll elsewhere in the app -- since the
-               4-column table (especially Key Milestone Highlights) doesn't
-               fit a mobile viewport without it. -->
-          <div class="allocation-table-scroll">
-            <table class="allocation-table">
-              <thead>
-                <tr>
-                  <th>Metric Category</th>
-                  <th>Disbursed/Tracked</th>
-                  <th>% of Portfolio</th>
-                  <th>Key Milestone Highlights</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="4" class="allocation-group-label">Funding</td>
-                </tr>
-                <tr>
-                  <td class="allocation-category">Direct Academic Aid</td>
-                  <td>$52,020.48</td>
-                  <td>96.5%</td>
-                  <td>13 Scholars funded across 7 active scholarship cycles ($4,000 average disbursement)</td>
-                </tr>
-                <tr>
-                  <td class="allocation-category">Conference Travel</td>
-                  <td>$1,886.75</td>
-                  <td>3.5%</td>
-                  <td>3 Travel Awardees supported for academic conference attendance</td>
-                </tr>
-                <tr>
-                  <td colspan="4" class="allocation-group-label">Student Reach</td>
-                </tr>
-                <tr>
-                  <td class="allocation-category">Scholars Awarded</td>
-                  <td>13 Scholars</td>
-                  <td>4.5%</td>
-                  <td>Core award cohort within the 288 Total Tracked Student Reach</td>
-                </tr>
-                <tr>
-                  <td class="allocation-category">Travel Awardees</td>
-                  <td>3 Students</td>
-                  <td>1.0%</td>
-                  <td>Conference travel recipients within the 288 Total Tracked Student Reach</td>
-                </tr>
-                <tr>
-                  <td class="allocation-category">Campus Outreach</td>
-                  <td>272 Students</td>
-                  <td>94.4%</td>
-                  <td>Largest share of the 288 Total Tracked Student Reach, via on-campus engagement events</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </template>
+    <!-- No admin/refresh/sync action existed on the old page to carry
+         forward -- program_plan_progress/program_plan_milestones are both
+         read-only from this app (the only writer is the external Apps
+         Script sync, via its own Edge Functions), and the old page had no
+         button of its own beyond the milestone timeline/list this
+         redesign replaces. -->
+    <p class="footer">BTX Ops Hub · Program Planning</p>
+  </section>
 </template>
 
 <style scoped>
 .program-planning {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
-.plan-column {
-  flex-shrink: 0;
-  width: 240px;
-}
-
-.plan-column-header {
-  margin-bottom: 12px;
-}
-
-.plan-column-header h2 {
+.page-title {
   margin: 0;
-  font-size: 18px;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-header-strong);
 }
 
-.column-subtitle {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+.subline {
+  margin: 8px 0 0;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-header-muted);
+}
+
+.section-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+}
+
+.heading-plans {
+  margin-top: 24px;
+}
+
+.heading-status {
+  margin-top: 20px;
+}
+
+.heading-roadmap {
+  margin-top: 20px;
 }
 
 .empty {
-  color: var(--color-text-secondary);
+  margin: 10px 0 0;
   font-size: 13px;
+  color: var(--color-header-muted);
 }
 
-.plan-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.page-error {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
+}
+
+/* Hidden-scrollbar horizontal scroller with scroll-snap, plus a right-edge
+   fade (mask-image) hinting there's more to scroll to -- the "Swipe for
+   more plans" text below is the accessible version of that same hint for
+   anyone who can't see the fade (or isn't on a touch device to begin
+   with). Cards sized to ~48% of the strip's own width so the 2nd card is
+   always fully visible and a 3rd peeks at the edge, regardless of how
+   many plan years exist. */
+.plan-strip {
+  margin-top: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(to right, black 92%, transparent 100%);
+}
+
+.plan-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .plan-card {
-  width: 100%;
+  flex: 0 0 48%;
+  scroll-snap-align: start;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 11px 12px;
   cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
-.plan-card--active {
-  border: 1px solid var(--color-accent);
+.plan-card--selected {
+  border: 1.5px solid var(--color-accent);
 }
 
-.plan-name {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+.plan-card-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
 }
 
-/* Same badge styling as ProgramImpact.vue's Live/Archived cycle badges. */
-.badge {
+.swipe-hint {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--color-header-muted);
+}
+
+.pill {
   flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
   border-radius: 999px;
   white-space: nowrap;
 }
 
-.badge--live {
+.pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.pill--success {
   background: var(--color-success-badge-bg);
   color: var(--color-success-badge-text);
 }
 
-.badge--default {
+.pill--amber {
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
+}
+
+.pill--neutral {
   background: var(--color-neutral-badge-bg);
   color: var(--color-neutral-badge-text);
 }
 
-.detail-column {
-  flex: 1;
-  min-width: 0;
-}
-
-.detail-column h2 {
-  margin: 0 0 16px;
-  font-size: 18px;
-}
-
-.stats-grid {
+.tiles {
+  margin-top: 10px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
-/* Shared dense boxed-widget spec (matching FundraisingHealth.vue's
-   .metric-field, BudgetTracking.vue's .metric-field/.computed-display,
-   and ProgramImpact.vue's .metric-field/.comparison-item) -- same
-   border/background/radius family across the app, tightened to one
-   common padding/gap/font-size standard app-wide. */
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.tile {
   background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.stat-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-label);
-}
-
-.stat-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.chart-empty {
-  margin: 0;
-  color: var(--color-text-secondary);
-}
-
-/* Timeline card: same card convention as .chart/.milestone-list-section
-   above. */
-.timeline-section {
-  border: 0.5px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 20px;
-  background: var(--color-surface);
-  margin-bottom: 20px;
+  padding: 10px 6px;
+  text-align: center;
 }
 
-.timeline-section h3 {
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+.tile-value {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
 }
 
-/* Same horizontal-scroll convention as .bars-scroll/.allocation-table-scroll
-   elsewhere in the app -- .timeline-track's min-width is also the basis
-   assignTimelineRows measures pixel gaps against, so a wider render only
-   ever adds slack between markers, never removes it. */
-.timeline-scroll {
-  overflow-x: auto;
+.tile-value--green {
+  color: var(--color-green-strong);
 }
 
-.timeline-track {
+.tile-value--strong {
+  color: var(--color-header-strong);
+}
+
+.tile-value--gold {
+  color: var(--color-gold-strong);
+}
+
+.tile-value--muted {
+  color: var(--color-header-muted);
+}
+
+.tile-label {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--color-header-muted);
+}
+
+.roadmap {
+  margin-top: 10px;
+}
+
+.quarter-block {
   position: relative;
-  min-width: 900px;
-  /* Baseline + room for stacked rows: real 2021/2026 data tops out at 4
-     stacked rows (see assignTimelineRows' own review trace), this leaves
-     headroom for a 5th before it gets tight. */
-  height: 140px;
 }
 
-.timeline-line {
+.quarter-block + .quarter-block {
+  margin-top: 22px;
+}
+
+/* Runs from just below this quarter's own node down through its
+   milestone list to the next quarter's node -- the 22px inter-quarter
+   margin above is exactly how far past this block's own height the rail
+   needs to reach, so `bottom` is negative by that same amount. Omitted
+   entirely (see the template's v-if) for the last quarter, since there's
+   no next node to connect to. */
+.quarter-rail {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 30px;
-  height: 1px;
+  left: 5.25px;
+  top: 14px;
+  bottom: -22px;
+  width: 1.5px;
   background: var(--color-border);
 }
 
-.timeline-month {
-  position: absolute;
-  bottom: 8px;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-.timeline-marker {
-  position: absolute;
-  bottom: 30px;
+.quarter-header {
   display: flex;
-  flex-direction: column-reverse; /* stem renders at the baseline, dot stacks above it */
   align-items: center;
-  transform: translateX(-50%);
-  background: none;
-  border: none;
-  padding: 6px; /* enlarges the click/touch target beyond the 12px visual dot */
-  cursor: pointer;
+  gap: 10px;
 }
 
-.timeline-stem {
-  width: 1px;
-  background: var(--color-border);
-}
-
-.timeline-dot {
+.quarter-node {
+  position: relative;
+  flex-shrink: 0;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid var(--color-surface);
+  border: 2px solid var(--color-header-strong);
+  background: var(--color-page-bg);
 }
 
-/* Dot fill reuses badge--live/badge--default's own text colors (not their
-   pale backgrounds, which would barely register at 12px) -- same 2-color
-   system as the existing milestone list, no new colors introduced. */
-.timeline-marker--complete .timeline-dot {
-  background: var(--color-success-badge-text);
+.quarter-node--filled {
+  background: var(--color-green-strong);
+  border-color: var(--color-green-strong);
 }
 
-.timeline-marker--incomplete .timeline-dot {
-  background: var(--color-neutral-badge-text);
+.quarter-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-header-strong);
 }
 
-.timeline-detail {
-  margin: 12px 0 0;
-  font-size: 13px;
-  color: var(--color-text-primary);
-}
-
-/* Subsection within the same card, not a new top-level panel -- separated
-   by a rule rather than its own border/shadow. Reuses .milestone-list/
-   .milestone-row/.milestone-name verbatim below (see template) rather than
-   inventing separate list styling. */
-.unscheduled-panel {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 0.5px solid var(--color-border);
-}
-
-.unscheduled-panel h4 {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
-
-/* Milestone list card: same card treatment as the timeline section above, its own
-   section since it's a list rather than a bar chart. */
-.milestone-list-section {
-  border: 0.5px solid var(--color-border);
-  border-radius: 12px;
-  padding: 20px;
-  background: var(--color-surface);
-}
-
-.milestone-list-section h3 {
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+.quarter-summary {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-header-muted);
 }
 
 .milestone-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  margin-top: 10px;
+  margin-left: 24px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.milestone-row {
+.milestone-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.milestone-card--complete {
+  border-left-color: var(--color-green-strong);
+}
+
+.milestone-card--in-progress {
+  border-left-color: var(--color-gold-strong);
+}
+
+.milestone-header {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  border: 0.5px solid var(--color-border);
-  border-radius: 12px;
-  padding: 10px 14px;
-}
-
-.milestone-name {
-  font-size: 14px;
-  color: var(--color-text-primary);
-}
-
-/* Program Allocation card+table: identical to Home.vue's own version
-   (same class names, same property values) rather than inventing separate
-   CSS -- both reuse the app's established card/table convention verbatim
-   (same shape as FundraisingHealth.vue's .revenue-panel/.revenue-table). */
-.allocation-panel {
-  border: 0.5px solid var(--color-border);
-  border-radius: 12px;
-  padding: 20px;
-  background: var(--color-surface);
-  margin-bottom: 20px;
-}
-
-.allocation-panel h3 {
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-/* Matches .bars-scroll's convention (FundraisingHealth.vue) -- harmless at
-   desktop widths since overflow-x: auto only activates once .allocation-table's
-   own min-width genuinely exceeds the panel. */
-.allocation-table-scroll {
-  overflow-x: auto;
-}
-
-.allocation-table {
-  width: 100%;
-  min-width: 640px;
-  border-collapse: collapse;
-}
-
-.allocation-table th {
+  gap: 10px;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
   text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  padding: 0 8px 8px 0;
+  font: inherit;
+  color: inherit;
 }
 
-.allocation-table td {
-  padding: 6px 8px 6px 0;
+.milestone-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.milestone-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.milestone-code {
+  font-size: 9.5px;
+  color: var(--color-header-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
+}
+
+.milestone-title {
+  display: block;
+  margin: 0;
   font-size: 14px;
-  color: var(--color-text-primary);
+  font-weight: 400;
+  color: var(--color-header-strong);
 }
 
-.allocation-category {
-  font-weight: 500;
+.milestone-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Sub-header row separating the two portfolios (Funding vs. Student Reach)
-   so "% of Portfolio" is never ambiguous about which total it's measured
-   against -- matches .metrics-group-header's uppercase small-caps
-   convention (FundraisingHealth.vue's "REVENUE SOURCES" label). */
-.allocation-group-label {
-  padding: 12px 8px 6px 0;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-secondary);
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-header-muted);
+  transition: transform 0.15s ease;
 }
 
-.error {
-  color: var(--color-danger-text);
+.chevron--open {
+  transform: rotate(180deg);
+}
+
+.milestone-body {
+  margin: 0 12px 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12.5px;
+  color: var(--color-header-muted);
+}
+
+.milestone-body p {
+  margin: 0;
+}
+
+/* Neutral pulsing placeholders -- same footprint as the real content so
+   nothing visibly resizes once data arrives. Same animation as Impact to
+   Date's own chart skeleton. */
+.skeleton {
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--strip {
+  margin-top: 10px;
+  height: 64px;
+}
+
+.skeleton--roadmap {
+  margin-top: 10px;
+  height: 160px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.footer {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-header-muted);
 }
 
 .access-denied {
@@ -757,47 +720,4 @@ const activeMilestone = computed(
   color: var(--color-danger-text);
   font-weight: 600;
 }
-
-/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
-   whole app switches to its mobile layout at one consistent width), the
-   plan list stacks above the detail column instead of beside it. The list
-   itself becomes a horizontal scroll row rather than a taller vertical
-   stack -- same overflow-x pattern Program Impact/Fundraising Health's own
-   charts already use for a growing set of items -- so more plan years
-   accumulating over time doesn't push the selected plan's actual detail
-   content further down the page. Nothing above this query is touched, so
-   desktop layout is unaffected. */
-@media (max-width: 850px) {
-  .program-planning {
-    flex-direction: column;
-    /* .program-planning's own align-items: flex-start (above) is meant for
-       the desktop row layout, sizing plan-column/detail-column to their
-       content along the (vertical) cross axis -- harmless there since
-       neither child is ever wider than the other. Flipping to a column
-       direction here swaps the cross axis to horizontal, so without this
-       override the same flex-start would shrink-to-fit each child's width
-       to its own content instead of the container's -- invisible until
-       .allocation-panel's table (min-width: 640px, below) became the first
-       child wide enough to expose it, overflowing the whole page instead
-       of being contained by .allocation-table-scroll's own overflow-x. */
-    align-items: stretch;
-  }
-
-  .plan-column {
-    width: 100%;
-  }
-
-  .plan-list {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .plan-card {
-    width: auto;
-    min-width: 200px;
-    flex-shrink: 0;
-  }
-}
-
 </style>

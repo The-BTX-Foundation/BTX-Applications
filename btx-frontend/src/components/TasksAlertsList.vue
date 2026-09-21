@@ -246,7 +246,8 @@ const completedByMonth = computed(() => {
 // updateStatus, the only path that ever sets completed_at). Surfaced as a
 // count beneath the chart instead of being silently skipped the way
 // completedGroups itself already is, matching the transparency
-// ProgramPlanning.vue's timeline gives its own undated milestones.
+// ProgramPlanning.vue's roadmap gives its own undated milestones (its
+// "Unscheduled" group).
 const excludedCompletedCount = computed(
   () => sourceFilteredTasks.value.filter((task) => task.status === 'Complete' && !task.completed_at).length,
 )

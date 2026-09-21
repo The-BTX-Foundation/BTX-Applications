@@ -439,7 +439,8 @@ onUnmounted(() => {
       class="page"
       :class="{
         'page--home': route.name === 'home',
-        'page--headline-metric': route.name === 'program-headline-metric-summary',
+        'page--program-detail':
+          route.name === 'program-headline-metric-summary' || route.name === 'program-planning',
       }"
     >
       <div class="panel" ref="panelEl">
@@ -782,18 +783,18 @@ onUnmounted(() => {
   }
 }
 
-/* Impact to Date (Headline Metric Summary) only, same mechanism as
-   .page--home above -- ~18px total side margin (the mockup's own 4.8% of
-   a 390px viewport), split the same way: .page's var(--page-h-padding)
-   carries the full 18px, .panel's horizontal padding is zeroed out so it
-   doesn't stack another 16px on top. Every other route/width is
-   untouched. */
+/* The two "Program" detail pages (Impact to Date / Headline Metric
+   Summary, and Program Planning) only, same mechanism as .page--home
+   above -- ~18px total side margin (the mockup's own 4.8% of a 390px
+   viewport), split the same way: .page's var(--page-h-padding) carries
+   the full 18px, .panel's horizontal padding is zeroed out so it doesn't
+   stack another 16px on top. Every other route/width is untouched. */
 @media (max-width: 600px) {
-  .page--headline-metric {
+  .page--program-detail {
     --page-h-padding: 18px;
   }
 
-  .page--headline-metric .panel {
+  .page--program-detail .panel {
     padding-left: 0;
     padding-right: 0;
   }
