@@ -225,7 +225,7 @@ function toggleSection(id) {
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--color-text-secondary);
+  color: var(--color-header-muted);
 }
 
 /* 27px keeps this exact heading text on one line at both 390px and 428px
@@ -243,7 +243,7 @@ function toggleSection(id) {
   font-size: 27px;
   font-weight: 700;
   line-height: 1.15;
-  color: var(--color-text-primary);
+  color: var(--color-header-strong);
 }
 
 @media (min-width: 600px) {
@@ -254,7 +254,7 @@ function toggleSection(id) {
 
 .subtext {
   margin: 0 0 20px;
-  color: var(--color-text-secondary);
+  color: var(--color-header-muted);
   font-size: 14px;
   line-height: 1.5;
 }

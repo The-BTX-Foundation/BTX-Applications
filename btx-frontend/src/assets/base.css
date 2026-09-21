@@ -90,6 +90,18 @@
   --color-success-badge-text: #2e7d32;
   --color-neutral-badge-bg: #f1efe8;
   --color-neutral-badge-text: #5f5e5a;
+
+  /* Home's header only (date line/heading/subline) -- warm near-black/
+     warm-gray sampled from the reference screenshot, since
+     --color-text-primary/-secondary above are a cooler slate/gray that
+     reads noticeably bluer and lighter against the new cream page
+     background than the reference intends. #1c1a17 measures 15.42:1 on
+     #f6f1e7, #57534e measures 6.78:1 -- both clear 4.5:1 comfortably
+     (unlike --color-text-secondary's own 3.08:1 there). Not a general-
+     purpose text color pair -- keep using --color-text-primary/-secondary
+     everywhere else. */
+  --color-header-strong: #1c1a17;
+  --color-header-muted: #57534e;
 }
 
 :root[data-theme='dark'] {
@@ -112,6 +124,13 @@
   --color-success-badge-text: #81c784;
   --color-neutral-badge-bg: #2c2c2a;
   --color-neutral-badge-text: #b4b2a9;
+
+  /* Same values as --color-text-primary/-secondary above -- dark mode's
+     own text colors already read fine against the reference, so Home's
+     header simply matches them here rather than getting its own dark
+     palette. */
+  --color-header-strong: #ece9e3;
+  --color-header-muted: #9c9a92;
 }
 
 *,
