@@ -2,7 +2,8 @@
 import { computed, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useHomeSummary } from '@/composables/useHomeSummary'
-import HomeAlertHero from '@/components/HomeAlertHero.vue'
+import HomeMissionHero from '@/components/HomeMissionHero.vue'
+import HomeOverdueBanner from '@/components/HomeOverdueBanner.vue'
 import HomeAtAGlance from '@/components/HomeAtAGlance.vue'
 import HomeSectionRow from '@/components/HomeSectionRow.vue'
 
@@ -103,6 +104,13 @@ const rowInfo = computed(() => ({
   marketing: { subtitle: summary.marketingSubtitle.value },
 }))
 
+// Route name of the first Scholarship sub-item, for the mission card's CTA
+// button -- read off SECTIONS rather than hardcoded, so the button always
+// points at whichever sub-item is actually listed first there.
+const scholarshipRouteName = computed(
+  () => SECTIONS.find((section) => section.id === 'scholarship').subItems[0].routeName,
+)
+
 // Tracks which non-flat sections are expanded; multiple can be open at once.
 const expandedSectionIds = reactive(new Set())
 
@@ -123,11 +131,18 @@ function toggleSection(id) {
     <h1 class="heading" data-page-heading>Here's what needs attention</h1>
     <p class="subtext">A quick look across every section before you dive in.</p>
 
-    <HomeAlertHero
+    <HomeMissionHero
+      :scholars-display="summary.missionScholarsDisplay.value"
+      :direct-aid-display="summary.missionDirectAidDisplay.value"
+      :applicants-display="summary.missionApplicantsDisplay.value"
+      :students-display="summary.missionStudentsDisplay.value"
+      :cta-route-name="scholarshipRouteName"
+    />
+
+    <HomeOverdueBanner
       :loading="summary.heroLoading.value"
       :error="summary.heroError.value"
       :count="summary.overdueCount.value"
-      :oldest-title="summary.oldestOverdue.value?.title ?? null"
       :oldest-days-label="summary.oldestOverdue.value ? summary.dayLabel(summary.oldestOverdueDays.value) : null"
     />
 
