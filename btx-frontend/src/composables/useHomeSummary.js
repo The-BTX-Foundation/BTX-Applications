@@ -8,7 +8,7 @@ import { useProgramPlanProgressStore } from '@/stores/programPlanProgress'
 import { useProgramPlanMilestonesStore } from '@/stores/programPlanMilestones'
 import { useEventTrackerEventsStore } from '@/stores/eventTrackerEvents'
 import { useMarketingTasksStore } from '@/stores/marketingTasks'
-import { useDonorImpactStore } from '@/stores/donorImpact'
+import { MISSION_STATS, formatWholeDollars } from '@/lib/missionStats'
 
 // Roles allowed to see Home's live summary data -- the same admin/board/
 // reviewer convention every other page in this app already gates on.
@@ -86,7 +86,6 @@ export function useHomeSummary() {
   const programPlanMilestonesStore = useProgramPlanMilestonesStore()
   const eventTrackerEventsStore = useEventTrackerEventsStore()
   const marketingTasksStore = useMarketingTasksStore()
-  const donorImpactStore = useDonorImpactStore()
 
   // True once the Promise.all below has resolved at least once. All seven
   // sources are fetched together, so they finish together -- there's no
@@ -110,7 +109,6 @@ export function useHomeSummary() {
         programPlanMilestonesStore.fetchMilestones(),
         eventTrackerEventsStore.fetchEvents(),
         marketingTasksStore.fetchTasks(),
-        donorImpactStore.fetchCycles(),
       ])
       sectionsLoaded.value = true
     },
@@ -143,37 +141,13 @@ export function useHomeSummary() {
   })
 
   // -- Mission hero (Home's top card) --
-  // "To date" sums every fetched donor_impact cycle (all cycle years the
-  // signed-in role can see under RLS, same convention as the store's own
-  // totalRaised), not just published ones -- there's no "to date" concept
-  // that would exclude a cycle just because it's still a draft.
-  const missionScholarsTotal = computed(() =>
-    donorImpactStore.cycles.reduce((sum, cycle) => sum + (cycle.scholarships_awarded ?? 0), 0),
-  )
-  const missionScholarsDisplay = computed(() =>
-    !sectionsLoaded.value || donorImpactStore.error ? '—' : `${missionScholarsTotal.value}`,
-  )
-
-  const missionDirectAidTotal = computed(() =>
-    donorImpactStore.cycles.reduce((sum, cycle) => sum + (cycle.scholarship_funds_awarded ?? 0), 0),
-  )
-  const missionDirectAidDisplay = computed(() =>
-    !sectionsLoaded.value || donorImpactStore.error ? '—' : `$${Math.round(missionDirectAidTotal.value).toLocaleString()}`,
-  )
-
-  const missionApplicantsTotal = computed(() =>
-    donorImpactStore.cycles.reduce((sum, cycle) => sum + (cycle.applicants_count ?? 0), 0),
-  )
-  const missionApplicantsDisplay = computed(() =>
-    !sectionsLoaded.value || donorImpactStore.error ? '—' : `${missionApplicantsTotal.value.toLocaleString()}`,
-  )
-
-  const missionStudentsTotal = computed(() =>
-    donorImpactStore.cycles.reduce((sum, cycle) => sum + (cycle.students_reached ?? 0), 0),
-  )
-  const missionStudentsDisplay = computed(() =>
-    !sectionsLoaded.value || donorImpactStore.error ? '—' : `${missionStudentsTotal.value.toLocaleString()}`,
-  )
+  // Static PLACEHOLDER totals shared with Headline Metric Summary (see
+  // missionStats.js) -- not fetched, so unlike every other figure in this
+  // composable there's no loading/error state to gate on.
+  const missionScholarsDisplay = `${MISSION_STATS.scholarsFundedToDate}`
+  const missionDirectAidDisplay = formatWholeDollars(MISSION_STATS.directAcademicAidTotal)
+  const missionApplicantsDisplay = `${MISSION_STATS.applicantsEngagedTotal}`
+  const missionStudentsDisplay = `${MISSION_STATS.studentsReachedTotal}`
 
   // -- At a glance --
   const burnRateMonths = computed(() => {

@@ -132,10 +132,10 @@ function toggleSection(id) {
     <p class="subtext">A quick look across every section before you dive in.</p>
 
     <HomeMissionHero
-      :scholars-display="summary.missionScholarsDisplay.value"
-      :direct-aid-display="summary.missionDirectAidDisplay.value"
-      :applicants-display="summary.missionApplicantsDisplay.value"
-      :students-display="summary.missionStudentsDisplay.value"
+      :scholars-display="summary.missionScholarsDisplay"
+      :direct-aid-display="summary.missionDirectAidDisplay"
+      :applicants-display="summary.missionApplicantsDisplay"
+      :students-display="summary.missionStudentsDisplay"
       :cta-route-name="scholarshipRouteName"
     />
 

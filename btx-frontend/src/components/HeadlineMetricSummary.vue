@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksAlertsStore } from '@/stores/tasksAlerts'
 import { useDonorImpactStore } from '@/stores/donorImpact'
+import { MISSION_STATS } from '@/lib/missionStats'
 
 const authStore = useAuthStore()
 const tasksAlertsStore = useTasksAlertsStore()
@@ -17,6 +18,17 @@ const canView = computed(() => authStore.isAdmin || authStore.isBoard || authSto
 // Tracks whether this page's real data (Total Raised, Pending Tasks) has
 // loaded yet, so those values don't flash "0" before the fetch resolves.
 const metricsLoaded = ref(false)
+
+// "$52,020.48" -- this page's own to-the-cent convention for the shared
+// Direct Academic Aid figure (missionStats.js's own helper formats it to
+// whole dollars instead, for Home's mission card).
+const directAcademicAidDisplay = computed(
+  () =>
+    `$${MISSION_STATS.directAcademicAidTotal.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+)
 
 // Refetches this page's data sources whenever the signed-in user changes
 // (sign in, sign out, switch accounts). Skips the fetch entirely for roles
@@ -50,7 +62,10 @@ watch(
            store or table. No Scholarship backing tables exist yet, so
            these are hand-entered values kept only until a real query can
            replace them (see the Program Allocation table below, which
-           ties back to these same figures). -->
+           ties back to these same figures). The scholars/students/
+           applicants figures (and Direct Academic Aid below) come from
+           missionStats.js -- Home's mission card shows the same numbers,
+           so both pages read one shared source instead of two copies. -->
       <div class="metric-cards">
         <div class="metric-card">
           <span class="metric-label">Total Program Funding Disbursed</span>
@@ -59,17 +74,17 @@ watch(
         </div>
         <div class="metric-card">
           <span class="metric-label">Total Scholars Awarded</span>
-          <span class="metric-value">13 Scholars</span>
+          <span class="metric-value">{{ MISSION_STATS.scholarsFundedToDate }} Scholars</span>
           <span class="metric-subtext">Across 7 active scholarship cycles ($4,000 average disbursement)</span>
         </div>
         <div class="metric-card">
           <span class="metric-label">Total Tracked Student Reach</span>
-          <span class="metric-value">288 Students</span>
+          <span class="metric-value">{{ MISSION_STATS.studentsReachedTotal }} Students</span>
           <span class="metric-subtext">13 Scholars + 3 Travel Awardees + 272 Campus Outreach Attendees</span>
         </div>
         <div class="metric-card">
           <span class="metric-label">Total Applicants Engaged</span>
-          <span class="metric-value">70 Applicants</span>
+          <span class="metric-value">{{ MISSION_STATS.applicantsEngagedTotal }} Applicants</span>
           <span class="metric-subtext">~10 applicants per active award cycle</span>
         </div>
       </div>
@@ -106,7 +121,7 @@ watch(
               </tr>
               <tr>
                 <td class="allocation-category">Direct Academic Aid</td>
-                <td>$52,020.48</td>
+                <td>{{ directAcademicAidDisplay }}</td>
                 <td>96.5%</td>
                 <td>13 Scholars funded across 7 active scholarship cycles ($4,000 average disbursement)</td>
               </tr>
