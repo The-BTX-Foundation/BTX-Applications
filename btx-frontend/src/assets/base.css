@@ -26,10 +26,13 @@
        that never reads data-theme, by the same "brand surface" logic as
        the sidebar above.
      - HomeView.vue's mobile topbar (.mobile-topbar/.sticky-page-bar) and
-       its avatar (.topbar-avatar), and Home.vue's own alert hero
-       (HomeAlertHero.vue) and its "Review overdue items" button: the same
+       its avatar (.topbar-avatar), and Home.vue's own mission hero
+       (HomeMissionHero.vue) and its "Open Scholarship" button: the same
        fixed-dark/gold brand surface as the sidebar, just repeated in two
-       more places the toggle was never meant to reach.
+       more places the toggle was never meant to reach. Home.vue's overdue
+       banner (HomeOverdueBanner.vue) directly beneath it is NOT part of
+       this exception -- it's a themed surface that reads the danger badge
+       variables and flips with the toggle normally.
      - Modal/overlay backdrop scrims (rgba(0, 0, 0, 0.4) / rgba(0, 0, 0, 0.5)
        in EventCalendar.vue, MarketingCalendar.vue, NewTaskModal.vue,
        HomeView.vue): a black scrim darkens either theme's content the same
