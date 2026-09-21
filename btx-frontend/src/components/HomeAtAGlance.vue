@@ -55,15 +55,19 @@ defineProps({
   color: var(--color-accent);
 }
 
-/* Fundraising goal's own value only, matching the mission card's "13"
-   (same var(--font-serif), same weight 700 -- .value above already sets
-   700, so this only swaps the family). Extending this to Runway/2026
-   milestones later is just adding this same class to their own <p
-   class="value">; size and color stay governed by .value regardless.
-   lining-nums matches the mission card's own numerals -- see
-   HomeMissionHero.vue's identical pair for why both properties are set. */
+/* Fundraising goal's own value only (same var(--font-serif) as the
+   mission card's "13"). Extending this to Runway/2026 milestones later is
+   just adding this same class to their own <p class="value">; size and
+   color stay governed by .value regardless. lining-nums matches the
+   mission card's own numerals -- see HomeMissionHero.vue's identical pair
+   for why both properties are set. Bumped past .value's own 700 to 800
+   (see main.js's own latin-800 import) since Playfair Display at 700
+   didn't read as visibly bold enough for this figure at 18px; the "%"
+   shares this same element/weight since it's part of the same
+   interpolated string, not a separate span. */
 .value--serif {
   font-family: var(--font-serif);
+  font-weight: 800;
   font-variant-numeric: lining-nums;
   font-feature-settings: 'lnum' 1;
 }
