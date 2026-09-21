@@ -5,7 +5,7 @@ import { useHomeSummary } from '@/composables/useHomeSummary'
 import HomeMissionHero from '@/components/HomeMissionHero.vue'
 import HomeOverdueBanner from '@/components/HomeOverdueBanner.vue'
 import HomeAtAGlance from '@/components/HomeAtAGlance.vue'
-import HomeSectionRow from '@/components/HomeSectionRow.vue'
+import HomeSectionCard from '@/components/HomeSectionCard.vue'
 
 const authStore = useAuthStore()
 const summary = useHomeSummary()
@@ -90,29 +90,34 @@ const SECTIONS = [
   },
 ]
 
-// Per-section subtitle/pill, keyed by id -- pulled from useHomeSummary
+// Per-section pill text/tone, keyed by id -- pulled from useHomeSummary
 // rather than baked into SECTIONS above, since these are reactive and
-// SECTIONS is static. Scholarship has no backing data (see
-// useHomeSummary's own comment), so it's simply absent here rather than
-// defaulted to an em-dash -- an em-dash would wrongly imply a failed
-// fetch instead of "nothing to fetch".
-const rowInfo = computed(() => ({
-  'alert-center': { subtitle: summary.alertSubtitle.value, pillCount: summary.overdueCount.value },
-  'task-approval': { subtitle: summary.taskSubtitle.value },
-  'event-calendar': { subtitle: summary.eventSubtitle.value },
-  finance: { subtitle: summary.financeSubtitle.value, variant: summary.financeOverBudget.value ? 'danger' : 'muted' },
-  funding: { subtitle: summary.fundingSubtitle.value },
-  program: { subtitle: summary.programSubtitle.value },
-  scholarship: { subtitle: null },
-  marketing: { subtitle: summary.marketingSubtitle.value },
+// SECTIONS is static. Some of useHomeSummary's own pill pairs are plain
+// (non-reactive) strings rather than computed refs -- see its own comment
+// on scholarshipPillText/eventPillTone/etc. -- so `.value` is only read
+// where the source is actually a computed.
+const pillInfo = computed(() => ({
+  scholarship: { text: summary.scholarshipPillText, tone: summary.scholarshipPillTone },
+  'alert-center': { text: summary.alertPillText.value, tone: summary.alertPillTone.value },
+  'task-approval': { text: summary.taskPillText.value, tone: summary.taskPillTone.value },
+  'event-calendar': { text: summary.eventPillText.value, tone: summary.eventPillTone },
+  finance: { text: summary.financePillText.value, tone: summary.financePillTone.value },
+  funding: { text: summary.fundingPillText.value, tone: summary.fundingPillTone },
+  program: { text: summary.programPillText.value, tone: summary.programPillTone },
+  marketing: { text: summary.marketingPillText.value, tone: summary.marketingPillTone },
 }))
+
+// Scholarship is rendered separately as the full-width featured card above
+// the grid -- looked up by id (not SECTIONS[0]) so this keeps working
+// regardless of where Scholarship sits in SECTIONS. gridSections is
+// everything else, in SECTIONS' own order.
+const scholarshipSection = computed(() => SECTIONS.find((section) => section.id === 'scholarship'))
+const gridSections = SECTIONS.filter((section) => section.id !== 'scholarship')
 
 // Route name of the first Scholarship sub-item, for the mission card's CTA
 // button -- read off SECTIONS rather than hardcoded, so the button always
 // points at whichever sub-item is actually listed first there.
-const scholarshipRouteName = computed(
-  () => SECTIONS.find((section) => section.id === 'scholarship').subItems[0].routeName,
-)
+const scholarshipRouteName = computed(() => scholarshipSection.value.subItems[0].routeName)
 
 // Tracks which non-flat sections are expanded; multiple can be open at once.
 const expandedSectionIds = reactive(new Set())
@@ -158,33 +163,49 @@ function toggleSection(id) {
     />
 
     <h2 class="section-heading heading-sections">Sections</h2>
-    <div class="section-list">
-      <template v-for="section in SECTIONS" :key="section.id">
-        <HomeSectionRow
+
+    <HomeSectionCard
+      :icon="scholarshipSection.icon"
+      :color="scholarshipSection.color"
+      :title="scholarshipSection.title"
+      :pill-text="pillInfo.scholarship.text"
+      :pill-tone="pillInfo.scholarship.tone"
+      featured
+      tag="CORE PROGRAM"
+      :expanded="expandedSectionIds.has(scholarshipSection.id)"
+      @toggle="toggleSection(scholarshipSection.id)"
+    >
+      <li v-for="item in scholarshipSection.subItems" :key="item.routeName">
+        <RouterLink :to="{ name: item.routeName }" class="sub-item-link">{{ item.label }}</RouterLink>
+      </li>
+    </HomeSectionCard>
+
+    <div class="section-grid">
+      <template v-for="section in gridSections" :key="section.id">
+        <HomeSectionCard
           v-if="section.flat"
           :icon="section.icon"
           :color="section.color"
           :title="section.title"
-          :subtitle="rowInfo[section.id].subtitle"
-          :subtitle-variant="rowInfo[section.id].variant ?? 'muted'"
-          :pill-count="rowInfo[section.id].pillCount ?? null"
+          :pill-text="pillInfo[section.id].text"
+          :pill-tone="pillInfo[section.id].tone"
           flat
           :route-name="section.routeName"
         />
-        <HomeSectionRow
+        <HomeSectionCard
           v-else
           :icon="section.icon"
           :color="section.color"
           :title="section.title"
-          :subtitle="rowInfo[section.id].subtitle"
-          :subtitle-variant="rowInfo[section.id].variant ?? 'muted'"
+          :pill-text="pillInfo[section.id].text"
+          :pill-tone="pillInfo[section.id].tone"
           :expanded="expandedSectionIds.has(section.id)"
           @toggle="toggleSection(section.id)"
         >
           <li v-for="item in section.subItems" :key="item.routeName">
             <RouterLink :to="{ name: item.routeName }" class="sub-item-link">{{ item.label }}</RouterLink>
           </li>
-        </HomeSectionRow>
+        </HomeSectionCard>
       </template>
     </div>
 
@@ -217,18 +238,31 @@ function toggleSection(id) {
   font-size: 14px;
 }
 
-.section-list {
-  display: flex;
-  flex-direction: column;
+/* Holds the 7 non-Scholarship cards (Scholarship itself is the full-width
+   featured card rendered just above this, outside the grid). Marketing --
+   the 7th, odd-one-out card -- lands alone in the last row at half width,
+   left, purely from grid auto-placement; no extra rule needed for that.
+   align-items: start (not the grid default stretch) is what lets an
+   expanded card grow downward without stretching its row neighbor to
+   match -- see HomeSectionCard.vue's own comment on why that neighbor's
+   height is otherwise untouched. */
+.section-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 /* Neither heading takes data-page-heading -- Home's own <h1> above is
    still the page's one real heading for the sticky mobile bar/scroll
    tracking (see HomeView.vue); these two are just section labels. Margins
    carry all the spacing between the banner/tiles/rows above and below
-   each one, rather than gaps on the tiles/section-list themselves, so
-   HomeAtAGlance.vue and .section-list's own 10px gap stay untouched. */
+   each one, rather than gaps on the tiles/cards themselves, so
+   HomeAtAGlance.vue's and .section-grid's own gaps stay untouched. The
+   10px from this heading down to the Scholarship card underneath it is
+   likewise just this heading's own margin-bottom -- Scholarship needs no
+   margin-top of its own. */
 .section-heading {
   margin: 0;
   font-size: 14px;

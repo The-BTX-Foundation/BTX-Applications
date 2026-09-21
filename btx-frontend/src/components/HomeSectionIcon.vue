@@ -2,7 +2,7 @@
 // Small inline line-art icons for Home's section rows -- no icon library,
 // just the same stroke="currentColor" convention already used by
 // HomeView.vue's hamburger/chevron SVGs, so `color` on the wrapping tile
-// (see HomeSectionRow.vue) is all that's needed to recolor one.
+// (see HomeSectionCard.vue) is all that's needed to recolor one.
 defineProps({
   name: {
     type: String,
