@@ -52,7 +52,8 @@
        hardcoded copies of it, since it's a brand constant, not a themed
        surface. */
 :root {
-  --color-page-bg: #f7f6f3;
+  /* Warm cream from the brand swatch. */
+  --color-page-bg: #f6f1e7;
   --color-surface: #fff;
   --color-text-primary: #2d3142;
   --color-text-secondary: #8a8a85;
