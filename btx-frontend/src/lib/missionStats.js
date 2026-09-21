@@ -8,6 +8,10 @@ export const MISSION_STATS = {
   directAcademicAidTotal: 52020.48,
   applicantsEngagedTotal: 70,
   studentsReachedTotal: 288,
+  // Student Reach breakdown -- scholars + travel + outreach should equal
+  // studentsReachedTotal above (13 + 3 + 272 = 288).
+  travelAwardees: 3,
+  campusOutreachAttendees: 272,
 }
 
 // "$52,020" -- whole-dollar display for Home's mission card. Headline

@@ -62,10 +62,15 @@ watch(
            store or table. No Scholarship backing tables exist yet, so
            these are hand-entered values kept only until a real query can
            replace them (see the Program Allocation table below, which
-           ties back to these same figures). The scholars/students/
-           applicants figures (and Direct Academic Aid below) come from
-           missionStats.js -- Home's mission card shows the same numbers,
-           so both pages read one shared source instead of two copies. -->
+           ties back to these same figures). Every number here that also
+           appears on Home's mission card or elsewhere on this page --
+           scholars, students, applicants, Direct Academic Aid, travel
+           awardees, campus outreach attendees -- is interpolated from
+           missionStats.js's MISSION_STATS rather than re-typed, so the
+           two pages (and this page's own repeated mentions) can't drift
+           out of sync. $53,907.23, 96.5%/3.5%, 7 cycles, $4,000, and ~10
+           are independent figures with no MISSION_STATS entry and stay
+           hardcoded. -->
       <div class="metric-cards">
         <div class="metric-card">
           <span class="metric-label">Total Program Funding Disbursed</span>
@@ -80,7 +85,10 @@ watch(
         <div class="metric-card">
           <span class="metric-label">Total Tracked Student Reach</span>
           <span class="metric-value">{{ MISSION_STATS.studentsReachedTotal }} Students</span>
-          <span class="metric-subtext">13 Scholars + 3 Travel Awardees + 272 Campus Outreach Attendees</span>
+          <span class="metric-subtext"
+            >{{ MISSION_STATS.scholarsFundedToDate }} Scholars + {{ MISSION_STATS.travelAwardees }} Travel Awardees +
+            {{ MISSION_STATS.campusOutreachAttendees }} Campus Outreach Attendees</span
+          >
         </div>
         <div class="metric-card">
           <span class="metric-label">Total Applicants Engaged</span>
@@ -123,34 +131,34 @@ watch(
                 <td class="allocation-category">Direct Academic Aid</td>
                 <td>{{ directAcademicAidDisplay }}</td>
                 <td>96.5%</td>
-                <td>13 Scholars funded across 7 active scholarship cycles ($4,000 average disbursement)</td>
+                <td>{{ MISSION_STATS.scholarsFundedToDate }} Scholars funded across 7 active scholarship cycles ($4,000 average disbursement)</td>
               </tr>
               <tr>
                 <td class="allocation-category">Conference Travel</td>
                 <td>$1,886.75</td>
                 <td>3.5%</td>
-                <td>3 Travel Awardees supported for academic conference attendance</td>
+                <td>{{ MISSION_STATS.travelAwardees }} Travel Awardees supported for academic conference attendance</td>
               </tr>
               <tr>
                 <td colspan="4" class="allocation-group-label">Student Reach</td>
               </tr>
               <tr>
                 <td class="allocation-category">Scholars Awarded</td>
-                <td>13 Scholars</td>
+                <td>{{ MISSION_STATS.scholarsFundedToDate }} Scholars</td>
                 <td>4.5%</td>
-                <td>Core award cohort within the 288 Total Tracked Student Reach</td>
+                <td>Core award cohort within the {{ MISSION_STATS.studentsReachedTotal }} Total Tracked Student Reach</td>
               </tr>
               <tr>
                 <td class="allocation-category">Travel Awardees</td>
-                <td>3 Students</td>
+                <td>{{ MISSION_STATS.travelAwardees }} Students</td>
                 <td>1.0%</td>
-                <td>Conference travel recipients within the 288 Total Tracked Student Reach</td>
+                <td>Conference travel recipients within the {{ MISSION_STATS.studentsReachedTotal }} Total Tracked Student Reach</td>
               </tr>
               <tr>
                 <td class="allocation-category">Campus Outreach</td>
-                <td>272 Students</td>
+                <td>{{ MISSION_STATS.campusOutreachAttendees }} Students</td>
                 <td>94.4%</td>
-                <td>Largest share of the 288 Total Tracked Student Reach, via on-campus engagement events</td>
+                <td>Largest share of the {{ MISSION_STATS.studentsReachedTotal }} Total Tracked Student Reach, via on-campus engagement events</td>
               </tr>
             </tbody>
           </table>
