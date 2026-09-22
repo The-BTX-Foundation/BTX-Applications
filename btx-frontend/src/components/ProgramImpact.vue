@@ -1,73 +1,29 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { DONOR_IMPACT_METRICS, useDonorImpactStore } from '@/stores/donorImpact'
+import { DONOR_IMPACT_METRICS, cycleHasAnyData, metricHasRealValue, useDonorImpactStore } from '@/stores/donorImpact'
 
 const authStore = useAuthStore()
 const donorImpactStore = useDonorImpactStore()
 
-// The subset of metrics that are real, selected/inserted-by-the-store
-// columns, as opposed to client-derived computed ones.
-const editableMetrics = DONOR_IMPACT_METRICS.filter((m) => m.editable)
-
-// Category tabs shown across the top of the detail panel, in display
-// order. All six are real, DONOR_IMPACT_METRICS-backed categories.
+// Every donor_impact category is backed by real columns (see donorImpact.js's
+// own "every category is now backed by real columns" note), so all six get a
+// working tab here -- none are the disabled/no-data placeholder this row
+// would otherwise need.
 const CATEGORY_TABS = ['Reach', 'Investment', 'Engagement', 'Outcomes', 'Equity', 'Stewardship']
 const activeCategory = ref('Reach')
 
-// The active category's editable metrics -- covers all six tabs, not just
-// Reach/Investment, since every category is now backed by real columns.
-const activeCategoryMetrics = computed(() =>
-  editableMetrics.filter((m) => m.category === activeCategory.value),
-)
-
-// Chart-tab metrics for the active category -- the full DONOR_IMPACT_METRICS
-// list (not just editable ones), so computed metrics like Average
-// Scholarship Size still get their own tab within Investment.
-const chartMetricsForCategory = computed(() =>
-  DONOR_IMPACT_METRICS.filter((m) => m.category === activeCategory.value),
-)
-
-// Reads a metric's value off a cycle row — computed metrics derive their
-// value from other columns instead of reading a column directly. Falls
-// back to 0 for editable metrics: cycles created before a column existed
-// hold real `null` there (never backfilled), and null.toLocaleString()
-// throws in formatBarValue — coalescing here is the one place that needs
-// to know about that, instead of every caller guarding separately.
-function metricValue(cycle, metric) {
-  return metric.computed ? metric.computed(cycle) : (cycle[metric.key] ?? 0)
-}
-
-// Includes reviewer alongside admin/board so viewing matches the donor_impact
-// RLS SELECT policy (admin, board, and reviewer can all view). This page has
-// no write actions of its own anymore -- all data here is read-only display.
+// Same page-access gate as every other Program page: admin, board, and
+// reviewer can view; matches donor_impact's RLS SELECT policy exactly.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
-
-const selectedMetricId = ref(null)
-// Matches activeCategory's default ('Reach') so the chart and the visible
-// category agree on first load.
-const chartMetricKey = ref('students_reached')
-
-// Chart tabs are scoped to the active category. When switching categories,
-// reset the chart selection to that category's first metric if the
-// current one doesn't belong there anymore -- otherwise you could land on
-// a category whose chart-tab row doesn't even include the previously
-// selected metric.
-watch(activeCategory, (category) => {
-  const categoryMetrics = DONOR_IMPACT_METRICS.filter((m) => m.category === category)
-  if (!categoryMetrics.some((m) => m.key === chartMetricKey.value)) {
-    chartMetricKey.value = categoryMetrics[0]?.key ?? null
-  }
-})
 
 onMounted(() => {
   authStore.init()
 })
 
 // Refetch whenever the signed-in user changes (sign in, sign out, switch
-// accounts). Skips the fetch entirely while signed out or for a role that
-// can't view this page, since RLS would just reject it with a
-// permission-denied error before the user ever gets a chance to act.
+// accounts). Skipped entirely while signed out or for a role RLS wouldn't
+// return rows to anyway.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
@@ -78,567 +34,744 @@ watch(
   { immediate: true },
 )
 
+const selectedMetricId = ref(null)
+
+const selectedCycle = computed(() =>
+  donorImpactStore.cycles.find((cycle) => cycle.metric_id === selectedMetricId.value),
+)
+
+// The most recent published year -- that card gets the "Live" badge, every
+// other published card gets "Archived". Unpublished (draft) cycles get no
+// badge at all, matching donorImpactStore's own draft/published distinction.
+const liveYear = computed(() => {
+  const publishedYears = donorImpactStore.cycles.filter((c) => c.published).map((c) => c.cycle_year)
+  return publishedYears.length > 0 ? Math.max(...publishedYears) : null
+})
+
+function badgeFor(cycle) {
+  if (!cycle.published) return null
+  return cycle.cycle_year === liveYear.value ? { text: 'Live', variant: 'live' } : { text: 'Archived', variant: 'default' }
+}
+
 // Auto-select the most recent cycle (cycles are fetched newest-year-first)
-// once they load, if nothing is selected yet.
+// once they load, if nothing is selected yet. Also (re)validates the chart's
+// selected series against whatever this cycle set actually supports -- see
+// chartMetricsForCategory below.
 watch(
   () => donorImpactStore.cycles,
   (cycles) => {
     if (!selectedMetricId.value && cycles.length > 0) {
       selectedMetricId.value = cycles[0].metric_id
     }
+    if (!chartMetricsForCategory.value.some((m) => m.key === chartMetricKey.value)) {
+      chartMetricKey.value = chartMetricsForCategory.value[0]?.key ?? null
+    }
   },
 )
 
-const selectedCycle = computed(() =>
-  donorImpactStore.cycles.find((cycle) => cycle.metric_id === selectedMetricId.value),
-)
+// -- Reporting-cycle strip "swipe for earlier cycles" hint --
+// Same overflow-detection pattern as ProgramPlanning.vue's plan strip: only
+// shown once the strip has actually overflowed its own width.
+const cycleStripEl = ref(null)
+const cycleStripOverflows = ref(false)
 
-// The most recent published year — that card gets the "Live" badge, every
-// other published card gets "Archived".
-const liveYear = computed(() => {
-  const publishedYears = donorImpactStore.cycles.filter((c) => c.published).map((c) => c.cycle_year)
-  return publishedYears.length > 0 ? Math.max(...publishedYears) : null
+function checkCycleStripOverflow() {
+  const el = cycleStripEl.value
+  cycleStripOverflows.value = !!el && el.scrollWidth > el.clientWidth + 1
+}
+
+onMounted(() => {
+  window.addEventListener('resize', checkCycleStripOverflow)
 })
 
-// Builds a cycle card's badge text/variant. Unpublished (draft) cycles get
-// no badge at all.
-function badgeFor(cycle) {
-  if (!cycle.published) return null
-  return cycle.cycle_year === liveYear.value
-    ? { text: 'Live', variant: 'live' }
-    : { text: 'Archived', variant: 'default' }
-}
+onUnmounted(() => {
+  window.removeEventListener('resize', checkCycleStripOverflow)
+})
 
-// Published cycles, oldest first, for the bar chart's left-to-right timeline.
-const publishedCycles = computed(() =>
-  donorImpactStore.cycles.filter((c) => c.published).sort((a, b) => a.cycle_year - b.cycle_year),
+watch(
+  () => donorImpactStore.cycles,
+  () => nextTick(checkCycleStripOverflow),
 )
 
-// The metric definition backing the chart's currently selected tab.
+// -- Category metric tiles (single selected cycle) --
+// Every metric in the active category -- all six categories are real, so
+// nothing is filtered out here the way the old page's chart tabs were.
+const activeCategoryMetrics = computed(() => DONOR_IMPACT_METRICS.filter((m) => m.category === activeCategory.value))
+
+// Reads a metric's value off a cycle for tile display -- computed metrics
+// derive their value from other columns instead of reading a column
+// directly. Falls back to 0 so a null legacy column (see
+// metricHasRealValue's own comment) never throws in toLocaleString below.
+function metricValue(cycle, metric) {
+  return metric.computed ? metric.computed(cycle) : (cycle[metric.key] ?? 0)
+}
+
+function formatMetricValue(cycle, metric) {
+  const value = metricValue(cycle, metric)
+  if (metric.format === 'currency') return `$${value.toLocaleString()}`
+  if (metric.format === 'percent') return `${value.toLocaleString()}%`
+  return value.toLocaleString()
+}
+
+function formatCurrency(value) {
+  return `$${value.toLocaleString()}`
+}
+
+// Percentage of `whole`, zero-guarded for a draft cycle whose funding
+// columns both start at 0 (see donorImpactStore.createCycle).
+function pct(part, whole) {
+  return whole > 0 ? ((part / whole) * 100).toFixed(1) : '0.0'
+}
+
+// -- Funding portfolio ("Program allocation, {year}") --
+// donor_impact has no column for "Direct academic aid" or "Conference
+// travel" specifically -- see the Step 1 report. The real per-cycle split
+// is scholarship_funds_awarded vs. other_program_funds_awarded, so this
+// card uses those two real columns and their own labels instead of the
+// cumulative page's travel-specific naming. There's no per-cycle "Student
+// reach portfolio" equivalent -- campus outreach has no column at all, so a
+// 2-of-3 segment breakdown would misrepresent that cycle's reach
+// composition (see the Step 1/2 report) and is intentionally omitted.
+const scholarshipFunds = computed(() => selectedCycle.value?.scholarship_funds_awarded ?? 0)
+const otherProgramFunds = computed(() => selectedCycle.value?.other_program_funds_awarded ?? 0)
+const totalPortfolioFunds = computed(() => scholarshipFunds.value + otherProgramFunds.value)
+const scholarshipFundsPct = computed(() => pct(scholarshipFunds.value, totalPortfolioFunds.value))
+const otherProgramFundsPct = computed(() => pct(otherProgramFunds.value, totalPortfolioFunds.value))
+
+// -- By-year chart --
+const chartMetricKey = ref('students_reached')
+
+// Every cycle that has a genuine value for at least one metric, oldest
+// first -- keeps a cycle whose columns are all still unset off the x-axis
+// entirely rather than drawing a phantom column of nothing-but-stubs.
+// Matches Impact to Date's own yearly-reach chart in including drafts, not
+// just published cycles -- a user selecting a draft cycle above should see
+// it reflected in the chart too.
+const chartCycles = computed(() =>
+  [...donorImpactStore.cycles].filter(cycleHasAnyData).sort((a, b) => a.cycle_year - b.cycle_year),
+)
+
+// This category's metrics that actually have a real value across 2+
+// chart-eligible cycles -- only these earn a series pill, so switching to a
+// metric with just one year of history (or none) is never offered.
+const chartMetricsForCategory = computed(() =>
+  DONOR_IMPACT_METRICS.filter((metric) => {
+    if (metric.category !== activeCategory.value) return false
+    const realCount = chartCycles.value.filter((cycle) => metricHasRealValue(cycle, metric)).length
+    return realCount >= 2
+  }),
+)
+
+// Switching categories resets the chart to that category's first eligible
+// series if the current selection doesn't belong there -- otherwise you
+// could land on a category whose own series-picker row doesn't even
+// include the previously selected metric.
+watch(activeCategory, () => {
+  if (!chartMetricsForCategory.value.some((m) => m.key === chartMetricKey.value)) {
+    chartMetricKey.value = chartMetricsForCategory.value[0]?.key ?? null
+  }
+})
+
 const chartMetric = computed(() => DONOR_IMPACT_METRICS.find((m) => m.key === chartMetricKey.value))
 
-const maxChartValue = computed(() =>
-  Math.max(...publishedCycles.value.map((c) => metricValue(c, chartMetric.value)), 1),
-)
+const chartHeading = computed(() => (chartMetric.value ? `${chartMetric.value.label} by Year` : 'By Year'))
 
-// Bar height as a percentage of the highest published value for the
-// selected metric.
-function barHeight(cycle) {
-  return `${(metricValue(cycle, chartMetric.value) / maxChartValue.value) * 100}%`
+// A cycle's value for the chart's selected metric -- null (rendered as a
+// 0-height "no data" stub, same convention as Impact to Date's own
+// yearly-reach chart) when this cycle predates the metric's column, as
+// opposed to a genuine recorded 0.
+function chartValue(cycle, metric) {
+  if (!metric || !metricHasRealValue(cycle, metric)) return null
+  return metric.computed ? metric.computed(cycle) : cycle[metric.key]
 }
 
-// Formats a cycle's bar-top label for the selected metric — currency gets
-// a leading "$", percent gets a trailing "%", everything else is a plain
-// thousands-separated number.
+const maxChartValue = computed(() => {
+  const values = chartCycles.value.map((c) => chartValue(c, chartMetric.value)).filter((v) => v !== null)
+  return Math.max(1, ...values)
+})
+
+// Bar height in px, capped at ~100px per the Impact to Date reference. A
+// genuine 0 gets a small visible stub (2px, dimmed via .bar--zero); a
+// missing value gets nothing (0px) -- same two-case split as Impact to
+// Date's own barHeightPx/template.
+function barHeightPx(cycle) {
+  const value = chartValue(cycle, chartMetric.value)
+  if (value === null) return 0
+  if (value === 0) return 2
+  return Math.round((value / maxChartValue.value) * 100)
+}
+
+function barIsZero(cycle) {
+  return chartValue(cycle, chartMetric.value) === 0
+}
+
+// Highlights the bar for whichever cycle is selected in the reporting-cycle
+// strip above, so the single-year focus of this page is visible in the
+// by-year chart too.
+function barIsCurrent(cycle) {
+  return !!selectedCycle.value && cycle.cycle_year === selectedCycle.value.cycle_year
+}
+
 function formatBarValue(cycle) {
-  const value = metricValue(cycle, chartMetric.value)
+  const value = chartValue(cycle, chartMetric.value)
+  if (value === null) return '—'
   if (chartMetric.value.format === 'currency') return `$${value.toLocaleString()}`
   if (chartMetric.value.format === 'percent') return `${value.toLocaleString()}%`
   return value.toLocaleString()
 }
 
+// Screen-reader summary for the whole chart, read once via role="img"
+// rather than requiring per-bar navigation.
+const chartAriaLabel = computed(() => {
+  const parts = chartCycles.value.map((c) => {
+    const value = chartValue(c, chartMetric.value)
+    return `${c.cycle_year}: ${value === null ? 'no data' : value}`
+  })
+  return `${chartMetric.value?.label ?? 'Metric'} by year: ${parts.join(', ')}`
+})
 </script>
 
 <template>
   <h2 v-if="!authStore.session">Sign in</h2>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
 
-  <template v-else>
-    <p v-if="donorImpactStore.loading">Loading cycles…</p>
-    <p v-else-if="donorImpactStore.error" class="error">{{ donorImpactStore.error }}</p>
+  <section v-else class="program-impact">
+    <h1 class="page-title" data-page-heading>Program Impact</h1>
+    <p class="subline">
+      Reach and outcomes for a single reporting year — pick a cycle below to see how that year performed on its own.
+    </p>
 
-    <div v-else class="program-impact">
-      <div class="cycle-column">
-        <div class="cycle-column-header">
-          <h2>Reporting Cycles</h2>
-        </div>
+    <p v-if="donorImpactStore.error" class="page-error">Couldn't load reporting cycles.</p>
 
-        <ul class="cycle-list">
-          <li v-for="cycle in donorImpactStore.cycles" :key="cycle.metric_id">
-            <button
-              type="button"
-              class="cycle-card"
-              :class="{ 'cycle-card--active': cycle.metric_id === selectedMetricId }"
-              @click="selectedMetricId = cycle.metric_id"
+    <template v-else>
+      <h2 class="section-heading heading-cycles">Reporting cycles</h2>
+
+      <div v-if="donorImpactStore.loading" class="skeleton skeleton--strip"></div>
+      <p v-else-if="donorImpactStore.cycles.length === 0" class="empty">No reporting cycles yet.</p>
+      <template v-else>
+        <div ref="cycleStripEl" class="cycle-strip">
+          <button
+            v-for="cycle in donorImpactStore.cycles"
+            :key="cycle.metric_id"
+            type="button"
+            class="cycle-card"
+            :class="{ 'cycle-card--selected': cycle.metric_id === selectedMetricId }"
+            :aria-pressed="cycle.metric_id === selectedMetricId"
+            @click="selectedMetricId = cycle.metric_id"
+          >
+            <span class="cycle-card-title">{{ cycle.cycle_year }}</span>
+            <span
+              v-if="badgeFor(cycle)"
+              class="pill"
+              :class="badgeFor(cycle).variant === 'live' ? 'pill--success' : 'pill--neutral'"
             >
-              <span class="cycle-year">{{ cycle.cycle_year }}</span>
-              <span
-                v-if="badgeFor(cycle)"
-                class="badge"
-                :class="`badge--${badgeFor(cycle).variant}`"
+              <span class="pill-dot"></span>{{ badgeFor(cycle).text }}
+            </span>
+          </button>
+        </div>
+        <p v-if="cycleStripOverflows" class="swipe-hint">Swipe for earlier cycles →</p>
+      </template>
+
+      <template v-if="selectedCycle">
+        <h2 class="section-heading heading-allocation">Program allocation, {{ selectedCycle.cycle_year }}</h2>
+
+        <p class="portfolio-label">FUNDING PORTFOLIO</p>
+        <div class="card allocation-card">
+          <div class="allocation-row">
+            <div class="row-top">
+              <span class="row-label">Scholarship funds awarded</span>
+              <span class="row-value"
+                ><span class="row-value-serif">{{ formatCurrency(scholarshipFunds) }}</span
+                ><span class="row-value-pct"> · {{ scholarshipFundsPct }}%</span></span
               >
-                {{ badgeFor(cycle).text }}
-              </span>
-            </button>
-          </li>
-        </ul>
-      </div>
+            </div>
+            <div class="bar-track"><div class="bar-fill bar-fill--gold" :style="{ width: `${scholarshipFundsPct}%` }"></div></div>
+          </div>
+          <div class="allocation-row allocation-row--last">
+            <div class="row-top">
+              <span class="row-label">Other program funds awarded</span>
+              <span class="row-value"
+                ><span class="row-value-serif">{{ formatCurrency(otherProgramFunds) }}</span
+                ><span class="row-value-pct"> · {{ otherProgramFundsPct }}%</span></span
+              >
+            </div>
+            <div class="bar-track"><div class="bar-fill bar-fill--gold" :style="{ width: `${otherProgramFundsPct}%` }"></div></div>
+          </div>
+        </div>
 
-      <div v-if="selectedCycle" class="detail-column">
-        <h2 data-page-heading>{{ selectedCycle.cycle_year }} Metrics</h2>
+        <h2 class="section-heading heading-metrics">{{ selectedCycle.cycle_year }} metrics</h2>
 
-        <div class="metrics-form">
-          <div class="tabs">
+        <div class="category-tabs">
+          <button
+            v-for="category in CATEGORY_TABS"
+            :key="category"
+            type="button"
+            class="category-tab"
+            :class="{ 'category-tab--active': activeCategory === category }"
+            @click="activeCategory = category"
+          >
+            {{ category }}
+          </button>
+        </div>
+
+        <div class="tiles">
+          <div v-for="metric in activeCategoryMetrics" :key="metric.key" class="tile">
+            <p class="tile-value">{{ formatMetricValue(selectedCycle, metric) }}</p>
+            <p class="tile-label">{{ metric.label }}</p>
+          </div>
+        </div>
+
+        <h2 class="section-heading heading-chart">{{ chartHeading }}</h2>
+        <div class="card chart-card">
+          <div v-if="chartMetricsForCategory.length > 0" class="series-picker">
             <button
-              v-for="category in CATEGORY_TABS"
-              :key="category"
+              v-for="metric in chartMetricsForCategory"
+              :key="metric.key"
               type="button"
-              class="tab"
-              :class="{ 'tab--active': activeCategory === category }"
-              @click="activeCategory = category"
+              class="series-pill"
+              :class="{ 'series-pill--active': metric.key === chartMetricKey }"
+              @click="chartMetricKey = metric.key"
             >
-              {{ category }}
+              {{ metric.label }}
             </button>
           </div>
 
-          <div class="category-panel">
-            <div class="metrics-group-fields">
-              <div v-for="metric in activeCategoryMetrics" :key="metric.key" class="metric-field">
-                <span class="metric-label">{{ metric.label }}</span>
-                <span class="value-with-suffix">
-                  <span class="metric-value">{{ metricValue(selectedCycle, metric) }}</span>
-                  <span v-if="metric.format === 'percent'" class="value-suffix">%</span>
-                </span>
-              </div>
-            </div>
-
-            <!-- Applicant Pool Comparison is inherently a comparison, not a
-                 single metric -- reuses the 2 Equity fields above in a
-                 side-by-side layout rather than adding a fake 3rd field. -->
-            <div v-if="activeCategory === 'Equity'" class="applicant-pool-comparison">
-              <h4 class="metrics-group-header">Applicant Pool Comparison</h4>
-              <div class="comparison-row">
-                <div class="comparison-item">
-                  <span class="comparison-label">% First-Generation Students</span>
-                  <span class="comparison-value">{{ selectedCycle.pct_first_generation ?? 0 }}%</span>
-                </div>
-                <div class="comparison-item">
-                  <span class="comparison-label">% Underrepresented/Low-Income</span>
-                  <span class="comparison-value">{{ selectedCycle.pct_underrepresented_low_income ?? 0 }}%</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="chart">
-              <h3>{{ chartMetric?.label }} by Year</h3>
-
-              <div class="chart-tabs">
-                <button
-                  v-for="metric in chartMetricsForCategory"
-                  :key="metric.key"
-                  type="button"
-                  class="chart-tab"
-                  :class="{ 'chart-tab--active': metric.key === chartMetricKey }"
-                  @click="chartMetricKey = metric.key"
-                >
-                  {{ metric.label }}
-                </button>
-              </div>
-
-              <p v-if="publishedCycles.length === 0" class="chart-empty">
-                No published cycles yet.
-              </p>
-              <div v-else class="bars">
-                <div v-for="cycle in publishedCycles" :key="cycle.metric_id" class="bar-col">
-                  <span class="bar-value">{{ formatBarValue(cycle) }}</span>
-                  <div class="bar" :style="{ height: barHeight(cycle) }"></div>
-                  <span class="bar-label">{{ cycle.cycle_year }}</span>
-                </div>
-              </div>
+          <p v-if="!chartMetric" class="chart-empty">Not enough year-over-year data yet for this category.</p>
+          <div v-else class="chart" role="img" :aria-label="chartAriaLabel">
+            <div v-for="cycle in chartCycles" :key="cycle.metric_id" class="bar-col">
+              <span class="bar-value-label">{{ formatBarValue(cycle) }}</span>
+              <div
+                class="bar"
+                :class="{ 'bar--zero': barIsZero(cycle), 'bar--current': barIsCurrent(cycle) }"
+                :style="{ height: `${barHeightPx(cycle)}px` }"
+              ></div>
+              <span class="bar-year-label">{{ cycle.cycle_year }}</span>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </template>
+      </template>
+    </template>
+
+    <p class="footer">BTX Ops Hub · Program Impact</p>
+  </section>
 </template>
 
 <style scoped>
 .program-impact {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
-.cycle-column {
-  flex-shrink: 0;
-  width: 220px;
-}
-
-.cycle-column-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.cycle-column-header h2 {
+.page-title {
   margin: 0;
-  font-size: 18px;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-header-strong);
 }
 
-.cycle-list {
-  list-style: none;
-  padding: 0;
+.subline {
+  margin: 8px 0 0;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-header-muted);
+}
+
+.section-heading {
   margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+}
+
+.heading-cycles {
+  margin-top: 24px;
+}
+
+.heading-allocation,
+.heading-metrics,
+.heading-chart {
+  margin-top: 20px;
+}
+
+.empty {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--color-header-muted);
+}
+
+.page-error {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
+}
+
+/* Hidden-scrollbar horizontal scroller with scroll-snap, plus a right-edge
+   fade hinting there's more to scroll to -- same pattern as
+   ProgramPlanning.vue's plan strip, reused here for reporting cycles
+   instead of plan years. */
+.cycle-strip {
+  margin-top: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(to right, black 92%, transparent 100%);
+}
+
+.cycle-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .cycle-card {
-  width: 100%;
+  flex: 0 0 48%;
+  scroll-snap-align: start;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 11px 12px;
   cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
-.cycle-card--active {
-  border: 1px solid var(--color-accent);
+.cycle-card--selected {
+  border: 1.5px solid var(--color-accent);
 }
 
-.cycle-year {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+.cycle-card-title {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
 }
 
-.badge {
+.swipe-hint {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--color-header-muted);
+}
+
+.pill {
   flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
   border-radius: 999px;
   white-space: nowrap;
 }
 
-.badge--live {
+.pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.pill--success {
   background: var(--color-success-badge-bg);
   color: var(--color-success-badge-text);
 }
 
-.badge--default {
+.pill--neutral {
   background: var(--color-neutral-badge-bg);
   color: var(--color-neutral-badge-text);
 }
 
-.detail-column {
-  flex: 1;
-  min-width: 0;
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.detail-column h2 {
-  margin: 0 0 16px;
-  font-size: 18px;
+.portfolio-label {
+  margin: 12px 0 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-header-muted);
 }
 
-.metrics-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.allocation-card {
+  margin-top: 8px;
+  padding: 0 16px;
 }
 
-/* Category tab bar — same underline pattern as TasksAlertsList.vue's
-   Active/Pending/Completed tabs, reused here rather than inventing a new
-   tab style. */
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.allocation-row {
+  padding: 12px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
-.tab {
+.allocation-row--last {
+  border-bottom: none;
+}
+
+.row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.row-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-header-strong);
+  white-space: nowrap;
+}
+
+.row-value {
+  white-space: nowrap;
+}
+
+.row-value-serif {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
+}
+
+.row-value-pct {
+  font-size: 11px;
+  color: var(--color-header-muted);
+}
+
+.bar-track {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-track);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  min-width: 3px;
+  border-radius: 999px;
+}
+
+.bar-fill--gold {
+  background: var(--color-gold-strong);
+}
+
+/* Category pill row -- "gold underline" per spec, matching the old page's
+   .tab/.tab--active treatment rather than a filled-pill style, since every
+   category is a real, equally-clickable tab here (none are disabled). */
+.category-tabs {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.category-tab {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 8px 4px;
-  margin-right: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  padding: 8px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-header-muted);
   cursor: pointer;
+  font-family: inherit;
 }
 
-.tab--active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-accent);
+.category-tab--active {
+  color: var(--color-header-strong);
+  border-bottom-color: var(--color-gold-strong);
 }
 
-.category-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.metrics-group-header {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-secondary);
-}
-
-.metrics-group-fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-/* Shared dense boxed-widget spec (matching ProgramPlanning.vue's .stat,
-   FundraisingHealth.vue's .metric-field, and BudgetTracking.vue's
-   .metric-field/.computed-display) -- same border/background/radius/
-   padding/gap/font-size standard app-wide. */
-.metric-field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.metric-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-label);
-}
-
-.metric-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.value-with-suffix {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.value-suffix {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.applicant-pool-comparison {
-  padding-top: 4px;
-}
-
-.comparison-row {
-  display: flex;
-  gap: 10px;
-}
-
-/* Same boxed treatment as .metric-field above, but keeping its existing
-   gold/larger value styling as a deliberate highlight tier -- not shrunk
-   to the plain metric-field's 15px/navy. */
-.comparison-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.comparison-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-label);
-}
-
-.comparison-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--color-accent);
-}
-
-/* Card wrapper reusing .cycle-card's existing border treatment, so the
-   chart reads as a grouped panel consistent with the cycle-list cards
-   already on this page. */
-.chart {
-  border: 0.5px solid var(--color-border);
-  border-radius: 12px;
-  padding: 20px;
-  background: var(--color-surface);
-}
-
-.chart h3 {
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-.chart-tabs {
-  display: flex;
-  flex-wrap: wrap;
+.tiles {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 16px;
 }
 
-.chart-tab {
-  font-size: 13px;
-  font-weight: 500;
+.tile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.tile-value {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-gold-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
+  overflow-wrap: anywhere;
+}
+
+.tile-label {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-header-muted);
+}
+
+.chart-card {
+  margin-top: 8px;
+}
+
+/* Horizontal-scroll series picker -- same hidden-scrollbar pattern as
+   .cycle-strip above, reused here since a category can offer more series
+   pills than a narrow viewport can show at once. */
+.series-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.series-picker::-webkit-scrollbar {
+  display: none;
+}
+
+.series-pill {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
   padding: 6px 14px;
   border-radius: 999px;
   border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
+  background: var(--color-track);
+  color: var(--color-header-muted);
   cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
 }
 
-.chart-tab--active {
+.series-pill--active {
   background: var(--color-amber-badge-bg);
   color: var(--color-amber-badge-text);
-  font-weight: 600;
 }
 
 .chart-empty {
   margin: 0;
-  color: var(--color-text-secondary);
+  padding: 40px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-header-muted);
 }
 
-.bars {
+/* Its own horizontal scroll (same hidden-scrollbar convention as above)
+   rather than shrinking bar width to fit -- keeps every bar a consistent,
+   legible size regardless of how many reporting cycles exist. */
+.chart {
   display: flex;
   align-items: flex-end;
-  gap: 20px;
-  height: 180px;
+  gap: 14px;
+  height: 150px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chart::-webkit-scrollbar {
+  display: none;
 }
 
 .bar-col {
+  flex: 0 0 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   height: 100%;
-  width: 48px;
 }
 
-.bar-value {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin-bottom: 4px;
+.bar-value-label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  color: var(--color-header-muted);
+  white-space: nowrap;
 }
 
 .bar {
-  width: 100%;
-  background: var(--color-accent);
+  width: 32px;
+  background: var(--color-gold-strong);
   border-radius: 4px 4px 0 0;
 }
 
-.bar-label {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--color-text-primary);
+.bar--zero {
+  opacity: 0.4;
 }
 
-.error {
-  color: var(--color-danger-text);
+/* Highlights whichever cycle is selected in the reporting-cycle strip, so
+   the chart visually agrees with the rest of this single-year-focused page
+   -- overrides .bar-fill--gold's default color, not .bar--zero's opacity. */
+.bar--current {
+  background: var(--color-header-strong);
+}
+
+.bar-year-label {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--color-header-muted);
+}
+
+/* Neutral pulsing placeholder -- same footprint as the real strip so
+   nothing visibly resizes once data arrives. Same animation as Impact to
+   Date's/Program Planning's own skeletons. */
+.skeleton {
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--strip {
+  margin-top: 10px;
+  height: 64px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.footer {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-header-muted);
 }
 
 .access-denied {
   margin: 0;
   color: var(--color-danger-text);
   font-weight: 600;
-}
-
-/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint, so the
-   whole app switches to its mobile layout at one consistent width), the
-   cycle list stacks above the detail column instead of beside it. The list
-   itself becomes a horizontal scroll row rather than a taller vertical
-   stack -- same overflow-x pattern this file's own .chart bars already use
-   for a growing set of items -- so a long cycle history doesn't push the
-   selected cycle's actual detail content further down the page. Nothing
-   above this query is touched, so desktop layout is unaffected.
-
-   scrollbar-width/-ms-overflow-style/::-webkit-scrollbar below hide the
-   native horizontal scrollbar this row's overflow-x: auto produces --
-   with 5+ cards at min-width: 200px it always overflows a phone-width
-   screen, so the unstyled browser scrollbar painted as a persistent gray
-   bar under the cards. The row is still scrollable by touch/trackpad;
-   only the visible scrollbar affordance is removed. */
-@media (max-width: 850px) {
-  .program-impact {
-    flex-direction: column;
-  }
-
-  .cycle-column {
-    width: 100%;
-  }
-
-  .cycle-list {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .cycle-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .cycle-card {
-    width: auto;
-    min-width: 200px;
-    flex-shrink: 0;
-  }
-}
-
-/* Below 850px, .bars/.bar-col shrink to fit -- sized against the real
-   measured container width, not the naive "viewport minus a bit of
-   padding" estimate that would wrongly suggest plenty of room. At an
-   actual 375px phone width, .program-impact's own box is only ~228px wide
-   (the page's 32px padding plus the panel's 32px padding already eat
-   128px off both sides, before .chart's own 20px padding is even
-   counted), leaving just ~188px for .bars itself. At the original 48px
-   bar-col width and 20px gap, 5 published cycles need 320px -- overflowing
-   that real 188px budget by well over 100px, which is what the screenshot
-   showed. 28px columns with a 6px gap total 164px for 5 bars, comfortably
-   inside the measured 188px with slack to spare (and more slack still at
-   390px, where the same container measures ~243px). Font sizes drop to
-   10px/11px to stay legible at the narrower column -- both already within
-   the app's existing minimum text sizes elsewhere (.source-label uses
-   11px). Currency-formatted bar values (e.g. "$200,000" on the Investment
-   tab) need overflow-wrap: anywhere, not just a smaller font -- a string
-   like "$200,000" has no space or hyphen for the browser to wrap at, so
-   without it the text doesn't drop to a second line at all, it overflows
-   straight into the neighboring column (verified: adjacent values
-   overlapping by several px). overflow-wrap: anywhere forces a break
-   mid-string once it no longer fits, which only ever triggers when
-   content is actually too wide for 28px -- the plain short numbers used
-   elsewhere in both charts are unaffected. */
-@media (max-width: 850px) {
-  .bars {
-    gap: 6px;
-  }
-
-  .bar-col {
-    width: 28px;
-  }
-
-  .bar-value {
-    font-size: 10px;
-    overflow-wrap: anywhere;
-  }
-
-  .bar-label {
-    font-size: 11px;
-  }
 }
 </style>
