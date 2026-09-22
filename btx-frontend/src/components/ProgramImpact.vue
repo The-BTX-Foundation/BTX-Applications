@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { DONOR_IMPACT_METRICS, cycleHasAnyData, metricHasRealValue, useDonorImpactStore } from '@/stores/donorImpact'
 
@@ -67,30 +67,6 @@ watch(
       chartMetricKey.value = chartMetricsForCategory.value[0]?.key ?? null
     }
   },
-)
-
-// -- Reporting-cycle strip "swipe for earlier cycles" hint --
-// Same overflow-detection pattern as ProgramPlanning.vue's plan strip: only
-// shown once the strip has actually overflowed its own width.
-const cycleStripEl = ref(null)
-const cycleStripOverflows = ref(false)
-
-function checkCycleStripOverflow() {
-  const el = cycleStripEl.value
-  cycleStripOverflows.value = !!el && el.scrollWidth > el.clientWidth + 1
-}
-
-onMounted(() => {
-  window.addEventListener('resize', checkCycleStripOverflow)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkCycleStripOverflow)
-})
-
-watch(
-  () => donorImpactStore.cycles,
-  () => nextTick(checkCycleStripOverflow),
 )
 
 // -- Category metric tiles (single selected cycle) --
@@ -250,7 +226,7 @@ const chartAriaLabel = computed(() => {
       <div v-if="donorImpactStore.loading" class="skeleton skeleton--strip"></div>
       <p v-else-if="donorImpactStore.cycles.length === 0" class="empty">No reporting cycles yet.</p>
       <template v-else>
-        <div ref="cycleStripEl" class="cycle-strip">
+        <div class="cycle-strip">
           <button
             v-for="cycle in donorImpactStore.cycles"
             :key="cycle.metric_id"
@@ -270,7 +246,6 @@ const chartAriaLabel = computed(() => {
             </span>
           </button>
         </div>
-        <p v-if="cycleStripOverflows" class="swipe-hint">Swipe for earlier cycles →</p>
       </template>
 
       <template v-if="selectedCycle">
@@ -428,23 +403,38 @@ const chartAriaLabel = computed(() => {
   color: var(--color-danger-text);
 }
 
-/* Hidden-scrollbar horizontal scroller with scroll-snap, plus a right-edge
-   fade hinting there's more to scroll to -- same pattern as
-   ProgramPlanning.vue's plan strip, reused here for reporting cycles
-   instead of plan years. */
+/* Horizontal scroller with scroll-snap -- unlike ProgramPlanning.vue's
+   identical-looking plan strip (left untouched), this one shows its own
+   scrollbar instead of a hidden-scrollbar + "swipe" text hint, so the
+   overflow affordance is visible without relying on a separate JS
+   overflow-detection watcher. Firefox: scrollbar-width/-color below.
+   WebKit/Blink: the ::-webkit-scrollbar rules that follow. Both are
+   native-drawn, so they only appear at all once the strip actually
+   overflows -- nothing to gate manually. */
 .cycle-strip {
   margin-top: 10px;
   display: flex;
   gap: 10px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  mask-image: linear-gradient(to right, black 92%, transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 .cycle-strip::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.cycle-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --color-border-strong, not --color-border -- the plain border tone is
+   too close to --color-surface/--color-page-bg in both themes to read as a
+   scrollbar thumb rather than a stray line. */
+.cycle-strip::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
 }
 
 .cycle-card {
@@ -474,12 +464,6 @@ const chartAriaLabel = computed(() => {
   color: var(--color-header-strong);
   font-variant-numeric: lining-nums;
   font-feature-settings: 'lnum' 1;
-}
-
-.swipe-hint {
-  margin: 6px 0 0;
-  font-size: 10.5px;
-  color: var(--color-header-muted);
 }
 
 .pill {
@@ -719,8 +703,19 @@ const chartAriaLabel = computed(() => {
   display: none;
 }
 
+/* flex: 1 1 0 -- not a fixed width -- so columns spread evenly across the
+   card's full width when there are few enough cycles to fit (no dead space
+   on the right). min-width is the floor: once enough cycles exist that
+   even every column at min-width would overflow the card, flexbox stops
+   shrinking columns further and .chart's own overflow-x: auto (below)
+   takes over, same fallback as before. The 850px min-width step below
+   matches the app-wide sidebar-drawer breakpoint (see HomeView.vue) --
+   there's no pre-existing font-size tuning at that breakpoint in this
+   chart to preserve, since this file had no @media rules for it before
+   this change. */
 .bar-col {
-  flex: 0 0 32px;
+  flex: 1 1 0;
+  min-width: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -735,10 +730,20 @@ const chartAriaLabel = computed(() => {
   white-space: nowrap;
 }
 
+/* Fills its column (so bars stay evenly spread with it), capped so a
+   handful of cycles spread across a wide card doesn't turn each bar into
+   an oversized slab. */
 .bar {
-  width: 32px;
+  width: 100%;
+  max-width: 64px;
   background: var(--color-gold-strong);
   border-radius: 4px 4px 0 0;
+}
+
+@media (max-width: 850px) {
+  .bar-col {
+    min-width: 28px;
+  }
 }
 
 .bar--zero {
