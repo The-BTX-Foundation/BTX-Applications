@@ -51,6 +51,8 @@ export const DONOR_IMPACT_METRICS = [
     // Guards divide-by-zero for draft cycles that start at 0 scholarships.
     computed: (cycle) =>
       cycle.scholarships_awarded > 0 ? cycle.scholarship_funds_awarded / cycle.scholarships_awarded : 0,
+    // The columns this computed value derives from — see metricHasRealValue below.
+    sourceKeys: ['scholarship_funds_awarded', 'scholarships_awarded'],
   },
   {
     key: 'cost_per_student',
@@ -64,6 +66,8 @@ export const DONOR_IMPACT_METRICS = [
       cycle.students_reached > 0
         ? (cycle.scholarship_funds_awarded + cycle.other_program_funds_awarded) / cycle.students_reached
         : 0,
+    // The columns this computed value derives from — see metricHasRealValue below.
+    sourceKeys: ['scholarship_funds_awarded', 'other_program_funds_awarded', 'students_reached'],
   },
 
   // -- Engagement --
@@ -135,6 +139,28 @@ export const DONOR_IMPACT_METRICS = [
     editable: true,
   },
 ]
+
+// True when `cycle` carries a genuine (non-null) value for `metric` — for
+// an editable metric, its own column must be non-null; for a computed
+// metric, every column listed in its sourceKeys must be non-null. Cycles
+// created via createCycle() below always zero out every editable column
+// (a real recorded 0, not a gap), but cycles created before a column
+// existed hold real `null` there and were never backfilled — this is what
+// tells those two cases apart. Used by ProgramImpact.vue to decide which
+// metrics get a by-year chart series pill and which cycles belong on the
+// chart's x-axis at all.
+export function metricHasRealValue(cycle, metric) {
+  const keys = metric.editable ? [metric.key] : (metric.sourceKeys ?? [])
+  return keys.length > 0 && keys.every((key) => cycle[key] !== null && cycle[key] !== undefined)
+}
+
+// True when `cycle` has a genuine value for at least one metric at all —
+// used to keep a cycle whose columns are ALL still unset (never synced)
+// off a by-year chart's x-axis, rather than drawing it as a phantom column
+// of nothing-but-stubs.
+export function cycleHasAnyData(cycle) {
+  return DONOR_IMPACT_METRICS.some((metric) => metricHasRealValue(cycle, metric))
+}
 
 const EDITABLE_METRIC_KEYS = DONOR_IMPACT_METRICS.filter((m) => m.editable).map((m) => m.key)
 
