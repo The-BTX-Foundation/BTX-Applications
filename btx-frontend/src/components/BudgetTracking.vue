@@ -1,25 +1,26 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useFundraisingHealthStore } from '@/stores/fundraisingHealth'
 import { useBudgetTrackingStore } from '@/stores/budgetTracking'
+import { useFundraisingHealthStore } from '@/stores/fundraisingHealth'
 import { useGrantPipelineStore } from '@/stores/grantPipeline'
-import HistoryBrowser from '@/components/HistoryBrowser.vue'
 
 const authStore = useAuthStore()
 const budgetTrackingStore = useBudgetTrackingStore()
-const grantPipelineStore = useGrantPipelineStore()
 // Cost to Raise a Dollar reads this page's own fundraising_expenses
 // against Fundraising Health's most-recently-synced revenue total (not
 // necessarily the current calendar month) -- a live cross-store read, not
 // a copy, so it updates the instant a new fundraising_health row syncs.
+// Both tables share the same admin/board/reviewer SELECT policy (see each
+// store's own file comment), so this metric can't work for one role and
+// silently fail for another.
 const fundraisingHealthStore = useFundraisingHealthStore()
+const grantPipelineStore = useGrantPipelineStore()
 
-// Matches Program Impact/Marketing's view convention. This page has no write
-// actions of its own -- everything on it, including Grant Pipeline, is
-// read-only display, so there's nothing a stricter role split would
-// actually be protecting, matching EventCalendar.vue's precedent of only
-// gating page access, not individual actions.
+// Same page-access gate as every other Program/Finance page: admin, board,
+// and reviewer can view; matches budget_tracking's RLS SELECT policy
+// exactly. This page has no write actions of its own -- everything here,
+// including Grant Pipeline, is read-only display.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
 onMounted(() => {
@@ -33,619 +34,608 @@ onMounted(() => {
   grantPipelineStore.fetchAll()
 })
 
-// -- Field definitions for the Budget & Spend tab --
-const BUDGET_FIELDS = [
-  { key: 'program_expenses', label: 'Program Expenses', format: 'currency' },
-  { key: 'overhead_expenses', label: 'Overhead Expenses', format: 'currency' },
-  { key: 'current_funds_on_hand', label: 'Current Funds on Hand', format: 'currency' },
-  { key: 'monthly_operating_expense', label: 'Monthly Operating Expense', format: 'currency' },
-  { key: 'fundraising_expenses', label: 'Fundraising Expenses', format: 'currency' },
-]
+// Both tabs are real, RLS-backed data (grant_pipeline is a genuine synced
+// table, not a placeholder) -- unlike a category with no backing source,
+// neither needs a disabled treatment.
+const TABS = ['Budget & Spend', 'Grant Pipeline']
+const activeTab = ref(TABS[0])
 
-// Tab bar: Budget & Spend's editable fields, then Grant Pipeline (moved
-// here from its old standalone section below the tabs).
-const CATEGORY_TABS = ['Budget & Spend', 'Grant Pipeline']
-const activeCategory = ref(CATEGORY_TABS[0])
-
-// Budget Variance table rows.
-const VARIANCE_ROWS = [
-  { key: 'programs', label: 'Programs' },
-  { key: 'admin_overhead', label: 'Administration & Overhead' },
-  { key: 'fundraising', label: 'Fundraising' },
-  { key: 'marketing', label: 'Marketing' },
-]
-
-// Reads a field off a budget_tracking row, defaulting a still-null column
-// to 0 for display -- same reasoning as Fundraising Health's fieldValue.
+// Reads a field off the current month's budget_tracking row, defaulting a
+// still-null column to 0 for display -- same convention as every other
+// store-backed page in this app.
 function fieldValue(row, key) {
   return row?.[key] ?? 0
 }
 
-// Today's month label, used only for the main view's empty state when no
-// row has synced for the current month yet.
-const today = new Date()
-const todayLabel = today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+const currentMonthRow = computed(() => budgetTrackingStore.currentMonthRow)
 
+// -- Hero: burn rate / runway --
+// Identical formula (same two columns, same >0 guard) to Home's own
+// useHomeSummary.js burnRateMonths -- reused here rather than
+// independently re-derived, so the two pages can never silently disagree
+// about runway.
+const burnRateMonths = computed(() => {
+  const funds = fieldValue(currentMonthRow.value, 'current_funds_on_hand')
+  const monthly = fieldValue(currentMonthRow.value, 'monthly_operating_expense')
+  return monthly > 0 ? funds / monthly : 0
+})
+// Same source column as the "Current Funds on Hand" tile below -- not a
+// separate cash figure, see the Step 1 report.
+const cashOnHand = computed(() => fieldValue(currentMonthRow.value, 'current_funds_on_hand'))
+const avgMonthlySpend = computed(() => fieldValue(currentMonthRow.value, 'monthly_operating_expense'))
+
+function formatCurrency(value) {
+  return `$${value.toLocaleString()}`
+}
+
+// -- "This month" tiles --
+// The four raw expense fields (plain dark values) plus the two highlighted
+// figures (gold serif) -- program_expense_ratio has no column of its own,
+// see programExpenseRatio below.
+const TILES = [
+  { key: 'program_expenses', label: 'Program Expenses', format: 'currency', gold: false },
+  { key: 'overhead_expenses', label: 'Overhead Expenses', format: 'currency', gold: false },
+  { key: 'fundraising_expenses', label: 'Fundraising Expenses', format: 'currency', gold: false },
+  { key: 'monthly_operating_expense', label: 'Monthly Operating Expense', format: 'currency', gold: false },
+  { key: 'current_funds_on_hand', label: 'Current Funds on Hand', format: 'currency', gold: true },
+  { key: 'program_expense_ratio', label: 'Program Expense Ratio', format: 'percent', gold: true },
+]
+
+// program_expenses / (program_expenses + overhead_expenses) -- the same
+// formula the pre-redesign BudgetTracking.vue already used, reused
+// verbatim rather than re-derived, since it isn't its own stored column.
 const programExpenseRatio = computed(() => {
-  const row = budgetTrackingStore.currentMonthRow
-  const programs = fieldValue(row, 'program_expenses')
-  const overhead = fieldValue(row, 'overhead_expenses')
+  const programs = fieldValue(currentMonthRow.value, 'program_expenses')
+  const overhead = fieldValue(currentMonthRow.value, 'overhead_expenses')
   const total = programs + overhead
   return total > 0 ? (programs / total) * 100 : 0
 })
 
-// Reads mostRecentTotalRevenue from the separate Fundraising Health store
-// (a Pinia singleton), not local state -- this is what makes it update
-// live when a new fundraising_health row syncs, without a reload. Uses
-// the most-recently-synced row rather than requiring an exact
-// current-month match: this is a supporting ratio, not the main
-// Fundraising Health view, so it should read the best real data available
-// instead of showing 0 just because the current month hasn't synced yet.
+// program_expense_ratio is the one tile with no real column to read --
+// every other tile is a direct field lookup.
+function tileValue(tile) {
+  if (tile.key === 'program_expense_ratio') return programExpenseRatio.value
+  return fieldValue(currentMonthRow.value, tile.key)
+}
+
+function formatTileValue(tile) {
+  const value = tileValue(tile)
+  if (tile.format === 'currency') return formatCurrency(value)
+  if (tile.format === 'percent') return `${value.toFixed(1)}%`
+  return value.toLocaleString()
+}
+
+// -- Efficiency: cost to raise a dollar --
+// Uses the most-recently-synced fundraising_health row rather than
+// requiring an exact current-month match: this is a supporting ratio, not
+// the main Fundraising Health view, so it should read the best real data
+// available instead of showing 0 just because the current month hasn't
+// synced yet.
 const costToRaiseADollar = computed(() => {
   const revenue = fundraisingHealthStore.mostRecentTotalRevenue
-  const expenses = fieldValue(budgetTrackingStore.currentMonthRow, 'fundraising_expenses')
+  const expenses = fieldValue(currentMonthRow.value, 'fundraising_expenses')
   return revenue > 0 ? expenses / revenue : 0
 })
+// Derived from the same computed above, not re-divided independently, so
+// the dollar figure and its cents subtext can never drift apart.
+const costToRaiseADollarCents = computed(() => Math.round(costToRaiseADollar.value * 100))
 
-// The one thing that gets its own top-of-page callout instead of living
-// inside a tab. Its two inputs (current_funds_on_hand,
-// monthly_operating_expense) are still just normal Budget & Spend fields --
-// this is a read-only computed display over the same row, not a separate
-// data source.
-const burnRateMonths = computed(() => {
-  const row = budgetTrackingStore.currentMonthRow
-  const funds = fieldValue(row, 'current_funds_on_hand')
-  const monthly = fieldValue(row, 'monthly_operating_expense')
-  return monthly > 0 ? funds / monthly : 0
-})
+// -- Budget variance --
+// overhead_admin (not admin_overhead) -- the pre-redesign page used the
+// wrong prefix here, silently reading undefined admin_overhead_budgeted/
+// _actual columns (falling back to 0 via fieldValue) instead of the real
+// overhead_admin_budgeted/_actual columns confirmed in
+// sync-budget-tracking/index.ts. Fixed here -- see the Step 1 report.
+const VARIANCE_ROWS = [
+  { key: 'programs', label: 'Programs' },
+  { key: 'overhead_admin', label: 'Administration & Overhead' },
+  { key: 'fundraising', label: 'Fundraising' },
+  { key: 'marketing', label: 'Marketing' },
+]
 
-// $ variance for a row. Positive means over budget.
-function varianceDollar(row, variance) {
-  return fieldValue(row, `${variance.key}_actual`) - fieldValue(row, `${variance.key}_budgeted`)
+function budgetedFor(row) {
+  return fieldValue(currentMonthRow.value, `${row.key}_budgeted`)
+}
+function actualFor(row) {
+  return fieldValue(currentMonthRow.value, `${row.key}_actual`)
 }
 
-// % variance for a row, or null when budgeted is 0 -- avoids displaying an
-// Infinity/NaN result for a row that hasn't been budgeted yet.
-function variancePercent(row, variance) {
-  const budgeted = fieldValue(row, `${variance.key}_budgeted`)
-  return budgeted !== 0 ? (varianceDollar(row, variance) / budgeted) * 100 : null
+// $ variance for a row -- positive means over budget, same sign
+// convention as useHomeSummary.js's own financeVariance/financeOverBudget.
+function varianceDollar(row) {
+  return actualFor(row) - budgetedFor(row)
 }
 
-// Formats a variance $ amount with the sign before the "$", not after --
-// Number.toLocaleString() puts a minus sign before the digits, so naively
-// writing `$${value.toLocaleString()}` would render a negative value as
-// "$-1,000" instead of "-$1,000". Exactly 0 gets no sign at all rather
-// than a misleading "+$0" implying an (non-existent) overage.
+// % variance, or null when budgeted is 0 -- avoids an Infinity/NaN result
+// for a category that hasn't been budgeted yet.
+function variancePercent(row) {
+  const budgeted = budgetedFor(row)
+  return budgeted !== 0 ? (varianceDollar(row) / budgeted) * 100 : null
+}
+
+// Sign-before-"$" formatting -- Number.toLocaleString() puts the minus
+// sign before the digits, so naively writing `$${value.toLocaleString()}`
+// would render a negative value as "$-1,000" instead of "-$1,000". Exactly
+// 0 gets no sign at all rather than a misleading "+$0" implying a
+// (non-existent) overage.
 function formatVarianceDollar(value) {
   if (value > 0) return `+$${value.toLocaleString()}`
   if (value < 0) return `-$${Math.abs(value).toLocaleString()}`
   return '$0'
 }
 
-// Formats a variance % — null (unbudgeted row) as an em dash, otherwise
-// signed to one decimal place, with no "+" on an exact 0% match.
 function formatVariancePercent(value) {
-  if (value === null) return '—'
   if (value > 0) return `+${value.toFixed(1)}%`
-  if (value < 0) return `${value.toFixed(1)}%`
-  return '0.0%'
+  return `${value.toFixed(1)}%`
 }
 
-// Toggles the shared HistoryBrowser (see components/HistoryBrowser.vue).
-// Its drill-down state lives inside that component and resets for free on
-// every toggle, since v-if/v-else below unmounts/remounts it each time.
-const showHistory = ref(false)
+// Pill tone for a variance row -- neutral "On budget" (no dollar/percent
+// breakdown) when budgeted is exactly 0, since a real vs. $0 budget isn't
+// a meaningful over/under signal. Otherwise danger when over budget,
+// success when at or under.
+function varianceTone(row) {
+  if (budgetedFor(row) === 0) return 'neutral'
+  return varianceDollar(row) > 0 ? 'danger' : 'success'
+}
+
+function variancePillText(row) {
+  if (budgetedFor(row) === 0) return 'On budget'
+  return `${formatVarianceDollar(varianceDollar(row))} · ${formatVariancePercent(variancePercent(row))}`
+}
+
+// Actual bar's width as a % of the budgeted bar's full width -- capped at
+// 100 so an over-budget category never visually overflows the card. A $0
+// budget can't be divided into, so a real actual spend against it reads as
+// fully "over" (100%); no spend against a $0 budget reads as empty.
+function actualBarPct(row) {
+  const budgeted = budgetedFor(row)
+  if (budgeted > 0) return Math.min(100, (actualFor(row) / budgeted) * 100)
+  return actualFor(row) > 0 ? 100 : 0
+}
+
+// -- Grant Pipeline --
+// Badge tone per the table's own grant_pipeline_status_check values
+// (Submitted, Pending, Awarded, Declined) -- reuses the same
+// success/amber/danger/neutral tokens as every other badge in this app.
+function grantStatusTone(status) {
+  if (status === 'Awarded') return 'success'
+  if (status === 'Declined') return 'danger'
+  if (status === 'Pending') return 'amber'
+  return 'neutral'
+}
 </script>
 
 <template>
   <h2 v-if="!authStore.session">Sign in</h2>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
 
-  <template v-else>
-    <div class="page-header">
-      <h2 data-page-heading>Budget Tracking</h2>
-      <button type="button" class="btn btn--outline" @click="showHistory = !showHistory">
-        {{ showHistory ? '← Back to Today' : 'View Budget History' }}
-      </button>
-    </div>
+  <section v-else class="budget-tracking">
+    <h1 class="page-title" data-page-heading>Budget Tracking</h1>
+    <p class="subline">Spend against budget, runway, and grant pipeline for the current fiscal year.</p>
 
-    <p v-if="budgetTrackingStore.loading">Loading…</p>
-    <p v-else-if="budgetTrackingStore.error" class="error">{{ budgetTrackingStore.error }}</p>
+    <p v-if="budgetTrackingStore.error" class="page-error">Couldn't load budget tracking data.</p>
+    <div v-else-if="budgetTrackingStore.loading" class="skeleton skeleton--hero"></div>
+
+    <template v-else-if="!currentMonthRow">
+      <p class="empty">No budget tracking data recorded for the current month yet.</p>
+    </template>
 
     <template v-else>
-      <template v-if="!showHistory">
-        <p v-if="!budgetTrackingStore.currentMonthRow" class="not-connected-note">
-          No budget tracking data recorded for {{ todayLabel }} yet.
-        </p>
+      <div class="card card--full">
+        <p class="label">Burn rate / runway</p>
+        <p class="value value--28">{{ burnRateMonths.toFixed(1) }} months of runway</p>
+        <p class="sub">{{ formatCurrency(cashOnHand) }} on hand · {{ formatCurrency(avgMonthlySpend) }} average monthly spend</p>
+      </div>
 
-        <div class="burn-rate-callout">
-          <span class="burn-rate-label">Burn Rate / Runway</span>
-          <span class="burn-rate-value">{{ burnRateMonths.toFixed(1) }} months of runway</span>
+      <div class="tab-switcher">
+        <button
+          v-for="tab in TABS"
+          :key="tab"
+          type="button"
+          class="tab-switcher-btn"
+          :class="{ 'tab-switcher-btn--active': activeTab === tab }"
+          @click="activeTab = tab"
+        >
+          {{ tab }}
+        </button>
+      </div>
+
+      <template v-if="activeTab === 'Budget & Spend'">
+        <h2 class="section-heading heading-tiles">This month</h2>
+        <div class="tiles">
+          <div v-for="tile in TILES" :key="tile.key" class="tile">
+            <p class="tile-value" :class="{ 'tile-value--gold': tile.gold }">{{ formatTileValue(tile) }}</p>
+            <p class="tile-label">{{ tile.label }}</p>
+          </div>
         </div>
 
-        <div class="tabs">
-          <button
-            v-for="category in CATEGORY_TABS"
-            :key="category"
-            type="button"
-            class="tab"
-            :class="{ 'tab--active': activeCategory === category }"
-            @click="activeCategory = category"
-          >
-            {{ category }}
-          </button>
+        <h2 class="section-heading heading-efficiency">Efficiency</h2>
+        <div class="card card--full">
+          <p class="label">Cost to raise a dollar</p>
+          <p class="value value--28">${{ costToRaiseADollar.toFixed(2) }}</p>
+          <p class="sub">Every $1 raised costs {{ costToRaiseADollarCents }}¢ in fundraising expense</p>
         </div>
 
-        <div class="category-panel">
-          <template v-if="activeCategory === 'Budget & Spend'">
-            <div class="metrics-group-fields">
-              <div v-for="field in BUDGET_FIELDS" :key="field.key" class="metric-field">
-                <span class="metric-label">{{ field.label }}</span>
-                <span class="metric-value">{{ fieldValue(budgetTrackingStore.currentMonthRow, field.key) }}</span>
-              </div>
+        <h2 class="section-heading heading-variance">Budget variance</h2>
+        <div class="variance-list">
+          <div v-for="row in VARIANCE_ROWS" :key="row.key" class="card variance-card">
+            <div class="variance-header">
+              <span class="variance-title">{{ row.label }}</span>
+              <span class="pill" :class="`pill--${varianceTone(row)}`">{{ variancePillText(row) }}</span>
             </div>
 
-            <div class="computed-row">
-              <div class="computed-display">
-                <span class="computed-label">Program Expense Ratio</span>
-                <span class="computed-value">{{ programExpenseRatio.toFixed(1) }}%</span>
-              </div>
-              <div class="computed-display">
-                <span class="computed-label">Cost to Raise a Dollar</span>
-                <span class="computed-value">${{ costToRaiseADollar.toFixed(2) }}</span>
-              </div>
+            <div class="variance-bars">
+              <div class="variance-bar variance-bar--budgeted"></div>
+              <div class="variance-bar variance-bar--actual" :style="{ width: `${actualBarPct(row)}%` }"></div>
             </div>
 
-            <div class="variance-panel">
-              <h4 class="metrics-group-header">Budget Variance</h4>
-              <table class="variance-table">
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Budgeted</th>
-                    <th>Actual</th>
-                    <th>Variance $</th>
-                    <th>Variance %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in VARIANCE_ROWS" :key="row.key">
-                    <td class="variance-label">{{ row.label }}</td>
-                    <td data-label="Budgeted">{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_budgeted`) }}</td>
-                    <td data-label="Actual">{{ fieldValue(budgetTrackingStore.currentMonthRow, `${row.key}_actual`) }}</td>
-                    <td
-                      data-label="Variance $"
-                      :class="
-                        varianceDollar(budgetTrackingStore.currentMonthRow, row) > 0 ? 'variance--over' : 'variance--under'
-                      "
-                    >
-                      {{ formatVarianceDollar(varianceDollar(budgetTrackingStore.currentMonthRow, row)) }}
-                    </td>
-                    <td
-                      data-label="Variance %"
-                      :class="
-                        variancePercent(budgetTrackingStore.currentMonthRow, row) === null
-                          ? ''
-                          : variancePercent(budgetTrackingStore.currentMonthRow, row) > 0
-                            ? 'variance--over'
-                            : 'variance--under'
-                      "
-                    >
-                      {{ formatVariancePercent(variancePercent(budgetTrackingStore.currentMonthRow, row)) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="variance-footer">
+              <span>Budgeted <strong>{{ formatCurrency(budgetedFor(row)) }}</strong></span>
+              <span>Actual <strong>{{ formatCurrency(actualFor(row)) }}</strong></span>
             </div>
-          </template>
-
-          <div v-else class="grant-pipeline">
-            <h3 class="grant-pipeline-title">Grant Pipeline</h3>
-
-            <p v-if="grantPipelineStore.loading">Loading…</p>
-            <p v-else-if="grantPipelineStore.error" class="error">{{ grantPipelineStore.error }}</p>
-            <template v-else>
-              <p v-if="grantPipelineStore.grants.length === 0" class="chart-empty">No grants added yet.</p>
-              <table v-else class="grant-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Funder</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="grant in grantPipelineStore.grants" :key="grant.id">
-                    <td>{{ grant.grant_name }}</td>
-                    <td>{{ grant.funder }}</td>
-                    <td>{{ grant.amount != null ? `$${grant.amount.toLocaleString()}` : '—' }}</td>
-                    <td><span class="badge badge--default">{{ grant.status ?? '—' }}</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </template>
           </div>
         </div>
       </template>
 
-      <!-- month is 0-based (see HistoryBrowser.vue's slot contract) -- +1
-           to match reporting_month's 1-based value before looking up a
-           row. Program Expense Ratio/Cost to Raise a Dollar aren't
-           reproduced here -- the latter also cross-references Fundraising
-           Health's most-recent row, not this specific historical month --
-           so this view shows the stored historical fields only. -->
-      <HistoryBrowser v-else>
-        <template #detail="{ year, month }">
-          <template v-if="budgetTrackingStore.rowFor(year, month + 1)">
-            <div class="metrics-group-fields">
-              <div v-for="field in BUDGET_FIELDS" :key="field.key" class="metric-field">
-                <span class="metric-label">{{ field.label }}</span>
-                <span class="metric-value">{{
-                  fieldValue(budgetTrackingStore.rowFor(year, month + 1), field.key)
-                }}</span>
-              </div>
-            </div>
+      <template v-else>
+        <h2 class="section-heading heading-tiles">Grant pipeline</h2>
 
-            <div class="variance-panel">
-              <h4 class="metrics-group-header">Budget Variance</h4>
-              <table class="variance-table">
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Budgeted</th>
-                    <th>Actual</th>
-                    <th>Variance $</th>
-                    <th>Variance %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in VARIANCE_ROWS" :key="row.key">
-                    <td class="variance-label">{{ row.label }}</td>
-                    <td data-label="Budgeted">{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_budgeted`) }}</td>
-                    <td data-label="Actual">{{ fieldValue(budgetTrackingStore.rowFor(year, month + 1), `${row.key}_actual`) }}</td>
-                    <td
-                      data-label="Variance $"
-                      :class="
-                        varianceDollar(budgetTrackingStore.rowFor(year, month + 1), row) > 0
-                          ? 'variance--over'
-                          : 'variance--under'
-                      "
-                    >
-                      {{ formatVarianceDollar(varianceDollar(budgetTrackingStore.rowFor(year, month + 1), row)) }}
-                    </td>
-                    <td
-                      data-label="Variance %"
-                      :class="
-                        variancePercent(budgetTrackingStore.rowFor(year, month + 1), row) === null
-                          ? ''
-                          : variancePercent(budgetTrackingStore.rowFor(year, month + 1), row) > 0
-                            ? 'variance--over'
-                            : 'variance--under'
-                      "
-                    >
-                      {{ formatVariancePercent(variancePercent(budgetTrackingStore.rowFor(year, month + 1), row)) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        <p v-if="grantPipelineStore.loading" class="empty">Loading…</p>
+        <p v-else-if="grantPipelineStore.error" class="page-error">Couldn't load grant pipeline data.</p>
+        <p v-else-if="grantPipelineStore.grants.length === 0" class="empty">No grants added yet.</p>
+        <div v-else class="grant-list">
+          <div v-for="grant in grantPipelineStore.grants" :key="grant.id" class="card grant-card">
+            <div class="grant-info">
+              <p class="grant-name">{{ grant.grant_name }}</p>
+              <p class="grant-funder">{{ grant.funder }}</p>
             </div>
-          </template>
-          <p v-else class="not-connected-note">No budget tracking data recorded for this month.</p>
-        </template>
-      </HistoryBrowser>
+            <div class="grant-meta">
+              <p class="grant-amount">{{ grant.amount != null ? formatCurrency(grant.amount) : '—' }}</p>
+              <span class="pill" :class="`pill--${grantStatusTone(grant.status)}`">{{ grant.status ?? '—' }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
-  </template>
+
+    <p class="footer">BTX Ops Hub · Budget Tracking</p>
+  </section>
 </template>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 16px;
+.budget-tracking {
+  max-width: 640px;
+  margin: 0 auto;
 }
 
-.page-header h2 {
+.page-title {
   margin: 0;
-  font-size: 18px;
-}
-
-.not-connected-note {
-  margin: 0 0 20px;
-  font-size: 12px;
-  font-style: italic;
-  color: var(--color-text-secondary);
-}
-
-.burn-rate-callout {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.burn-rate-label {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.burn-rate-value {
-  font-size: 32px;
+  font-family: var(--font-serif);
+  font-size: 28px;
   font-weight: 700;
-  color: var(--color-accent);
+  line-height: 1.15;
+  color: var(--color-header-strong);
 }
 
-/* Category tab bar — same underline pattern used on Program Impact
-   (itself reused from TasksAlertsList.vue's Active/Pending/Completed
-   tabs), no new visual language introduced. */
-.tabs {
+.subline {
+  margin: 8px 0 0;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-header-muted);
+}
+
+.section-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+}
+
+.heading-tiles {
+  margin-top: 24px;
+}
+
+.heading-efficiency,
+.heading-variance {
+  margin-top: 20px;
+}
+
+.empty {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--color-header-muted);
+}
+
+.page-error {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card--full {
+  margin-top: 10px;
+}
+
+.label {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--color-header-muted);
+}
+
+/* lining-nums -- see HomeMissionHero.vue's identical pair for why both
+   properties are set (font-variant-numeric alone isn't always enough). */
+.value {
+  margin: 6px 0 0;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--color-gold-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
+}
+
+.value--28 {
+  font-size: 28px;
+}
+
+.sub {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--color-header-muted);
+}
+
+/* Two-tab switcher: a shared 1px track spans the full width via
+   border-bottom on the wrapper; each button is exactly half the row
+   (flex: 1) with its own 2px border-bottom that's transparent unless
+   active. margin-bottom: -1px pulls the active button's 2px border up so
+   it overlays the shared 1px track exactly, instead of stacking a second
+   line beneath it. */
+.tab-switcher {
+  margin-top: 20px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 20px;
 }
 
-.tab {
+.tab-switcher-btn {
+  flex: 1;
+  text-align: center;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 8px 4px;
-  margin-right: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  margin-bottom: -1px;
+  padding: 10px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-header-muted);
   cursor: pointer;
 }
 
-.tab--active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-accent);
+.tab-switcher-btn--active {
+  color: var(--color-header-strong);
+  font-weight: 700;
+  border-bottom-color: var(--color-gold-strong);
 }
 
-.category-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-bottom: 32px;
+.tiles {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.metrics-group-header {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-secondary);
-}
-
-.metrics-group-fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-/* Shared dense boxed-widget spec (matching ProgramPlanning.vue's .stat,
-   FundraisingHealth.vue's .metric-field, and ProgramImpact.vue's
-   .metric-field/.comparison-item) -- same border/background/radius/
-   padding/gap/font-size standard app-wide. */
-.metric-field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.tile {
   background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.metric-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-label);
-}
-
-.metric-value {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.computed-row {
-  display: flex;
-  gap: 10px;
-}
-
-/* Same boxed treatment as .metric-field above, but keeping its existing
-   gold/larger value styling as a deliberate highlight tier -- not shrunk
-   to the plain metric-field's 15px/navy. */
-.computed-display {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.computed-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-label);
-}
-
-.computed-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--color-accent);
-}
-
-.variance-panel {
-  border: 0.5px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 20px;
-  background: var(--color-surface);
+  padding: 10px 12px;
 }
 
-.variance-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.variance-table th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  padding: 0 8px 8px 0;
-}
-
-.variance-table td {
-  padding: 6px 8px 6px 0;
-  font-size: 14px;
-  color: var(--color-text-primary);
-}
-
-.variance-label {
-  font-weight: 500;
-}
-
-.variance--over {
-  color: var(--color-danger-text);
-  font-weight: 600;
-}
-
-.variance--under {
-  color: var(--color-success-badge-text);
-  font-weight: 600;
-}
-
-.grant-pipeline-title {
-  margin: 0 0 12px;
-  font-size: 16px;
-}
-
-.chart-empty {
+.tile-value {
   margin: 0;
-  color: var(--color-text-secondary);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
+  overflow-wrap: anywhere;
 }
 
-.grant-table {
-  width: 100%;
-  border-collapse: collapse;
+.tile-value--gold {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  color: var(--color-gold-strong);
 }
 
-.grant-table th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  padding: 0 8px 8px 0;
+.tile-label {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-header-muted);
 }
 
-.grant-table td {
-  padding: 8px 8px 8px 0;
-  font-size: 14px;
-  color: var(--color-text-primary);
-  /* Row divider -- border variable, not the neutral-badge tint it happened
-     to match by coincidence in light mode. */
-  border-top: 1px solid var(--color-border);
-}
-
-.badge {
+.pill {
   flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
   border-radius: 999px;
   white-space: nowrap;
 }
 
-.badge--default {
+.pill--success {
+  background: var(--color-success-badge-bg);
+  color: var(--color-success-badge-text);
+}
+
+.pill--danger {
+  background: var(--color-danger-badge-bg);
+  color: var(--color-danger-badge-text);
+}
+
+.pill--amber {
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
+}
+
+.pill--neutral {
   background: var(--color-neutral-badge-bg);
   color: var(--color-neutral-badge-text);
 }
 
-.btn {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
+.variance-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.btn--outline {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border-strong);
+.variance-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.error {
-  color: var(--color-danger-text);
+.variance-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+}
+
+/* Two stacked bars, not a track-with-fill -- the budgeted bar is always
+   full width (the reference), the actual bar (capped at 100% via
+   actualBarPct) sits directly beneath it at its own proportional width,
+   so the two are visually compared rather than one nested inside the
+   other. */
+.variance-bars {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.variance-bar {
+  height: 6px;
+  border-radius: 999px;
+}
+
+.variance-bar--budgeted {
+  width: 100%;
+  background: var(--color-header-muted);
+  opacity: 0.35;
+}
+
+.variance-bar--actual {
+  background: var(--color-gold-strong);
+}
+
+.variance-footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-header-muted);
+}
+
+.variance-footer strong {
+  color: var(--color-header-strong);
+  font-weight: 700;
+}
+
+.grant-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grant-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.grant-info {
+  min-width: 0;
+}
+
+.grant-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+}
+
+.grant-funder {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-header-muted);
+}
+
+.grant-meta {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.grant-amount {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-gold-strong);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: 'lnum' 1;
+}
+
+/* Neutral pulsing placeholder -- same footprint as the real hero card so
+   nothing visibly resizes once data arrives. Same animation as the three
+   Program pages' own skeletons. */
+.skeleton {
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--hero {
+  margin-top: 10px;
+  height: 90px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.footer {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-header-muted);
 }
 
 .access-denied {
   margin: 0;
   color: var(--color-danger-text);
   font-weight: 600;
-}
-
-/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint), the
-   Budget Variance table reflows into one card per category instead of
-   scrolling horizontally -- the standard CSS-only "table becomes cards"
-   technique: every table-role element is forced to display: block so
-   each <tr> lays out as its own bordered card, and each data <td>'s
-   data-label attribute (set in the template) is surfaced via ::before
-   content so the value is still labeled without the column headers.
-   .variance-label (the category name) is excluded from that rule and
-   styled as the card's heading instead, since it names the card rather
-   than being one of its labeled rows. Only .variance-table is touched --
-   .grant-table is a separate, narrower table not in scope here. Nothing
-   above this query is touched, so desktop layout is unaffected. */
-@media (max-width: 850px) {
-  .variance-table,
-  .variance-table thead,
-  .variance-table tbody,
-  .variance-table tr,
-  .variance-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .variance-table thead {
-    display: none;
-  }
-
-  .variance-table tr {
-    border: 0.5px solid var(--color-border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
-  }
-
-  .variance-label {
-    margin-bottom: 4px;
-    font-weight: 600;
-  }
-
-  .variance-table td:not(.variance-label) {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-  }
-
-  .variance-table td:not(.variance-label)::before {
-    content: attr(data-label);
-    font-weight: 500;
-    color: var(--color-text-secondary);
-  }
 }
 </style>
