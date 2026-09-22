@@ -750,13 +750,6 @@ const chartAriaLabel = computed(() => {
   opacity: 0.4;
 }
 
-/* Highlights whichever cycle is selected in the reporting-cycle strip, so
-   the chart visually agrees with the rest of this single-year-focused page
-   -- overrides .bar-fill--gold's default color, not .bar--zero's opacity. */
-.bar--current {
-  background: var(--color-header-strong);
-}
-
 .bar-year-label {
   margin-top: 6px;
   font-size: 10.5px;
