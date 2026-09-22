@@ -124,12 +124,13 @@ function pct(part, whole) {
 }
 
 // -- Funding portfolio ("Program allocation, {year}") --
-// donor_impact has no column for "Direct academic aid" or "Conference
-// travel" specifically -- see the Step 1 report. The real per-cycle split
-// is scholarship_funds_awarded vs. other_program_funds_awarded, so this
-// card uses those two real columns and their own labels instead of the
-// cumulative page's travel-specific naming. There's no per-cycle "Student
-// reach portfolio" equivalent -- campus outreach has no column at all, so a
+// Bound to the same two real columns as before -- scholarship_funds_awarded
+// and other_program_funds_awarded -- only the display labels below changed,
+// to match Impact to Date's "Direct academic aid" / "Conference travel"
+// wording. See the row-label comments in the template for why
+// "Conference travel" is NOT a confirmed description of
+// other_program_funds_awarded. There's no per-cycle "Student reach
+// portfolio" equivalent -- campus outreach has no column at all, so a
 // 2-of-3 segment breakdown would misrepresent that cycle's reach
 // composition (see the Step 1/2 report) and is intentionally omitted.
 const scholarshipFunds = computed(() => selectedCycle.value?.scholarship_funds_awarded ?? 0)
@@ -277,9 +278,14 @@ const chartAriaLabel = computed(() => {
 
         <p class="portfolio-label">FUNDING PORTFOLIO</p>
         <div class="card allocation-card">
+          <!-- "Direct academic aid" is scholarship_funds_awarded -- this
+               mapping is CONFIRMED by the column's own name/label
+               (donorImpact.js: "Scholarship Funds Awarded"), so renaming it
+               to match Impact to Date's wording is a safe display-only
+               change. -->
           <div class="allocation-row">
             <div class="row-top">
-              <span class="row-label">Scholarship funds awarded</span>
+              <span class="row-label">Direct academic aid</span>
               <span class="row-value"
                 ><span class="row-value-serif">{{ formatCurrency(scholarshipFunds) }}</span
                 ><span class="row-value-pct"> · {{ scholarshipFundsPct }}%</span></span
@@ -287,9 +293,23 @@ const chartAriaLabel = computed(() => {
             </div>
             <div class="bar-track"><div class="bar-fill bar-fill--gold" :style="{ width: `${scholarshipFundsPct}%` }"></div></div>
           </div>
+          <!-- "Conference travel" is other_program_funds_awarded -- this
+               mapping is UNCONFIRMED. Neither the migration that added this
+               column, sync-donor-impact's source, nor donorImpact.js's own
+               "Other Program Funds Awarded" label describes it as
+               travel-specific; the only "travel" column in the whole schema
+               is the unrelated students_sponsored_travel headcount. Its real
+               values ($20,000 in both 2025 and 2026, ~33% of that cycle's
+               funding portfolio and half the size of scholarship funds) look
+               nothing like Impact to Date's own ~$1,886 cumulative
+               Conference Travel total -- that's consistent with a broad
+               "other programs" bucket, not a small travel-expense line item.
+               Renamed here per explicit request; the underlying column
+               remains generically named and its travel-specific meaning is
+               NOT verified. -->
           <div class="allocation-row allocation-row--last">
             <div class="row-top">
-              <span class="row-label">Other program funds awarded</span>
+              <span class="row-label">Conference travel</span>
               <span class="row-value"
                 ><span class="row-value-serif">{{ formatCurrency(otherProgramFunds) }}</span
                 ><span class="row-value-pct"> · {{ otherProgramFundsPct }}%</span></span
