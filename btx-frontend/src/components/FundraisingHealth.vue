@@ -737,8 +737,18 @@ const chartAriaLabel = computed(() => {
   display: none;
 }
 
+/* flex: 1 1 0 -- not a fixed width -- so columns spread evenly across the
+   card's full width when there are few enough months to fit (no dead
+   space on the right), same fix as Program Impact's chart (see that
+   component's own .bar-col comment). min-width is the floor: once enough
+   months exist that even every column at min-width would overflow the
+   card, flexbox stops shrinking columns further and .chart's own
+   overflow-x: auto (above) takes over. No 850px override existed here
+   before this change -- added to match Program Impact's own breakpoint/
+   min-width step. */
 .bar-col {
-  flex: 0 0 32px;
+  flex: 1 1 0;
+  min-width: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -753,10 +763,20 @@ const chartAriaLabel = computed(() => {
   white-space: nowrap;
 }
 
+/* Fills its column (so bars stay evenly spread with it), capped so a
+   handful of months spread across a wide card doesn't turn each bar into
+   an oversized slab -- same cap as Program Impact's chart. */
 .bar {
-  width: 32px;
+  width: 100%;
+  max-width: 64px;
   background: var(--color-gold-strong);
   border-radius: 4px 4px 0 0;
+}
+
+@media (max-width: 850px) {
+  .bar-col {
+    min-width: 28px;
+  }
 }
 
 .bar--zero {
