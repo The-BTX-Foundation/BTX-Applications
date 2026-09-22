@@ -763,15 +763,6 @@ const chartAriaLabel = computed(() => {
   opacity: 0.4;
 }
 
-/* The most recent synced month's bar -- opposite of Program Impact's
-   current-cycle highlight (which is now all-gold per that page's own
-   explicit single-color change): this page's mockup keeps its dedicated
-   current-month color deliberately, per this task's own instruction not
-   to "fix" it to match. */
-.bar--current {
-  background: var(--color-header-strong);
-}
-
 .bar-year-label {
   margin-top: 6px;
   font-size: 10.5px;
