@@ -498,17 +498,17 @@ const chartAriaLabel = computed(() => {
   color: var(--color-neutral-badge-text);
 }
 
-/* Fixed-dark brand surface -- same gradient/hex palette as
-   HomeMissionHero.vue's .hero (#2a2118 -> #3b2a17, gold #d4a24e, white),
-   not the themed --color-surface/--color-gold-strong tokens, per
-   base.css's own documented exception list. */
+/* Fixed-dark brand surface -- a flat #1c1a17 (not HomeMissionHero.vue's
+   gradient), paler gold #e9c78a for the percentage/bar fill, and muted
+   rgba(255,255,255,0.5) text -- matching the reference mockup's own
+   distinct (darker, less saturated) palette, not the themed
+   --color-surface/--color-gold-strong tokens, per base.css's own
+   documented exception list. */
 .goal-hero {
   margin-top: 20px;
   border-radius: 20px;
   padding: 22px;
-  background:
-    radial-gradient(circle at 88% 18%, rgba(212, 162, 78, 0.22) 0%, rgba(212, 162, 78, 0) 45%),
-    linear-gradient(170deg, #2a2118 0%, #3b2a17 100%);
+  background: #1c1a17;
 }
 
 .goal-label {
@@ -517,7 +517,7 @@ const chartAriaLabel = computed(() => {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #d4a24e;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .goal-percent {
@@ -526,7 +526,7 @@ const chartAriaLabel = computed(() => {
   font-size: 48px;
   font-weight: 700;
   line-height: 1;
-  color: #d4a24e;
+  color: #e9c78a;
   font-variant-numeric: lining-nums;
   font-feature-settings: 'lnum' 1;
 }
@@ -543,17 +543,17 @@ const chartAriaLabel = computed(() => {
   height: 100%;
   min-width: 3px;
   border-radius: 999px;
-  background: #d4a24e;
+  background: #e9c78a;
 }
 
 .goal-sub {
   margin: 14px 0 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .goal-sub strong {
-  color: #fff;
+  color: rgba(255, 255, 255, 0.62);
   font-weight: 700;
 }
 

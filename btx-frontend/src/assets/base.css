@@ -34,11 +34,11 @@
        this exception -- it's a themed surface that reads the danger badge
        variables and flips with the toggle normally.
      - FundraisingHealth.vue's Fundraising Goal Progress hero (.goal-hero
-       and its children): the exact same gradient/hex palette as
-       HomeMissionHero.vue's .hero above (#2a2118/#3b2a17 background,
-       #d4a24e gold, white), per this feature's own explicit request to
-       match that card's fixed-dark treatment rather than the page's
-       otherwise-themed surfaces.
+       and its children): its own fixed-dark palette (#1c1a17 flat
+       background, paler gold #e9c78a, muted rgba(255,255,255,0.5)/0.62
+       text) matched to its reference mockup -- a deliberately different
+       fixed-dark palette from HomeMissionHero.vue's .hero above, not a
+       themed surface either way.
      - Modal/overlay backdrop scrims (rgba(0, 0, 0, 0.4) / rgba(0, 0, 0, 0.5)
        in EventCalendar.vue, MarketingCalendar.vue, NewTaskModal.vue,
        HomeView.vue): a black scrim darkens either theme's content the same
