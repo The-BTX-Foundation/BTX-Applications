@@ -443,29 +443,35 @@ async function handleDecline(task) {
   color: var(--color-surface);
 }
 
+/* Segmented control: a rounded track with an inset white pill behind
+   whichever tab is selected, rather than separate underline tabs -- radius
+   is roughly half the track's own height so it reads as a capsule. */
 .tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 4px;
+  background: var(--color-track);
+  border-radius: 14px;
 }
 
 .tab {
+  flex: 1;
+  text-align: center;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: 10px;
   padding: 8px 4px;
-  margin-right: 20px;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-weight: 400;
+  color: var(--color-header-muted);
   cursor: pointer;
+  font-family: inherit;
 }
 
 .tab--active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-header-strong);
+  font-weight: 700;
 }
 
 .empty {
