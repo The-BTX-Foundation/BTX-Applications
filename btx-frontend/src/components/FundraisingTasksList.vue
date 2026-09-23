@@ -58,17 +58,23 @@ function dueLabel(date) {
   return due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-// Builds the left-hand pill's text and color variant. Overdue rows get the
-// red variant regardless of date math; near-term rows get the amber
-// "Due today"/"Due tomorrow" treatment; everything else is a neutral date.
-function badge(task) {
-  if (task.status === 'Overdue') {
-    return { text: 'Overdue', variant: 'overdue' }
-  }
+// Text for the top-left date pill -- same visual port as Tasks &
+// Approvals' dateBadgeText: "Overdue"/"Due today"/"Due tomorrow"/short
+// date, no longer color-coded by urgency (the pill is uniformly muted; see
+// statusToneClass below for where tone now comes from instead).
+function dateBadgeText(task) {
+  if (task.status === 'Overdue') return 'Overdue'
+  return dueLabel(task.date)
+}
 
-  const label = dueLabel(task.date)
-  const variant = label === 'Due today' || label === 'Due tomorrow' ? 'amber' : 'default'
-  return { text: label, variant }
+// Tone for the top-right status pill -- same mapping as Tasks &
+// Approvals' statusToneClass: Complete is success, Approved is amber
+// (matches this page's own former .outcome--approved treatment),
+// everything else (Open/Overdue/Declined) is neutral.
+function statusToneClass(task) {
+  if (task.status === 'Complete') return 'status-pill--success'
+  if (task.status === 'Approved') return 'status-pill--amber'
+  return 'status-pill--neutral'
 }
 
 // Returns whether the signed-in user is this row's assignee — the only
@@ -221,221 +227,212 @@ async function handleDecline(id) {
 </script>
 
 <template>
-  <section class="tasks-alerts">
-    <!-- Signed-out visitors never reach the store fetch (see the watcher
-         above), so show a plain sign-in prompt instead of the list/heading. -->
-    <h2 v-if="!authStore.session">Sign in</h2>
+  <h2 v-if="!authStore.session">Sign in</h2>
+  <p v-else-if="authStore.role === 'applicant'" class="access-denied">Access Denied</p>
 
-    <!-- Applicants have no visibility into this list at all — hide the
-         heading and every state (loading/error/empty/list) in favor of a
-         single denial message. Admin, board, and reviewer all get full
-         access below. -->
-    <p v-else-if="authStore.role === 'applicant'" class="access-denied">Access Denied</p>
+  <section v-else class="tasks-alerts">
+    <div class="header-row">
+      <h1 class="page-title" data-page-heading>Fundraising Tasks</h1>
+    </div>
 
-    <template v-else>
-      <div class="header-row">
-        <h2 data-page-heading>Fundraising Tasks</h2>
-      </div>
+    <div class="tabs">
+      <button type="button" class="tab" :class="{ 'tab--active': activeTab === 'active' }" @click="selectTab('active')">
+        Active
+      </button>
+      <button type="button" class="tab" :class="{ 'tab--active': activeTab === 'pending' }" @click="selectTab('pending')">
+        Pending
+      </button>
+      <button type="button" class="tab" :class="{ 'tab--active': activeTab === 'completed' }" @click="selectTab('completed')">
+        Completed
+      </button>
+    </div>
 
-      <div class="tabs">
-        <button
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': activeTab === 'active' }"
-          @click="selectTab('active')"
-        >
-          Active
-        </button>
-        <button
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': activeTab === 'pending' }"
-          @click="selectTab('pending')"
-        >
-          Pending
-        </button>
-        <button
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': activeTab === 'completed' }"
-          @click="selectTab('completed')"
-        >
-          Completed
-        </button>
-      </div>
+    <p v-if="fundraisingTasksStore.loading" class="empty">Loading tasks…</p>
+    <p v-else-if="fundraisingTasksStore.error" class="page-error">{{ fundraisingTasksStore.error }}</p>
 
-      <p v-if="fundraisingTasksStore.loading">Loading tasks…</p>
-      <p v-else-if="fundraisingTasksStore.error" class="error">{{ fundraisingTasksStore.error }}</p>
+    <!-- Pending tab: rows awaiting a decision (Open/Overdue), soonest date
+         first. This is the only place in the file that renders
+         "Awaiting ... review" text. -->
+    <template v-else-if="activeTab === 'pending'">
+      <p v-if="pendingTasks.length === 0" class="empty">No tasks awaiting a decision.</p>
 
-      <!-- Pending tab: rows awaiting a decision (Open/Overdue), soonest date
-           first. This is the only place in the file that renders
-           "Awaiting ... review" text. -->
-      <template v-else-if="activeTab === 'pending'">
-        <p v-if="pendingTasks.length === 0">No tasks awaiting a decision.</p>
+      <ul v-else class="task-list">
+        <li v-for="task in pendingTasks" :key="task.id" class="task-card">
+          <div class="card-top">
+            <span class="date-pill">{{ dateBadgeText(task) }}</span>
+            <span class="status-pill" :class="statusToneClass(task)">{{ task.status }}</span>
+          </div>
+          <p class="title">{{ task.title }}</p>
+          <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
+          <p v-if="actionErrorTaskId === task.id" class="row-error">{{ actionErrorMessage }}</p>
 
-        <ul v-else class="task-list">
-          <li v-for="task in pendingTasks" :key="task.id" class="task-card">
-            <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
-
-            <div class="task-body">
-              <p class="title">{{ task.title }}</p>
-              <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
-              <p v-if="actionErrorTaskId === task.id" class="row-error">{{ actionErrorMessage }}</p>
-            </div>
-
-            <div class="actions">
-              <template v-if="isAssignee(task)">
-                <button
-                  type="button"
-                  class="btn btn--gold"
-                  :disabled="pendingTaskId === task.id"
-                  @click="handleApprove(task.id)"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  class="btn btn--outline"
-                  :disabled="pendingTaskId === task.id"
-                  @click="handleDecline(task.id)"
-                >
-                  Decline
-                </button>
-              </template>
-              <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
-            </div>
-          </li>
-        </ul>
-      </template>
-
-      <!-- Active tab: rows already approved, awaiting the assignee's Mark
-           Complete. Every row here is Approved by definition, so no status
-           label is needed to disambiguate it from anything else. This is
-           the only place that renders "Task in progress by ..." text. -->
-      <template v-else-if="activeTab === 'active'">
-        <p v-if="activeTasks.length === 0">No active tasks.</p>
-
-        <ul v-else class="task-list">
-          <li v-for="task in activeTasks" :key="task.id" class="task-card">
-            <span class="badge" :class="`badge--${badge(task).variant}`">{{ badge(task).text }}</span>
-
-            <div class="task-body">
-              <p class="title">{{ task.title }}</p>
-              <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
-              <p v-if="actionErrorTaskId === task.id" class="row-error">{{ actionErrorMessage }}</p>
-            </div>
-
-            <div class="actions">
-              <button
-                v-if="isAssignee(task)"
-                type="button"
-                class="btn btn--outline"
-                :disabled="pendingTaskId === task.id"
-                @click="handleMarkComplete(task.id)"
-              >
-                Mark complete
+          <div class="actions">
+            <template v-if="isAssignee(task)">
+              <button type="button" class="btn btn--gold" :disabled="pendingTaskId === task.id" @click="handleApprove(task.id)">
+                Approve
               </button>
-              <span v-else class="awaiting">Task in progress by {{ task.profiles?.name ?? 'the assignee' }}</span>
+              <button type="button" class="btn btn--outline" :disabled="pendingTaskId === task.id" @click="handleDecline(task.id)">
+                Decline
+              </button>
+            </template>
+            <span v-else class="awaiting">Awaiting {{ task.profiles?.name ?? 'the assignee' }}'s review</span>
+          </div>
+        </li>
+      </ul>
+    </template>
+
+    <!-- Active tab: rows already approved, awaiting the assignee's Mark
+         Complete. This is the only place that renders "Task in progress
+         by ..." text. -->
+    <template v-else-if="activeTab === 'active'">
+      <p v-if="activeTasks.length === 0" class="empty">No active tasks.</p>
+
+      <ul v-else class="task-list">
+        <li v-for="task in activeTasks" :key="task.id" class="task-card">
+          <div class="card-top">
+            <span class="date-pill">{{ dateBadgeText(task) }}</span>
+            <span class="status-pill" :class="statusToneClass(task)">{{ task.status }}</span>
+          </div>
+          <p class="title">{{ task.title }}</p>
+          <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
+          <p v-if="actionErrorTaskId === task.id" class="row-error">{{ actionErrorMessage }}</p>
+
+          <div class="actions">
+            <button
+              v-if="isAssignee(task)"
+              type="button"
+              class="btn btn--outline"
+              :disabled="pendingTaskId === task.id"
+              @click="handleMarkComplete(task.id)"
+            >
+              Mark complete
+            </button>
+            <span v-else class="awaiting">Task in progress by {{ task.profiles?.name ?? 'the assignee' }}</span>
+          </div>
+        </li>
+      </ul>
+    </template>
+
+    <!-- Completed tab: resolved rows only, drilled down by year then
+         month of completed_at (unchanged navigation) -- never shows action
+         buttons, these rows are terminal. -->
+    <template v-else>
+      <div v-if="selectedYear === null" class="drill-list">
+        <p v-if="completedYears.length === 0" class="empty">No completed items yet.</p>
+        <button
+          v-for="year in completedYears"
+          :key="year"
+          type="button"
+          class="drill-row"
+          @click="selectYear(year)"
+        >
+          <span>{{ year }}</span>
+          <span class="drill-count">{{ completedCountForYear(year) }}</span>
+        </button>
+      </div>
+
+      <div v-else-if="selectedMonth === null" class="drill-list">
+        <button type="button" class="back-link" @click="goBackToYears">&larr; {{ selectedYear }}</button>
+        <button
+          v-for="month in completedMonthsForYear(selectedYear)"
+          :key="month.index"
+          type="button"
+          class="drill-row"
+          @click="selectMonth(month.index)"
+        >
+          <span>{{ month.label }}</span>
+          <span class="drill-count">{{ month.count }}</span>
+        </button>
+      </div>
+
+      <div v-else>
+        <button type="button" class="back-link" @click="goBackToMonths">
+          &larr; {{ monthLabel(selectedMonth) }} {{ selectedYear }}
+        </button>
+        <ul class="task-list">
+          <li
+            v-for="task in completedTasksForYearMonth(selectedYear, selectedMonth)"
+            :key="task.id"
+            class="task-card"
+          >
+            <div class="card-top">
+              <span class="date-pill">{{ dateBadgeText(task) }}</span>
+              <span class="status-pill" :class="statusToneClass(task)">{{ task.status }}</span>
             </div>
+            <p class="title">{{ task.title }}</p>
+            <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
           </li>
         </ul>
-      </template>
-
-      <!-- Completed tab: resolved rows only, drilled down by year then
-           month of completed_at. Never shows action buttons — these rows
-           are terminal. -->
-      <template v-else>
-        <div v-if="selectedYear === null" class="drill-list">
-          <p v-if="completedYears.length === 0">No completed items yet.</p>
-          <button
-            v-for="year in completedYears"
-            :key="year"
-            type="button"
-            class="drill-row"
-            @click="selectYear(year)"
-          >
-            <span>{{ year }}</span>
-            <span class="drill-count">{{ completedCountForYear(year) }}</span>
-          </button>
-        </div>
-
-        <div v-else-if="selectedMonth === null" class="drill-list">
-          <button type="button" class="back-link" @click="goBackToYears">&larr; {{ selectedYear }}</button>
-          <button
-            v-for="month in completedMonthsForYear(selectedYear)"
-            :key="month.index"
-            type="button"
-            class="drill-row"
-            @click="selectMonth(month.index)"
-          >
-            <span>{{ month.label }}</span>
-            <span class="drill-count">{{ month.count }}</span>
-          </button>
-        </div>
-
-        <div v-else>
-          <button type="button" class="back-link" @click="goBackToMonths">
-            &larr; {{ monthLabel(selectedMonth) }} {{ selectedYear }}
-          </button>
-          <ul class="task-list">
-            <li
-              v-for="task in completedTasksForYearMonth(selectedYear, selectedMonth)"
-              :key="task.id"
-              class="task-card"
-            >
-              <span
-                class="outcome-pill"
-                :class="task.status === 'Complete' ? 'outcome-pill--complete' : 'outcome-pill--declined'"
-              >
-                {{ task.status }}
-              </span>
-              <div class="task-body">
-                <p class="title">{{ task.title }}</p>
-                <p class="assignee">Assigned to {{ task.profiles?.name ?? 'Unassigned' }}</p>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </template>
+      </div>
     </template>
+
+    <p class="footer">BTX Ops Hub &middot; Fundraising Tasks</p>
   </section>
 </template>
 
 <style scoped>
+.tasks-alerts {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
 .header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 1rem;
 }
 
-.header-row h2 {
+.page-title {
   margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-header-strong);
 }
 
+/* Segmented control -- literal port of Tasks & Approvals' own .tabs/.tab
+   treatment: a rounded track with an inset white pill behind whichever tab
+   is selected, rather than separate underline tabs. */
 .tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 4px;
+  background: var(--color-track);
+  border-radius: 14px;
 }
 
 .tab {
+  flex: 1;
+  text-align: center;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: 10px;
   padding: 8px 4px;
-  margin-right: 20px;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-weight: 400;
+  color: var(--color-header-muted);
   cursor: pointer;
+  font-family: inherit;
 }
 
 .tab--active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-header-strong);
+  font-weight: 700;
+}
+
+.empty {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--color-header-muted);
+}
+
+.page-error {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
 }
 
 .drill-list {
@@ -484,93 +481,94 @@ async function handleDecline(id) {
   gap: 10px;
 }
 
+/* No left accent bar (unlike Alert Center) -- a plain bordered surface,
+   vertically stacked: pill row, title, assignee line, actions. Literal
+   port of Tasks & Approvals' own .task-card, minus its domain pill (this
+   page is single-domain, so a domain label on every row is redundant). */
 .task-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
   background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 14px 18px;
+  padding: 12px 14px;
 }
 
-.badge {
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-pill,
+.status-pill {
   flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
   border-radius: 999px;
   white-space: nowrap;
 }
 
-.badge--amber {
+/* Uniformly muted regardless of urgency -- this page signals workflow
+   status via the status pill, not date-driven color coding. */
+.date-pill {
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
+}
+
+.status-pill {
+  margin-left: auto;
+}
+
+.status-pill--neutral {
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
+}
+
+.status-pill--amber {
   background: var(--color-amber-badge-bg);
   color: var(--color-amber-badge-text);
 }
 
-.badge--default {
-  background: var(--color-neutral-badge-bg);
-  color: var(--color-neutral-badge-text);
-}
-
-.badge--overdue {
-  background: var(--color-danger-badge-bg);
-  color: var(--color-danger-badge-text);
-}
-
-.outcome-pill {
-  flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.outcome-pill--complete {
+.status-pill--success {
   background: var(--color-success-badge-bg);
   color: var(--color-success-badge-text);
 }
 
-.outcome-pill--declined {
-  background: var(--color-neutral-badge-bg);
-  color: var(--color-neutral-badge-text);
-}
-
-.task-body {
-  flex: 1;
-  min-width: 0;
-}
-
 .title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-header-strong);
+  overflow-wrap: anywhere;
 }
 
 .assignee {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--color-header-muted);
 }
 
 .row-error {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 12px;
   color: var(--color-danger-text);
 }
 
+/* Fixed min-height so a 1-button (Mark complete) row and a 2-button
+   (Approve/Decline) row -- or the italic "awaiting"/"in progress" text
+   shown to non-assignees instead -- all reserve the same vertical space. */
 .actions {
-  flex-shrink: 0;
+  margin-top: 10px;
+  min-height: 30px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .awaiting {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--color-header-muted);
   font-style: italic;
 }
 
@@ -580,6 +578,7 @@ async function handleDecline(id) {
   padding: 6px 14px;
   border-radius: 8px;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .btn:disabled {
@@ -599,40 +598,16 @@ async function handleDecline(id) {
   border: 1px solid var(--color-accent);
 }
 
-.error {
-  color: var(--color-danger-text);
+.footer {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-header-muted);
 }
 
 .access-denied {
   margin: 0;
   color: var(--color-danger-text);
   font-weight: 600;
-}
-
-/* Below 850px (matching HomeView.vue's sidebar-drawer breakpoint), the
-   badge/outcome-pill, task-body, and actions column no longer share one
-   row -- at narrow widths their combined natural widths (badge/pill and
-   actions are both flex-shrink: 0) left too little room for task-body,
-   causing severe word-by-word wrapping and, in the worst cases, actions
-   overflowing past the card edge. flex-wrap alone isn't enough to fix
-   this deterministically: without a forced basis, the browser packs as
-   much onto each line as fits, so a short assignee name might still
-   share a line with the badge while a long one doesn't -- the exact
-   per-content inconsistency this fix needs to avoid. Giving both
-   task-body AND actions flex-basis: 100% forces each onto its own row
-   unconditionally, regardless of how long the title, assignee name, or
-   "awaiting ... review" text happens to be, so the stacked order (badge,
-   then task-body, then actions) is always the same. Nothing above this
-   query is touched, so desktop layout is unaffected. */
-@media (max-width: 850px) {
-  .task-card {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .task-body,
-  .actions {
-    flex-basis: 100%;
-  }
 }
 </style>
