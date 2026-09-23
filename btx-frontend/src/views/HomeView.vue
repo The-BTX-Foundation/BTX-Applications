@@ -627,7 +627,15 @@ onUnmounted(() => {
 }
 
 /* Hidden by default -- the only place this is ever shown is inside the
-   max-width: 850px query below, so it has zero effect above that width. */
+   max-width: 850px query below, so it has zero effect above that width.
+   width: 100vw (not right: 0) deliberately -- `right: 0` resolves against
+   the layout viewport, which on any page tall enough to scroll vertically
+   is narrower than the true device width by the browser's reserved
+   scrollbar gutter (mobile overlay scrollbars don't reserve any, but a
+   plain desktop window narrowed to a phone width does, which is exactly
+   how this bar's edge-to-edge claim gets checked). 100vw is defined off
+   the initial containing block instead, so it always spans the full
+   device width regardless of whether a gutter is currently reserved. */
 .mobile-topbar {
   display: none;
   align-items: center;
@@ -635,7 +643,7 @@ onUnmounted(() => {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  width: 100vw;
   height: 56px;
   padding: 0 16px;
   background: #1a1a1a;
@@ -688,7 +696,10 @@ onUnmounted(() => {
   position: fixed;
   top: 56px;
   left: 0;
-  right: 0;
+  /* Same width: 100vw fix as .mobile-topbar above, and for the identical
+     reason -- right: 0 falls short of the true device edge by whatever
+     scrollbar gutter the browser currently reserves. */
+  width: 100vw;
   height: 40px;
   align-items: center;
   padding: 0 16px;
