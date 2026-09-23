@@ -444,7 +444,8 @@ onUnmounted(() => {
           route.name === 'program-planning' ||
           route.name === 'program-impact' ||
           route.name === 'finance-budget-tracking' ||
-          route.name === 'finance-fundraising-health',
+          route.name === 'finance-fundraising-health' ||
+          route.name === 'alerts',
       }"
     >
       <div class="panel" ref="panelEl">
@@ -788,12 +789,12 @@ onUnmounted(() => {
 }
 
 /* The three "Program" detail pages (Impact to Date / Headline Metric
-   Summary, Program Planning, and Program Impact) plus Budget Tracking and
-   Fundraising Health, same mechanism as .page--home above -- ~18px total
-   side margin (the mockup's own 4.8% of a 390px viewport), split the same
-   way: .page's var(--page-h-padding) carries the full 18px, .panel's
-   horizontal padding is zeroed out so it doesn't stack another 16px on
-   top. Every other route/width is untouched. */
+   Summary, Program Planning, and Program Impact) plus Budget Tracking,
+   Fundraising Health, and Alert Center, same mechanism as .page--home
+   above -- ~18px total side margin (the mockup's own 4.8% of a 390px
+   viewport), split the same way: .page's var(--page-h-padding) carries the
+   full 18px, .panel's horizontal padding is zeroed out so it doesn't stack
+   another 16px on top. Every other route/width is untouched. */
 @media (max-width: 600px) {
   .page--program-detail {
     --page-h-padding: 18px;
