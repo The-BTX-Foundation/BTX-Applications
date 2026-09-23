@@ -71,15 +71,13 @@ function overdueLabel(date) {
   return `${daysOverdue(date)}d overdue`
 }
 
-// Domain filter: "All" plus one pill per domain that actually has an
-// overdue item right now -- a domain with zero overdue items isn't offered
-// as a filter at all.
+// Domain filter: "All" plus one pill per domain, always -- a domain with
+// zero overdue items right now still gets a pill (selecting it shows the
+// existing "Nothing critical/else needs attention" empty messaging below
+// instead of disappearing from the row entirely).
 const selectedDomain = ref('all')
 
-const availableDomains = computed(() => {
-  const present = new Set(overdueItems.value.map((task) => task.source))
-  return DOMAIN_ORDER.filter((source) => present.has(source))
-})
+const availableDomains = DOMAIN_ORDER
 
 // Resets truncation whenever the domain filter changes, so switching
 // filters always starts from the default collapsed view instead of keeping
