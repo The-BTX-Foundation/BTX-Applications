@@ -7,6 +7,17 @@ import { AWARDS, formatAwardAmount } from '../../lib/awards'
 const router = useRouter()
 const store = useApplicationStore()
 
+// The mockup's opt-out row wording doesn't follow one template per award --
+// "Think Big Scholarship" and "BTX Legacy Award" both add a word the other
+// doesn't, and "Empowerment Award" keeps "Award" rather than switching to
+// "Scholarship" -- so each row's exact text is keyed by award id instead of
+// derived from a single format string.
+const OPT_OUT_LABELS = {
+  'think-big': (award) => `Don't consider me for the ${award.shortLabel} Scholarship`,
+  legacy: (award) => `Don't consider me for the BTX ${award.shortLabel} Award`,
+  empowerment: (award) => `Don't consider me for the ${award.shortLabel} Award`,
+}
+
 // Toggles an award id in/out of the opt-out list -- awardOptOuts is an
 // array (not one boolean per award) since a later round's Step 7 summary
 // needs to list which specific awards were opted out of.
@@ -58,7 +69,7 @@ function onContinue() {
         :key="award.id"
         variant="card"
         type="checkbox"
-        :label="`Don't consider me for the ${award.label}`"
+        :label="OPT_OUT_LABELS[award.id](award)"
         :selected="store.awardOptOuts.includes(award.id)"
         @select="toggleOptOut(award.id)"
       />

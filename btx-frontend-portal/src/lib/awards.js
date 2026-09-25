@@ -3,9 +3,9 @@
 // summary will import it too -- names/amounts should only ever be edited
 // here, never re-typed in a component.
 export const AWARDS = [
-  { id: 'think-big', label: 'Amazon Think Big Scholarship', amount: 4000 },
-  { id: 'legacy', label: 'BTX Legacy Award', amount: 2000 },
-  { id: 'empowerment', label: 'Empowerment Award', amount: 500 },
+  { id: 'think-big', label: 'Amazon Think Big Scholarship', shortLabel: 'Think Big', amount: 4000 },
+  { id: 'legacy', label: 'BTX Legacy Award', shortLabel: 'Legacy', amount: 2000 },
+  { id: 'empowerment', label: 'Empowerment Award', shortLabel: 'Empowerment', amount: 500 },
 ]
 
 // Formats an award's dollar amount as "$X,XXX".
