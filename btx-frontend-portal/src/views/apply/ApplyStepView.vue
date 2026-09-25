@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router'
 import { useApplicationStore } from '../../stores/application'
 import WizardShell from '../../components/WizardShell.vue'
 import Step1BasicInfo from './Step1BasicInfo.vue'
+import Step2HowYouFoundUs from './Step2HowYouFoundUs.vue'
+import Step3ProgramsAwards from './Step3ProgramsAwards.vue'
 import StepPlaceholder from './StepPlaceholder.vue'
 
 const route = useRoute()
@@ -23,6 +25,8 @@ watch(step, (value) => {
 <template>
   <WizardShell :step="step">
     <Step1BasicInfo v-if="step === 1" />
+    <Step2HowYouFoundUs v-else-if="step === 2" />
+    <Step3ProgramsAwards v-else-if="step === 3" />
     <StepPlaceholder v-else :step="step" />
   </WizardShell>
 </template>
