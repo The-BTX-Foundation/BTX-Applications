@@ -1,0 +1,60 @@
+/* Color tokens copied from btx-frontend/src/assets/base.css's light :root
+   block -- this app is light-mode only (no dark toggle), so only the
+   tokens the landing/apply pages actually use are kept, and there's no
+   :root[data-theme='dark'] override block. */
+:root {
+  /* Warm cream from the brand swatch. */
+  --color-page-bg: #f6f1e7;
+  --color-surface: #fff;
+  --color-text-primary: #2d3142;
+  --color-text-secondary: #8a8a85;
+  --color-border: #e5e3dd;
+  --color-border-strong: #d8d6cf;
+  --color-accent: #c9932a;
+
+  /* Font files themselves are imported once in main.js, not per-component,
+     so any component can use this stack. */
+  --font-serif: 'Playfair Display', Georgia, serif;
+
+  /* Home's header only, in the source app -- warm near-black/warm-gray
+     used here for the topbar wordmark/labels against the cream page. */
+  --color-header-strong: #1c1a17;
+  --color-header-muted: #57534e;
+
+  /* Deeper gold used for the progress bar fill, plus the pale track it
+     sits on. */
+  --color-gold-strong: #b6832e;
+  --color-track: #ede6d7;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-text-primary);
+  background: var(--color-page-bg);
+  line-height: 1.6;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
+    sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
