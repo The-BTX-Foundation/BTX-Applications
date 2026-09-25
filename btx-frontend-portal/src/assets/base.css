@@ -25,6 +25,25 @@
      sits on. */
   --color-gold-strong: #b6832e;
   --color-track: #ede6d7;
+
+  /* Required-field asterisks and inline validation errors in the
+     application wizard's form fields. */
+  --color-danger-text: #b3261e;
+}
+
+/* Shared label styling for the wizard's form fields (TextField,
+   SelectField, SegmentedControl) -- lives here rather than tripled across
+   each component's scoped styles. */
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.field-required {
+  color: var(--color-danger-text);
 }
 
 *,
