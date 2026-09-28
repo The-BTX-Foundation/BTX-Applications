@@ -117,6 +117,49 @@
   --color-green-strong: #3f6b4f;
   --color-track: #ede6d7;
   --color-tint-green: #e3ece5;
+
+  /* Awardee Workflow preview page only -- sampled from its own reference
+     design. Most of that design's palette already matched an existing
+     token exactly or near-exactly and needed nothing new here: ink/
+     ink-soft -> --color-header-strong/-muted, paper/paper-dim ->
+     --color-page-bg/--color-track, card -> --color-surface, line ->
+     --color-border, gold -> --color-gold-strong, forest ->
+     --color-green-strong, forest-soft -> --color-tint-green (all reused
+     directly in the component, no new tokens needed for any of those).
+     Four values had no adequate existing match, added below:
+       - gold-soft/gold-deep: no existing sibling at all for
+         --color-gold-strong (only the one "-strong" value existed) --
+         these are new, following that same bare-adjective-suffix
+         convention rather than the "-badge-bg/-text" one below.
+       - rust/rust-soft: compared against --color-danger-badge-bg/-text.
+         The "-soft" background values are close (~8 units apart), but
+         rust itself is ~35 units warmer/more orange than
+         --color-danger-badge-text -- different enough, as a pair, to
+         read as a distinct terracotta rather than the app's existing
+         crimson danger tone, so kept separate.
+       - slate/slate-soft: compared against --color-neutral-badge-bg/-text.
+         Same story, more pronounced -- slate-soft is reasonably close to
+         --color-neutral-badge-bg (~12 units), but slate itself is ~67
+         units lighter/warmer than --color-neutral-badge-text, clearly a
+         different (lighter, taupe-ish) neutral than the app's existing one.
+     Light-mode values below are the reference design's own hex, unchanged.
+     Dark-mode values are freshly derived (the reference is light-mode
+     only) using the same brighten-for-contrast relationship already
+     visible between this file's own light/dark danger/amber/success/
+     neutral pairs; all four measured 5.4:1+ against their own badge
+     background and 5.9:1+ against both --color-page-bg and
+     --color-surface in dark mode. One honest gap: slate-badge-text
+     against slate-badge-bg is only ~3:1 in LIGHT mode (matching this
+     file's own already-documented --color-text-secondary precedent of
+     3.08:1 above) -- used in the component only for borders and
+     de-emphasized "Not yet set"-style labels, never as the sole carrier
+     of essential text. */
+  --color-gold-soft: #f1e2c6;
+  --color-gold-deep: #8f6721;
+  --color-rust-badge-bg: #f6e4e0;
+  --color-rust-badge-text: #a8422f;
+  --color-slate-badge-bg: #ece8e0;
+  --color-slate-badge-text: #8c8579;
 }
 
 :root[data-theme='dark'] {
@@ -154,6 +197,18 @@
   --color-green-strong: #81c784;
   --color-track: #3a3733;
   --color-tint-green: #1f3a24;
+
+  /* Awardee Workflow preview page only -- see the light block's comment
+     above for the full rust/slate reuse-vs-new comparison. Derived (not
+     sampled -- the reference is light-mode only), each measured 5.4:1+
+     against its own badge background and 5.9:1+ against both
+     --color-page-bg and --color-surface here. */
+  --color-gold-soft: #3d331c;
+  --color-gold-deep: #d9a84e;
+  --color-rust-badge-bg: #3d241c;
+  --color-rust-badge-text: #e08a68;
+  --color-slate-badge-bg: #322f29;
+  --color-slate-badge-text: #b3ac9e;
 }
 
 *,
