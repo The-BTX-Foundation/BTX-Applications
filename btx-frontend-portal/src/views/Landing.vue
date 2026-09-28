@@ -15,14 +15,6 @@ function startApplication() {
   <div class="page">
     <Topbar />
 
-    <div class="progress-row">
-      <span class="progress-step">Step 1 of 7</span>
-      <span class="progress-percent">14%</span>
-    </div>
-    <div class="progress-track">
-      <div class="progress-fill"></div>
-    </div>
-
     <main class="content">
       <span class="pill">BTX Foundation Scholarships</span>
       <h1 class="headline">Up to $4,000</h1>
@@ -90,45 +82,16 @@ function startApplication() {
   flex-direction: column;
 }
 
-.progress-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 16px 20px 0;
-}
-
-.progress-step {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--color-header-strong);
-}
-
-.progress-percent {
-  font-size: 13px;
-  color: var(--color-header-muted);
-}
-
-.progress-track {
-  margin: 8px 20px 0;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--color-track);
-  overflow: hidden;
-}
-
-.progress-fill {
-  width: 14%;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--color-accent);
-}
-
 .content {
   flex: 1;
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
-  padding: 24px 20px 40px;
+  /* 40px top padding (up from the original 24px) -- with the progress row
+     and track removed, this is what's left to give the topbar and the
+     pill a comfortable gap; matches ConfirmationView's own
+     Topbar-directly-into-content spacing for the same reason. */
+  padding: 40px 20px;
   display: flex;
   flex-direction: column;
 }
