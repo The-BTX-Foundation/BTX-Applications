@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getSavedStep } from '../stores/application'
+import { getSavedStep, isSubmitted } from '../stores/application'
 
 const TOTAL_STEPS = 7
 
@@ -27,6 +27,25 @@ const router = createRouter({
       beforeEnter: (to) => {
         const step = Number(to.params.step)
         if (step < 1 || step > TOTAL_STEPS) return '/apply/1'
+      },
+    },
+    {
+      path: '/apply/confirmation',
+      name: 'apply-confirmation',
+      component: () => import('../views/apply/ConfirmationView.vue'),
+      // Only reachable right after a real (simulated) submission this
+      // session, or in test mode -- otherwise a direct link/bookmark to
+      // this URL would show "Application submitted" for someone who never
+      // submitted anything. Test mode is checked with the exact same
+      // literal `import.meta.env.DEV || import.meta.env.VITE_ENABLE_TEST_NAV
+      // === 'true'` expression App.vue uses for TestNavPanel -- written out
+      // here rather than imported from App.vue, since App.vue's own
+      // tree-shaking (dropping TestNavPanel from a production build without
+      // the flag) depends on that check being a literal Vite can statically
+      // replace at its own call site.
+      beforeEnter: () => {
+        const testMode = import.meta.env.DEV || import.meta.env.VITE_ENABLE_TEST_NAV === 'true'
+        if (!isSubmitted() && !testMode) return '/'
       },
     },
   ],

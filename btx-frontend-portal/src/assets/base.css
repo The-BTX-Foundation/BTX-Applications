@@ -34,6 +34,12 @@
      directly from the mockup. Its border matches --color-gold-strong
      exactly, so only the background needed a new token. */
   --color-highlight-bg: #f1e2c6;
+
+  /* Confirmation screen's check circle and "Interview eligible" dot/text --
+     sampled directly from 08-confirmation.png (pale mint background,
+     forest-green foreground). */
+  --color-success-bg: #e2f1e7;
+  --color-success-text: #3f6b4f;
 }
 
 /* Shared label styling for the wizard's form fields (TextField,

@@ -25,6 +25,7 @@ const NAV_LINKS = [
   { label: 'Step 5', path: '/apply/5' },
   { label: 'Step 6', path: '/apply/6' },
   { label: 'Step 7', path: '/apply/7' },
+  { label: 'Confirmation', path: '/apply/confirmation' },
 ]
 
 // PLACEHOLDER option lists mirrored from each step's own component, since
