@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 // Single localStorage key for the whole draft -- namespaced so it can't
@@ -29,7 +29,14 @@ export function getSavedStep() {
 // (empty/false) so later rounds add UI without restructuring the store.
 export const useApplicationStore = defineStore('application', () => {
   const draft = loadDraft()
-  const field = (key, fallback) => ref(key in draft ? draft[key] : fallback)
+  // Records each field's fallback value as it's declared below, so
+  // resetDraft() can restore every field to its true default without
+  // duplicating this list of fallbacks a second time.
+  const defaults = {}
+  const field = (key, fallback) => {
+    defaults[key] = fallback
+    return ref(key in draft ? draft[key] : fallback)
+  }
 
   const currentStep = field('currentStep', 1)
 
@@ -99,5 +106,53 @@ export const useApplicationStore = defineStore('application', () => {
     { deep: true },
   )
 
-  return { ...allFields }
+  // Step 6 -- the actual uploaded File objects. Deliberately kept OUTSIDE
+  // `allFields`/the persistence watcher above: a File object can't survive
+  // JSON.stringify (it serializes to "{}"), so only its name
+  // (resumeFileName/transcriptFileName above) is ever persisted. This
+  // object starts empty on every page load -- Step 6's "needs reselect"
+  // state is what tells the applicant to re-pick a file after a reload.
+  const files = reactive({
+    resume: null,
+    transcript: null,
+  })
+
+  // Stores an uploaded File in memory and mirrors its name into the
+  // persisted draft. kind is 'resume' or 'transcript'.
+  function setDocument(kind, file) {
+    files[kind] = file
+    if (kind === 'resume') resumeFileName.value = file.name
+    else if (kind === 'transcript') transcriptFileName.value = file.name
+  }
+
+  // Clears both the in-memory File and the persisted filename for kind.
+  function clearDocument(kind) {
+    files[kind] = null
+    if (kind === 'resume') resumeFileName.value = ''
+    else if (kind === 'transcript') transcriptFileName.value = ''
+  }
+
+  // True only when an actual File object is held in memory -- a saved
+  // filename alone (e.g. right after a reload) doesn't count, since Step 7
+  // needs to know whether there are real bytes to submit, not just a name.
+  const hasResumeFile = computed(() => files.resume instanceof File)
+  const hasTranscriptFile = computed(() => files.transcript instanceof File)
+
+  // Restores every field to its original default, clears the in-memory
+  // files, and drops the persisted draft entirely -- used by the dev-only
+  // test nav panel's "Reset draft" button to get back to a clean slate
+  // without a full page reload. Arrays are reset to a fresh [] rather than
+  // reusing the fallback stored in `defaults` so pushes into the "reset"
+  // draft never mutate that shared default array.
+  function resetDraft() {
+    for (const [key, value] of Object.entries(allFields)) {
+      const fallback = defaults[key]
+      value.value = Array.isArray(fallback) ? [] : fallback
+    }
+    files.resume = null
+    files.transcript = null
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
+  return { ...allFields, files, setDocument, clearDocument, hasResumeFile, hasTranscriptFile, resetDraft }
 })

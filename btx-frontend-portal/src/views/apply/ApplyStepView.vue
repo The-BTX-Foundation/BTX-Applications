@@ -8,6 +8,7 @@ import Step2HowYouFoundUs from './Step2HowYouFoundUs.vue'
 import Step3ProgramsAwards from './Step3ProgramsAwards.vue'
 import Step4OptionalEssay from './Step4OptionalEssay.vue'
 import Step5InterviewAvailability from './Step5InterviewAvailability.vue'
+import Step6UploadDocuments from './Step6UploadDocuments.vue'
 import StepPlaceholder from './StepPlaceholder.vue'
 
 const route = useRoute()
@@ -31,6 +32,7 @@ watch(step, (value) => {
     <Step3ProgramsAwards v-else-if="step === 3" />
     <Step4OptionalEssay v-else-if="step === 4" />
     <Step5InterviewAvailability v-else-if="step === 5" />
+    <Step6UploadDocuments v-else-if="step === 6" />
     <StepPlaceholder v-else :step="step" />
   </WizardShell>
 </template>
