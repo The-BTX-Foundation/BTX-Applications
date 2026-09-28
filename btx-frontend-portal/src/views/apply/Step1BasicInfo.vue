@@ -5,6 +5,7 @@ import { useApplicationStore } from '../../stores/application'
 import TextField from '../../components/TextField.vue'
 import SelectField from '../../components/SelectField.vue'
 import SegmentedControl from '../../components/SegmentedControl.vue'
+import { isStepValid } from '../../lib/stepValidation'
 
 const router = useRouter()
 const store = useApplicationStore()
@@ -83,19 +84,7 @@ function onCreditsInput(value) {
   store.creditsLeft = value.replace(/\D/g, '')
 }
 
-const isValid = computed(() => {
-  return (
-    store.fullName.trim().length > 0 &&
-    emailIsValid.value &&
-    phoneDigitCount.value === 10 &&
-    store.gender.length > 0 &&
-    store.race.length > 0 &&
-    store.attendsUMD.length > 0 &&
-    store.educationStatus.length > 0 &&
-    store.creditsLeft.length > 0 &&
-    store.major.length > 0
-  )
-})
+const isValid = computed(() => isStepValid(1, store))
 
 // Advances to Step 2. currentStep is set here (in addition to
 // ApplyStepView's route watcher) so the draft reflects "completed step 1"

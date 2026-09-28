@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useApplicationStore } from '../../stores/application'
 import PillToggle from '../../components/PillToggle.vue'
 import { INTERVIEW_SLOTS } from '../../lib/interviewSlots'
+import { isStepValid } from '../../lib/stepValidation'
 
 const router = useRouter()
 const store = useApplicationStore()
@@ -36,7 +37,7 @@ function toggleSlot(slotId) {
 }
 
 const selectedCount = computed(() => store.selectedSlots.length)
-const isValid = computed(() => selectedCount.value >= MIN_SLOTS)
+const isValid = computed(() => isStepValid(5, store))
 
 function onContinue() {
   if (!isValid.value) return

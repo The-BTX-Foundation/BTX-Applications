@@ -3,6 +3,7 @@ import { computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApplicationStore } from '../../stores/application'
 import FileUploadCard from '../../components/FileUploadCard.vue'
+import { isStepValid } from '../../lib/stepValidation'
 
 const router = useRouter()
 const store = useApplicationStore()
@@ -39,7 +40,7 @@ function onSelect(kind, file) {
   if (!message) store.setDocument(kind, file)
 }
 
-const isValid = computed(() => store.hasResumeFile && store.hasTranscriptFile)
+const isValid = computed(() => isStepValid(6, store))
 
 // Advances to Step 7. currentStep is set here (in addition to
 // ApplyStepView's route watcher) so the draft reflects "completed step 6"

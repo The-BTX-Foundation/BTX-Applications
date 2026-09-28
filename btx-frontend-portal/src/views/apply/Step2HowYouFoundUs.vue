@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApplicationStore } from '../../stores/application'
 import OptionRow from '../../components/OptionRow.vue'
+import { isStepValid } from '../../lib/stepValidation'
 
 const router = useRouter()
 const store = useApplicationStore()
@@ -14,7 +15,7 @@ const HOW_HEARD_OPTIONS = [
   'Other',
 ]
 
-const isValid = computed(() => store.howHeard.length > 0)
+const isValid = computed(() => isStepValid(2, store))
 
 // Advances to Step 3. currentStep is set here (in addition to
 // ApplyStepView's route watcher) so the draft reflects "completed step 2"
