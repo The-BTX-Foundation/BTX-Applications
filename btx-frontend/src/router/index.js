@@ -93,7 +93,11 @@ const router = createRouter({
         // Scholarship's 3 planned tabs, same treatment as the Finance/Funding
         // groups above.
         placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),
-        placeholderRoute('scholarship-interviews', 'scholarship-interviews', 'Interviews'),
+        {
+          path: 'scholarship-interviews',
+          name: 'scholarship-interviews',
+          component: () => import('../views/Interviews.vue'),
+        },
         placeholderRoute('scholarship-applicant-records', 'scholarship-applicant-records', 'Applicant Records'),
         // Admin-only bulk import tool -- gated inside ImportWizard.vue itself
         // (authStore.isAdmin alone, not the app's usual canView convention),
