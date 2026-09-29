@@ -6,12 +6,16 @@
 // table backing any of it yet, and this component makes ZERO Supabase
 // calls (authStore.isAdmin/isBoard/isReviewer below reads the session the
 // router's global guard already loaded, it doesn't fetch anything
-// itself). The All/Scored/Pending tab below is a real local filter; the
-// "Score" button is NOT -- see onScoreClick() below for why it only shows
-// an inline note instead of opening a fabricated scoring form.
+// itself). The All/Scored/Pending tab below is a real local filter, and
+// so is a queue row's "Score ->" link now -- it navigates to
+// ScoreApplicant.vue, a real (still front-end-only) scoring detail page.
+// YOUR_QUEUE/ALL_APPLICANTS are a shared reactive singleton (see their own
+// comment in scoringSampleData.js) -- that page's Save draft/Publish
+// actions mutate these same arrays, and this page just reflects whatever
+// they currently hold.
 import { computed, onMounted, ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { VIEWER_INITIALS, YOUR_QUEUE, CYCLE_PROGRESS_TILES, RUBRIC_CRITERIA, ALL_APPLICANTS } from '@/lib/scoringSampleData'
+import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 // Same admin/board/reviewer gate every other Program/Finance/Scholarship
@@ -54,24 +58,6 @@ const filteredApplicants = computed(() => {
   return ALL_APPLICANTS.filter((applicant) => applicant.pill === selectedStatus.value)
 })
 
-// STEP 5 -- there is no scoring-input mockup, so "Score ->" must not open
-// a fabricated multi-criterion form. Clicking it just shows a small,
-// clearly non-blocking inline note near that row's button, which clears
-// on the next click (either the same button again, a different row's
-// button, or automatically after a few seconds) -- same
-// show-then-auto-clear shape as Interviews.vue's own "Saved locally" note
-// for an action that isn't really wired up yet.
-const scoreNoteRowId = ref(null)
-let scoreNoteTimer = null
-
-function onScoreClick(rowId) {
-  scoreNoteRowId.value = rowId
-  if (scoreNoteTimer) clearTimeout(scoreNoteTimer)
-  scoreNoteTimer = setTimeout(() => {
-    scoreNoteRowId.value = null
-    scoreNoteTimer = null
-  }, 3500)
-}
 </script>
 
 <template>
@@ -107,6 +93,7 @@ function onScoreClick(rowId) {
           <div class="queue-row-main">
             <span class="app-id">{{ row.id }}</span>
             <p class="queue-meta">{{ row.meta }}</p>
+            <p v-if="row.draftSaved && row.yourScore === null" class="draft-indicator">Draft saved</p>
           </div>
 
           <span
@@ -116,10 +103,13 @@ function onScoreClick(rowId) {
           >
             {{ row.yourScore.toFixed(1) }}
           </span>
-          <div v-else class="score-action">
-            <button type="button" class="score-btn" @click="onScoreClick(row.id)">Score →</button>
-            <p v-if="scoreNoteRowId === row.id" class="score-note">Scoring form not built yet</p>
-          </div>
+          <RouterLink
+            v-else
+            :to="{ name: 'scholarship-score-applicant', params: { appId: row.id } }"
+            class="score-btn"
+          >
+            Score →
+          </RouterLink>
         </li>
       </ul>
     </section>
@@ -355,6 +345,16 @@ function onScoreClick(rowId) {
   color: var(--color-text-secondary);
 }
 
+/* Set by ScoreApplicant.vue's Save draft action on the shared queue row --
+   only shown while the row is still unscored (a published score makes the
+   draft moot). */
+.draft-indicator {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-gold-deep);
+}
+
 /* Score badge -- reuses the exact same success/amber/rust/neutral badge
    token pairs the pills elsewhere on this app already use, just rendered
    as a circle instead of a pill. Used identically by both "Your scoring
@@ -395,15 +395,13 @@ function onScoreClick(rowId) {
   color: var(--color-neutral-badge-text);
 }
 
-.score-action {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
+/* Now a real RouterLink to ScoreApplicant.vue -- display:inline-flex
+   (rather than relying on <a>'s default inline box) so the padding
+   applies the same way a <button> would. */
 .score-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
   padding: 7px 12px;
   border-radius: 999px;
   border: none;
@@ -412,20 +410,13 @@ function onScoreClick(rowId) {
   font-size: 12px;
   font-weight: 700;
   font-family: inherit;
+  text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .score-btn:hover {
   opacity: 0.9;
-}
-
-.score-note {
-  margin: 0;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
 }
 
 .section-heading {

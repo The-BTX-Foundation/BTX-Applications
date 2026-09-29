@@ -98,6 +98,14 @@ const router = createRouter({
           component: () => import('../views/Scoring.vue'),
         },
         {
+          // Reached from a queue row's own "Score ->" link on
+          // scholarship-scoring above -- a sibling path (not nested under
+          // it) since it's a distinct full page, not a tab/child view.
+          path: 'scholarship-scoring/:appId',
+          name: 'scholarship-score-applicant',
+          component: () => import('../views/ScoreApplicant.vue'),
+        },
+        {
           path: 'scholarship-interviews',
           name: 'scholarship-interviews',
           component: () => import('../views/Interviews.vue'),
