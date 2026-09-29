@@ -318,7 +318,11 @@ function onScoreClick(rowId) {
   border-radius: 8px;
   border: 1px solid var(--color-border);
   border-left: 3px solid transparent;
-  background: var(--color-page-bg);
+  /* Same card background as .applicant-row below (the "All applicants
+     this cycle" rows) -- was mistakenly --color-page-bg, which is the
+     page's own cream background, not a card surface, so these rows had
+     no visible boundary against the page. */
+  background: var(--color-surface);
 }
 
 .queue-row--green {
