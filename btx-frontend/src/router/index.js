@@ -98,7 +98,11 @@ const router = createRouter({
           name: 'scholarship-interviews',
           component: () => import('../views/Interviews.vue'),
         },
-        placeholderRoute('scholarship-applicant-records', 'scholarship-applicant-records', 'Applicant Records'),
+        {
+          path: 'scholarship-applicant-records',
+          name: 'scholarship-applicant-records',
+          component: () => import('../views/ApplicantRecords.vue'),
+        },
         // Admin-only bulk import tool -- gated inside ImportWizard.vue itself
         // (authStore.isAdmin alone, not the app's usual canView convention),
         // not at the router level, consistent with every other page's
