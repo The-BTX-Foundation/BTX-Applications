@@ -300,6 +300,11 @@ function onScoreClick(rowId) {
 
 .queue-list {
   margin-top: 14px;
+  /* list-style: none removes the bullet marker but NOT the browser's
+     default 40px padding-inline-start on <ul> -- that default padding
+     was what pushed every row 40px right of the avatar's own left edge
+     (the base.css universal reset only zeroes margin, not padding). */
+  padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -578,6 +583,10 @@ function onScoreClick(rowId) {
 
 .applicant-list {
   margin-top: 12px;
+  /* Same fix as .queue-list above -- the browser's default 40px
+     padding-inline-start on <ul> was pushing every row 40px right of the
+     "All applicants this cycle" heading's own left edge. */
+  padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
