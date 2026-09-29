@@ -5,6 +5,16 @@
 // interviewsSampleData.js, and applicantRecordsSampleData.js (not a Pinia
 // store). Nothing on the Scoring page is fetched from Supabase -- there is
 // no rubric/score table backing any of this yet.
+//
+// YOUR_QUEUE and ALL_APPLICANTS below are wrapped in Vue's own reactive()
+// rather than being plain arrays -- ScoreApplicant.vue (the per-applicant
+// detail page reached from a queue row's "Score ->" button) mutates these
+// SAME arrays/objects on Save draft/Publish, and Scoring.vue needs to see
+// those mutations live without either page knowing about the other's
+// internals. A plain module-level reactive() singleton is enough for that
+// -- a full Pinia store would be overkill for a front-end-only preview
+// with no persistence and no other consumers.
+import { reactive } from 'vue'
 
 // PLACEHOLDER: the signed-in reviewer viewing this page, same caveat as
 // Awardee Workflow's own "you" board member (YOU_INITIALS there) -- a real
@@ -16,39 +26,46 @@ export const VIEWER_INITIALS = 'MJ'
 // drives the row's left border (green once you've scored it, gold while
 // it's still waiting on you); `yourScore` is null for the 3 rows that
 // haven't been scored yet, which is what makes them render the Score
-// button instead of a score badge.
-export const YOUR_QUEUE = [
+// button instead of a score badge. `draftSaved` starts false -- flipped
+// true by ScoreApplicant.vue's Save draft action, and read by Scoring.vue
+// to show a small "Draft saved" indicator on that row.
+export const YOUR_QUEUE = reactive([
   {
     id: 'APP-014',
     yourScore: 4.8,
     meta: 'Interviewer #2: reviewer - both complete',
     accent: 'green',
+    draftSaved: false,
   },
   {
     id: 'APP-035',
     yourScore: 3.7,
     meta: 'Interviewer #2: board - awaiting board',
     accent: 'green',
+    draftSaved: false,
   },
   {
     id: 'APP-058',
     yourScore: null,
     meta: 'Interviewer #2: reviewer - not started',
     accent: 'gold',
+    draftSaved: false,
   },
   {
     id: 'APP-062',
     yourScore: null,
     meta: 'Interviewer #2: board - not started',
     accent: 'gold',
+    draftSaved: false,
   },
   {
     id: 'APP-066',
     yourScore: null,
     meta: 'Interviewer #2: reviewer - not started',
     accent: 'gold',
+    draftSaved: false,
   },
-]
+])
 
 // Cycle-wide progress tiles. `tone` picks the tile-value color class --
 // 'dark' (the average-score tile) is deliberately NOT gold, so it reads
@@ -82,7 +99,7 @@ export const RUBRIC_CRITERIA = [
 // ("Scored" once N of 2 complete) that reproduces the verified sample data
 // -- storing the literal value is honest about that instead of inventing
 // a derivation rule that doesn't actually hold.
-export const ALL_APPLICANTS = [
+export const ALL_APPLICANTS = reactive([
   {
     id: 'APP-003',
     combinedScore: 4.8,
@@ -118,4 +135,4 @@ export const ALL_APPLICANTS = [
     pill: 'Pending',
     isYou: true,
   },
-]
+])
