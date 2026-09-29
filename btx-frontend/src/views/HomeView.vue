@@ -452,7 +452,8 @@ onUnmounted(() => {
           route.name === 'finance-fundraising-tasks' ||
           route.name === 'awardee-workflow' ||
           route.name === 'scholarship-interviews' ||
-          route.name === 'scholarship-applicant-records',
+          route.name === 'scholarship-applicant-records' ||
+          route.name === 'scholarship-scoring',
       }"
     >
       <div class="panel" ref="panelEl">
@@ -809,8 +810,8 @@ onUnmounted(() => {
 /* The three "Program" detail pages (Impact to Date / Headline Metric
    Summary, Program Planning, and Program Impact) plus Budget Tracking,
    Fundraising Health, Alert Center, Tasks & Approvals, Marketing Tasks,
-   Budgeting Tasks, Fundraising Tasks, Awardee Workflow, Interviews, and
-   Applicant Records, same mechanism as .page--home above -- ~18px total side margin (the mockup's own 4.8% of a 390px
+   Budgeting Tasks, Fundraising Tasks, Awardee Workflow, Interviews,
+   Applicant Records, and Scoring, same mechanism as .page--home above -- ~18px total side margin (the mockup's own 4.8% of a 390px
    viewport), split the same way: .page's var(--page-h-padding) carries the
    full 18px, .panel's horizontal padding is zeroed out so it doesn't stack
    another 16px on top. Every other route/width is untouched. */

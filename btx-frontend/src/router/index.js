@@ -92,7 +92,11 @@ const router = createRouter({
         placeholderRoute('scholarship', 'scholarship', 'Scholarship'),
         // Scholarship's 3 planned tabs, same treatment as the Finance/Funding
         // groups above.
-        placeholderRoute('scholarship-scoring', 'scholarship-scoring', 'Scoring'),
+        {
+          path: 'scholarship-scoring',
+          name: 'scholarship-scoring',
+          component: () => import('../views/Scoring.vue'),
+        },
         {
           path: 'scholarship-interviews',
           name: 'scholarship-interviews',
