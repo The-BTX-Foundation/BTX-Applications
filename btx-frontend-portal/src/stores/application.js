@@ -175,15 +175,67 @@ export const useApplicationStore = defineStore('application', () => {
   // flipped by submitApplication() on success.
   const submitted = ref(readSubmittedFlag())
   // Guards submitApplication() against firing twice from a double-click --
-  // there's no real async gap yet since submission is simulated, but this
-  // is the flag a later real (network) implementation will actually need.
+  // there's now a real async gap (the fetch below), so this is load-bearing
+  // in a way it wasn't when submission was simulated.
   const submitting = ref(false)
+  // Set by submitApplication() on a non-success response, cleared at the
+  // start of every new attempt. { code: 'already_submitted' | 'cycle_not_open'
+  // | 'generic', message } -- Step7ReviewSubmit.vue reads this to show
+  // exactly one of three failure banners. null means no error to show.
+  const submitError = ref(null)
 
-  // SIMULATED submission -- the single seam where a real submission (an
-  // actual write to Supabase/the BTX Ops Hub) gets wired in later. Makes NO
-  // network call today. Refuses (returns false) if any required step is
-  // incomplete or any agreement is unchecked; otherwise wipes the draft,
-  // marks the session as submitted, and returns true.
+  // Converts this store's own field shapes into submit-application's
+  // expected request body shape. Two fields need an actual conversion, not
+  // just a rename, because the store's UI-facing shape doesn't match the
+  // database column type:
+  //   - attendsUMD is the string 'Yes'/'No' (a SegmentedControl value) --
+  //     attends_umd is a boolean column.
+  //   - creditsLeft is a string of digits (a text input's raw value) --
+  //     credits_left is an integer column.
+  // Every other field is a straight rename (email -> terpmail_email,
+  // resumeFileName -> resume_filename, etc.) -- see the Edge Function's own
+  // parseApplication comment for the full mapping this mirrors.
+  function buildSubmissionPayload() {
+    return {
+      full_name: fullName.value,
+      terpmail_email: email.value,
+      phone: phone.value,
+      gender: gender.value,
+      race: race.value,
+      attends_umd: attendsUMD.value === 'Yes',
+      education_status: educationStatus.value,
+      credits_left: Number(creditsLeft.value),
+      major: major.value,
+      how_heard: howHeard.value,
+      award_opt_outs: awardOptOuts.value,
+      certification_interest: certificationInterest.value,
+      essay_text: essayText.value,
+      selected_slots: selectedSlots.value,
+      resume_filename: resumeFileName.value,
+      transcript_filename: transcriptFileName.value,
+      agreed_accurate: agreedAccurate.value,
+      agreed_terms: agreedTerms.value,
+      agreed_privacy: agreedPrivacy.value,
+    }
+  }
+
+  // The first real network call this store makes -- every submission
+  // before this was simulated client-side. POSTs to the submit-application
+  // Edge Function; the URL is built from VITE_SUPABASE_URL (this project's
+  // existing env-var convention, see src/lib/supabaseClient.js) rather than
+  // a hardcoded host. Refuses (returns false, no network call attempted) if
+  // any required step is incomplete or any agreement is unchecked -- that's
+  // just avoiding an obviously-futile request; the Edge Function's own
+  // validation is the real defense regardless of what this check does.
+  //
+  // On 201: proceeds exactly as the old simulated path did -- wipes the
+  // draft, marks the session as submitted, returns true so Step 7
+  // navigates to the confirmation screen. On 409 (already_submitted) or
+  // 403 (cycle_not_open): leaves the draft and agreements untouched and
+  // sets submitError so Step 7 can show that specific message instead of
+  // navigating. On anything else (other status codes, a thrown network
+  // error): same "leave everything alone" handling, with a generic retry
+  // message.
   async function submitApplication() {
     if (submitting.value) return false
     const store = useApplicationStore()
@@ -192,23 +244,70 @@ export const useApplicationStore = defineStore('application', () => {
     if (incomplete.length > 0 || !allAgreed) return false
 
     submitting.value = true
-    resetDraft()
-    // Consent was for THIS submission -- clear it along with the rest of
-    // the draft so a second application started in the same tab starts
-    // from a clean slate rather than pre-agreed checkboxes.
-    agreedAccurate.value = false
-    agreedTerms.value = false
-    agreedPrivacy.value = false
+    submitError.value = null
+
+    let response
     try {
-      sessionStorage.setItem(SUBMITTED_SESSION_KEY, '1')
+      response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-application`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(buildSubmissionPayload()),
+      })
     } catch {
-      // sessionStorage can throw in private-browsing contexts -- the
-      // submitted ref below still flips for this in-memory session either
-      // way, it just won't survive a reload of the confirmation page.
+      submitError.value = {
+        code: 'generic',
+        message: 'Something went wrong submitting your application. Please check your connection and try again.',
+      }
+      submitting.value = false
+      return false
     }
-    submitted.value = true
+
+    if (response.status === 201) {
+      resetDraft()
+      // Consent was for THIS submission -- clear it along with the rest of
+      // the draft so a second application started in the same tab starts
+      // from a clean slate rather than pre-agreed checkboxes.
+      agreedAccurate.value = false
+      agreedTerms.value = false
+      agreedPrivacy.value = false
+      try {
+        sessionStorage.setItem(SUBMITTED_SESSION_KEY, '1')
+      } catch {
+        // sessionStorage can throw in private-browsing contexts -- the
+        // submitted ref below still flips for this in-memory session either
+        // way, it just won't survive a reload of the confirmation page.
+      }
+      submitted.value = true
+      submitting.value = false
+      return true
+    }
+
+    if (response.status === 409) {
+      submitError.value = {
+        code: 'already_submitted',
+        message: 'An application already exists for this email this cycle.',
+      }
+    } else if (response.status === 403) {
+      // The Edge Function supplies its own human-readable message for this
+      // case (e.g. naming the specific cycle year) -- fall back to a
+      // generic one only if the response body is somehow missing it.
+      let message = 'Applications are not currently open.'
+      try {
+        const parsed = await response.json()
+        if (typeof parsed?.message === 'string') message = parsed.message
+      } catch {
+        // Malformed/empty body -- keep the fallback message above.
+      }
+      submitError.value = { code: 'cycle_not_open', message }
+    } else {
+      submitError.value = {
+        code: 'generic',
+        message: 'Something went wrong submitting your application. Please try again.',
+      }
+    }
+
     submitting.value = false
-    return true
+    return false
   }
 
   // Restores every field to its original default, clears the in-memory
@@ -239,6 +338,7 @@ export const useApplicationStore = defineStore('application', () => {
     agreedPrivacy,
     submitted,
     submitting,
+    submitError,
     submitApplication,
     resetDraft,
   }

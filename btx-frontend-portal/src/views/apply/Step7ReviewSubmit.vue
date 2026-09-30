@@ -22,7 +22,10 @@ const essayWordCount = computed(() => store.essayText.trim().split(/\s+/).filter
 const incompleteSteps = computed(() => getIncompleteSteps(store))
 
 const allAgreed = computed(() => store.agreedAccurate && store.agreedTerms && store.agreedPrivacy)
-const isDisabled = computed(() => incompleteSteps.value.length > 0 || !allAgreed.value)
+// Also disabled while a submission is in flight -- submitApplication() now
+// makes a real network call (no longer simulated), so a double-click could
+// otherwise fire a second overlapping request.
+const isDisabled = computed(() => incompleteSteps.value.length > 0 || !allAgreed.value || store.submitting)
 
 async function onSubmit() {
   if (isDisabled.value) return
@@ -90,6 +93,15 @@ async function onSubmit() {
       </ul>
     </div>
 
+    <!-- Shown on a 409/403/other failure from submit-application -- the
+         draft is deliberately left intact in all three cases (see
+         submitApplication's own comment), so this banner is the only
+         feedback the applicant gets; it must never appear alongside a
+         navigation to the confirmation screen. -->
+    <div v-if="store.submitError" class="incomplete-notice">
+      <p class="incomplete-notice-title">{{ store.submitError.message }}</p>
+    </div>
+
     <div class="agreements">
       <AgreementRow
         label="I certify that the information in this application is true and accurate."
@@ -112,7 +124,7 @@ async function onSubmit() {
     </div>
 
     <button type="button" class="continue-btn" :disabled="isDisabled" @click="onSubmit">
-      Submit Application
+      {{ store.submitting ? 'Submitting…' : 'Submit Application' }}
     </button>
   </div>
 </template>
