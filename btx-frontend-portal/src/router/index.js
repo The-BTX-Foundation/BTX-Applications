@@ -48,6 +48,11 @@ const router = createRouter({
         if (!isSubmitted() && !testMode) return '/'
       },
     },
+    {
+      path: '/sign-in',
+      name: 'sign-in',
+      component: () => import('../views/SignInView.vue'),
+    },
   ],
 })
 
