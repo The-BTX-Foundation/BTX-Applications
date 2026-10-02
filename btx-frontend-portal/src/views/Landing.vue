@@ -73,6 +73,7 @@ function checkStatus() {
       </ol>
 
       <button type="button" class="start-btn" @click="startApplication">Start Application</button>
+      <p class="status-lead-in">Already submitted an application?</p>
       <button type="button" class="check-status-btn" @click="checkStatus">Check status</button>
     </main>
 
@@ -233,11 +234,20 @@ function checkStatus() {
   opacity: 0.92;
 }
 
+/* Small and muted, same size/color as the card's own secondary copy
+   (.card-text) -- not a heading, just a lead-in to the button below it. */
+.status-lead-in {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
 /* Secondary/outline treatment -- same border/background/text pattern as
    the apply wizard's "Skip for now" button (Step4OptionalEssay.vue's
    .skip-btn), reused here rather than inventing a new button style. */
 .check-status-btn {
-  margin-top: 12px;
+  margin-top: 10px;
   width: 100%;
   padding: 16px;
   border: 1px solid var(--color-border-strong);
