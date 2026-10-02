@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../lib/supabaseClient'
 import TextField from '../components/TextField.vue'
 import Topbar from '../components/Topbar.vue'
 
+const route = useRoute()
 const router = useRouter()
 
 // Which half of the card is showing -- not a tab, a single persistent
@@ -194,6 +195,15 @@ function backToApplicant() {
   mode.value = 'applicant'
   staffError.value = ''
 }
+
+// Entry point for Topbar's "Admin Login" button (/sign-in?staff=1) --
+// opens directly on the staff flow instead of defaulting to the
+// applicant view. Reuses showStaffSignIn() itself, the exact same state
+// change as clicking "BTX staff sign in" below, rather than duplicating
+// its logic here.
+onMounted(() => {
+  if (route.query.staff) showStaffSignIn()
+})
 
 onUnmounted(() => clearInterval(resendTimer))
 </script>

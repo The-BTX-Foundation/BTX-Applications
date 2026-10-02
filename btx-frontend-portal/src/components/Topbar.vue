@@ -9,7 +9,7 @@
     <span class="wordmark">BTX <span class="wordmark-accent">Think Big</span></span>
     <div class="topbar-right">
       <span class="topbar-label">Scholarship Application</span>
-      <RouterLink to="/sign-in" class="topbar-link">Check status</RouterLink>
+      <RouterLink to="/sign-in?staff=1" class="admin-login-btn">Admin Login</RouterLink>
     </div>
   </header>
 </template>
@@ -46,17 +46,47 @@
   color: rgba(255, 255, 255, 0.62);
 }
 
-/* Small and muted on purpose -- this sits next to the existing label
-   rather than as a button, so it never competes with each page's own
-   primary CTA (Start Application, Continue, etc.). */
-.topbar-link {
+/* A genuine bordered-pill button, not text -- stays within the topbar's
+   existing dark/muted/white palette rather than a loud new color; gold
+   stays reserved for the "Think Big" wordmark accent. */
+.admin-login-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.topbar-link:hover {
-  text-decoration: underline;
+.admin-login-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Narrowest widths: the wordmark itself already wraps to two lines here,
+   so the label + button need to shrink rather than wrap or overflow and
+   crowd it. Padding/font come down; the label (not part of this change's
+   scope) is left as-is since it already wraps on its own. */
+@media (max-width: 400px) {
+  .topbar {
+    padding: 14px 16px;
+    gap: 8px;
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+  .admin-login-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 }
 </style>
