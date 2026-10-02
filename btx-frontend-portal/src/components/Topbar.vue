@@ -7,7 +7,10 @@
 <template>
   <header class="topbar">
     <span class="wordmark">BTX <span class="wordmark-accent">Think Big</span></span>
-    <span class="topbar-label">Scholarship Application</span>
+    <div class="topbar-right">
+      <span class="topbar-label">Scholarship Application</span>
+      <RouterLink to="/sign-in" class="topbar-link">Check status</RouterLink>
+    </div>
   </header>
 </template>
 
@@ -32,8 +35,28 @@
   color: var(--color-accent);
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .topbar-label {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.62);
+}
+
+/* Small and muted on purpose -- this sits next to the existing label
+   rather than as a button, so it never competes with each page's own
+   primary CTA (Start Application, Continue, etc.). */
+.topbar-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+}
+
+.topbar-link:hover {
+  text-decoration: underline;
 }
 </style>

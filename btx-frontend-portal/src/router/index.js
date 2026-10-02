@@ -1,7 +1,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getSavedStep, isSubmitted } from '../stores/application'
+import { supabase } from '../lib/supabaseClient'
 
 const TOTAL_STEPS = 7
+
+// Shared guard for every authenticated-only route below (/status,
+// /staff-preview) -- sends a direct visit with no active Supabase
+// session back to /sign-in instead of rendering the page. Does not
+// check role here; that's each page's own concern (SignInView's staff
+// flow already rejects non-staff roles before it ever navigates to
+// /staff-preview, so by the time a session exists, the role check has
+// already happened once).
+async function requireSession() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) return '/sign-in'
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,6 +67,23 @@ const router = createRouter({
       path: '/sign-in',
       name: 'sign-in',
       component: () => import('../views/SignInView.vue'),
+    },
+    {
+      // PLACEHOLDER destination: real content (the applicant's own status,
+      // read via public.my_application_status) is future work -- see
+      // StatusView.vue.
+      path: '/status',
+      name: 'status',
+      component: () => import('../views/StatusView.vue'),
+      beforeEnter: requireSession,
+    },
+    {
+      // PLACEHOLDER destination: real content (the applicant status-lookup
+      // tool) is future work -- see StaffPreviewView.vue.
+      path: '/staff-preview',
+      name: 'staff-preview',
+      component: () => import('../views/StaffPreviewView.vue'),
+      beforeEnter: requireSession,
     },
   ],
 })
