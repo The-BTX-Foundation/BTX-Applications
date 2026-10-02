@@ -88,8 +88,8 @@ with ins as (
 insert into _scholarship_test_capture (applicant_id, applicant_code)
 select id, applicant_code from ins;
 
-insert into public.scholarship_interviews (applicant_id, cycle_year, scheduled_at, co_interviewer_label, mode, status, meeting_link)
-select applicant_id, 2099, now() + interval '1 day', 'Board Member A', 'Video', 'Scheduled', 'https://example.com/test-meeting'
+insert into public.scholarship_interviews (applicant_id, cycle_year, scheduled_at, interviewer_one_label, interviewer_two_label, mode, status, meeting_link)
+select applicant_id, 2099, now() + interval '1 day', 'Board Member A', 'Board Member B', 'Video', 'Scheduled', 'https://example.com/test-meeting'
 from _scholarship_test_capture;
 
 insert into public.scholarship_scores (applicant_id, cycle_year, interviewer_label, criterion_scores, notes, general_notes, weighted_total, status)
@@ -244,8 +244,10 @@ BEGIN
     FROM public.scholarship_interviews
     WHERE applicant_id = v_applicant_id
       AND (
-        coalesce(co_interviewer_label, '') ILIKE '%TEST Applicant%'
-        OR coalesce(co_interviewer_label, '') ILIKE '%test.applicant@terpmail.umd.edu%'
+        coalesce(interviewer_one_label, '') ILIKE '%TEST Applicant%'
+        OR coalesce(interviewer_one_label, '') ILIKE '%test.applicant@terpmail.umd.edu%'
+        OR coalesce(interviewer_two_label, '') ILIKE '%TEST Applicant%'
+        OR coalesce(interviewer_two_label, '') ILIKE '%test.applicant@terpmail.umd.edu%'
         OR coalesce(meeting_link, '') ILIKE '%TEST Applicant%'
         OR coalesce(meeting_link, '') ILIKE '%test.applicant@terpmail.umd.edu%'
       );
