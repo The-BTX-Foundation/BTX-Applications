@@ -9,6 +9,10 @@ const router = useRouter()
 function startApplication() {
   router.push('/apply')
 }
+
+function checkStatus() {
+  router.push('/sign-in')
+}
 </script>
 
 <template>
@@ -69,6 +73,7 @@ function startApplication() {
       </ol>
 
       <button type="button" class="start-btn" @click="startApplication">Start Application</button>
+      <button type="button" class="check-status-btn" @click="checkStatus">Check status</button>
     </main>
 
     <footer class="footer">The BTX Foundation · Scholarship Application</footer>
@@ -225,6 +230,27 @@ function startApplication() {
 }
 
 .start-btn:hover {
+  opacity: 0.92;
+}
+
+/* Secondary/outline treatment -- same border/background/text pattern as
+   the apply wizard's "Skip for now" button (Step4OptionalEssay.vue's
+   .skip-btn), reused here rather than inventing a new button style. */
+.check-status-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: 700;
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.check-status-btn:hover {
   opacity: 0.92;
 }
 
