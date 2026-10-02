@@ -1,46 +1,73 @@
 <script setup>
-// APPLICANT RECORDS -- FRONT-END-ONLY PREVIEW.
-//
-// Everything rendered on this page comes from local, hand-authored sample
-// data (see src/lib/applicantRecordsSampleData.js) -- there is no
-// closed-cycle applicant table backing any of it yet, and this component
-// makes ZERO Supabase calls (authStore.isAdmin/isBoard/isReviewer below
-// reads the session the router's global guard already loaded, it doesn't
-// fetch anything itself). The search box and cycle filter below are a
-// REAL, working local filter over the sample array -- unlike Interviews'
-// inert links, there's nothing to simulate here since filtering never
-// needed a network round-trip in the first place.
-import { computed, onMounted, ref } from 'vue'
+// APPLICANT RECORDS -- wired to real data via
+// scholarship_applicant_directory (20261002140000_scholarship_applicant_
+// directory.sql). That view exposes only applicant_id, applicant_code,
+// cycle_year, initials, and submitted_at -- no name, email, phone,
+// essay, or file names. It does NOT expose final score or decision
+// status: that data lives in scholarship_decisions, which has no
+// staff-facing view yet (only the applicant-facing
+// my_application_status view and this directory view exist so far). See
+// the card markup below and its own comment for how that gap is shown
+// rather than hidden.
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { APPLICANT_RECORDS, CYCLE_FILTERS, SUMMARY_TILES } from '@/lib/applicantRecordsSampleData'
+import { useScholarshipApplicantDirectoryStore } from '@/stores/scholarshipApplicantDirectory'
 
 const authStore = useAuthStore()
+const directoryStore = useScholarshipApplicantDirectoryStore()
+
 // Same admin/board/reviewer gate every other Program/Finance/Scholarship
-// page uses -- display-only, RLS (once real tables exist) is the actual
-// enforcement.
+// page uses -- display-only, matching scholarship_applicant_directory's
+// own role-gated WHERE clause, which is the actual enforcement.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
 onMounted(() => {
   authStore.init()
 })
 
+// Refetch whenever the signed-in user changes (sign in, sign out, switch
+// accounts) -- same watch-on-session-id pattern as ProgramPlanning.vue's
+// own stores. Skipped entirely while signed out or for a role that can't
+// view this page, since the view's own WHERE clause would just hand back
+// zero rows before the user ever gets a chance to act.
+watch(
+  () => authStore.session?.user?.id ?? null,
+  (userId) => {
+    if (userId && canView.value) {
+      directoryStore.fetchDirectory()
+    }
+  },
+  { immediate: true },
+)
+
 const searchQuery = ref('')
-// null = "All Cycles"; otherwise one of CYCLE_FILTERS' year numbers.
+// null = "All Cycles"; otherwise one of cycleFilters' year numbers.
 const selectedCycle = ref(null)
 
-// Case-insensitive substring match against the record's ID, its cycle
-// year as a string, and its internal (never-displayed) name field --
-// search and the cycle pill row narrow the same list together.
+const CURRENT_YEAR = new Date().getFullYear()
+
+// Cycle filter pills, derived from the real distinct cycle_year values
+// present in the fetched rows, newest first -- plus the current year is
+// always included even if it has zero rows yet, so the filter row
+// doesn't look broken (missing its own most-relevant pill) on a cycle
+// that just opened and has no submissions yet.
+const cycleFilters = computed(() => {
+  const years = new Set(directoryStore.applicants.map((a) => a.cycle_year))
+  years.add(CURRENT_YEAR)
+  return [...years].sort((a, b) => b - a)
+})
+
+// Case-insensitive substring match against applicant_code and cycle_year
+// only -- initials are too short/ambiguous (two letters) to search
+// meaningfully, and the directory view exposes no name field to search
+// against in the first place, so name search is dropped entirely rather
+// than searching initials as a weak substitute.
 const filteredRecords = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  return APPLICANT_RECORDS.filter((record) => {
-    if (selectedCycle.value !== null && record.cycleYear !== selectedCycle.value) return false
+  return directoryStore.applicants.filter((record) => {
+    if (selectedCycle.value !== null && record.cycle_year !== selectedCycle.value) return false
     if (!query) return true
-    return (
-      record.id.toLowerCase().includes(query) ||
-      String(record.cycleYear).includes(query) ||
-      record.name.toLowerCase().includes(query)
-    )
+    return record.applicant_code.toLowerCase().includes(query) || String(record.cycle_year).includes(query)
   })
 })
 
@@ -49,26 +76,33 @@ const isFiltered = computed(() => searchQuery.value.trim() !== '' || selectedCyc
 const listHeading = computed(() =>
   isFiltered.value
     ? `${filteredRecords.value.length} matching record${filteredRecords.value.length === 1 ? '' : 's'}`
-    : 'Recent closed-cycle records',
+    : 'Applicant records',
 )
 
-// Distinct wording for "a cycle pill with genuinely zero sample rows"
-// (2023/2022) vs. "a search that happens to match nothing" -- both are
-// still just the list's own empty state, not a broken blank gap.
+// Three distinct empty-list reasons, all calm (never an error -- a real
+// fetch error is its own separate state, handled in the template below,
+// before this list even renders). A role that isn't admin/board/
+// reviewer would also produce zero rows here via the view's own WHERE
+// clause rather than an error -- but canView's own page-level gate above
+// (same "Access Denied" gate every Scholarship page uses) means this
+// component's fetch never actually runs for that case, so there's
+// nothing extra to distinguish here: by the time this list can render at
+// all, the signed-in role already passed canView.
 const emptyMessage = computed(() => {
-  if (searchQuery.value.trim() === '' && selectedCycle.value !== null) {
-    return 'No records for this cycle.'
-  }
-  return 'No records match your search.'
+  if (searchQuery.value.trim() !== '') return 'No records match your search.'
+  if (selectedCycle.value !== null) return `No applicants yet for the ${selectedCycle.value} cycle.`
+  return 'No applicants yet.'
 })
 
-// Status -> the exact pill classes AwardeeWorkflow.vue/Interviews.vue
-// already use for these same three words -- reused verbatim, not a second
-// set of pill styles.
-const PILL_CLASS = {
-  Awarded: 'pill--success',
-  Waitlisted: 'pill--amber',
-  Declined: 'pill--rust',
+// "Oct 2, 2026" -- same Month Day, Year shape as programRoadmap.js's own
+// formatFullDate, but written locally rather than reused: that helper is
+// built around a bare YYYY-MM-DD due_date string (string-split, no
+// timezone), while submitted_at is a real timestamptz PostgREST returns
+// as a full ISO string with timezone info already resolved -- a plain
+// Date object is the correct, safe tool for that shape, not a reason to
+// force-fit the date-only helper.
+function formatSubmittedDate(submittedAt) {
+  return new Date(submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 </script>
 
@@ -79,14 +113,7 @@ const PILL_CLASS = {
   <section v-else class="applicant-records">
     <p class="page-crumb">Scholarship</p>
     <h1 class="page-title" data-page-heading>Applicant Records</h1>
-    <p class="subline">Every applicant from closed cycles, searchable by name, ID, or year.</p>
-
-    <!-- Same preview banner as the other two Scholarship pages -- same
-         tokens, same prominence, wording adjusted for this page. -->
-    <div class="preview-banner">
-      <span class="preview-banner-dot" aria-hidden="true"></span>
-      Preview — sample data only, not connected to real applicant records
-    </div>
+    <p class="subline">Every applicant, searchable by ID or cycle year.</p>
 
     <label class="search-field">
       <svg
@@ -113,9 +140,27 @@ const PILL_CLASS = {
     </label>
 
     <div class="tiles">
-      <div v-for="tile in SUMMARY_TILES" :key="tile.key" class="tile">
-        <p class="tile-value tile-value--gold">{{ tile.value }}</p>
-        <p class="tile-label">{{ tile.label }}</p>
+      <div class="tile">
+        <!-- Real count from the rows already fetched for the list below --
+             no separate count query, same reasoning donorImpact.js's own
+             totalRaised uses: PostgREST has no server-side aggregate
+             without a DB-side RPC, and this store already has to fetch
+             every visible row for the list itself, so a second round-trip
+             just to count them would be redundant. -->
+        <p class="tile-value tile-value--gold">{{ directoryStore.applicants.length }}</p>
+        <p class="tile-label">Total historical applicants</p>
+      </div>
+      <div class="tile">
+        <!-- No real source yet: scholarship_decisions (where award
+             outcomes live) has no staff-facing view. Shown as a muted em
+             dash, not an invented number or a bare 0 that would read as
+             "zero awarded" rather than "unknown." -->
+        <p class="tile-value tile-value--muted" title="Not yet available -- scholarship_decisions has no staff-facing view yet">—</p>
+        <p class="tile-label">Awarded all-time</p>
+      </div>
+      <div class="tile">
+        <p class="tile-value tile-value--muted" title="Not yet available -- scholarship_decisions has no staff-facing view yet">—</p>
+        <p class="tile-label">Award rate</p>
       </div>
     </div>
 
@@ -130,7 +175,7 @@ const PILL_CLASS = {
         All Cycles
       </button>
       <button
-        v-for="year in CYCLE_FILTERS"
+        v-for="year in cycleFilters"
         :key="year"
         type="button"
         class="cycle-filter-pill"
@@ -144,18 +189,27 @@ const PILL_CLASS = {
 
     <h2 class="section-heading heading-records">{{ listHeading }}</h2>
 
-    <p v-if="filteredRecords.length === 0" class="empty">{{ emptyMessage }}</p>
+    <div v-if="directoryStore.loading" class="skeleton skeleton--list"></div>
+    <p v-else-if="directoryStore.error" class="page-error">Couldn't load applicant records.</p>
+    <p v-else-if="filteredRecords.length === 0" class="empty">{{ emptyMessage }}</p>
 
     <ul v-else class="record-list">
-      <li v-for="record in filteredRecords" :key="record.id" class="record-card">
+      <li v-for="record in filteredRecords" :key="record.applicant_id" class="record-card">
         <div class="record-info">
           <div class="record-top-line">
-            <span class="app-id">{{ record.id }}</span>
-            <span class="cycle-label">{{ record.cycleYear }} cycle</span>
+            <span class="app-id">{{ record.applicant_code }}</span>
+            <span class="cycle-label">{{ record.cycle_year }} cycle</span>
           </div>
-          <p class="score-text">Final score {{ record.finalScore }}</p>
+          <p class="score-text">Submitted {{ formatSubmittedDate(record.submitted_at) }}</p>
         </div>
-        <span class="pill" :class="PILL_CLASS[record.status]">{{ record.status }}</span>
+        <!-- Status/score aren't silently dropped -- shown explicitly as
+             "Not yet available" rather than omitted, so this doesn't read
+             as a decision that just happens to be blank. Real status will
+             need a staff-facing decisions view (parallel to
+             scholarship_applicant_directory, reading scholarship_decisions)
+             as a near-term follow-up, once this page's basic wiring is
+             confirmed working. -->
+        <span class="pill pill--neutral" title="scholarship_decisions has no staff-facing view yet">Not yet available</span>
       </li>
     </ul>
 
@@ -197,30 +251,6 @@ const PILL_CLASS = {
   color: var(--color-header-muted);
 }
 
-/* Same amber/warning badge tokens and layout as the other two Scholarship
-   pages' own .preview-banner -- only the copy differs. */
-.preview-banner {
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--color-amber-badge-bg);
-  color: var(--color-amber-badge-text);
-  border: 1px solid color-mix(in srgb, var(--color-amber-badge-text) 30%, transparent);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.preview-banner-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-}
-
 .search-field {
   margin-top: 20px;
   position: relative;
@@ -251,8 +281,7 @@ const PILL_CLASS = {
   color: var(--color-text-secondary);
 }
 
-/* Same tile styling as AwardeeWorkflow.vue/Interviews.vue's own .tiles --
-   all three read gold here (no green/rust variant needed on this page). */
+/* Same tile styling as AwardeeWorkflow.vue/Interviews.vue's own .tiles. */
 .tiles {
   margin-top: 18px;
   display: grid;
@@ -281,6 +310,13 @@ const PILL_CLASS = {
   color: var(--color-gold-deep);
 }
 
+/* Visually distinct from a real stat -- muted/secondary text color
+   rather than the gold used for a genuine number, so "—" reads as
+   "not available" and not as a temporarily-zero real value. */
+.tile-value--muted {
+  color: var(--color-text-secondary);
+}
+
 .tile-label {
   margin: 4px 0 0;
   font-size: 10.5px;
@@ -290,10 +326,7 @@ const PILL_CLASS = {
 
 /* Same active/inactive treatment as AlertCenter.vue's own
    .domain-pill/.domain-pill--active filter row -- solid dark for
-   whichever pill (including "All Cycles") is currently selected. Wraps
-   instead of scrolling: only 5 short pills, comfortably wraps to a second
-   line at the narrowest supported width rather than needing the
-   hidden-scrollbar treatment the longer cycle/day strips elsewhere use. */
+   whichever pill (including "All Cycles") is currently selected. */
 .cycle-filter-row {
   margin-top: 18px;
   display: flex;
@@ -336,6 +369,38 @@ const PILL_CLASS = {
   margin: 12px 0 0;
   font-size: 13px;
   color: var(--color-text-secondary);
+}
+
+/* Same generic page-level error wording/style as ProgramPlanning.vue's
+   own .page-error -- not the raw Supabase error text. */
+.page-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
+}
+
+/* Neutral pulsing placeholder -- same footprint as the real list so
+   nothing visibly resizes once data arrives. Same .skeleton base and
+   animation as ProgramPlanning.vue's own skeletons. */
+.skeleton {
+  margin-top: 12px;
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--list {
+  height: 220px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .record-list {
@@ -389,9 +454,10 @@ const PILL_CLASS = {
   color: var(--color-header-muted);
 }
 
-/* Reused verbatim from AwardeeWorkflow.vue/Interviews.vue -- same pill
-   base + success/amber/rust modifier classes for Awarded/Waitlisted/
-   Declined, not a second set of pill styles. */
+/* Base pill shape reused verbatim from AwardeeWorkflow.vue/Interviews.vue.
+   pill--neutral's own tokens are copied from Interviews.vue's identical
+   class (same --color-neutral-badge-bg/text pair) for the same
+   "not a success/warning/danger state" meaning. */
 .pill {
   flex-shrink: 0;
   display: inline-flex;
@@ -403,19 +469,9 @@ const PILL_CLASS = {
   white-space: nowrap;
 }
 
-.pill--success {
-  background: var(--color-success-badge-bg);
-  color: var(--color-success-badge-text);
-}
-
-.pill--amber {
-  background: var(--color-amber-badge-bg);
-  color: var(--color-amber-badge-text);
-}
-
-.pill--rust {
-  background: var(--color-rust-badge-bg);
-  color: var(--color-rust-badge-text);
+.pill--neutral {
+  background: var(--color-neutral-badge-bg);
+  color: var(--color-neutral-badge-text);
 }
 
 .access-denied {

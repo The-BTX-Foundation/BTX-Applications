@@ -1,10 +1,12 @@
 // PLACEHOLDER SAMPLE DATA -- Scoring preview page ONLY.
 //
 // Every value in this file is hand-authored, front-end-only sample data,
-// same sibling-module pattern as awardeeWorkflowSampleData.js,
-// interviewsSampleData.js, and applicantRecordsSampleData.js (not a Pinia
-// store). Nothing on the Scoring page is fetched from Supabase -- there is
-// no rubric/score table backing any of this yet.
+// same sibling-module pattern as awardeeWorkflowSampleData.js and
+// interviewsSampleData.js (not a Pinia store). applicantRecordsSampleData.js
+// used to be a third example of this pattern -- deleted once
+// ApplicantRecords.vue was rewired to scholarship_applicant_directory via a
+// real Pinia store. Nothing on the Scoring page is fetched from Supabase --
+// there is no rubric/score table backing any of this yet.
 //
 // YOUR_QUEUE and ALL_APPLICANTS below are wrapped in Vue's own reactive()
 // rather than being plain arrays -- ScoreApplicant.vue (the per-applicant
