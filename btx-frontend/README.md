@@ -2,37 +2,14 @@
 
 Staff-facing dashboard for the BTX Foundation: budgeting, fundraising, marketing, event tracking, program planning, and scholarship review.
 
-## Setup
+See the repo root [README.md](../README.md) for prerequisites, local setup, deploys, the role model, the database-change workflow, and where Edge Function secrets live — this file only covers what's specific to this app.
 
-1. `npm install`
-2. Copy `.env.example` to `.env.local` and fill in the Supabase URL and publishable key (Supabase dashboard → Settings → API).
-3. `npm run dev`
+## This app specifically
 
-## Environment variables
-
-See `.env.example` for the full list with descriptions. In short:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-
-## Scripts
-
-- `npm run dev` — local dev server
-- `npm run build` — production build
-- `npm run preview` — preview the production build locally
-- `npm run lint` — oxlint + eslint, auto-fix
-- `npm run format` — prettier, write
-
-## Deploy
-
-Deployed to Vercel from the repo root's `vercel.json`, which runs `cd btx-frontend && npm install --legacy-peer-deps && npm run build` and serves `btx-frontend/dist`.
-
-## Roles
-
-Access to most views is gated to the `admin`, `board`, and `reviewer` roles. A user's role is read from their Supabase Auth `user_metadata.role` (set server-side, never client-writable) — see `src/stores/auth.js` and the RLS policies in `supabase/migrations/`.
-
-## Code comments
-
-Every function, and every non-obvious or RLS-dependent block, should have a short comment above it — see the repo root `CLAUDE.md`.
+- **Scripts**: `npm run dev`, `npm run build`, `npm run preview`, `npm run lint` (oxlint + eslint, auto-fix), `npm run format` (prettier)
+- **Env vars** (see `.env.example` for the full descriptions): `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+- **Deploy**: the root `vercel.json` builds this app (`cd btx-frontend && npm install --legacy-peer-deps && npm run build`, serving `btx-frontend/dist`)
+- **Access gate**: most views are gated to the `admin`, `board`, and `reviewer` roles — see `src/stores/auth.js`
 
 ## Recommended IDE Setup
 
