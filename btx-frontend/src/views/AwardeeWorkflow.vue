@@ -50,11 +50,13 @@ const recentDecisions = computed(() => RECENT_DECISIONS_BY_CYCLE[selectedCycleYe
 // this app (ProgramPlanning.vue's expandedMilestoneIds, Home.vue's
 // expandedSectionIds).
 const expandedRowIds = reactive(new Set())
+// Expands/collapses a single committee-review row's decision panel.
 function toggleRow(id) {
   if (expandedRowIds.has(id)) expandedRowIds.delete(id)
   else expandedRowIds.add(id)
 }
 
+// Counts how many of a row's votes are "agreed".
 function agreedCount(row) {
   return row.votes.filter((v) => v.decision === 'agreed').length
 }
@@ -69,6 +71,7 @@ function castYourVote(row, decision) {
   if (yourVote) yourVote.decision = decision
 }
 
+// Formats a score to one decimal place.
 function formatScore(score) {
   return score.toFixed(1)
 }

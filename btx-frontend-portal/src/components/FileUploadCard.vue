@@ -24,6 +24,7 @@ function onChooseClick() {
   inputRef.value?.click()
 }
 
+// Handles the native file input's change event, emitting the picked file.
 function onChange(event) {
   const picked = event.target.files?.[0] ?? null
   // Reset the input's value so picking the exact same file again still
@@ -33,6 +34,7 @@ function onChange(event) {
   if (picked) emit('select', picked)
 }
 
+// Formats a byte count as a human-readable B/KB/MB string.
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`

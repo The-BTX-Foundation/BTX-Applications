@@ -28,6 +28,7 @@ onMounted(() => {
 // same pattern as AwardeeWorkflow.vue's committeeReviewByCycle.
 const availabilityDays = reactive(structuredClone(AVAILABILITY_DAYS))
 
+// Toggles one availability slot's selected state for the given day.
 function toggleSlot(day, slot) {
   slot.selected = !slot.selected
   // Touching any slot invalidates whatever "saved" confirmation is
@@ -42,6 +43,7 @@ function toggleSlot(day, slot) {
 const savedMessageVisible = ref(false)
 let savedMessageTimer = null
 
+// Hides the "saved" confirmation and cancels its pending auto-hide timer.
 function clearSavedMessage() {
   savedMessageVisible.value = false
   if (savedMessageTimer) {
@@ -50,6 +52,7 @@ function clearSavedMessage() {
   }
 }
 
+// Shows the "saved" confirmation for 4 seconds, then auto-hides it.
 function saveAvailability() {
   savedMessageVisible.value = true
   if (savedMessageTimer) clearTimeout(savedMessageTimer)
@@ -64,6 +67,7 @@ function saveAvailability() {
 // scrolls the page down to "Your availability", since that's the one
 // place on this page an interviewer can actually act.
 const availabilitySectionEl = ref(null)
+// Smooth-scrolls the page down to the "Your availability" section.
 function scrollToAvailability() {
   availabilitySectionEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }

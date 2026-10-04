@@ -6,10 +6,12 @@ import Topbar from '../components/Topbar.vue'
 // hardcoded copy for the scholarship application's entry screen.
 const router = useRouter()
 
+// Navigates to the application wizard.
 function startApplication() {
   router.push('/apply')
 }
 
+// Navigates to the sign-in screen for checking an existing application's status.
 function checkStatus() {
   router.push('/sign-in')
 }

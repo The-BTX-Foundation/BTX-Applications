@@ -48,6 +48,7 @@ const liveYear = computed(() => {
   return publishedYears.length > 0 ? Math.max(...publishedYears) : null
 })
 
+// Returns the "Live"/"Archived" badge for a published cycle, or null for a draft.
 function badgeFor(cycle) {
   if (!cycle.published) return null
   return cycle.cycle_year === liveYear.value ? { text: 'Live', variant: 'live' } : { text: 'Archived', variant: 'default' }
@@ -82,6 +83,7 @@ function metricValue(cycle, metric) {
   return metric.computed ? metric.computed(cycle) : (cycle[metric.key] ?? 0)
 }
 
+// Formats a metric's value according to its declared format (currency/percent/plain).
 function formatMetricValue(cycle, metric) {
   const value = metricValue(cycle, metric)
   if (metric.format === 'currency') return `$${value.toLocaleString()}`
@@ -89,6 +91,7 @@ function formatMetricValue(cycle, metric) {
   return value.toLocaleString()
 }
 
+// Formats a plain number as a "$"-prefixed, comma-grouped currency string.
 function formatCurrency(value) {
   return `$${value.toLocaleString()}`
 }
@@ -178,6 +181,8 @@ function barHeightPx(cycle) {
   return Math.round((value / maxChartValue.value) * 100)
 }
 
+// True when this cycle's charted metric is a genuine recorded zero (as
+// opposed to no data at all).
 function barIsZero(cycle) {
   return chartValue(cycle, chartMetric.value) === 0
 }
@@ -189,6 +194,8 @@ function barIsCurrent(cycle) {
   return !!selectedCycle.value && cycle.cycle_year === selectedCycle.value.cycle_year
 }
 
+// Formats a chart bar's tooltip/label value, or an em-dash when there's no
+// data for this cycle yet.
 function formatBarValue(cycle) {
   const value = chartValue(cycle, chartMetric.value)
   if (value === null) return '—'

@@ -27,6 +27,7 @@ const slotGroups = computed(() => {
   return groups
 })
 
+// Adds/removes an interview slot from the applicant's selection.
 function toggleSlot(slotId) {
   const index = store.selectedSlots.indexOf(slotId)
   if (index === -1) {
@@ -39,6 +40,7 @@ function toggleSlot(slotId) {
 const selectedCount = computed(() => store.selectedSlots.length)
 const isValid = computed(() => isStepValid(5, store))
 
+// Advances to Step 6 once this step's selection is valid.
 function onContinue() {
   if (!isValid.value) return
   store.currentStep = 6

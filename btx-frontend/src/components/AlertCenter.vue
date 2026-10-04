@@ -67,6 +67,7 @@ function daysOverdue(date) {
   return Math.floor((startOfToday - due) / (24 * 60 * 60 * 1000))
 }
 
+// Formats a due date as an "{n}d overdue" pill label.
 function overdueLabel(date) {
   return `${daysOverdue(date)}d overdue`
 }
@@ -113,6 +114,7 @@ const visibleNeedsAttentionItems = computed(() => {
 
 const hiddenCount = computed(() => needsAttentionItems.value.length - visibleNeedsAttentionItems.value.length)
 
+// Expands the Needs Attention list to show every item, past the default cap.
 function showMore() {
   expanded.value = true
 }
@@ -127,6 +129,8 @@ const pendingTaskKey = ref(null)
 // beside that one card instead of blanking the list.
 const actionErrors = ref({})
 
+// Builds a unique key for a task across domains, since ids alone can collide
+// between different source tables.
 function taskKey(task) {
   return `${task.source}-${task.id}`
 }

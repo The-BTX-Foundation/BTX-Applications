@@ -94,6 +94,7 @@ const liveYear = computed(() => {
   return years.length > 0 ? Math.max(...years) : null
 })
 
+// True when this plan's year is the most recent one with any plan data.
 function planIsLive(plan) {
   return plan.plan_year === liveYear.value
 }
@@ -115,6 +116,7 @@ const selectedPlanTasks = computed(() =>
 // card below read from this single computed rather than re-matching.
 const taskGrouping = computed(() => groupTasksByMilestone(selectedPlanTasks.value, selectedPlanMilestones.value))
 
+// Looks up the deliverable rows matched to this milestone.
 function deliverablesFor(milestone) {
   return taskGrouping.value.byMilestoneId.get(milestone.id) ?? []
 }
@@ -205,6 +207,7 @@ const quarterGroups = computed(() => groupMilestonesByQuarter(selectedPlanMilest
 // open at once, same convention as Home's own section cards.
 const expandedMilestoneIds = reactive(new Set())
 
+// Expands/collapses a single milestone card, independent of the others.
 function toggleMilestone(id) {
   if (expandedMilestoneIds.has(id)) {
     expandedMilestoneIds.delete(id)
@@ -226,6 +229,8 @@ const unassignedExpanded = ref(false)
 const planStripEl = ref(null)
 const planStripOverflows = ref(false)
 
+// Recomputes whether the plan strip overflows its container, to show/hide
+// the "swipe for more" hint.
 function checkPlanStripOverflow() {
   const el = planStripEl.value
   planStripOverflows.value = !!el && el.scrollWidth > el.clientWidth + 1
@@ -253,10 +258,12 @@ function milestoneCode(milestone) {
   return splitMilestoneCode(milestone.milestone_name).code
 }
 
+// Thin wrapper around programRoadmap.js's splitMilestoneCode for the title half.
 function milestoneTitle(milestone) {
   return splitMilestoneCode(milestone.milestone_name).title
 }
 
+// Formats a milestone's due date as a short month abbreviation.
 function milestoneMonth(milestone) {
   return monthAbbreviation(milestone.due_date)
 }
@@ -271,6 +278,7 @@ function statusModifier(milestone) {
   return milestoneStatus(milestone, deliverablesFor(milestone))
 }
 
+// Human-readable label for a milestone's derived status.
 function statusLabel(milestone) {
   const status = statusModifier(milestone)
   if (status === 'complete') return 'Complete'

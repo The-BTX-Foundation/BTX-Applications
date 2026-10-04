@@ -74,6 +74,8 @@ export function quarterForDueDate(dueDate) {
 // being the only source of truth for it.
 const CODE_SUFFIX_PATTERN = /^(.+?)\s*\(([A-Z]{2,5}-\d{1,4})\)$/
 
+// Splits a milestone_name into its trailing "(MS-010)"-style code (if any)
+// and the remaining title text.
 export function splitMilestoneCode(milestoneName) {
   const match = milestoneName.match(CODE_SUFFIX_PATTERN)
   if (!match) return { code: null, title: milestoneName }
@@ -167,6 +169,7 @@ export function groupMilestonesByQuarter(milestones, tasks = []) {
   const { byMilestoneId } = groupTasksByMilestone(tasks, milestones)
   const buckets = new Map()
 
+  // Gets (creating if absent) the quarter bucket for a given key/label.
   function bucketFor(key, label) {
     if (!buckets.has(key)) {
       buckets.set(key, { key, label, milestones: [] })

@@ -22,10 +22,12 @@ function fieldValue(row, key) {
   return row?.[key] ?? 0
 }
 
+// Converts a 1-12 month number into its full month name.
 function monthName(month) {
   return new Date(2000, month - 1, 1).toLocaleDateString(undefined, { month: 'long' })
 }
 
+// Formats a plain number as a "$"-prefixed, comma-grouped currency string.
 function formatCurrency(value) {
   return `$${value.toLocaleString()}`
 }
@@ -38,6 +40,7 @@ function formatCurrency(value) {
 const selectedYear = ref(fundraisingHealthStore.currentYear)
 const selectedMonth = ref(fundraisingHealthStore.currentMonth)
 
+// Switches the reporting-months strip's selection to the given year/month.
 function selectMonth(year, month) {
   selectedYear.value = year
   selectedMonth.value = month
@@ -63,6 +66,8 @@ function badgeFor(entry) {
 const monthStripEl = ref(null)
 const monthStripOverflows = ref(false)
 
+// Recomputes whether the month strip overflows its container, to show/hide
+// the "swipe for earlier months" hint.
 function checkMonthStripOverflow() {
   const el = monthStripEl.value
   monthStripOverflows.value = !!el && el.scrollWidth > el.clientWidth + 1
@@ -108,6 +113,7 @@ const TILES = [
   { key: 'new_donors', label: 'New Donors', format: 'number', gold: false },
 ]
 
+// Formats a tile's value according to its declared format (currency/percent/plain).
 function formatTileValue(tile) {
   const value = fieldValue(selectedRow.value, tile.key)
   if (tile.format === 'currency') return formatCurrency(value)
@@ -193,6 +199,8 @@ const maxChartValue = computed(() => {
   return Math.max(1, ...values)
 })
 
+// Bar height as a % of the tallest bar, with a 2px stub for genuine zero
+// values so they stay visible instead of collapsing to nothing.
 function barHeightPx(row) {
   const value = chartValue(row, chartMetric.value)
   if (value === null) return 0
@@ -200,6 +208,8 @@ function barHeightPx(row) {
   return Math.round((value / maxChartValue.value) * 100)
 }
 
+// True when this row's charted metric is a genuine recorded zero (as
+// opposed to no data at all).
 function barIsZero(row) {
   return chartValue(row, chartMetric.value) === 0
 }
@@ -214,6 +224,8 @@ function barIsMostRecent(row) {
   return !!mostRecent && row.period_year === mostRecent.period_year && row.period_month === mostRecent.period_month
 }
 
+// Formats a chart bar's tooltip/label value, or an em-dash when there's no
+// data for this row yet.
 function formatBarValue(row) {
   const value = chartValue(row, chartMetric.value)
   if (value === null) return '—'

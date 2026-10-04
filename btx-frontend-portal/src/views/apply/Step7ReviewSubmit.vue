@@ -27,6 +27,8 @@ const allAgreed = computed(() => store.agreedAccurate && store.agreedTerms && st
 // otherwise fire a second overlapping request.
 const isDisabled = computed(() => incompleteSteps.value.length > 0 || !allAgreed.value || store.submitting)
 
+// Submits the application and, on success, replaces the route with the
+// confirmation screen.
 async function onSubmit() {
   if (isDisabled.value) return
   const ok = await store.submitApplication()

@@ -67,6 +67,8 @@ function looksLikeGarbageInput(results) {
   return results.meta.fields.length < 2 || results.data.length === 0
 }
 
+// Picks the right error message for garbage input: missing rows entirely
+// vs. data that doesn't look like comma/tab-separated columns.
 function describeGarbageInput(results) {
   if (results.data.length === 0) {
     return 'No data rows found — check that your file or paste includes a header row plus at least one row of data below it.'
@@ -74,6 +76,7 @@ function describeGarbageInput(results) {
   return "This doesn't look like table data — check that it's actually comma- or tab-separated."
 }
 
+// Parses the file picked from the file-select button, if any.
 function handleFileChange(event) {
   const file = event.target.files[0]
   if (file) parseInput(file)

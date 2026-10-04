@@ -61,6 +61,7 @@ function unitCount(outcome) {
   return props.selectedTable.writeMode === 'replace-set' ? outcome.group.milestones.length : 1
 }
 
+// Totals unitCount across every outcome matching the given status.
 function sumUnits(status) {
   return outcomes.value.filter((outcome) => outcome.status === status).reduce((sum, outcome) => sum + unitCount(outcome), 0)
 }

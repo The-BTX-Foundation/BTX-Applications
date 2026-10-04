@@ -191,6 +191,7 @@ function handleDayClick(day) {
   }
 }
 
+// Closes the currently open day modal.
 function closeDayModal() {
   selectedDayKey.value = null
 }

@@ -98,6 +98,7 @@ function onCodeInput(value) {
   verifyError.value = ''
 }
 
+// Verifies the 6-digit OTP against Supabase Auth and routes to /status on success.
 async function verifyCode() {
   if (code.value.length < 6) {
     verifyError.value = 'Enter the 6-digit code.'
@@ -123,6 +124,7 @@ async function verifyCode() {
   router.push('/status')
 }
 
+// Re-sends the OTP, if the resend cooldown has elapsed.
 async function resendCode() {
   if (resendSecondsLeft.value > 0) return
   await sendCode()
@@ -150,6 +152,8 @@ const staffPassword = ref('')
 const staffSigningIn = ref(false)
 const staffError = ref('')
 
+// Signs in a staff member with password auth, then checks their role from
+// user_metadata before allowing access to the staff preview.
 async function staffSignIn() {
   staffSigningIn.value = true
   staffError.value = ''
@@ -185,12 +189,14 @@ async function staffSignIn() {
   router.push('/staff-preview')
 }
 
+// Switches this view into the staff password sign-in mode.
 function showStaffSignIn() {
   mode.value = 'staff'
   sendError.value = ''
   verifyError.value = ''
 }
 
+// Switches this view back to the applicant OTP sign-in mode.
 function backToApplicant() {
   mode.value = 'applicant'
   staffError.value = ''

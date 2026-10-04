@@ -34,6 +34,7 @@ function errorCount(row) {
   return Object.keys(row.errors).length + row.rowErrors.length
 }
 
+// Renders a cell value as a string, or an em-dash for null/undefined.
 function formatValue(value) {
   if (value === null || value === undefined) return '—'
   return String(value)

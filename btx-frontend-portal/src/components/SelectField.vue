@@ -12,10 +12,12 @@ defineProps({
 
 defineEmits(['update:modelValue'])
 
+// Normalizes an option to its underlying value, for plain-string or {label,value} options.
 function optionValue(opt) {
   return typeof opt === 'string' ? opt : opt.value
 }
 
+// Normalizes an option to its display label, for plain-string or {label,value} options.
 function optionLabel(opt) {
   return typeof opt === 'string' ? opt : opt.label
 }

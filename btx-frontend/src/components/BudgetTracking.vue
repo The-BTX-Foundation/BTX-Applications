@@ -64,6 +64,7 @@ const burnRateMonths = computed(() => {
 const cashOnHand = computed(() => fieldValue(currentMonthRow.value, 'current_funds_on_hand'))
 const avgMonthlySpend = computed(() => fieldValue(currentMonthRow.value, 'monthly_operating_expense'))
 
+// Formats a plain number as a "$"-prefixed, comma-grouped currency string.
 function formatCurrency(value) {
   return `$${value.toLocaleString()}`
 }
@@ -98,6 +99,7 @@ function tileValue(tile) {
   return fieldValue(currentMonthRow.value, tile.key)
 }
 
+// Formats a tile's value according to its declared format (currency/percent/plain).
 function formatTileValue(tile) {
   const value = tileValue(tile)
   if (tile.format === 'currency') return formatCurrency(value)
@@ -133,9 +135,11 @@ const VARIANCE_ROWS = [
   { key: 'marketing', label: 'Marketing' },
 ]
 
+// Reads this variance row's budgeted amount for the currently selected month.
 function budgetedFor(row) {
   return fieldValue(currentMonthRow.value, `${row.key}_budgeted`)
 }
+// Reads this variance row's actual spend for the currently selected month.
 function actualFor(row) {
   return fieldValue(currentMonthRow.value, `${row.key}_actual`)
 }
@@ -164,6 +168,7 @@ function formatVarianceDollar(value) {
   return '$0'
 }
 
+// Formats a variance percentage with an explicit "+" sign for overages.
 function formatVariancePercent(value) {
   if (value > 0) return `+${value.toFixed(1)}%`
   return `${value.toFixed(1)}%`
@@ -178,6 +183,8 @@ function varianceTone(row) {
   return varianceDollar(row) > 0 ? 'danger' : 'success'
 }
 
+// Builds the variance pill's display text: "On budget" when nothing was
+// budgeted, otherwise the formatted dollar and percent variance combined.
 function variancePillText(row) {
   if (budgetedFor(row) === 0) return 'On budget'
   return `${formatVarianceDollar(varianceDollar(row))} · ${formatVariancePercent(variancePercent(row))}`

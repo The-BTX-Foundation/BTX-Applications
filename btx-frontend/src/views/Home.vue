@@ -122,6 +122,7 @@ const scholarshipRouteName = computed(() => scholarshipSection.value.subItems[0]
 // Tracks which non-flat sections are expanded; multiple can be open at once.
 const expandedSectionIds = reactive(new Set())
 
+// Expands/collapses a single non-flat section, independent of the others.
 function toggleSection(id) {
   if (expandedSectionIds.has(id)) {
     expandedSectionIds.delete(id)

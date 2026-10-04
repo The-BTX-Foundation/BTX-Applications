@@ -14,6 +14,7 @@ export const useBudgetTrackingStore = defineStore('budgetTracking', () => {
   const loading = ref(false)
   const error = ref(null)
 
+  // Fetches every budget_tracking row (newest month first) visible under RLS.
   async function fetchAll() {
     loading.value = true
     error.value = null

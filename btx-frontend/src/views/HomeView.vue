@@ -15,6 +15,8 @@ import { supabase } from '@/lib/supabaseClient'
 // needed to handle it here.
 const avatarName = ref(null)
 
+// Loads the signed-in user's display name from profiles for the avatar;
+// falls back silently to null (see avatarInitials) if no row is readable.
 async function loadAvatarName(userId) {
   if (!userId) {
     avatarName.value = null
@@ -146,10 +148,12 @@ function toggleSection(label) {
 // harmless -- there's no CSS left above 850px for it to apply to.
 const drawerOpen = ref(false)
 
+// Opens/closes the mobile nav drawer.
 function toggleDrawer() {
   drawerOpen.value = !drawerOpen.value
 }
 
+// Closes the mobile nav drawer.
 function closeDrawer() {
   drawerOpen.value = false
 }

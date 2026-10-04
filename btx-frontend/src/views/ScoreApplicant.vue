@@ -52,6 +52,7 @@ const weightedTotal = computed(() => {
   return sum / 100
 })
 
+// Looks up the rank description text for a 1-based rubric score.
 function rankDescription(score) {
   return RANK_DESCRIPTIONS[score - 1]
 }
@@ -61,6 +62,7 @@ function rankDescription(score) {
 const noteVisible = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, false])))
 const noteText = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, ''])))
 
+// Shows/hides the "+ Add note" field for a single rubric criterion.
 function toggleNote(key) {
   noteVisible[key] = !noteVisible[key]
 }
@@ -75,6 +77,8 @@ const generalNotes = ref('')
 const draftSavedMessageVisible = ref(false)
 let draftSavedTimer = null
 
+// Marks this applicant's queue row as draft-saved and shows a brief
+// non-persistent confirmation.
 function onSaveDraft() {
   if (queueRow.value) queueRow.value.draftSaved = true
   draftSavedMessageVisible.value = true

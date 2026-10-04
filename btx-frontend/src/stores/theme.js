@@ -28,6 +28,8 @@ export const useThemeStore = defineStore('theme', () => {
   // App.vue's onMounted even if something else already synced state.
   const initialized = ref(false)
 
+  // Syncs reactive state to the DOM's already-applied theme; safe to call
+  // more than once, only the first call has any effect.
   function init() {
     if (initialized.value) return
     initialized.value = true
@@ -44,6 +46,7 @@ export const useThemeStore = defineStore('theme', () => {
     localStorage.setItem(STORAGE_KEY, value)
   }
 
+  // Flips between light and dark theme.
   function toggle() {
     setTheme(theme.value === 'dark' ? 'light' : 'dark')
   }

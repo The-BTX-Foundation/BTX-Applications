@@ -72,6 +72,7 @@ function formatPhone(raw) {
   return ''
 }
 
+// Applies the phone mask to user input and stores the formatted result.
 function onPhoneInput(value) {
   store.phone = formatPhone(value)
 }

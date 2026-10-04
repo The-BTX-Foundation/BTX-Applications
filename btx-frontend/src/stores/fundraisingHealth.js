@@ -19,6 +19,7 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   const loading = ref(false)
   const error = ref(null)
 
+  // Fetches every fundraising_health row (newest month first) visible under RLS.
   async function fetchAll() {
     loading.value = true
     error.value = null

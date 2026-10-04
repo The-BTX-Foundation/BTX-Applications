@@ -16,6 +16,7 @@
 // each field spec entry that could silently drift out of sync with which
 // validator it's actually paired with.
 export function required(validateFn) {
+  // Rejects an empty/missing cell before delegating to the wrapped validator.
   const wrapped = (raw, context) => {
     if (raw === '' || raw == null) return { ok: false, error: 'This field is required' }
     return validateFn(raw, context)

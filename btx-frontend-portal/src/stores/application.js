@@ -24,6 +24,7 @@ function loadDraft() {
   }
 }
 
+// Reads whether this browser session already submitted an application.
 function readSubmittedFlag() {
   try {
     return sessionStorage.getItem(SUBMITTED_SESSION_KEY) === '1'
@@ -65,6 +66,8 @@ export const useApplicationStore = defineStore('application', () => {
   // resetDraft() can restore every field to its true default without
   // duplicating this list of fallbacks a second time.
   const defaults = {}
+  // Declares one draft field: records its fallback (for resetDraft) and
+  // returns a ref seeded from the loaded draft, or the fallback if absent.
   const field = (key, fallback) => {
     defaults[key] = fallback
     return ref(key in draft ? draft[key] : fallback)
