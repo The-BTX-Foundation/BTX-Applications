@@ -243,30 +243,46 @@ Deno.serve(async (req) => {
     return json({ success: false, error: 'pct_donations_to_programs must be a valid number' }, 400)
   }
 
-  const row = {
-    cycle_year: cycleYear,
-    funds_granted: fundsGranted,
-    students_reached: studentsReached,
-    scholarships_awarded: scholarshipsAwarded,
-    applicants_count: applicantsCount,
-    geographic_spread_count: geographicSpreadCount,
-    scholarship_funds_awarded: scholarshipFundsAwarded,
-    other_program_funds_awarded: otherProgramFundsAwarded,
-    published,
-    workshops_held: workshopsHeld,
-    attendance_per_workshop: attendancePerWorkshop,
-    mentor_volunteer_hours: mentorVolunteerHours,
-    repeat_engagement: repeatEngagement,
-    students_sponsored_travel: studentsSponsoredTravel,
-    students_sponsored_certifications: studentsSponsoredCertifications,
-    retention_graduation_rate: retentionGraduationRate,
-    gpa_improvement: gpaImprovement,
-    internships_received: internshipsReceived,
-    post_graduation_outcomes: postGraduationOutcomes,
-    pct_first_generation: pctFirstGeneration,
-    pct_underrepresented_low_income: pctUnderrepresentedLowIncome,
-    pct_donations_to_programs: pctDonationsToPrograms,
+  // cycle_year is always written -- it's the upsert conflict key, checked
+  // as required above. Every other field is added to `row` only if its
+  // key is genuinely present in the parsed body, via setIfPresent below.
+  const row: Record<string, unknown> = { cycle_year: cycleYear }
+
+  // Adds `key` to `row` only when the caller's JSON actually included it.
+  // This is the omitted-vs-null distinction the whole function hinges on:
+  // a key that's missing entirely (`'field' in body` is false) is left
+  // out of `row`, so it's also left out of the upsert's ON CONFLICT DO
+  // UPDATE SET clause -- Postgres leaves that column's existing value
+  // untouched. A key that IS present -- even with an explicit null, '',
+  // or false -- still passes `'field' in body` as true, so it's written
+  // exactly as before and clears the column on conflict. The parsed
+  // `value` here was already validated above via parseNumeric/
+  // parseInteger/parseBoolean regardless of presence, so this check only
+  // decides whether to write it, never whether to accept the request.
+  const setIfPresent = (key: string, value: unknown) => {
+    if (key in body) row[key] = value
   }
+  setIfPresent('funds_granted', fundsGranted)
+  setIfPresent('students_reached', studentsReached)
+  setIfPresent('scholarships_awarded', scholarshipsAwarded)
+  setIfPresent('applicants_count', applicantsCount)
+  setIfPresent('geographic_spread_count', geographicSpreadCount)
+  setIfPresent('scholarship_funds_awarded', scholarshipFundsAwarded)
+  setIfPresent('other_program_funds_awarded', otherProgramFundsAwarded)
+  setIfPresent('published', published)
+  setIfPresent('workshops_held', workshopsHeld)
+  setIfPresent('attendance_per_workshop', attendancePerWorkshop)
+  setIfPresent('mentor_volunteer_hours', mentorVolunteerHours)
+  setIfPresent('repeat_engagement', repeatEngagement)
+  setIfPresent('students_sponsored_travel', studentsSponsoredTravel)
+  setIfPresent('students_sponsored_certifications', studentsSponsoredCertifications)
+  setIfPresent('retention_graduation_rate', retentionGraduationRate)
+  setIfPresent('gpa_improvement', gpaImprovement)
+  setIfPresent('internships_received', internshipsReceived)
+  setIfPresent('post_graduation_outcomes', postGraduationOutcomes)
+  setIfPresent('pct_first_generation', pctFirstGeneration)
+  setIfPresent('pct_underrepresented_low_income', pctUnderrepresentedLowIncome)
+  setIfPresent('pct_donations_to_programs', pctDonationsToPrograms)
 
   const supabase = getServiceClient()
   const { data, error } = await supabase
