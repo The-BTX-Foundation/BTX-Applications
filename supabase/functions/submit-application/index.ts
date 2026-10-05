@@ -8,9 +8,10 @@
 // sync-program-plan-tasks, etc.), the caller here is a public,
 // unauthenticated browser -- an applicant with no Supabase session at all,
 // not Apps Script's UrlFetchApp -- so there is deliberately no
-// x-sync-secret shared-secret check. Field validation and the cycle-open
-// check below are the only defense this endpoint has, which is why both
-// matter so much.
+// x-sync-secret shared-secret check. Field validation, the cycle-open
+// check, a honeypot field, and a per-IP rate limit (see
+// scholarship_submit_attempts) are this endpoint's defenses against abuse,
+// since there is no shared secret or session to rely on instead.
 //
 // Must be deployed with `supabase functions deploy submit-application
 // --no-verify-jwt` (not done by this change -- see task instructions: no
@@ -53,6 +54,59 @@ const MAX_ESSAY_LENGTH = 10000
 const MAX_FILENAME_LENGTH = 255
 const TERPMAIL_DOMAIN = '@terpmail.umd.edu'
 
+// Rate limit: at most this many attempts per ip_hash in a rolling window of
+// this many minutes -- see the rate-limit block in Deno.serve below for how
+// the count is taken.
+const RATE_LIMIT_MAX_ATTEMPTS = 5
+const RATE_LIMIT_WINDOW_MINUTES = 10
+
+// Used when x-forwarded-for is absent (e.g. a local `supabase functions
+// serve` invocation hit directly with curl) so getCallerIp never throws --
+// every caller missing the header shares this one rate-limit bucket in that
+// case, rather than the function crashing.
+const FALLBACK_IP = 'unknown'
+
+// Allow-lists mirroring the portal's own option lists exactly -- gender,
+// race, education_status, and major from btx-frontend-portal/src/views/
+// apply/Step1BasicInfo.vue; how_heard from Step2HowYouFoundUs.vue (not
+// Step1 -- howHeard is a Step 2 field in the portal, despite the field
+// living on the same scholarship_applicants row as everything else here).
+// Duplicated rather than imported, per this project's self-contained-
+// function convention (see header comment) -- if the portal's lists ever
+// change, these need updating to match by hand.
+const GENDER_OPTIONS = ['Female', 'Male', 'Prefer not to say']
+const RACE_OPTIONS = [
+  'American Indian or Alaska Native',
+  'Asian',
+  'Black or African American',
+  'Hispanic or Latino',
+  'Native Hawaiian or Other Pacific Islander',
+  'White',
+  'Two or more races',
+  'Prefer not to say',
+]
+const EDUCATION_STATUS_OPTIONS = ['Freshman', 'Sophomore', 'Junior', 'Senior']
+const MAJOR_OPTIONS = [
+  'Aerospace Engineering',
+  'Bioengineering',
+  'Chemical Engineering',
+  'Civil Engineering',
+  'Computer Engineering',
+  'Electrical Engineering',
+  'Environmental Engineering',
+  'Fire Protection Engineering',
+  'Materials Science and Engineering',
+  'Mechanical Engineering',
+  'Robotics Engineering',
+  'Undecided / Other',
+]
+const HOW_HEARD_OPTIONS = [
+  'I was nominated!',
+  'A friend or mentor shared it with me!',
+  'Instagram or LinkedIn',
+  'Other',
+]
+
 // Wraps a JSON body and status into a Response, used for every reply this
 // function makes. CORS_HEADERS are merged into every response (not just
 // the OPTIONS preflight) -- the browser enforces CORS on the actual
@@ -77,6 +131,30 @@ function getServiceClient() {
     throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY not available in the function environment')
   }
   return createClient(url, serviceRoleKey, { auth: { persistSession: false } })
+}
+
+// Hashes an IP (or the FALLBACK_IP placeholder) with SHA-256 before it's
+// ever written to scholarship_submit_attempts. The table only needs to
+// recognize "same caller, again" within a short window, never the literal
+// address, so storing a hash instead of the raw IP is strictly less to leak
+// if that table were ever read some other way.
+async function hashIp(ip: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip))
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+// x-forwarded-for can carry a comma-separated proxy chain
+// ("client, proxy1, proxy2"); the first entry is the original caller, as set
+// by the platform's own edge network. Falls back to a constant string
+// rather than throwing when the header is missing entirely -- see
+// FALLBACK_IP above for why that matters for local/CLI testing.
+function getCallerIp(req: Request): string {
+  const header = req.headers.get('x-forwarded-for')
+  if (!header) return FALLBACK_IP
+  const first = header.split(',')[0].trim()
+  return first || FALLBACK_IP
 }
 
 // Coerces a value into a finite whole number for credits_left. Same shape
@@ -175,10 +253,16 @@ function parseApplication(body: Record<string, unknown>): ParsedApplication | st
   if (typeof gender !== 'string' || gender.trim() === '') {
     return 'gender is required and must be a non-empty string'
   }
+  if (!GENDER_OPTIONS.includes(gender)) {
+    return 'gender must be one of the listed options'
+  }
 
   const race = body.race
   if (typeof race !== 'string' || race.trim() === '') {
     return 'race is required and must be a non-empty string'
+  }
+  if (!RACE_OPTIONS.includes(race)) {
+    return 'race must be one of the listed options'
   }
 
   const attendsUmd = body.attends_umd
@@ -190,6 +274,9 @@ function parseApplication(body: Record<string, unknown>): ParsedApplication | st
   if (typeof educationStatus !== 'string' || educationStatus.trim() === '') {
     return 'education_status is required and must be a non-empty string'
   }
+  if (!EDUCATION_STATUS_OPTIONS.includes(educationStatus)) {
+    return 'education_status must be one of the listed options'
+  }
 
   const creditsLeft = parseRequiredInteger(body.credits_left)
   if (creditsLeft === undefined || creditsLeft < 0) {
@@ -200,10 +287,16 @@ function parseApplication(body: Record<string, unknown>): ParsedApplication | st
   if (typeof major !== 'string' || major.trim() === '') {
     return 'major is required and must be a non-empty string'
   }
+  if (!MAJOR_OPTIONS.includes(major)) {
+    return 'major must be one of the listed options'
+  }
 
   const howHeard = body.how_heard
   if (typeof howHeard !== 'string' || howHeard.trim() === '') {
     return 'how_heard is required and must be a non-empty string'
+  }
+  if (!HOW_HEARD_OPTIONS.includes(howHeard)) {
+    return 'how_heard must be one of the listed options'
   }
 
   // Optional -- defaults to [], matching the column's own default.
@@ -320,6 +413,59 @@ Deno.serve(async (req) => {
     return json({ success: false, error: 'Request body must be valid JSON' }, 400)
   }
 
+  const supabase = getServiceClient()
+
+  // Rate limit -- runs before every other check on this request, including
+  // the honeypot below, so every POST that reaches this function consumes
+  // part of its caller's budget regardless of what it turns out to be
+  // (malformed, honeypot-caught, invalid, or a genuine submission).
+  // Insert-then-count, not count-then-insert: the row for THIS attempt is
+  // written first, so it's included in its own count -- the 5th attempt in
+  // the window is the one that trips the limit, not the 6th.
+  const callerIp = getCallerIp(req)
+  const ipHash = await hashIp(callerIp)
+
+  const { error: attemptInsertError } = await supabase.from('scholarship_submit_attempts').insert({ ip_hash: ipHash })
+
+  if (attemptInsertError) {
+    console.error('submit-application: scholarship_submit_attempts insert failed:', attemptInsertError.message)
+    return json({ success: false, error: 'Something went wrong. Please try again.' }, 500)
+  }
+
+  const rateLimitWindowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString()
+  const { count: attemptCount, error: attemptCountError } = await supabase
+    .from('scholarship_submit_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip_hash', ipHash)
+    .gte('attempted_at', rateLimitWindowStart)
+
+  if (attemptCountError) {
+    console.error('submit-application: scholarship_submit_attempts count failed:', attemptCountError.message)
+    return json({ success: false, error: 'Something went wrong. Please try again.' }, 500)
+  }
+
+  if ((attemptCount ?? 0) >= RATE_LIMIT_MAX_ATTEMPTS) {
+    return json({ success: false, error: 'rate_limited' }, 429)
+  }
+
+  // Honeypot -- `website` is a field no real applicant ever sees or fills
+  // (see the portal's Step1BasicInfo.vue for how it's hidden off-screen), so
+  // a non-empty value here means whatever submitted this request is an
+  // automated form-filler, not a person. The response below is built to be
+  // indistinguishable from a genuine 201 success -- same shape, same status
+  // code, a syntactically valid but fake applicant_code that can never
+  // collide with a real one (the backing sequence starts at 1, so
+  // "...-00000" is never issued for real) -- never a 400, never a distinct
+  // error shape, so nothing about this response can teach a bot that it was
+  // caught rather than genuinely accepted. No insert happens; nothing about
+  // this request ever reaches scholarship_applicants or
+  // scholarship_decisions.
+  const honeypotValue = body.website
+  if (typeof honeypotValue === 'string' && honeypotValue.trim() !== '') {
+    const fakeCycleYear = new Date().getFullYear()
+    return json({ success: true, applicant_code: `APP-${fakeCycleYear}-00000`, submitted_at: new Date().toISOString() }, 201)
+  }
+
   const parsed = parseApplication(body)
   if (typeof parsed === 'string') {
     return json({ success: false, error: parsed }, 400)
@@ -331,8 +477,6 @@ Deno.serve(async (req) => {
   const cycleYear = new Date().getFullYear()
 
   const dryRun = body.dry_run === true
-
-  const supabase = getServiceClient()
 
   // Gate every submission (real or dry_run) on an actually-open cycle for
   // the computed year -- dry_run validates this too, per this function's
