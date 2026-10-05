@@ -53,12 +53,51 @@ export const useBudgetTrackingStore = defineStore('budgetTracking', () => {
     return rows.value.find((row) => row.reporting_year === year && row.reporting_month === month) ?? null
   }
 
+  // Quarter (1-4) a given 1-based reporting_month falls into -- Q1 =
+  // Jan-Mar, Q2 = Apr-Jun, Q3 = Jul-Sep, Q4 = Oct-Dec.
+  function quarterOfMonth(month) {
+    return Math.ceil(month / 3)
+  }
+
+  const currentQuarter = quarterOfMonth(currentMonth)
+
+  // Every (year, quarter) pair with at least one real row, plus the
+  // current quarter even if it has none yet -- same "always show today's
+  // pill even with no data" convention as every other cycle/plan strip in
+  // this app (e.g. ProgramPlanning.vue's own plan-strip). Newest first.
+  const quarterOptions = computed(() => {
+    const seen = new Map()
+    for (const row of rows.value) {
+      const quarter = quarterOfMonth(row.reporting_month)
+      const key = `${row.reporting_year}-${quarter}`
+      if (!seen.has(key)) seen.set(key, { year: row.reporting_year, quarter })
+    }
+    const currentKey = `${currentYear}-${currentQuarter}`
+    if (!seen.has(currentKey)) seen.set(currentKey, { year: currentYear, quarter: currentQuarter })
+    return [...seen.values()].sort((a, b) => b.year - a.year || b.quarter - a.quarter)
+  })
+
+  // Every real row belonging to one (year, quarter) pair, sorted oldest ->
+  // newest month within the quarter -- so "the latest reported month in
+  // this quarter" is simply the last element, with no row invented for a
+  // month that was never synced.
+  function rowsForQuarter(year, quarter) {
+    return rows.value
+      .filter((row) => row.reporting_year === year && quarterOfMonth(row.reporting_month) === quarter)
+      .sort((a, b) => a.reporting_month - b.reporting_month)
+  }
+
   return {
     rows,
     loading,
     error,
     fetchAll,
+    currentYear,
+    currentMonth,
+    currentQuarter,
     currentMonthRow,
     rowFor,
+    quarterOptions,
+    rowsForQuarter,
   }
 })
