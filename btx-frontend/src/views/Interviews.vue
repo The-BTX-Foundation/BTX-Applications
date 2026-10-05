@@ -1,21 +1,29 @@
 <script setup>
-// INTERVIEWS -- FRONT-END-ONLY PREVIEW.
+// INTERVIEWS -- wired to real data.
 //
-// Everything rendered on this page comes from local, hand-authored sample
-// data (see src/lib/interviewsSampleData.js) -- there is no interview or
-// availability table backing any of it yet, and this component makes ZERO
-// Supabase calls (authStore.isAdmin/isBoard/isReviewer below reads the
-// session the router's global guard already loaded, it doesn't fetch
-// anything itself). Toggling an availability pill and clicking "Save
-// availability" only mutate local component state -- see toggleSlot()/
-// saveAvailability() below for the "simulated, nothing is saved" boundary.
-import { computed, onMounted, reactive, ref } from 'vue'
+// Availability grid reads/writes public.scholarship_board_availability via
+// save-board-availability (real network write, see useScholarshipInterviewsStore's
+// own comment on why the store needs this.session.access_token for that
+// call). Upcoming/Recently completed read public.scholarship_interviews,
+// joined to scholarship_applicant_directory for applicant_code the same
+// way ApplicantRecords.vue already does -- no PII column this page didn't
+// already show is exposed anywhere here.
+//
+// "Who am I": board_member_label / interviewer_one_label /
+// interviewer_two_label are all free-text placeholders in this schema (no
+// real per-reviewer accounts exist yet) -- this page asks the viewer to
+// self-type the same label once per session (in-memory only, see the
+// store) rather than inventing a new identity model of its own.
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { AVAILABILITY_DAYS, SUMMARY_TILES, UPCOMING_GROUPS, RECENTLY_COMPLETED } from '@/lib/interviewsSampleData'
+import { useScholarshipInterviewsStore } from '@/stores/scholarshipInterviews'
+import { INTERVIEW_SLOTS } from '@/lib/interviewSlots'
 
 const authStore = useAuthStore()
+const interviewsStore = useScholarshipInterviewsStore()
+
 // Same admin/board/reviewer gate every other Program/Finance/Scholarship
-// page uses -- display-only, RLS (once real tables exist) is the actual
+// page uses -- display-only, RLS on the underlying tables is the actual
 // enforcement.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
@@ -23,27 +31,80 @@ onMounted(() => {
   authStore.init()
 })
 
-// Deep-cloned once from the sample module so toggling a pill mutates a
-// LOCAL copy only -- the imported sample data itself is never touched,
-// same pattern as AwardeeWorkflow.vue's committeeReviewByCycle.
-const availabilityDays = reactive(structuredClone(AVAILABILITY_DAYS))
+// Re-fetch whenever the signed-in user changes AND a label has already
+// been entered this session -- same watch-on-session-id pattern as
+// ApplicantRecords.vue's own store. Entering the label for the first time
+// is handled separately by confirmLabel() below, since this watcher only
+// reacts to session id changes, not to label being set.
+watch(
+  () => authStore.session?.user?.id ?? null,
+  (userId) => {
+    if (userId && canView.value && interviewsStore.label) {
+      interviewsStore.fetchForLabel()
+    }
+  },
+  { immediate: true },
+)
 
-// Toggles one availability slot's selected state for the given day.
-function toggleSlot(day, slot) {
-  slot.selected = !slot.selected
-  // Touching any slot invalidates whatever "saved" confirmation is
-  // showing -- it described a snapshot that no longer matches what's on
-  // screen.
+const labelInput = ref('')
+
+// Stores the self-typed label (session-only, see the store's own comment)
+// and runs the first real fetch for it.
+function confirmLabel() {
+  const trimmed = labelInput.value.trim()
+  if (!trimmed) return
+  interviewsStore.label = trimmed
+  interviewsStore.fetchForLabel()
+}
+
+// Locally toggled slot selection -- mutating this does NOT save anything;
+// only clicking "Save availability" does. Seeded from the store's fetched
+// rows whenever they change (initial load, and again after a successful
+// save re-fetch), so a reload always restores the real persisted
+// selection rather than whatever was toggled-but-unsaved before.
+const pendingSlotIds = ref(new Set())
+watch(
+  () => interviewsStore.availabilitySlotIds,
+  (ids) => {
+    pendingSlotIds.value = new Set(ids)
+  },
+  { immediate: true },
+)
+
+// Groups the canonical slot list (src/lib/interviewSlots.js) by its own
+// `date` string, in the list's own order -- same day-bucketed shape the
+// old sample data rendered, now built from the real canonical list instead
+// of a hand-authored one.
+const availabilityDays = computed(() => {
+  const groups = []
+  const byDate = new Map()
+  for (const slot of INTERVIEW_SLOTS) {
+    let group = byDate.get(slot.date)
+    if (!group) {
+      group = { key: slot.date, label: slot.date, slots: [] }
+      byDate.set(slot.date, group)
+      groups.push(group)
+    }
+    group.slots.push({ id: slot.id, label: slot.time, selected: pendingSlotIds.value.has(slot.id) })
+  }
+  return groups
+})
+
+// Toggles one availability slot's selected state, local-only until Save.
+function toggleSlot(slotId) {
+  const next = new Set(pendingSlotIds.value)
+  if (next.has(slotId)) next.delete(slotId)
+  else next.add(slotId)
+  pendingSlotIds.value = next
   clearSavedMessage()
 }
 
-// SIMULATED save -- shows a brief, clearly non-persistent confirmation.
-// Nothing is written anywhere; there is no availability table yet, and
-// this page makes no Supabase call at all.
+// Real confirmation after a real write -- shown for 4 seconds, same timing
+// as the old simulated confirmation, but only ever shown after
+// save-board-availability actually returns success.
 const savedMessageVisible = ref(false)
 let savedMessageTimer = null
 
-// Hides the "saved" confirmation and cancels its pending auto-hide timer.
 function clearSavedMessage() {
   savedMessageVisible.value = false
   if (savedMessageTimer) {
@@ -52,14 +113,21 @@ function clearSavedMessage() {
   }
 }
 
-// Shows the "saved" confirmation for 4 seconds, then auto-hides it.
-function saveAvailability() {
-  savedMessageVisible.value = true
-  if (savedMessageTimer) clearTimeout(savedMessageTimer)
-  savedMessageTimer = setTimeout(() => {
-    savedMessageVisible.value = false
-    savedMessageTimer = null
-  }, 4000)
+// Calls the store's real save action with this viewer's own session JWT --
+// save-board-availability requires it (see that function's own comment on
+// why, unlike submit-application's genuinely anonymous caller).
+async function onSaveAvailability() {
+  const accessToken = authStore.session?.access_token
+  if (!accessToken) return
+  const ok = await interviewsStore.saveAvailability([...pendingSlotIds.value], accessToken)
+  if (ok) {
+    savedMessageVisible.value = true
+    if (savedMessageTimer) clearTimeout(savedMessageTimer)
+    savedMessageTimer = setTimeout(() => {
+      savedMessageVisible.value = false
+      savedMessageTimer = null
+    }, 4000)
+  }
 }
 
 // "+Schedule" has no real scheduling flow to open yet -- this is a
@@ -67,24 +135,99 @@ function saveAvailability() {
 // scrolls the page down to "Your availability", since that's the one
 // place on this page an interviewer can actually act.
 const availabilitySectionEl = ref(null)
-// Smooth-scrolls the page down to the "Your availability" section.
 function scrollToAvailability() {
   availabilitySectionEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Tone -> existing color-token class suffix, used by both the summary
-// tiles and (indirectly) nothing else -- kept as a tiny lookup rather than
-// a template ternary chain.
+// Real counts from this label's own already-fetched rows for the current
+// cycle -- no separate aggregate query, same "don't re-fetch what's
+// already in memory" reasoning as ApplicantRecords.vue's own tile. Scoped
+// to "your" interviews, not every board member's, since there's no
+// staff-wide aggregate view to read from yet.
+const summaryTiles = computed(() => [
+  { key: 'upcoming', label: 'Upcoming', value: interviewsStore.upcoming.length, tone: 'gold' },
+  {
+    key: 'completed',
+    label: 'Completed',
+    value: interviewsStore.recentlyCompleted.filter((i) => i.status === 'Completed').length,
+    tone: 'green',
+  },
+  {
+    key: 'no-shows',
+    label: 'No-shows',
+    value: interviewsStore.recentlyCompleted.filter((i) => i.status === 'No-show').length,
+    tone: 'rust',
+  },
+])
+
 const TILE_VALUE_CLASS = {
   gold: 'tile-value--gold',
   green: 'tile-value--green',
   rust: 'tile-value--rust',
+}
+
+// "Today · Oct 5" / "Monday · Oct 6" -- same two-part day-group label shape
+// the old sample data used, derived from a real scheduled_at Date instead
+// of hand-authored.
+function formatDayGroupLabel(date) {
+  const isToday = date.toDateString() === new Date().toDateString()
+  const dayPart = isToday ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'long' })
+  const datePart = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${dayPart} · ${datePart}`
+}
+
+// interviewsStore.upcoming is already sorted ascending by scheduledAt, so
+// grouping in iteration order keeps each day group chronological too.
+const upcomingGroups = computed(() => {
+  const groups = []
+  const byDay = new Map()
+  for (const interview of interviewsStore.upcoming) {
+    const dayKey = interview.scheduledAt.toDateString()
+    let group = byDay.get(dayKey)
+    if (!group) {
+      group = { key: dayKey, dayLabel: formatDayGroupLabel(interview.scheduledAt), interviews: [] }
+      byDay.set(dayKey, group)
+      groups.push(group)
+    }
+    group.interviews.push(interview)
+  }
+  return groups
+})
+
+// "2:00" + "PM" -- split from a single localized time string so the
+// existing two-line time-block markup (time-main/time-period) keeps
+// working unchanged.
+function formatTimeParts(date) {
+  const [main, period] = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).split(' ')
+  return { main, period }
+}
+
+// "Sep 12" -- scheduled_at is nullable, so a row with no timestamp yet
+// shows an em dash rather than "Invalid Date".
+function formatCompletedDate(date) {
+  return date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
 }
 </script>
 
 <template>
   <p v-if="!authStore.session">Sign in</p>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
+
+  <section v-else-if="!interviewsStore.label" class="interviews label-prompt">
+    <p class="page-crumb">Scholarship</p>
+    <h1 class="page-title" data-page-heading>Interviews</h1>
+    <!-- Self-typed label -- the same free-text placeholder identity every
+         other operational table in this schema already uses
+         (board_member_label / interviewer_one_label / interviewer_two_label),
+         not a new identity model. In-memory only (this Pinia store's own
+         state), never localStorage/sessionStorage -- gone the moment this
+         tab or store resets. -->
+    <p class="label-prompt-help">Enter your name or initials to see your availability and interviews.</p>
+    <form class="label-prompt-form" @submit.prevent="confirmLabel">
+      <input v-model="labelInput" type="text" placeholder="e.g. J. Smith" class="label-input" />
+      <button type="submit" class="label-submit-btn" :disabled="!labelInput.trim()">Continue</button>
+    </form>
+  </section>
 
   <section v-else class="interviews">
     <div class="header-row">
@@ -93,13 +236,6 @@ const TILE_VALUE_CLASS = {
         <h1 class="page-title" data-page-heading>Interviews</h1>
       </div>
       <button type="button" class="schedule-btn" @click="scrollToAvailability">+Schedule</button>
-    </div>
-
-    <!-- Same preview banner as Awardee Workflow -- same tokens, same
-         prominence, wording adjusted for this page. -->
-    <div class="preview-banner">
-      <span class="preview-banner-dot" aria-hidden="true"></span>
-      Preview — sample data only, not connected to real interviews
     </div>
 
     <section ref="availabilitySectionEl" class="availability-card">
@@ -114,114 +250,125 @@ const TILE_VALUE_CLASS = {
         <div class="slot-row">
           <button
             v-for="slot in day.slots"
-            :key="slot.key"
+            :key="slot.id"
             type="button"
             class="slot-pill"
             :class="{ 'slot-pill--selected': slot.selected }"
             :aria-pressed="slot.selected"
-            @click="toggleSlot(day, slot)"
+            @click="toggleSlot(slot.id)"
           >
             {{ slot.label }}
           </button>
         </div>
       </div>
 
-      <button type="button" class="save-btn" @click="saveAvailability">Save availability</button>
-      <p v-if="savedMessageVisible" class="saved-message">
-        Saved locally — not yet connected to a real schedule.
-      </p>
+      <button type="button" class="save-btn" :disabled="interviewsStore.saving" @click="onSaveAvailability">
+        {{ interviewsStore.saving ? 'Saving…' : 'Save availability' }}
+      </button>
+      <p v-if="savedMessageVisible" class="saved-message">Availability saved.</p>
+      <p v-if="interviewsStore.saveError" class="save-error">{{ interviewsStore.saveError }}</p>
     </section>
 
     <div class="tiles">
-      <div v-for="tile in SUMMARY_TILES" :key="tile.key" class="tile">
+      <div v-for="tile in summaryTiles" :key="tile.key" class="tile">
         <p class="tile-value" :class="TILE_VALUE_CLASS[tile.tone]">{{ tile.value }}</p>
         <p class="tile-label">{{ tile.label }}</p>
       </div>
     </div>
 
-    <h2 class="section-heading heading-upcoming">Upcoming</h2>
-    <div v-for="group in UPCOMING_GROUPS" :key="group.key" class="interview-group">
-      <p class="day-group-label">{{ group.dayLabel }}</p>
-      <ul class="interview-list">
-        <li v-for="interview in group.interviews" :key="interview.id" class="interview-card">
+    <template v-if="interviewsStore.loading">
+      <div class="skeleton skeleton--list"></div>
+    </template>
+    <p v-else-if="interviewsStore.error" class="page-error">Couldn't load your interviews.</p>
+    <template v-else>
+      <h2 class="section-heading heading-upcoming">Upcoming</h2>
+      <p v-if="upcomingGroups.length === 0" class="empty">No interviews yet this cycle.</p>
+      <div v-for="group in upcomingGroups" :key="group.key" class="interview-group">
+        <p class="day-group-label">{{ group.dayLabel }}</p>
+        <ul class="interview-list">
+          <li v-for="interview in group.interviews" :key="interview.id" class="interview-card">
+            <div class="time-block">
+              <span class="time-main">{{ formatTimeParts(interview.scheduledAt).main }}</span>
+              <span class="time-period">{{ formatTimeParts(interview.scheduledAt).period }}</span>
+            </div>
+            <div class="time-divider" aria-hidden="true"></div>
+            <div class="interview-main">
+              <div class="interview-top">
+                <span class="app-id">{{ interview.applicantCode }}</span>
+                <span class="pill pill--amber">{{ interview.status }}</span>
+              </div>
+              <p class="interview-meta">
+                Co-interviewer: {{ interview.coInterviewerLabel }}
+                <span class="pill pill--neutral">{{ interview.mode }}</span>
+              </p>
+              <!-- Inert link -- scholarship_interviews has a meeting_link
+                   column, but no real Google Meet/calendar integration is
+                   wired up to populate or launch it yet, so this stays a
+                   visual placeholder only (href="#" + a no-op click
+                   handler), deliberately not reading meeting_link. -->
+              <a href="#" class="interview-link" @click.prevent>
+                <svg
+                  v-if="interview.mode === 'Video'"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polygon points="23 7 16 12 23 17 23 7" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+                <svg
+                  v-else
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                {{ interview.mode === 'Video' ? 'Join Google Meet' : 'Calendar invite' }}
+              </a>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <h2 class="section-heading heading-completed">Recently completed</h2>
+      <p v-if="interviewsStore.recentlyCompleted.length === 0" class="empty">No interviews yet this cycle.</p>
+      <ul v-else class="interview-list">
+        <li v-for="interview in interviewsStore.recentlyCompleted" :key="interview.id" class="interview-card">
           <div class="time-block">
-            <span class="time-main">{{ interview.time }}</span>
-            <span class="time-period">{{ interview.period }}</span>
+            <span class="date-main">{{ formatCompletedDate(interview.scheduledAt) }}</span>
           </div>
           <div class="time-divider" aria-hidden="true"></div>
           <div class="interview-main">
             <div class="interview-top">
-              <span class="app-id">{{ interview.id }}</span>
-              <span class="pill pill--amber">{{ interview.pill }}</span>
+              <span class="app-id">{{ interview.applicantCode }}</span>
+              <span class="pill" :class="interview.status === 'Completed' ? 'pill--success' : 'pill--rust'">
+                {{ interview.status }}
+              </span>
             </div>
             <p class="interview-meta">
-              Co-interviewer: {{ interview.coInterviewer }}
-              <span class="pill pill--neutral">{{ interview.tag }}</span>
+              Co-interviewer: {{ interview.coInterviewerLabel }}
+              <span class="pill pill--neutral">{{ interview.mode }}</span>
             </p>
-            <!-- Inert link -- no real Google Meet/calendar integration is
-                 wired up yet, so this is a visual placeholder only
-                 (href="#" + a no-op click handler), not a working action. -->
-            <a href="#" class="interview-link" @click.prevent>
-              <svg
-                v-if="interview.tag === 'Video'"
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-              <svg
-                v-else
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-              {{ interview.linkLabel }}
-            </a>
           </div>
         </li>
       </ul>
-    </div>
-
-    <h2 class="section-heading heading-completed">Recently completed</h2>
-    <ul class="interview-list">
-      <li v-for="interview in RECENTLY_COMPLETED" :key="interview.id" class="interview-card">
-        <div class="time-block">
-          <span class="date-main">{{ interview.date }}</span>
-        </div>
-        <div class="time-divider" aria-hidden="true"></div>
-        <div class="interview-main">
-          <div class="interview-top">
-            <span class="app-id">{{ interview.id }}</span>
-            <span class="pill" :class="interview.pill === 'Completed' ? 'pill--success' : 'pill--rust'">
-              {{ interview.pill }}
-            </span>
-          </div>
-          <p class="interview-meta">
-            Co-interviewer: {{ interview.coInterviewer }}
-            <span class="pill pill--neutral">{{ interview.tag }}</span>
-          </p>
-        </div>
-      </li>
-    </ul>
+    </template>
 
     <p class="footer">BTX Ops Hub · Interviews</p>
   </section>
@@ -282,28 +429,53 @@ const TILE_VALUE_CLASS = {
   opacity: 0.9;
 }
 
-/* Same amber/warning badge tokens and layout as AwardeeWorkflow.vue's own
-   .preview-banner -- only the copy differs. */
-.preview-banner {
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--color-amber-badge-bg);
-  color: var(--color-amber-badge-text);
-  border: 1px solid color-mix(in srgb, var(--color-amber-badge-text) 30%, transparent);
-  font-size: 12.5px;
-  font-weight: 700;
+.label-prompt-help {
+  margin: 10px 0 0;
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-header-muted);
 }
 
-.preview-banner-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+.label-prompt-form {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+}
+
+.label-input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.label-submit-btn {
   flex-shrink: 0;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-header-strong);
+  color: var(--color-surface);
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.label-submit-btn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.label-submit-btn:disabled {
+  background: var(--color-border-strong);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
 }
 
 .section-heading {
@@ -386,8 +558,13 @@ const TILE_VALUE_CLASS = {
   cursor: pointer;
 }
 
-.save-btn:hover {
+.save-btn:hover:not(:disabled) {
   opacity: 0.92;
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .saved-message {
@@ -396,6 +573,16 @@ const TILE_VALUE_CLASS = {
   border-radius: 8px;
   background: var(--color-success-badge-bg);
   color: var(--color-success-badge-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.save-error {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-rust-badge-bg);
+  color: var(--color-rust-badge-text);
   font-size: 12px;
   font-weight: 600;
 }
@@ -598,6 +785,44 @@ const TILE_VALUE_CLASS = {
   font-weight: 700;
   color: var(--color-accent);
   text-decoration: underline;
+}
+
+.empty {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* Same generic page-level error wording/style as ProgramPlanning.vue's
+   own .page-error -- not the raw Supabase error text. */
+.page-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
+}
+
+/* Neutral pulsing placeholder -- same footprint as the real list so
+   nothing visibly resizes once data arrives. Same .skeleton base and
+   animation as ApplicantRecords.vue's own skeletons. */
+.skeleton {
+  margin-top: 12px;
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--list {
+  height: 220px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .access-denied {
