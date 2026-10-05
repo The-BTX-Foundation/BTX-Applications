@@ -1,27 +1,32 @@
 <script setup>
-// SCORE APPLICANT -- FRONT-END-ONLY PREVIEW.
+// SCORE APPLICANT -- wired to real data.
 //
-// Reached from a "Score ->" row in Scoring.vue's "Your scoring queue".
-// Everything here comes from local, hand-authored sample data (see
-// src/lib/scoreApplicantSampleData.js for the per-applicant content, and
-// src/lib/scoringSampleData.js for the shared queue/all-applicants rows
-// this page reads and writes) -- there is no rubric/score/transcript table
-// backing any of it, and this component makes ZERO Supabase calls. Save
-// draft and Publish score are both SIMULATED: they only mutate the shared
-// reactive sample data held in this browser tab's memory -- see
-// onSaveDraft()/onPublish() below for exactly what each one touches.
-import { computed, onMounted, reactive, ref } from 'vue'
+// Reached from a "Score ->" row in Scoring.vue's "Your scoring queue" (now
+// linking by real applicant_id, not a sample code). Header comes from
+// scholarship_applicant_directory via useScholarshipScoreApplicantStore;
+// Save draft/Publish both call the real save-score Edge Function. The
+// interview transcript/quotes section below is still FABRICATED PREVIEW
+// CONTENT (src/lib/scoreApplicantSampleData.js) -- see the prominent
+// on-screen banner above that section, not just this comment, for why
+// that matters now that real scores get published alongside it.
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { RUBRIC_CRITERIA, YOUR_QUEUE, ALL_APPLICANTS } from '@/lib/scoringSampleData'
-import { APPLICANT_DETAIL, RANK_DESCRIPTIONS } from '@/lib/scoreApplicantSampleData'
+import { useReviewerIdentityStore } from '@/stores/reviewerIdentity'
+import { useScholarshipScoreApplicantStore } from '@/stores/scholarshipScoreApplicant'
+import { RUBRIC_CRITERIA, RANK_DESCRIPTIONS } from '@/lib/scoringRubric'
+import { FABRICATED_TRANSCRIPT } from '@/lib/scoreApplicantSampleData'
+import ReviewerLabelPrompt from '@/components/ReviewerLabelPrompt.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const authStore = useAuthStore()
+const reviewerIdentity = useReviewerIdentityStore()
+const detailStore = useScholarshipScoreApplicantStore()
+
 // Same admin/board/reviewer gate every other Program/Finance/Scholarship
-// page uses -- display-only, RLS (once real tables exist) is the actual
+// page uses -- display-only, RLS on the underlying tables is the actual
 // enforcement.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
@@ -29,20 +34,48 @@ onMounted(() => {
   authStore.init()
 })
 
-const appId = computed(() => route.params.appId)
-const detail = computed(() => APPLICANT_DETAIL[appId.value] ?? null)
-const queueRow = computed(() => YOUR_QUEUE.find((row) => row.id === appId.value) ?? null)
+const applicantId = computed(() => route.params.appId)
 
-// scores[key] is 1-5 once picked, null until then. Initialized fresh per
-// mount from RUBRIC_CRITERIA's own keys, rather than hardcoding the six
-// names here, so this stays in sync if the rubric ever changes.
+// Re-fetch whenever the signed-in user OR the self-typed label changes --
+// a reviewer can land here directly via URL without ever visiting
+// Scoring.vue first, so this page has to be able to prompt for and react
+// to the label on its own, not assume it's already set.
+watch(
+  () => [authStore.session?.user?.id ?? null, reviewerIdentity.label],
+  ([userId, label]) => {
+    if (userId && canView.value && label) {
+      detailStore.fetchApplicant(applicantId.value, label)
+    }
+  },
+  { immediate: true },
+)
+
+// scores[key] is 1-5 once picked, null until then. Seeded below from this
+// session's label's own existing score row once it loads (resuming a
+// draft), falling back to all-null for a brand-new scorecard.
 const scores = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, null])))
+const noteText = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, ''])))
+const noteVisible = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, false])))
+const generalNotes = ref('')
+
+watch(
+  () => detailStore.existingScore,
+  (existing) => {
+    for (const criterion of RUBRIC_CRITERIA) {
+      scores[criterion.key] = existing?.criterion_scores?.[criterion.key] ?? null
+      noteText[criterion.key] = existing?.notes?.[criterion.key] ?? ''
+    }
+    generalNotes.value = existing?.general_notes ?? ''
+  },
+  { immediate: true },
+)
 
 const allScored = computed(() => RUBRIC_CRITERIA.every((c) => scores[c.key] !== null))
 
-// Sum of (score * weight) / 100 -- an unscored criterion contributes 0,
-// not a partial/average value, so the total only reaches its true value
-// once every criterion has a pick.
+// Mirrors save-score's own formula exactly (sum of score*weight / 100, an
+// unscored criterion contributing 0) -- this is a live PREVIEW total
+// only; the real, authoritative weighted_total is always computed
+// server-side by save-score, never trusted from here.
 const weightedTotal = computed(() => {
   let sum = 0
   for (const criterion of RUBRIC_CRITERIA) {
@@ -52,99 +85,149 @@ const weightedTotal = computed(() => {
   return sum / 100
 })
 
-// Looks up the rank description text for a 1-based rubric score.
 function rankDescription(score) {
   return RANK_DESCRIPTIONS[score - 1]
 }
 
-// Per-criterion "+ Add note" -- local-only, nothing persisted, same as
-// every other note/draft field on this page.
-const noteVisible = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, false])))
-const noteText = reactive(Object.fromEntries(RUBRIC_CRITERIA.map((c) => [c.key, ''])))
-
-// Shows/hides the "+ Add note" field for a single rubric criterion.
 function toggleNote(key) {
   noteVisible[key] = !noteVisible[key]
 }
 
-const generalNotes = ref('')
+// Describes every OTHER interviewer's status for this applicant -- "other"
+// meaning any score row not from this session's own label.
+const interviewerNote = computed(() => {
+  if (detailStore.otherScores.length === 0) return 'No other interviewer has started scoring this applicant yet.'
+  return detailStore.otherScores
+    .map((s) => `${s.interviewer_label} has ${s.status === 'published' ? 'published' : 'a draft, not yet published'}.`)
+    .join(' ')
+})
 
-// SIMULATED save -- shows a brief, non-persistent confirmation (same
-// show-then-auto-clear shape as Interviews.vue's own "Saved locally"
-// note), and marks this applicant's queue row with a "Draft saved"
-// indicator so Scoring.vue's queue reflects it. Nothing is written
-// anywhere outside this tab's own memory.
+// Already published -- blocks BOTH buttons client-side the moment the
+// existing row loads, mirroring the server-side rule save-score itself
+// enforces (status === 'published' => 409 already_published on any
+// further write, draft or publish). A disabled button is a UX nicety,
+// not a security boundary -- save-score re-checks this independently.
+const alreadyPublished = computed(() => detailStore.existingScore?.status === 'published')
+
+const statusLabel = computed(() => {
+  if (alreadyPublished.value) return 'Published'
+  if (detailStore.existingScore) return 'Draft saved'
+  return 'Not started'
+})
+
+// Builds the notes payload from only the criteria that actually have
+// text -- an empty string note is the same as no note at all, not worth
+// sending/storing.
+function buildNotesPayload() {
+  const notes = {}
+  for (const criterion of RUBRIC_CRITERIA) {
+    if (noteText[criterion.key].trim() !== '') notes[criterion.key] = noteText[criterion.key]
+  }
+  return notes
+}
+
+// Only the criteria that actually have a pick -- save-score accepts a
+// partial object for a draft (an unscored criterion simply isn't in it
+// yet), and requires every key only when publish is true.
+function buildScoresPayload() {
+  return Object.fromEntries(Object.entries(scores).filter(([, value]) => value !== null))
+}
+
 const draftSavedMessageVisible = ref(false)
 let draftSavedTimer = null
 
-// Marks this applicant's queue row as draft-saved and shows a brief
-// non-persistent confirmation.
-function onSaveDraft() {
-  if (queueRow.value) queueRow.value.draftSaved = true
-  draftSavedMessageVisible.value = true
-  if (draftSavedTimer) clearTimeout(draftSavedTimer)
-  draftSavedTimer = setTimeout(() => {
-    draftSavedMessageVisible.value = false
-    draftSavedTimer = null
-  }, 3500)
+async function onSaveDraft() {
+  if (alreadyPublished.value) return
+  const accessToken = authStore.session?.access_token
+  if (!accessToken) return
+
+  const result = await detailStore.saveScore({
+    applicantId: applicantId.value,
+    label: reviewerIdentity.label,
+    accessToken,
+    criterionScores: buildScoresPayload(),
+    notes: buildNotesPayload(),
+    generalNotes: generalNotes.value,
+    publish: false,
+  })
+
+  if (result) {
+    draftSavedMessageVisible.value = true
+    if (draftSavedTimer) clearTimeout(draftSavedTimer)
+    draftSavedTimer = setTimeout(() => {
+      draftSavedMessageVisible.value = false
+      draftSavedTimer = null
+    }, 3500)
+  }
 }
 
-// SIMULATED publish -- only reachable once all six criteria have a score
-// (see the button's :disabled below). Flips this applicant's row in BOTH
-// shared arrays to Scored with the computed weighted total as its score,
-// then returns to the queue. Still entirely in-memory: no Supabase call,
-// nothing saved outside this browser tab.
-function onPublish() {
-  if (!allScored.value) return
-  const total = Math.round(weightedTotal.value * 10) / 10
+async function onPublish() {
+  if (!allScored.value || alreadyPublished.value) return
+  const accessToken = authStore.session?.access_token
+  if (!accessToken) return
 
-  if (queueRow.value) {
-    queueRow.value.yourScore = total
-    queueRow.value.accent = 'green'
-    queueRow.value.draftSaved = false
+  const result = await detailStore.saveScore({
+    applicantId: applicantId.value,
+    label: reviewerIdentity.label,
+    accessToken,
+    criterionScores: buildScoresPayload(),
+    notes: buildNotesPayload(),
+    generalNotes: generalNotes.value,
+    publish: true,
+  })
+
+  if (result) {
+    router.push({ name: 'scholarship-scoring' })
   }
+}
 
-  const applicantRow = ALL_APPLICANTS.find((a) => a.id === appId.value)
-  if (applicantRow) {
-    applicantRow.combinedScore = total
-    applicantRow.pill = 'Scored'
-  }
-
-  router.push({ name: 'scholarship-scoring' })
+// "Oct 2, 2026" -- same shape as ApplicantRecords.vue's own
+// formatSubmittedDate.
+function formatSubmittedDate(submittedAt) {
+  return new Date(submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 </script>
 
 <template>
   <p v-if="!authStore.session">Sign in</p>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
-  <p v-else-if="!detail" class="empty">No preview content for {{ appId }}.</p>
+
+  <section v-else-if="!reviewerIdentity.label" class="score-applicant label-prompt">
+    <p class="page-crumb">Scholarship</p>
+    <h1 class="page-title" data-page-heading>Score applicant</h1>
+    <ReviewerLabelPrompt help-text="Enter your name or initials to score this applicant." />
+  </section>
+
+  <section v-else-if="detailStore.loading" class="score-applicant">
+    <div class="skeleton skeleton--list"></div>
+  </section>
+
+  <p v-else-if="detailStore.error" class="page-error">Couldn't load this applicant.</p>
+  <p v-else-if="!detailStore.applicant" class="empty">No applicant found for this link.</p>
 
   <section v-else class="score-applicant">
     <p class="page-crumb">Scholarship</p>
 
-    <!-- Same amber/warning preview banner as the other four Scholarship
-         pages -- same tokens, same prominence, wording adjusted here. -->
-    <div class="preview-banner">
-      <span class="preview-banner-dot" aria-hidden="true"></span>
-      Preview — sample data only, not connected to real scoring
-    </div>
-
     <RouterLink :to="{ name: 'scholarship-scoring' }" class="back-link">← Back to your queue</RouterLink>
 
     <div class="detail-header-row">
-      <h1 class="app-id-large" data-page-heading>{{ appId }}</h1>
-      <span class="pill pill--amber">{{ detail.statusPill }}</span>
+      <h1 class="app-id-large" data-page-heading>{{ detailStore.applicant.applicant_code }}</h1>
+      <span class="pill" :class="alreadyPublished ? 'pill--success' : 'pill--amber'">{{ statusLabel }}</span>
     </div>
-    <p class="scholarship-line">{{ detail.scholarshipLine }}</p>
+    <p class="scholarship-line">
+      {{ detailStore.applicant.cycle_year }} cycle · submitted {{ formatSubmittedDate(detailStore.applicant.submitted_at) }}
+    </p>
 
     <div class="info-card">
-      <p>{{ detail.interviewerNote }}</p>
+      <p>{{ interviewerNote }}</p>
     </div>
 
     <div class="info-items">
-      <!-- Inert -- no real applicant file exists in this preview, so this
-           is a visual placeholder only (href="#" + a no-op click
-           handler), not a working download/view action. -->
+      <!-- Inert -- file uploads are still deferred end-to-end (resume/
+           transcript filenames are stored on scholarship_applicants, but
+           no file bytes are ever uploaded anywhere yet), so this stays a
+           visual placeholder only (href="#" + a no-op click handler), not
+           a working download/view action. -->
       <a href="#" class="info-item info-item--action" @click.prevent>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -152,8 +235,8 @@ function onPublish() {
         </svg>
         View resume
       </a>
-      <!-- Passive label, not clickable -- there's no player/recording to
-           open in this preview. -->
+      <!-- Passive label, not clickable -- there's no real recording/
+           player pipeline behind this yet. -->
       <span class="info-item">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
@@ -163,16 +246,24 @@ function onPublish() {
       </span>
     </div>
 
-    <h2 class="section-heading heading-transcript">Interview transcript summary</h2>
-    <div v-if="detail.transcript" class="transcript-card">
-      <p class="transcript-summary">{{ detail.transcript.summary }}</p>
-      <p class="transcript-footer">{{ detail.transcript.footer }}</p>
+    <!-- Prominent, on-screen fabrication notice -- covers BOTH the
+         transcript summary below AND the quoted "Student's response"
+         text under each rubric criterion further down. Deliberately more
+         visible than a code comment: real scores and notes now get
+         published alongside this fabricated content, so a reviewer
+         scrolling past needs to see this, not just a developer reading
+         the source. -->
+    <div class="fabricated-banner">
+      <span class="fabricated-banner-dot" aria-hidden="true"></span>
+      Fabricated preview content below (transcript summary and quoted responses) — not real interview
+      data. The scores and notes you save or publish on this page ARE real.
     </div>
-    <!-- APP-062/APP-066 have no matching mockup transcript -- honest
-         fallback rather than fabricating one for them specifically. -->
-    <p v-else class="transcript-card transcript-card--empty">
-      No transcript is available for this applicant in this preview.
-    </p>
+
+    <h2 class="section-heading heading-transcript">Interview transcript summary</h2>
+    <div class="transcript-card">
+      <p class="transcript-summary">{{ FABRICATED_TRANSCRIPT.summary }}</p>
+      <p class="transcript-footer">{{ FABRICATED_TRANSCRIPT.footer }}</p>
+    </div>
 
     <h2 class="section-heading heading-rubric">Rank against the rubric - 1 (needs improvement) to 5 (excellent)</h2>
 
@@ -182,13 +273,14 @@ function onPublish() {
         <span class="pill pill--neutral">{{ criterion.weight }}%</span>
       </div>
 
-      <template v-if="detail.criteria[criterion.key].type === 'quote'">
+      <template v-if="FABRICATED_TRANSCRIPT.criteria[criterion.key].type === 'quote'">
         <p class="response-heading">
-          Student's response <span class="response-timestamp">{{ detail.criteria[criterion.key].timestamp }}</span>
+          Student's response
+          <span class="response-timestamp">{{ FABRICATED_TRANSCRIPT.criteria[criterion.key].timestamp }}</span>
         </p>
-        <p class="response-quote">"{{ detail.criteria[criterion.key].text }}"</p>
+        <p class="response-quote">"{{ FABRICATED_TRANSCRIPT.criteria[criterion.key].text }}"</p>
       </template>
-      <p v-else class="response-note">{{ detail.criteria[criterion.key].text }}</p>
+      <p v-else class="response-note">{{ FABRICATED_TRANSCRIPT.criteria[criterion.key].text }}</p>
 
       <div class="score-picks">
         <button
@@ -196,6 +288,7 @@ function onPublish() {
           :key="n"
           type="button"
           class="score-pick"
+          :disabled="alreadyPublished"
           :class="{ 'score-pick--selected': scores[criterion.key] === n }"
           :aria-pressed="scores[criterion.key] === n"
           @click="scores[criterion.key] = n"
@@ -217,6 +310,7 @@ function onPublish() {
       <textarea
         v-if="noteVisible[criterion.key]"
         v-model="noteText[criterion.key]"
+        :disabled="alreadyPublished"
         class="criterion-note-textarea"
         rows="2"
         placeholder="Add a private note for this criterion..."
@@ -234,23 +328,33 @@ function onPublish() {
     <h2 class="section-heading heading-general-notes">General notes for the committee (optional)</h2>
     <textarea
       v-model="generalNotes"
+      :disabled="alreadyPublished"
       class="general-notes-textarea"
       rows="3"
       placeholder="Anything else the committee should know that isn't tied to one criterion above."
     ></textarea>
 
     <div class="action-row">
-      <button type="button" class="save-draft-btn" @click="onSaveDraft">Save draft</button>
-      <!-- Publish is disabled until all six criteria have a score -- this
-           is an INFERRED rule (the mockup doesn't show a disabled state),
-           reasonable since Save draft already covers "save a partial
-           scorecard", so a real publish should mean the scorecard is
-           actually complete. -->
-      <button type="button" class="publish-btn" :disabled="!allScored" @click="onPublish">Publish score</button>
+      <!-- Save draft is also disabled once published -- save-score itself
+           rejects ANY further write (draft or publish) once status is
+           'published', so there's nothing a draft save could do here but
+           hit that same 409. -->
+      <button type="button" class="save-draft-btn" :disabled="alreadyPublished" @click="onSaveDraft">Save draft</button>
+      <!-- Publish is disabled until all six criteria have a score, AND
+           once the server would reject it as already-published --
+           checked client-side from the existing score row fetched on
+           load, re-checked server-side by save-score regardless. -->
+      <button
+        type="button"
+        class="publish-btn"
+        :disabled="!allScored || alreadyPublished"
+        @click="onPublish"
+      >
+        Publish score
+      </button>
     </div>
-    <p v-if="draftSavedMessageVisible" class="draft-saved-message">
-      Saved locally — not yet connected to real scoring.
-    </p>
+    <p v-if="draftSavedMessageVisible" class="draft-saved-message">Draft saved.</p>
+    <p v-if="detailStore.saveError" class="save-error">{{ detailStore.saveError }}</p>
 
     <p class="footer">BTX Ops Hub - Scoring</p>
   </section>
@@ -272,30 +376,6 @@ function onPublish() {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-accent);
-}
-
-/* Same amber/warning badge tokens and layout as the other four
-   Scholarship pages' own .preview-banner -- only the copy differs. */
-.preview-banner {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--color-amber-badge-bg);
-  color: var(--color-amber-badge-text);
-  border: 1px solid color-mix(in srgb, var(--color-amber-badge-text) 30%, transparent);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.preview-banner-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
 }
 
 .back-link {
@@ -365,6 +445,33 @@ function onPublish() {
   cursor: pointer;
 }
 
+/* Scoped specifically to the fabricated transcript/quotes content below
+   -- not a whole-page preview banner. Same amber/warning badge tokens as
+   every other banner in this app, just narrower in scope and wording. */
+.fabricated-banner {
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-amber-badge-bg);
+  color: var(--color-amber-badge-text);
+  border: 1px solid color-mix(in srgb, var(--color-amber-badge-text) 30%, transparent);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.fabricated-banner-dot {
+  margin-top: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
 .section-heading {
   margin: 0;
   font-size: 13px;
@@ -373,7 +480,7 @@ function onPublish() {
 }
 
 .heading-transcript {
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .heading-rubric {
@@ -402,11 +509,6 @@ function onPublish() {
 .transcript-footer {
   margin: 10px 0 0;
   font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-.transcript-card--empty {
-  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
@@ -469,9 +571,6 @@ function onPublish() {
   gap: 8px;
 }
 
-/* Selected state: solid gold fill with dark text -- the mockup shows no
-   selected example, so this is a deliberate, consistent default across
-   all six criteria (see STEP 6's own note in the task). */
 .score-pick {
   flex: 1;
   padding: 9px 0;
@@ -483,6 +582,11 @@ function onPublish() {
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
+}
+
+.score-pick:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .score-pick--selected {
@@ -523,9 +627,11 @@ function onPublish() {
   resize: vertical;
 }
 
-/* Fixed-dark/gold -- same non-themed brand pair as Interviews.vue's own
-   .schedule-btn (#1c1a17 + --color-accent), not a themed surface, since
-   this is a prominent stat callout rather than page content. */
+.criterion-note-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .weighted-total-box {
   margin-top: 22px;
   background: #1c1a17;
@@ -566,6 +672,11 @@ function onPublish() {
   resize: vertical;
 }
 
+.general-notes-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .action-row {
   margin-top: 18px;
   display: flex;
@@ -585,8 +696,14 @@ function onPublish() {
   cursor: pointer;
 }
 
-.save-draft-btn:hover {
+.save-draft-btn:hover:not(:disabled) {
   opacity: 0.85;
+}
+
+.save-draft-btn:disabled {
+  background: var(--color-border-strong);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
 }
 
 .publish-btn {
@@ -622,6 +739,16 @@ function onPublish() {
   font-weight: 600;
 }
 
+.save-error {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-rust-badge-bg);
+  color: var(--color-rust-badge-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .pill {
   flex-shrink: 0;
   display: inline-flex;
@@ -638,6 +765,11 @@ function onPublish() {
   color: var(--color-amber-badge-text);
 }
 
+.pill--success {
+  background: var(--color-success-badge-bg);
+  color: var(--color-success-badge-text);
+}
+
 .pill--neutral {
   background: var(--color-neutral-badge-bg);
   color: var(--color-neutral-badge-text);
@@ -652,6 +784,33 @@ function onPublish() {
 .empty {
   margin: 0;
   color: var(--color-text-secondary);
+}
+
+.page-error {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-weight: 600;
+}
+
+.skeleton {
+  margin-top: 12px;
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--list {
+  height: 220px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .footer {

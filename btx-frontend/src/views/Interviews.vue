@@ -17,10 +17,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useScholarshipInterviewsStore } from '@/stores/scholarshipInterviews'
+import { useReviewerIdentityStore } from '@/stores/reviewerIdentity'
 import { INTERVIEW_SLOTS } from '@/lib/interviewSlots'
+import ReviewerLabelPrompt from '@/components/ReviewerLabelPrompt.vue'
 
 const authStore = useAuthStore()
 const interviewsStore = useScholarshipInterviewsStore()
+const reviewerIdentity = useReviewerIdentityStore()
 
 // Same admin/board/reviewer gate every other Program/Finance/Scholarship
 // page uses -- display-only, RLS on the underlying tables is the actual
@@ -34,28 +37,18 @@ onMounted(() => {
 // Re-fetch whenever the signed-in user changes AND a label has already
 // been entered this session -- same watch-on-session-id pattern as
 // ApplicantRecords.vue's own store. Entering the label for the first time
-// is handled separately by confirmLabel() below, since this watcher only
-// reacts to session id changes, not to label being set.
+// is handled separately by ReviewerLabelPrompt's own @confirmed below,
+// since this watcher only reacts to session id changes, not to label
+// being set.
 watch(
   () => authStore.session?.user?.id ?? null,
   (userId) => {
-    if (userId && canView.value && interviewsStore.label) {
-      interviewsStore.fetchForLabel()
+    if (userId && canView.value && reviewerIdentity.label) {
+      interviewsStore.fetchForLabel(reviewerIdentity.label)
     }
   },
   { immediate: true },
 )
-
-const labelInput = ref('')
-
-// Stores the self-typed label (session-only, see the store's own comment)
-// and runs the first real fetch for it.
-function confirmLabel() {
-  const trimmed = labelInput.value.trim()
-  if (!trimmed) return
-  interviewsStore.label = trimmed
-  interviewsStore.fetchForLabel()
-}
 
 // Locally toggled slot selection -- mutating this does NOT save anything;
 // only clicking "Save availability" does. Seeded from the store's fetched
@@ -119,7 +112,7 @@ function clearSavedMessage() {
 async function onSaveAvailability() {
   const accessToken = authStore.session?.access_token
   if (!accessToken) return
-  const ok = await interviewsStore.saveAvailability([...pendingSlotIds.value], accessToken)
+  const ok = await interviewsStore.saveAvailability([...pendingSlotIds.value], accessToken, reviewerIdentity.label)
   if (ok) {
     savedMessageVisible.value = true
     if (savedMessageTimer) clearTimeout(savedMessageTimer)
@@ -213,20 +206,13 @@ function formatCompletedDate(date) {
   <p v-if="!authStore.session">Sign in</p>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
 
-  <section v-else-if="!interviewsStore.label" class="interviews label-prompt">
+  <section v-else-if="!reviewerIdentity.label" class="interviews label-prompt">
     <p class="page-crumb">Scholarship</p>
     <h1 class="page-title" data-page-heading>Interviews</h1>
-    <!-- Self-typed label -- the same free-text placeholder identity every
-         other operational table in this schema already uses
-         (board_member_label / interviewer_one_label / interviewer_two_label),
-         not a new identity model. In-memory only (this Pinia store's own
-         state), never localStorage/sessionStorage -- gone the moment this
-         tab or store resets. -->
-    <p class="label-prompt-help">Enter your name or initials to see your availability and interviews.</p>
-    <form class="label-prompt-form" @submit.prevent="confirmLabel">
-      <input v-model="labelInput" type="text" placeholder="e.g. J. Smith" class="label-input" />
-      <button type="submit" class="label-submit-btn" :disabled="!labelInput.trim()">Continue</button>
-    </form>
+    <ReviewerLabelPrompt
+      help-text="Enter your name or initials to see your availability and interviews."
+      @confirmed="interviewsStore.fetchForLabel(reviewerIdentity.label)"
+    />
   </section>
 
   <section v-else class="interviews">
@@ -427,55 +413,6 @@ function formatCompletedDate(date) {
 
 .schedule-btn:hover {
   opacity: 0.9;
-}
-
-.label-prompt-help {
-  margin: 10px 0 0;
-  max-width: 420px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-header-muted);
-}
-
-.label-prompt-form {
-  margin-top: 18px;
-  display: flex;
-  gap: 10px;
-}
-
-.label-input {
-  flex: 1;
-  min-width: 0;
-  padding: 11px 14px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 13.5px;
-  font-family: inherit;
-}
-
-.label-submit-btn {
-  flex-shrink: 0;
-  padding: 11px 18px;
-  border: none;
-  border-radius: 10px;
-  background: var(--color-header-strong);
-  color: var(--color-surface);
-  font-size: 13.5px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.label-submit-btn:hover:not(:disabled) {
-  opacity: 0.92;
-}
-
-.label-submit-btn:disabled {
-  background: var(--color-border-strong);
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
 }
 
 .section-heading {

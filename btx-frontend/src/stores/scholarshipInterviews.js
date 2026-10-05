@@ -13,15 +13,11 @@ const INTERVIEW_COLUMNS = 'id, applicant_id, scheduled_at, interviewer_one_label
 
 // Pinia store for the Interviews page: this board/reviewer's own saved
 // availability for the current cycle, their own paired interviews, and the
-// real write path for saving availability. `label` is the self-typed
-// free-text identity every operational table in this schema already uses
-// (board_member_label / interviewer_one_label / interviewer_two_label) --
-// not a new identity model, just this page's own copy of that same
-// placeholder, kept in Pinia state so it never touches localStorage/
-// sessionStorage and is gone the moment the tab/store resets.
+// real write path for saving availability. The self-typed reviewer label
+// itself lives in the shared useReviewerIdentityStore (see that store's
+// own comment), not here -- fetchForLabel()/saveAvailability() both take
+// it as a parameter rather than reading it from this store's own state.
 export const useScholarshipInterviewsStore = defineStore('scholarshipInterviews', () => {
-  const label = ref('')
-
   const availabilitySlotIds = ref([])
   const upcoming = ref([])
   const recentlyCompleted = ref([])
@@ -57,8 +53,7 @@ export const useScholarshipInterviewsStore = defineStore('scholarshipInterviews'
   // value would be interpolated into, and a label containing a comma or
   // parenthesis would corrupt that filter; two plain `.eq()` queries avoid
   // that entirely.
-  async function fetchForLabel() {
-    const currentLabel = label.value
+  async function fetchForLabel(currentLabel) {
     if (!currentLabel) return
 
     loading.value = true
@@ -134,7 +129,7 @@ export const useScholarshipInterviewsStore = defineStore('scholarshipInterviews'
   // availability from the real table (rather than trusting the optimistic
   // local selection) so the grid always reflects what was actually
   // persisted.
-  async function saveAvailability(slotIds, accessToken) {
+  async function saveAvailability(slotIds, accessToken, label) {
     saving.value = true
     saveError.value = null
 
@@ -145,7 +140,7 @@ export const useScholarshipInterviewsStore = defineStore('scholarshipInterviews'
           'content-type': 'application/json',
           authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ board_member_label: label.value, slots: slotIds }),
+        body: JSON.stringify({ board_member_label: label, slots: slotIds }),
       })
 
       if (!response.ok) {
@@ -172,7 +167,6 @@ export const useScholarshipInterviewsStore = defineStore('scholarshipInterviews'
   }
 
   return {
-    label,
     availabilitySlotIds,
     upcoming,
     recentlyCompleted,

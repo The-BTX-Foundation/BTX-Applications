@@ -1,25 +1,25 @@
 <script setup>
-// SCORING -- FRONT-END-ONLY PREVIEW.
+// SCORING -- wired to real data.
 //
-// Everything rendered on this page comes from local, hand-authored sample
-// data (see src/lib/scoringSampleData.js) -- there is no rubric/score
-// table backing any of it yet, and this component makes ZERO Supabase
-// calls (authStore.isAdmin/isBoard/isReviewer below reads the session the
-// router's global guard already loaded, it doesn't fetch anything
-// itself). The All/Scored/Pending tab below is a real local filter, and
-// so is a queue row's "Score ->" link now -- it navigates to
-// ScoreApplicant.vue, a real (still front-end-only) scoring detail page.
-// YOUR_QUEUE/ALL_APPLICANTS are a shared reactive singleton (see their own
-// comment in scoringSampleData.js) -- that page's Save draft/Publish
-// actions mutate these same arrays, and this page just reflects whatever
-// they currently hold.
-import { computed, onMounted, ref } from 'vue'
-import { VIEWER_INITIALS, YOUR_QUEUE, CYCLE_PROGRESS_TILES, RUBRIC_CRITERIA, ALL_APPLICANTS } from '@/lib/scoringSampleData'
+// "Your scoring queue" and "All applicants this cycle" both derive from
+// useScholarshipScoringStore's single fetch (scholarship_applicant_directory
+// joined, client-side, to every scholarship_scores row for the current
+// cycle) -- see that store's own comment. "Who am I": the self-typed
+// reviewer label lives in the shared useReviewerIdentityStore, extracted
+// from Interviews.vue's own flow (see ReviewerLabelPrompt.vue) rather than
+// built fresh here.
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useReviewerIdentityStore } from '@/stores/reviewerIdentity'
+import { useScholarshipScoringStore, EXPECTED_INTERVIEWERS } from '@/stores/scholarshipScoring'
+import ReviewerLabelPrompt from '@/components/ReviewerLabelPrompt.vue'
 
 const authStore = useAuthStore()
+const reviewerIdentity = useReviewerIdentityStore()
+const scoringStore = useScholarshipScoringStore()
+
 // Same admin/board/reviewer gate every other Program/Finance/Scholarship
-// page uses -- display-only, RLS (once real tables exist) is the actual
+// page uses -- display-only, RLS on the underlying tables is the actual
 // enforcement.
 const canView = computed(() => authStore.isAdmin || authStore.isBoard || authStore.isReviewer)
 
@@ -27,14 +27,51 @@ onMounted(() => {
   authStore.init()
 })
 
-const queueDoneCount = computed(() => YOUR_QUEUE.filter((row) => row.yourScore !== null).length)
+// Re-fetch whenever the signed-in user changes AND a label has already
+// been entered this session -- same watch-on-session-id pattern as
+// Interviews.vue's own store. Entering the label for the first time is
+// handled separately by ReviewerLabelPrompt's own @confirmed below.
+watch(
+  () => authStore.session?.user?.id ?? null,
+  (userId) => {
+    if (userId && canView.value && reviewerIdentity.label) {
+      scoringStore.fetchCycle()
+    }
+  },
+  { immediate: true },
+)
 
-// STEP 4's badge color rule -- a single reusable function, called
-// identically from both "Your scoring queue" and "All applicants this
-// cycle" below, rather than two copies of the same banding logic.
-// >= 4.5 green, 3.5-4.4 gold, < 3.5 rust; null/undefined (no score yet)
-// returns 'none', which renders a neutral gray dash instead of a colored
-// number.
+// "Your scoring queue" -- every applicant this cycle without a PUBLISHED
+// score from this session's own label (see the store's own comment on
+// why a draft still leaves an applicant in the queue).
+const queue = computed(() => scoringStore.queueForLabel(reviewerIdentity.label))
+
+// Redefinition of the old sample data's "done/total" queue-header badge:
+// "done" now means "applicants this cycle you've already published a
+// score for" (i.e. everyone NOT in the queue below), since nothing
+// inside the queue itself can ever be "done" by construction.
+const doneCount = computed(() => scoringStore.tiles.total - queue.value.length)
+
+// Describes every OTHER interviewer's status for one queue row -- "other"
+// meaning any score row not from this session's own label. Normally at
+// most one row (every applicant is paired with exactly
+// EXPECTED_INTERVIEWERS interviewers), but this doesn't assume that.
+function otherInterviewerMeta(applicant) {
+  const others = applicant.scores.filter((s) => s.interviewer_label !== reviewerIdentity.label)
+  if (others.length === 0) return 'No other interviewer has started yet'
+  return others.map((s) => `${s.interviewer_label}: ${s.status}`).join(', ')
+}
+
+// Whether THIS session's own label has a draft (not yet published) score
+// row for this applicant -- same "Draft saved" indicator the old sample
+// data showed, now derived from a real row instead of a mutated sample.
+function hasOwnDraft(applicant) {
+  return applicant.scores.some((s) => s.interviewer_label === reviewerIdentity.label && s.status === 'draft')
+}
+
+// STEP 4's badge color rule, unchanged from the sample-data version --
+// >= 4.5 green, 3.5-4.4 gold, < 3.5 rust; null (no published score yet)
+// returns 'none'.
 function scoreTone(score) {
   if (score === null || score === undefined) return 'none'
   if (score >= 4.5) return 'green'
@@ -44,25 +81,49 @@ function scoreTone(score) {
 
 const TILE_VALUE_CLASS = { gold: 'tile-value--gold', dark: 'tile-value--dark', rust: 'tile-value--rust' }
 
-const STATUS_PILL_CLASS = { Scored: 'pill--success', Pending: 'pill--rust' }
+const summaryTiles = computed(() => [
+  {
+    key: 'scored',
+    label: 'Applicants scored',
+    value: `${scoringStore.tiles.scored}/${scoringStore.tiles.total}`,
+    tone: 'gold',
+  },
+  {
+    key: 'average',
+    label: 'Average weighted score',
+    value: scoringStore.tiles.average !== null ? `${scoringStore.tiles.average.toFixed(1)}/5` : '—',
+    tone: 'dark',
+  },
+  { key: 'pending', label: 'Pending score', value: String(scoringStore.tiles.pending), tone: 'rust' },
+])
 
-// STEP 6's All/Scored/Pending tab, reusing ApplicantRecords.vue's own
-// cycle-filter-pill pattern (same active/inactive treatment, renamed here
-// since it filters by status rather than cycle year). Filters by each
-// row's own literal `pill` field -- see scoringSampleData.js's comment on
-// why that's stored rather than derived.
 const STATUS_FILTERS = ['All', 'Scored', 'Pending']
 const selectedStatus = ref('All')
 const filteredApplicants = computed(() => {
-  if (selectedStatus.value === 'All') return ALL_APPLICANTS
-  return ALL_APPLICANTS.filter((applicant) => applicant.pill === selectedStatus.value)
+  if (selectedStatus.value === 'All') return scoringStore.allApplicants
+  const wantScored = selectedStatus.value === 'Scored'
+  return scoringStore.allApplicants.filter((a) => (a.publishedScores.length > 0) === wantScored)
 })
 
+const emptyAllApplicantsMessage = computed(() => {
+  if (selectedStatus.value === 'Scored') return 'No applicants have a published score yet.'
+  if (selectedStatus.value === 'Pending') return 'No applicants are pending a score.'
+  return 'No applicants yet this cycle.'
+})
 </script>
 
 <template>
   <p v-if="!authStore.session">Sign in</p>
   <p v-else-if="!canView" class="access-denied">Access Denied</p>
+
+  <section v-else-if="!reviewerIdentity.label" class="scoring label-prompt">
+    <p class="page-crumb">Scholarship</p>
+    <h1 class="page-title" data-page-heading>Scoring</h1>
+    <ReviewerLabelPrompt
+      help-text="Enter your name or initials to see your scoring queue."
+      @confirmed="scoringStore.fetchCycle()"
+    />
+  </section>
 
   <section v-else class="scoring">
     <p class="page-crumb">Scholarship</p>
@@ -71,103 +132,105 @@ const filteredApplicants = computed(() => {
       Ranked 1-5 across six weighted criteria. Two independent interviewers score every applicant.
     </p>
 
-    <!-- Same preview banner as the other three Scholarship pages -- same
-         tokens, same prominence, wording adjusted for this page. -->
-    <div class="preview-banner">
-      <span class="preview-banner-dot" aria-hidden="true"></span>
-      Preview — sample data only, not connected to real scoring
-    </div>
+    <div v-if="scoringStore.loading" class="skeleton skeleton--list"></div>
+    <p v-else-if="scoringStore.error" class="page-error">Couldn't load scoring data.</p>
 
-    <section class="queue-card">
-      <div class="queue-header">
-        <span class="avatar" aria-hidden="true">{{ VIEWER_INITIALS }}</span>
-        <div class="queue-header-text">
-          <p class="queue-title">Your scoring queue</p>
-          <p class="queue-subline">{{ YOUR_QUEUE.length }} applicants assigned to you</p>
+    <template v-else>
+      <section class="queue-card">
+        <div class="queue-header">
+          <span class="avatar" aria-hidden="true">{{ reviewerIdentity.label.slice(0, 2).toUpperCase() }}</span>
+          <div class="queue-header-text">
+            <p class="queue-title">Your scoring queue</p>
+            <p class="queue-subline">
+              {{ queue.length }} applicant{{ queue.length === 1 ? '' : 's' }} without your score yet
+            </p>
+          </div>
+          <span class="queue-count">{{ doneCount }}/{{ scoringStore.tiles.total }}</span>
         </div>
-        <span class="queue-count">{{ queueDoneCount }}/{{ YOUR_QUEUE.length }}</span>
+
+        <p v-if="queue.length === 0" class="empty">No applicants waiting on your score this cycle.</p>
+        <ul v-else class="queue-list">
+          <li
+            v-for="applicant in queue"
+            :key="applicant.applicant_id"
+            class="queue-row"
+            :class="{ 'queue-row--gold': hasOwnDraft(applicant) }"
+          >
+            <div class="queue-row-main">
+              <span class="app-id">{{ applicant.applicant_code }}</span>
+              <p class="queue-meta">{{ otherInterviewerMeta(applicant) }}</p>
+              <p v-if="hasOwnDraft(applicant)" class="draft-indicator">Draft saved</p>
+            </div>
+
+            <RouterLink
+              :to="{ name: 'scholarship-score-applicant', params: { appId: applicant.applicant_id } }"
+              class="score-btn"
+            >
+              Score →
+            </RouterLink>
+          </li>
+        </ul>
+      </section>
+
+      <h2 class="section-heading heading-progress">Cycle-wide progress</h2>
+      <div class="tiles">
+        <div v-for="tile in summaryTiles" :key="tile.key" class="tile">
+          <p class="tile-value" :class="TILE_VALUE_CLASS[tile.tone]">{{ tile.value }}</p>
+          <p class="tile-label">{{ tile.label }}</p>
+        </div>
       </div>
 
-      <ul class="queue-list">
-        <li v-for="row in YOUR_QUEUE" :key="row.id" class="queue-row" :class="`queue-row--${row.accent}`">
-          <div class="queue-row-main">
-            <span class="app-id">{{ row.id }}</span>
-            <p class="queue-meta">{{ row.meta }}</p>
-            <p v-if="row.draftSaved && row.yourScore === null" class="draft-indicator">Draft saved</p>
+      <h2 class="section-heading heading-rubric">Average by rubric criterion</h2>
+      <div class="rubric-card">
+        <div v-for="criterion in scoringStore.rubricAverages" :key="criterion.key" class="rubric-row">
+          <div class="row-top">
+            <span class="row-label">{{ criterion.label }} <span class="row-weight">{{ criterion.weight }}%</span></span>
+            <span class="row-value-serif">{{ criterion.average !== null ? criterion.average.toFixed(1) : '—' }}/5</span>
           </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-fill--gold" :style="{ width: `${((criterion.average ?? 0) / 5) * 100}%` }"></div>
+          </div>
+        </div>
+      </div>
 
-          <span
-            v-if="row.yourScore !== null"
-            class="score-badge"
-            :class="`score-badge--${scoreTone(row.yourScore)}`"
-          >
-            {{ row.yourScore.toFixed(1) }}
+      <h2 class="section-heading heading-all">All applicants this cycle</h2>
+      <div class="status-filter-row">
+        <button
+          v-for="status in STATUS_FILTERS"
+          :key="status"
+          type="button"
+          class="status-filter-pill"
+          :class="{ 'status-filter-pill--active': selectedStatus === status }"
+          :aria-pressed="selectedStatus === status"
+          @click="selectedStatus = status"
+        >
+          {{ status }}
+        </button>
+      </div>
+
+      <p v-if="filteredApplicants.length === 0" class="empty">{{ emptyAllApplicantsMessage }}</p>
+      <ul v-else class="applicant-list">
+        <li v-for="applicant in filteredApplicants" :key="applicant.applicant_id" class="applicant-row">
+          <span class="score-badge" :class="`score-badge--${scoreTone(applicant.combinedScore)}`">
+            {{ applicant.combinedScore !== null ? applicant.combinedScore.toFixed(1) : '–' }}
           </span>
-          <RouterLink
-            v-else
-            :to="{ name: 'scholarship-score-applicant', params: { appId: row.id } }"
-            class="score-btn"
-          >
-            Score →
-          </RouterLink>
+          <div class="applicant-main">
+            <div class="applicant-top">
+              <span class="app-id">{{ applicant.applicant_code }}</span>
+              <span v-if="applicant.scores.some((s) => s.interviewer_label === reviewerIdentity.label)" class="you-tag">
+                you
+              </span>
+            </div>
+            <p class="applicant-meta">
+              {{ applicant.publishedScores.length }} of {{ EXPECTED_INTERVIEWERS }} interviewers published
+            </p>
+          </div>
+          <span class="pill" :class="applicant.publishedScores.length > 0 ? 'pill--success' : 'pill--rust'">
+            {{ applicant.publishedScores.length > 0 ? 'Scored' : 'Pending' }}
+          </span>
         </li>
       </ul>
-    </section>
-
-    <h2 class="section-heading heading-progress">Cycle-wide progress</h2>
-    <div class="tiles">
-      <div v-for="tile in CYCLE_PROGRESS_TILES" :key="tile.key" class="tile">
-        <p class="tile-value" :class="TILE_VALUE_CLASS[tile.tone]">{{ tile.value }}</p>
-        <p class="tile-label">{{ tile.label }}</p>
-      </div>
-    </div>
-
-    <h2 class="section-heading heading-rubric">Average by rubric criterion</h2>
-    <div class="rubric-card">
-      <div v-for="criterion in RUBRIC_CRITERIA" :key="criterion.key" class="rubric-row">
-        <div class="row-top">
-          <span class="row-label">{{ criterion.label }} <span class="row-weight">{{ criterion.weight }}%</span></span>
-          <span class="row-value-serif">{{ criterion.average.toFixed(1) }}/5</span>
-        </div>
-        <!-- Same bar-track/bar-fill shape as ProgramImpact.vue/
-             BudgetTracking.vue's own allocation bars -- reused verbatim,
-             not a new bar style. -->
-        <div class="bar-track">
-          <div class="bar-fill bar-fill--gold" :style="{ width: `${(criterion.average / 5) * 100}%` }"></div>
-        </div>
-      </div>
-    </div>
-
-    <h2 class="section-heading heading-all">All applicants this cycle</h2>
-    <div class="status-filter-row">
-      <button
-        v-for="status in STATUS_FILTERS"
-        :key="status"
-        type="button"
-        class="status-filter-pill"
-        :class="{ 'status-filter-pill--active': selectedStatus === status }"
-        :aria-pressed="selectedStatus === status"
-        @click="selectedStatus = status"
-      >
-        {{ status }}
-      </button>
-    </div>
-
-    <ul class="applicant-list">
-      <li v-for="applicant in filteredApplicants" :key="applicant.id" class="applicant-row">
-        <span class="score-badge" :class="`score-badge--${scoreTone(applicant.combinedScore)}`">
-          {{ applicant.combinedScore !== null ? applicant.combinedScore.toFixed(1) : '–' }}
-        </span>
-        <div class="applicant-main">
-          <div class="applicant-top">
-            <span class="app-id">{{ applicant.id }}</span>
-            <span v-if="applicant.isYou" class="you-tag">you</span>
-          </div>
-          <p class="applicant-meta">{{ applicant.interviewerText }}</p>
-        </div>
-        <span class="pill" :class="STATUS_PILL_CLASS[applicant.pill]">{{ applicant.pill }}</span>
-      </li>
-    </ul>
+    </template>
 
     <p class="footer">BTX Ops Hub · Scoring</p>
   </section>
@@ -206,30 +269,6 @@ const filteredApplicants = computed(() => {
   font-size: 13px;
   line-height: 1.5;
   color: var(--color-header-muted);
-}
-
-/* Same amber/warning badge tokens and layout as the other three
-   Scholarship pages' own .preview-banner -- only the copy differs. */
-.preview-banner {
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--color-amber-badge-bg);
-  color: var(--color-amber-badge-text);
-  border: 1px solid color-mix(in srgb, var(--color-amber-badge-text) 30%, transparent);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.preview-banner-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
 }
 
 .queue-card {
@@ -290,10 +329,6 @@ const filteredApplicants = computed(() => {
 
 .queue-list {
   margin-top: 14px;
-  /* list-style: none removes the bullet marker but NOT the browser's
-     default 40px padding-inline-start on <ul> -- that default padding
-     was what pushed every row 40px right of the avatar's own left edge
-     (the base.css universal reset only zeroes margin, not padding). */
   padding: 0;
   list-style: none;
   display: flex;
@@ -301,10 +336,9 @@ const filteredApplicants = computed(() => {
   gap: 8px;
 }
 
-/* Left accent bar: green once scored, gold while still needing your
-   score -- a colored border-left rather than a separate token, same
-   "borrow the badge/status color for a hairline accent" technique
-   Home/AlertCenter already use elsewhere in this app. */
+/* Left accent bar: gold while a draft exists, transparent otherwise --
+   nothing in this list is ever "done" (a published score removes the row
+   from the queue entirely), so the old green accent state is gone. */
 .queue-row {
   display: flex;
   align-items: center;
@@ -313,15 +347,7 @@ const filteredApplicants = computed(() => {
   border-radius: 8px;
   border: 1px solid var(--color-border);
   border-left: 3px solid transparent;
-  /* Same card background as .applicant-row below (the "All applicants
-     this cycle" rows) -- was mistakenly --color-page-bg, which is the
-     page's own cream background, not a card surface, so these rows had
-     no visible boundary against the page. */
   background: var(--color-surface);
-}
-
-.queue-row--green {
-  border-left-color: var(--color-green-strong);
 }
 
 .queue-row--gold {
@@ -345,9 +371,6 @@ const filteredApplicants = computed(() => {
   color: var(--color-text-secondary);
 }
 
-/* Set by ScoreApplicant.vue's Save draft action on the shared queue row --
-   only shown while the row is still unscored (a published score makes the
-   draft moot). */
 .draft-indicator {
   margin: 2px 0 0;
   font-size: 10.5px;
@@ -355,11 +378,6 @@ const filteredApplicants = computed(() => {
   color: var(--color-gold-deep);
 }
 
-/* Score badge -- reuses the exact same success/amber/rust/neutral badge
-   token pairs the pills elsewhere on this app already use, just rendered
-   as a circle instead of a pill. Used identically by both "Your scoring
-   queue" (a scored row) and "All applicants this cycle" (every row) --
-   see scoreTone() in <script>. */
 .score-badge {
   flex-shrink: 0;
   width: 34px;
@@ -395,9 +413,6 @@ const filteredApplicants = computed(() => {
   color: var(--color-neutral-badge-text);
 }
 
-/* Now a real RouterLink to ScoreApplicant.vue -- display:inline-flex
-   (rather than relying on <a>'s default inline box) so the padding
-   applies the same way a <button> would. */
 .score-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -438,9 +453,6 @@ const filteredApplicants = computed(() => {
   margin-top: 26px;
 }
 
-/* Same tile styling as the other three Scholarship pages' own .tiles --
-   .tile-value--dark is new to this page since none of the others needed a
-   third, non-gold/green/rust tile tone. */
 .tiles {
   margin-top: 12px;
   display: grid;
@@ -522,8 +534,6 @@ const filteredApplicants = computed(() => {
   font-feature-settings: 'lnum' 1;
 }
 
-/* Same bar-track/bar-fill shape as ProgramImpact.vue's own allocation
-   bars, reused verbatim. */
 .bar-track {
   margin-top: 6px;
   height: 4px;
@@ -542,10 +552,6 @@ const filteredApplicants = computed(() => {
   background: var(--color-gold-strong);
 }
 
-/* Copied from ApplicantRecords.vue's .cycle-filter-row/.cycle-filter-pill
-   (same active/inactive treatment) -- renamed here since it filters by
-   status rather than cycle year, but it's the same reused pattern, not a
-   new one. */
 .status-filter-row {
   margin-top: 12px;
   display: flex;
@@ -574,9 +580,6 @@ const filteredApplicants = computed(() => {
 
 .applicant-list {
   margin-top: 12px;
-  /* Same fix as .queue-list above -- the browser's default 40px
-     padding-inline-start on <ul> was pushing every row 40px right of the
-     "All applicants this cycle" heading's own left edge. */
   padding: 0;
   list-style: none;
   display: flex;
@@ -626,9 +629,6 @@ const filteredApplicants = computed(() => {
   color: var(--color-text-secondary);
 }
 
-/* Reused verbatim from AwardeeWorkflow.vue/Interviews.vue/
-   ApplicantRecords.vue -- same pill base + success/rust modifier classes
-   for Scored/Pending, not a second set of pill styles. */
 .pill {
   flex-shrink: 0;
   display: inline-flex;
@@ -648,6 +648,39 @@ const filteredApplicants = computed(() => {
 .pill--rust {
   background: var(--color-rust-badge-bg);
   color: var(--color-rust-badge-text);
+}
+
+.empty {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.page-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-danger-text);
+}
+
+.skeleton {
+  margin-top: 12px;
+  border-radius: 12px;
+  background: var(--color-track);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton--list {
+  height: 220px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .access-denied {
