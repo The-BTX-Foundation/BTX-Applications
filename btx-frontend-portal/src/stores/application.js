@@ -86,6 +86,13 @@ export const useApplicationStore = defineStore('application', () => {
   const creditsLeft = field('creditsLeft', '')
   const major = field('major', '')
 
+  // Honeypot -- never shown to real applicants (see Step1BasicInfo.vue's
+  // hidden `website` input). Deliberately NOT part of `allFields`/the
+  // persisted draft: it's not a real field, just a trap
+  // submit-application checks for, so it has no legitimate "saved draft
+  // value" to restore and no reason to gate any step's validation on.
+  const website = ref('')
+
   // Step 2 -- how they heard about BTX (placeholder)
   const howHeard = field('howHeard', '')
   // Step 3 -- per-award opt-outs (placeholder)
@@ -219,6 +226,7 @@ export const useApplicationStore = defineStore('application', () => {
       agreed_accurate: agreedAccurate.value,
       agreed_terms: agreedTerms.value,
       agreed_privacy: agreedPrivacy.value,
+      website: website.value,
     }
   }
 
@@ -331,6 +339,7 @@ export const useApplicationStore = defineStore('application', () => {
 
   return {
     ...allFields,
+    website,
     files,
     setDocument,
     clearDocument,

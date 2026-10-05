@@ -161,6 +161,22 @@ function onContinue() {
       />
     </div>
 
+    <!--
+      Honeypot: a real text input, not display:none/visibility:hidden (some
+      bots specifically check for and skip those two properties to avoid
+      honeypots) -- hidden purely with off-screen positioning instead (see
+      .website-field below), left in normal DOM order and normal tab order
+      (no tabindex override) with no visible label pointing to it, so a
+      sighted applicant tabbing through the form has no reason to ever
+      notice or fill it. Any form-filler/autofill bot that blindly populates
+      every text input it finds will fill this one; submit-application's own
+      honeypot check treats a non-empty value here as a bot and silently
+      no-ops the submission while still returning a normal-looking success.
+      See buildSubmissionPayload() in stores/application.js for how this
+      field's value reaches the request body.
+    -->
+    <input v-model="store.website" type="text" name="website" autocomplete="off" class="website-field" />
+
     <button type="button" class="continue-btn" :disabled="!isValid" @click="onContinue">Continue</button>
   </div>
 </template>
@@ -185,6 +201,18 @@ function onContinue() {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* Honeypot field -- off-screen, not display:none/visibility:hidden (see the
+   template comment above this input for why that distinction matters).
+   Stays in the DOM and in normal tab order; just never visually reachable. */
+.website-field {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .continue-btn {
