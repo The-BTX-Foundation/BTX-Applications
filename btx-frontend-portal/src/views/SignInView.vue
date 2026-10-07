@@ -220,6 +220,8 @@ onUnmounted(() => clearInterval(resendTimer))
 
     <main class="content">
       <div class="sign-in-wrap">
+        <RouterLink to="/" class="back-link">‹ Back</RouterLink>
+
         <template v-if="mode === 'applicant'">
           <h1 class="heading">Check your application status</h1>
           <p class="subline">
@@ -343,6 +345,21 @@ onUnmounted(() => clearInterval(resendTimer))
   flex-direction: column;
   align-items: center;
   text-align: center;
+}
+
+/* Same markup/position/style as WizardShell.vue's own Back link (top-left,
+   above the page title) -- this one always returns to the landing page,
+   unlike .mode-switch's "‹ Back" below (which switches the applicant/staff
+   flow in place, not the page). Kept visually distinct from that one on
+   purpose: left-aligned at the top vs. centered under the card, and
+   --color-header-strong/14px/700 vs. --color-text-secondary/13px/600. */
+.back-link {
+  align-self: flex-start;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-header-strong);
+  text-decoration: none;
+  margin-bottom: 12px;
 }
 
 .heading {
