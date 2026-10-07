@@ -2,12 +2,27 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketingTasksStore } from '@/stores/marketingTasks'
-import { MARKETING_TASK_TYPE_COLORS } from '@/lib/marketingTaskTypes'
+import { MARKETING_TASK_TYPES, MARKETING_TASK_TYPE_COLORS } from '@/lib/marketingTaskTypes'
 
 const authStore = useAuthStore()
 const marketingTasksStore = useMarketingTasksStore()
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Max number of entries shown directly in a day cell before the rest
+// collapse into a "+N more" indicator -- same cap and reasoning as Event
+// Calendar's DAY_CELL_ENTRY_CAP.
+const DAY_CELL_ENTRY_CAP = 3
+
+// Legend rows in MARKETING_TASK_TYPES' fixed declared order -- one swatch
+// + label per type, same "small legend above the grid" pattern as Event
+// Calendar's domainLegend.
+const typeLegend = computed(() =>
+  MARKETING_TASK_TYPES.map((type) => ({
+    type,
+    color: MARKETING_TASK_TYPE_COLORS[type],
+  })),
+)
 
 // Space left below the grid so it doesn't run flush to the bottom of the
 // viewport — matches the page/panel's existing 32px padding rhythm.
@@ -140,11 +155,17 @@ const calendarDays = computed(() => {
   for (let i = 0; i < 42; i++) {
     const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i)
     const key = dateKey(date)
+    const entries = entriesByDate.value[key] ?? []
     days.push({
       key,
       dayNumber: date.getDate(),
       isCurrentMonth: date.getMonth() === viewedMonth.value,
-      entries: entriesByDate.value[key] ?? [],
+      entries,
+      // Capped list shown directly in the cell, plus how many more exist
+      // beyond the cap -- same slice-and-count pattern as Event Calendar's
+      // visibleEntries/overflowCount.
+      visibleEntries: entries.slice(0, DAY_CELL_ENTRY_CAP),
+      overflowCount: Math.max(entries.length - DAY_CELL_ENTRY_CAP, 0),
     })
   }
   return days
@@ -157,12 +178,6 @@ const monthLabel = computed(() =>
     year: 'numeric',
   }),
 )
-
-// Distinct types present on a given day, in first-seen order — a day with
-// three Marketing Event entries shows one dot, not three.
-function distinctTypesForDay(day) {
-  return [...new Set(day.entries.map((entry) => entry.type))]
-}
 
 // Moves the viewed month back one, letting the Date constructor handle
 // year rollover (e.g. January -1 -> December of the previous year) rather
@@ -223,6 +238,16 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
         <button type="button" class="nav-btn" @click="goToNextMonth">Next &rarr;</button>
       </div>
 
+      <!-- Marketing type legend: same small fixed-set swatch+label row as
+           Event Calendar's domain-legend, listing MARKETING_TASK_TYPES
+           instead of task domains. -->
+      <div class="domain-legend">
+        <span v-for="item in typeLegend" :key="item.type" class="legend-item">
+          <span class="legend-swatch" :style="{ background: item.color, borderColor: item.color }" />
+          {{ item.type }}
+        </span>
+      </div>
+
       <p v-if="marketingTasksStore.loading">Loading calendar…</p>
       <p v-else-if="marketingTasksStore.error" class="error">{{ marketingTasksStore.error }}</p>
 
@@ -250,17 +275,25 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
             >
               <span class="day-number">{{ day.dayNumber }}</span>
 
-              <template v-if="day.entries.length > 0">
-                <span class="day-count">{{ day.entries.length }}</span>
-                <span class="day-dots">
-                  <span
-                    v-for="type in distinctTypesForDay(day)"
-                    :key="type"
-                    class="day-dot"
-                    :style="{ backgroundColor: MARKETING_TASK_TYPE_COLORS[type] }"
-                  ></span>
-                </span>
-              </template>
+              <span v-if="day.entries.length > 0" class="day-count">{{ day.entries.length }}</span>
+
+              <!-- Apple-Calendar-style entries: same solid colored pill
+                   shape as Event Calendar's day-entry--event (category
+                   color background, entry title text), reusing the
+                   day-entry/day-entries/day-entry--overflow class names and
+                   layout rules. -->
+              <div v-if="day.visibleEntries.length > 0" class="day-entries">
+                <span
+                  v-for="entry in day.visibleEntries"
+                  :key="entry.id"
+                  class="day-entry day-entry--marketing"
+                  :style="{ background: MARKETING_TASK_TYPE_COLORS[entry.type] }"
+                  >{{ entry.title }}</span
+                >
+                <span v-if="day.overflowCount > 0" class="day-entry day-entry--overflow"
+                  >+{{ day.overflowCount }} more</span
+                >
+              </div>
             </button>
           </div>
         </div>
@@ -326,6 +359,33 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   cursor: pointer;
 }
 
+/* Small fixed legend, centered above the grid like the month-nav row
+   above it -- same layout as Event Calendar's domain-legend, listing
+   MARKETING_TASK_TYPES instead of task domains. */
+.domain-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+
 /* No width cap — fills the panel's actual available width instead of
    being capped at a fixed pixel value regardless of viewport size. */
 .calendar-frame {
@@ -378,6 +438,7 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   padding: 4px 5px;
   font-family: inherit;
   cursor: default;
+  overflow: hidden;
 }
 
 .day-cell--muted {
@@ -417,16 +478,41 @@ const selectedDayEntries = computed(() => entriesByDate.value[selectedDayKey.val
   padding: 1px 5px;
 }
 
-.day-dots {
+/* Holds the capped list of pill rows plus the optional overflow
+   indicator, stacked below the day number -- same layout as Event
+   Calendar's day-entries. */
+.day-entries {
   display: flex;
-  margin-top: 5px;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-top: 2px;
 }
 
-.day-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-right: 2px;
+.day-entry {
+  display: block;
+  width: 100%;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Solid pill using the type's own color as background -- unlike Event
+   Calendar's categoryColors (pastel bg/dark text pairs), each marketing
+   type has only one curated hex (MARKETING_TASK_TYPE_COLORS), chosen dark
+   enough that white text reads clearly on top of it. */
+.day-entry--marketing {
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.day-entry--overflow {
+  color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
 .overlay {
