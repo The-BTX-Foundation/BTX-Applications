@@ -160,7 +160,9 @@ function toggleSection(id) {
     <h2 class="section-heading heading-glance">At a glance</h2>
     <HomeAtAGlance
       :runway="summary.runwayDisplay.value"
+      :runway-as-of="summary.runwayAsOfLabel.value"
       :goal-percent="summary.goalPercentDisplay.value"
+      :goal-percent-as-of="summary.goalAsOfLabel.value"
       :milestones-value="summary.milestonesDisplay.value"
       :milestones-label="summary.milestonesLabel.value"
     />

@@ -48,6 +48,19 @@ function selectMonth(year, month) {
 
 const selectedRow = computed(() => fundraisingHealthStore.rowFor(selectedYear.value, selectedMonth.value))
 
+// Falls back to the most recently reported month only on the slot the
+// reporting-months strip can never actually have a row for: the current
+// month before it's synced (every OTHER entry in monthEntries is built
+// from a real row, so selectedRow is only ever null here). An explicitly
+// selected, genuinely-empty archived month is never possible given how
+// monthEntries is built, so this fallback can't accidentally mask one.
+const tilesRow = computed(() => selectedRow.value ?? fundraisingHealthStore.displayRow)
+
+// True only when tilesRow is actually substituting -- selectedRow null
+// (the condition above) AND the store's own isFallback (currentMonthRow
+// null but a real mostRecentRow exists).
+const tilesIsFallback = computed(() => !selectedRow.value && fundraisingHealthStore.isFallback)
+
 // A plain calendar check against the store's real "today", not an
 // inferred most-recent-published year like Program Impact's Live badge --
 // every month here (including one that hasn't synced yet) has an
@@ -87,20 +100,36 @@ watch(
 )
 
 // -- Fundraising Goal Progress hero --
-// Deliberately reads the CURRENT month's row, not the selected one -- this
-// is "today's" progress, not recomputed for arbitrary past months, same
-// distinction the pre-redesign page drew (isCurrentMonthSelected).
-// Formula unchanged from the pre-redesign page: selected/current month's
-// revenue over the annual goal, not a true year-to-date sum -- a known
-// simplification, left as-is per this task's own instruction.
+// Deliberately reads the CURRENT month's row (via the store's displayRow,
+// falling back to the most recently reported month when the real current
+// month hasn't synced -- see fundraisingHealth.js's own comment), not the
+// strip's selected row -- this is "today's" progress, not recomputed for
+// arbitrary past months, same distinction the pre-redesign page drew
+// (isCurrentMonthSelected). Formula unchanged from the pre-redesign page:
+// current month's revenue over the annual goal, not a true year-to-date
+// sum -- a known simplification, left as-is per this task's own
+// instruction.
+const goalRow = computed(() => fundraisingHealthStore.displayRow)
+const goalRowRevenue = computed(() => fundraisingHealthStore.sumRevenue(goalRow.value))
 const fundraisingGoalProgress = computed(() => {
-  const goal = fundraisingHealthStore.currentMonthRow?.annual_goal
-  return goal > 0 ? (fundraisingHealthStore.currentMonthTotalRevenue / goal) * 100 : 0
+  const goal = goalRow.value?.annual_goal
+  return goal > 0 ? (goalRowRevenue.value / goal) * 100 : 0
 })
 // Capped at 100% width so an over-goal month never visually overflows the
 // track, same convention as Budget Tracking's variance bars.
 const fundraisingGoalProgressBarPct = computed(() => Math.min(100, fundraisingGoalProgress.value))
-const currentMonthGoal = computed(() => fieldValue(fundraisingHealthStore.currentMonthRow, 'annual_goal'))
+const currentMonthGoal = computed(() => fieldValue(goalRow.value, 'annual_goal'))
+
+// "September 2026" -- full month name, for the fallback banner's own
+// copy ("Showing September 2026 — the most recently reported month").
+const goalRowMonthLabel = computed(() => {
+  const row = goalRow.value
+  if (!row) return ''
+  return new Date(row.period_year, row.period_month - 1, 1).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  })
+})
 
 // -- "This month" tiles --
 // donor_retention_rate is the one gold-highlighted tile; the rest are
@@ -115,13 +144,13 @@ const TILES = [
 
 // Formats a tile's value according to its declared format (currency/percent/plain).
 function formatTileValue(tile) {
-  const value = fieldValue(selectedRow.value, tile.key)
+  const value = fieldValue(tilesRow.value, tile.key)
   if (tile.format === 'currency') return formatCurrency(value)
   if (tile.format === 'percent') return `${value.toLocaleString()}%`
   return value.toLocaleString()
 }
 
-const recurringDonors = computed(() => fieldValue(selectedRow.value, 'recurring_donors'))
+const recurringDonors = computed(() => fieldValue(tilesRow.value, 'recurring_donors'))
 
 // -- Revenue sources portfolio --
 const REVENUE_SOURCES = [
@@ -136,8 +165,8 @@ const REVENUE_SOURCES = [
 // store function the hero's "raised" figure reads for the current month,
 // so the four source rows always sum to that same total by construction.
 function revenueShare(key) {
-  const total = fundraisingHealthStore.sumRevenue(selectedRow.value)
-  return total > 0 ? (fieldValue(selectedRow.value, key) / total) * 100 : 0
+  const total = fundraisingHealthStore.sumRevenue(tilesRow.value)
+  return total > 0 ? (fieldValue(tilesRow.value, key) / total) * 100 : 0
 }
 
 // -- By-month chart --
@@ -288,6 +317,13 @@ const chartAriaLabel = computed(() => {
         <p v-if="monthStripOverflows" class="swipe-hint">Swipe for earlier months →</p>
       </template>
 
+      <!-- Reuses .empty (the same muted informational style used for this
+           page's own "no data" messages) rather than a new style --
+           flagging that the hero below isn't the real current month. -->
+      <p v-if="fundraisingHealthStore.isFallback" class="empty">
+        Showing {{ goalRowMonthLabel }} — the most recently reported month
+      </p>
+
       <!-- Fixed-dark brand surface, same treatment as Home's mission hero
            (HomeMissionHero.vue) -- hardcoded dark/gold/white regardless of
            the light/dark toggle, matching base.css's own documented list
@@ -299,13 +335,17 @@ const chartAriaLabel = computed(() => {
           <div class="goal-fill" :style="{ width: `${fundraisingGoalProgressBarPct}%` }"></div>
         </div>
         <p class="goal-sub">
-          <strong>{{ formatCurrency(fundraisingHealthStore.currentMonthTotalRevenue) }}</strong> raised toward a
+          <strong>{{ formatCurrency(goalRowRevenue) }}</strong> raised toward a
           <strong>{{ formatCurrency(currentMonthGoal) }}</strong> annual goal
         </p>
       </div>
 
-      <template v-if="selectedRow">
+      <template v-if="tilesRow">
         <h2 class="section-heading heading-tiles">{{ monthName(selectedMonth) }} {{ selectedYear }}</h2>
+
+        <p v-if="tilesIsFallback" class="empty">
+          Showing {{ goalRowMonthLabel }} — the most recently reported month
+        </p>
 
         <div class="tiles">
           <div v-for="tile in TILES" :key="tile.key" class="tile">
@@ -330,7 +370,7 @@ const chartAriaLabel = computed(() => {
             <div class="row-top">
               <span class="row-label">{{ source.label }}</span>
               <span class="row-value"
-                ><span class="row-value-serif">{{ formatCurrency(fieldValue(selectedRow, source.key)) }}</span
+                ><span class="row-value-serif">{{ formatCurrency(fieldValue(tilesRow, source.key)) }}</span
                 ><span class="row-value-pct"> · {{ revenueShare(source.key).toFixed(1) }}%</span></span
               >
             </div>

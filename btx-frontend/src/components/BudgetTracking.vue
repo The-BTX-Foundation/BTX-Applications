@@ -47,7 +47,27 @@ function fieldValue(row, key) {
   return row?.[key] ?? 0
 }
 
-const currentMonthRow = computed(() => budgetTrackingStore.currentMonthRow)
+// Falls back to the most recently reported month when the real current
+// month hasn't synced yet -- see budgetTracking.js's own displayRow
+// comment. Every computed below that used to read currentMonthRow reads
+// this instead, so the whole "This month" section (hero, tiles,
+// efficiency, variance) substitutes together rather than mixing a
+// fallback month's expenses against the real current month's budget.
+const displayRow = computed(() => budgetTrackingStore.displayRow)
+
+// "September 2026" -- full month name, for the fallback banner's own
+// copy ("Showing September 2026 — the most recently reported month").
+// Distinct from latestQuarterMonthLabel below (abbreviated "Sep 2026",
+// used by the past-quarter snapshot card) since the fallback banner reads
+// as a sentence rather than a compact "as of" label.
+const displayRowMonthLabel = computed(() => {
+  const row = displayRow.value
+  if (!row) return ''
+  return new Date(row.reporting_year, row.reporting_month - 1, 1).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  })
+})
 
 // -- Hero: burn rate / runway --
 // Identical formula (same two columns, same >0 guard) to Home's own
@@ -55,14 +75,14 @@ const currentMonthRow = computed(() => budgetTrackingStore.currentMonthRow)
 // independently re-derived, so the two pages can never silently disagree
 // about runway.
 const burnRateMonths = computed(() => {
-  const funds = fieldValue(currentMonthRow.value, 'current_funds_on_hand')
-  const monthly = fieldValue(currentMonthRow.value, 'monthly_operating_expense')
+  const funds = fieldValue(displayRow.value, 'current_funds_on_hand')
+  const monthly = fieldValue(displayRow.value, 'monthly_operating_expense')
   return monthly > 0 ? funds / monthly : 0
 })
 // Same source column as the "Current Funds on Hand" tile below -- not a
 // separate cash figure, see the Step 1 report.
-const cashOnHand = computed(() => fieldValue(currentMonthRow.value, 'current_funds_on_hand'))
-const avgMonthlySpend = computed(() => fieldValue(currentMonthRow.value, 'monthly_operating_expense'))
+const cashOnHand = computed(() => fieldValue(displayRow.value, 'current_funds_on_hand'))
+const avgMonthlySpend = computed(() => fieldValue(displayRow.value, 'monthly_operating_expense'))
 
 // Formats a plain number as a "$"-prefixed, comma-grouped currency string.
 function formatCurrency(value) {
@@ -86,8 +106,8 @@ const TILES = [
 // formula the pre-redesign BudgetTracking.vue already used, reused
 // verbatim rather than re-derived, since it isn't its own stored column.
 const programExpenseRatio = computed(() => {
-  const programs = fieldValue(currentMonthRow.value, 'program_expenses')
-  const overhead = fieldValue(currentMonthRow.value, 'overhead_expenses')
+  const programs = fieldValue(displayRow.value, 'program_expenses')
+  const overhead = fieldValue(displayRow.value, 'overhead_expenses')
   const total = programs + overhead
   return total > 0 ? (programs / total) * 100 : 0
 })
@@ -96,7 +116,7 @@ const programExpenseRatio = computed(() => {
 // every other tile is a direct field lookup.
 function tileValue(tile) {
   if (tile.key === 'program_expense_ratio') return programExpenseRatio.value
-  return fieldValue(currentMonthRow.value, tile.key)
+  return fieldValue(displayRow.value, tile.key)
 }
 
 // Formats a tile's value according to its declared format (currency/percent/plain).
@@ -115,7 +135,7 @@ function formatTileValue(tile) {
 // synced yet.
 const costToRaiseADollar = computed(() => {
   const revenue = fundraisingHealthStore.mostRecentTotalRevenue
-  const expenses = fieldValue(currentMonthRow.value, 'fundraising_expenses')
+  const expenses = fieldValue(displayRow.value, 'fundraising_expenses')
   return revenue > 0 ? expenses / revenue : 0
 })
 // Derived from the same computed above, not re-divided independently, so
@@ -137,11 +157,11 @@ const VARIANCE_ROWS = [
 
 // Reads this variance row's budgeted amount for the currently selected month.
 function budgetedFor(row) {
-  return fieldValue(currentMonthRow.value, `${row.key}_budgeted`)
+  return fieldValue(displayRow.value, `${row.key}_budgeted`)
 }
 // Reads this variance row's actual spend for the currently selected month.
 function actualFor(row) {
-  return fieldValue(currentMonthRow.value, `${row.key}_actual`)
+  return fieldValue(displayRow.value, `${row.key}_actual`)
 }
 
 // $ variance for a row -- positive means over budget, same sign
@@ -369,12 +389,23 @@ const latestQuarterMonthLabel = computed(() => {
 
       <template v-if="isCurrentQuarterSelected">
         <!-- Unchanged from before this quarter selector existed: same
-             v-if/v-else pair, same markup, same empty-state copy. -->
-        <template v-if="!currentMonthRow">
+             v-if/v-else pair, same empty-state copy, now gated on
+             displayRow (null only when the table has truly never synced a
+             row) instead of currentMonthRow (null whenever this month
+             specifically hasn't synced). -->
+        <template v-if="!displayRow">
           <p class="empty">No budget tracking data recorded for the current month yet.</p>
         </template>
 
         <template v-else>
+          <!-- Reuses .quarter-note (the same amber informational banner
+               used below for "N of 3 months reported") rather than a new
+               style -- same purpose, flagging that what's on screen isn't
+               the full/current picture. -->
+          <p v-if="budgetTrackingStore.isFallback" class="quarter-note">
+            Showing {{ displayRowMonthLabel }} — the most recently reported month
+          </p>
+
           <div class="card card--full">
             <p class="label">Burn rate / runway</p>
             <p class="value value--28">{{ burnRateMonths.toFixed(1) }} months of runway</p>

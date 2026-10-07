@@ -58,6 +58,14 @@ function formatVarianceDollar(value) {
   return '$0'
 }
 
+// Same abbreviation list as BudgetTracking.vue's own MONTH_ABBREVIATIONS,
+// duplicated locally rather than imported -- components/composables in
+// this app don't share these small fixed lookup tables across files (see
+// e.g. FundraisingHealth.vue's own SOURCE_LABELS comment for the same
+// convention). Used only for the two "At a glance" tiles' compact "as of
+// {mon}" sub-label.
+const MONTH_ABBREVIATIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 // Aggregates every stat Home's redesigned page shows, across seven
 // existing stores plus the four-table merged-tasks composable. Loads
 // everything in one Promise.all (not sequential awaits) so one slow
@@ -166,26 +174,47 @@ export function useHomeSummary() {
   const scholarshipPillTone = 'success'
 
   // -- At a glance --
+  // Reads displayRow (falls back to the most recently reported month when
+  // the real current month hasn't synced -- see budgetTracking.js's own
+  // comment) instead of currentMonthRow, so this tile shows real numbers
+  // rather than reading 0 purely because this month hasn't synced yet.
+  const runwayRow = computed(() => budgetTrackingStore.displayRow)
   const burnRateMonths = computed(() => {
-    const row = budgetTrackingStore.currentMonthRow
-    const funds = fieldValue(row, 'current_funds_on_hand')
-    const monthly = fieldValue(row, 'monthly_operating_expense')
+    const funds = fieldValue(runwayRow.value, 'current_funds_on_hand')
+    const monthly = fieldValue(runwayRow.value, 'monthly_operating_expense')
     return monthly > 0 ? funds / monthly : 0
   })
   const runwayDisplay = computed(() =>
     !sectionsLoaded.value || budgetTrackingStore.error ? '—' : `${burnRateMonths.value.toFixed(1)} mo`,
   )
+  // "as of Sep" -- shown under the tile's value only when runwayRow is
+  // actually substituting for the real current month; blank (tile shows
+  // no sub-label) otherwise.
+  const runwayAsOfLabel = computed(() => {
+    if (!sectionsLoaded.value || budgetTrackingStore.error || !budgetTrackingStore.isFallback) return ''
+    const row = runwayRow.value
+    return row ? `as of ${MONTH_ABBREVIATIONS[row.reporting_month - 1]}` : ''
+  })
 
   // Unchanged from FundraisingHealth.vue's own fundraisingGoalProgress:
   // current MONTH's revenue against the annual goal, not a year-to-date
   // figure -- see the "$ raised YTD" comment below for why that matters.
+  // Reads displayRow for the same reason as runwayRow above.
+  const goalRow = computed(() => fundraisingHealthStore.displayRow)
   const fundraisingGoalProgress = computed(() => {
-    const goal = fundraisingHealthStore.currentMonthRow?.annual_goal
-    return goal > 0 ? (fundraisingHealthStore.currentMonthTotalRevenue / goal) * 100 : 0
+    const goal = goalRow.value?.annual_goal
+    const revenue = fundraisingHealthStore.sumRevenue(goalRow.value)
+    return goal > 0 ? (revenue / goal) * 100 : 0
   })
   const goalPercentDisplay = computed(() =>
     !sectionsLoaded.value || fundraisingHealthStore.error ? '—' : `${fundraisingGoalProgress.value.toFixed(1)}%`,
   )
+  // Same "as of Sep" convention as runwayAsOfLabel above.
+  const goalAsOfLabel = computed(() => {
+    if (!sectionsLoaded.value || fundraisingHealthStore.error || !fundraisingHealthStore.isFallback) return ''
+    const row = goalRow.value
+    return row ? `as of ${MONTH_ABBREVIATIONS[row.period_month - 1]}` : ''
+  })
 
   // The plan_year matching the current calendar year, falling back to the
   // most recent plan_year available -- plans is already ordered
@@ -314,7 +343,9 @@ export function useHomeSummary() {
     scholarshipPillText,
     scholarshipPillTone,
     runwayDisplay,
+    runwayAsOfLabel,
     goalPercentDisplay,
+    goalAsOfLabel,
     milestonesDisplay,
     milestonesLabel,
     taskPillText,

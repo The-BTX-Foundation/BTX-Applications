@@ -47,20 +47,34 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
   const currentMonth = now.getMonth() + 1
 
   // The row for THIS calendar month specifically -- not "latest
-  // available". If no row has been synced yet for the current month, this
-  // is null and the main page shows an explicit empty state rather than
-  // silently substituting an older month's numbers.
+  // available". Left unchanged by the displayRow/isFallback pair below --
+  // other code (e.g. FundraisingHealth.vue's badgeFor "Live" check) still
+  // depends on this meaning exactly "the real current month, or null."
   const currentMonthRow = computed(
     () => rows.value.find((row) => row.period_year === currentYear && row.period_month === currentMonth) ?? null,
   )
 
   // The single most recently synced row regardless of whether it matches
-  // the current calendar month -- used only by Budget Tracking's Cost to
-  // Raise a Dollar, which wants the best real data available rather than
-  // potentially reading 0 just because this month hasn't synced yet. rows
+  // the current calendar month -- originally added for Budget Tracking's
+  // Cost to Raise a Dollar, which wants the best real data available
+  // rather than potentially reading 0 just because this month hasn't
+  // synced yet; now also the fallback target for displayRow below. rows
   // is already ordered desc by (period_year, period_month), so this is
   // simply the first element.
   const mostRecentRow = computed(() => rows.value[0] ?? null)
+
+  // The best row to actually display: currentMonthRow if it's real,
+  // otherwise mostRecentRow, or null if the table has never synced a
+  // single row. This deliberately reverses currentMonthRow's own
+  // no-fallback rule above -- a real, clearly labeled older month reads
+  // better to a viewer than every figure on the page reading 0 just
+  // because this month's sync hasn't landed yet.
+  const displayRow = computed(() => currentMonthRow.value ?? mostRecentRow.value)
+
+  // True when displayRow is substituting an older month for the real
+  // current month -- lets callers show a "this isn't the current month"
+  // label only when that substitution is actually happening.
+  const isFallback = computed(() => !currentMonthRow.value && !!mostRecentRow.value)
 
   // Looks up the row for an arbitrary (year, 1-based month) pair. Takes a
   // 1-based month, matching period_month's own convention. Two calling
@@ -131,6 +145,8 @@ export const useFundraisingHealthStore = defineStore('fundraisingHealth', () => 
     currentMonth,
     currentMonthRow,
     mostRecentRow,
+    displayRow,
+    isFallback,
     rowFor,
     currentMonthTotalRevenue,
     mostRecentTotalRevenue,

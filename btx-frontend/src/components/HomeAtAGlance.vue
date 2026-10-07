@@ -2,9 +2,14 @@
 // Three equal stat tiles under Home's alert hero. Values arrive
 // pre-formatted (including the "—" em-dash on a failed source) from
 // useHomeSummary, so this component only lays them out.
+// runwayAsOf/goalPercentAsOf are blank strings (not shown) outside the
+// fallback case -- see useHomeSummary.js's own runwayAsOfLabel/
+// goalAsOfLabel comments.
 defineProps({
   runway: { type: String, required: true },
+  runwayAsOf: { type: String, default: '' },
   goalPercent: { type: String, required: true },
+  goalPercentAsOf: { type: String, default: '' },
   milestonesValue: { type: String, required: true },
   milestonesLabel: { type: String, required: true },
 })
@@ -15,10 +20,12 @@ defineProps({
     <div class="tile">
       <p class="label">Runway</p>
       <p class="value value--gold">{{ runway }}</p>
+      <p v-if="runwayAsOf" class="as-of">{{ runwayAsOf }}</p>
     </div>
     <div class="tile">
       <p class="label">Fundraising goal</p>
       <p class="value value--gold">{{ goalPercent }}</p>
+      <p v-if="goalPercentAsOf" class="as-of">{{ goalPercentAsOf }}</p>
     </div>
     <div class="tile">
       <p class="label">{{ milestonesLabel }}</p>
@@ -78,5 +85,18 @@ defineProps({
 
 .value--green {
   color: var(--color-green-strong);
+}
+
+/* Compact fallback sub-label ("as of Sep") -- only ever rendered when the
+   tile's value actually came from a fallback month (see
+   useHomeSummary.js's runwayAsOfLabel/goalAsOfLabel), so it never costs
+   vertical space in the common case. white-space: nowrap keeps the short
+   "as of {mon}" phrase from wrapping at this tile's narrowest widths. */
+.as-of {
+  margin: 2px 0 0;
+  font-size: 9.5px;
+  line-height: 1.2;
+  color: var(--color-header-muted);
+  white-space: nowrap;
 }
 </style>
