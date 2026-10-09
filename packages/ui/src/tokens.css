@@ -1,0 +1,47 @@
+/* BTX design tokens, ported from the Phase A drafts (phase-a/portal/shared/tokens.css) and the Figma "BTX color"
+   variables. The variable names are the ones the drafts use, so a draft's CSS reads the same here.
+
+   Fonts: Google Sans Flex for all text and Google Sans Code for the small capital labels and dates
+   (Dominick, 2026-10-08). The apps load the font files (next/font) and set --font-gsf / --font-gsc on <html>;
+   the stacks below fall back to system fonts until those load. */
+:root {
+  /* BTX light roles */
+  --bg: #f4f5f2;
+  --surface: #ffffff;
+  --ink: #15171a;
+  --muted: #545a60;
+  --line: #c9cec8;
+  --gold: #c99b31;
+  --gold-hi: #d8ad49;
+  --on-gold: #15171a;
+  --gold-ink: #7a5b12;
+
+  /* derived light tints (from the roles above) */
+  --wash: #eceeea; /* a step darker than bg: hover rows, tracks */
+  --line-soft: #e1e4df; /* hairlines inside white surfaces */
+  --gold-tint: #f6eeda; /* gold at about 18% on white: a quiet highlight under ink text */
+  --scrim: rgba(21, 23, 26, 0.48); /* ink at 48%: behind a modal or drawer */
+
+  /* BTX dark roles (not used by the Portal yet) */
+  --d-bg: #0e0f11;
+  --d-surface: #17191c;
+  --d-raised: #1f2226;
+  --d-ink: #f2efe8;
+  --d-muted: #a3a7ad;
+  --d-line: #2a2d31;
+
+  /* font stacks */
+  --font-sans: var(--font-gsf), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-code: var(--font-gsc), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* type scale in px, taken from the Portal drafts (laptop / phone where they differ) */
+  --fs-body: 16px;
+  --fs-small: 15px; /* labels, hints, secondary text; never smaller for secondary text on laptop */
+  --fs-micro: 14px; /* rail sub-labels, Today marker */
+  --fs-label-mono: 13px; /* Google Sans Code capitals */
+  --fs-lead: 18px; /* lead paragraph under a page title (laptop) */
+  --fs-title: 44px; /* page title (laptop); 32px on phone */
+  --fs-display: 74px; /* landing headline (laptop); 44px on phone */
+  --focus-ring: 2px solid var(--gold);
+  --focus-offset: 2px;
+}

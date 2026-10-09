@@ -1,0 +1,13 @@
+{
+  "name": "btx-platform",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @btx/portal",
+    "build": "npm run build -w @btx/portal",
+    "start": "npm run start -w @btx/portal",
+    "lint": "npm run lint -w @btx/portal",
+    "typecheck": "npm run typecheck -w @btx/portal"
+  },
+  "engines": { "node": ">=22.18.0", "npm": ">=10" }
+}
