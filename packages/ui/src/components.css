@@ -359,7 +359,7 @@ a {
 .sg.g2 button:nth-child(-n + 2) {
   border-top: 0;
 }
-/* gp = a 2 x 2 grid on phone only (four options that do not fit in one row), one joined row on laptop */
+/* gp = a 2 x 2 grid on phone (four options that do not fit in one row), one joined row on laptop */
 @media (max-width: 1023.98px) {
   .sg.gp {
     display: grid;

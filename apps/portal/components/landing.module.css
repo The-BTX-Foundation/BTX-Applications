@@ -97,7 +97,7 @@
     column-gap: 52px;
     align-items: start;
     min-height: 586px; /* the dates drawing starts 586px below the header in the draft */
-    padding: 56px 48px 0;
+    padding: 56px 48px 48px;
     max-width: 1440px;
     margin: 0 auto;
     width: 100%;

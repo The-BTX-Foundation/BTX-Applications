@@ -2,7 +2,7 @@
 // published cycle; this finds it (her cookies carry the session, so row-level security applies) or sends her where she
 // belongs: sign-in, /apply/start (no application yet), or /status (already submitted).
 import { redirect } from 'next/navigation';
-import { fetchPublishedCycle, getAuthMode, getPublishedCycle, listFiles, type AppFile, type Application, type Cycle } from '@btx/data';
+import { fetchPublishedCycle, getAuthMode, listFiles, type AppFile, type Application, type Cycle } from '@btx/data';
 import { MOCK_VIEW, toView, type CycleView } from './cycle';
 import { sessionClient } from './supabase-server';
 

@@ -17,6 +17,7 @@ import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type 
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
 import { railSteps } from '@/lib/steps';
+import { useWide } from '@/lib/use-wide';
 import { STRESS, withValue } from '@/lib/stress';
 import { ApplyShell } from './apply-shell';
 import {
@@ -201,6 +202,70 @@ export function BasicInfoForm({
 
   const savedLabel = demo ? 'Saved 4:12 PM' : saving === 'error' ? "Couldn't save yet" : savedAt ? `Saved ${savedTime(savedAt)}` : undefined;
 
+  // The first four fields, in the order a reader meets them: row by row on a wide screen (name, phone, then Terpmail,
+  // secondary email) and one under another on a narrow one (name, Terpmail, secondary email, phone). Keeping the page
+  // order equal to the visual order keeps the Tab order right at both widths.
+  const wide = useWide();
+  const fieldNodes: Record<string, React.ReactNode> = {
+    fullName: (
+  <TextField
+        key="fullName"
+    id="fullName"
+    label="Full name"
+    autoComplete="name"
+    value={v.fullName}
+    error={shown('fullName')}
+    onChange={(e) => set('fullName', e.target.value)}
+    onBlur={() => touch('fullName')}
+  />
+    ),
+    terpmail: (
+  <TextField
+        key="terpmail"
+    id="terpmail"
+    label="Terpmail address"
+    note="(from your sign-in)"
+    readOnlyLock
+    value={email}
+    placeholder="yourname@terpmail.umd.edu"
+    onChange={() => {}}
+  />
+    ),
+    secondaryEmail: (
+  <TextField
+        key="secondaryEmail"
+    id="secondaryEmail"
+    label="Secondary email"
+    note="(optional)"
+    type="email"
+    inputMode="email"
+    autoComplete="email"
+    placeholder="you@example.com"
+    value={v.secondaryEmail}
+    error={shown('secondaryEmail')}
+    onChange={(e) => set('secondaryEmail', e.target.value)}
+    onBlur={() => touch('secondaryEmail')}
+  />
+    ),
+    phone: (
+  <TextField
+        key="phone"
+    id="phone"
+    label="Phone number"
+    type="tel"
+    inputMode="tel"
+    autoComplete="tel"
+    value={v.phone}
+    error={shown('phone')}
+    onChange={(e) => set('phone', e.target.value)}
+    onBlur={() => {
+      set('phone', formatPhone(v.phone));
+      touch('phone');
+    }}
+  />
+    ),
+  };
+
   return (
     <ApplyShell
       current={1}
@@ -220,55 +285,7 @@ export function BasicInfoForm({
                 </div>
               ) : null}
               <div className={s.grid}>
-                <TextField
-                  id="fullName"
-                  label="Full name"
-                  className={s.name}
-                  autoComplete="name"
-                  value={v.fullName}
-                  error={shown('fullName')}
-                  onChange={(e) => set('fullName', e.target.value)}
-                  onBlur={() => touch('fullName')}
-                />
-                <TextField
-                  id="terpmail"
-                  label="Terpmail address"
-                  note="(from your sign-in)"
-                  className={s.terp}
-                  readOnlyLock
-                  value={email}
-                  placeholder="yourname@terpmail.umd.edu"
-                  onChange={() => {}}
-                />
-                <TextField
-                  id="secondaryEmail"
-                  label="Secondary email"
-                  note="(optional)"
-                  className={s.secondary}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={v.secondaryEmail}
-                  error={shown('secondaryEmail')}
-                  onChange={(e) => set('secondaryEmail', e.target.value)}
-                  onBlur={() => touch('secondaryEmail')}
-                />
-                <TextField
-                  id="phone"
-                  label="Phone number"
-                  className={s.phone}
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={v.phone}
-                  error={shown('phone')}
-                  onChange={(e) => set('phone', e.target.value)}
-                  onBlur={() => {
-                    set('phone', formatPhone(v.phone));
-                    touch('phone');
-                  }}
-                />
+                {(wide ? ['fullName', 'phone', 'terpmail', 'secondaryEmail'] : ['fullName', 'terpmail', 'secondaryEmail', 'phone']).map((k) => fieldNodes[k])}
                 <Segmented
                   id="gender"
                   label="Gender"

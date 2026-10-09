@@ -176,14 +176,14 @@
   }
   .c1 {
     order: 0;
-    width: 744px;
+    width: min(744px, calc(100% - 440px));
     flex: none;
     margin-top: 0;
   }
   .c2 {
     order: 0;
     flex: 1;
-    min-width: 0;
+    min-width: 360px;
   }
   .label {
     font-size: 18px;
@@ -200,7 +200,8 @@
   }
   .foot {
     display: flex;
-    gap: 36px;
+    flex-wrap: wrap;
+    gap: 8px 36px;
     margin-top: 28px;
     padding-bottom: 0;
     font-size: 17px;
