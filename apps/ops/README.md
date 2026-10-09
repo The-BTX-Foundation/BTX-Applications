@@ -14,3 +14,11 @@ Run it from the repo root: `npm run dev:ops` (port 3001), `npm run build:ops`, `
 Real (live mode): Applicants list and the full application (`applications`, `application_files`, `bookings`, `interview_slots`), the two PDFs (signed 60-second links to the private `applicant-documents` bucket), and the cycle's dates (`cycles`).
 
 Mock, all behind `mock/`: Today, the sidebar counts, scores, interviewers, stages, the interview summary, the three schedule dates `cycles` has no column for, the cycle checklist and the Scholarships chat. Swap each `mock/` module for a loader with the same shape when the Ops Hub tables exist.
+
+## Money and People and roles
+
+Pages: Money > Budget (`/money/budget`), the phone approval screen (`/money/budget/approval`), Money > Fundraising, Money > Grants and Admin > People and roles (`/people`). Everything about them is in `components/money/`, `components/people/`, `lib/{budget,fundraising,grants,people,money-*,mock-store,people-actions}.ts` and `mock/money.ts`.
+
+- **Mock mode** (no Supabase env): the fixtures in `mock/money.ts` are the Figma frames' values. Writes (approve or send back the Q4 budget, log spending, update funds, log a gift, add a grant, change a role) change an in-memory store (`lib/mock-store.ts`) that lasts until the tab reloads; the Budget page and the phone approval screen share it. `?demo=stress` draws the stress frames' data, `?demo=error` the "didn't load" card, `?as=board` or `?as=reviewer` shows a page as that role (mock mode only).
+- **Live mode**: the loaders read the draft Ops Hub tables and the writes call them (`lib/money-writes.ts`). All of it is NOT TESTED: the tables are a draft and not applied. Role changes go through the server action in `lib/people-actions.ts`, which needs `SUPABASE_SERVICE_ROLE_KEY` in the server's environment (not set anywhere; NOT TESTED).
+- **Roles**: admin and board see every control; a reviewer sees a short "Money is for admins and board members" card on the Money pages; only an admin sees "Change role" and "Invite a person", and nobody sees "Change role" on their own row.

@@ -306,6 +306,7 @@
   border: 1px solid var(--ink);
   border-radius: 2px;
   background: var(--surface);
+  font: inherit;
   font-size: 15px;
 }
 .mn-hint {
@@ -650,7 +651,7 @@
 
 /* decline form */
 .mn-decl {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .mn-decl b {
   display: block;
@@ -661,25 +662,29 @@
 .mn-decl textarea {
   display: block;
   width: 100%;
-  min-height: 78px;
+  min-height: 72px;
   padding: 10px 14px;
   border: 1px solid var(--ink);
   border-radius: 2px;
   background: var(--surface);
+  font: inherit;
   font-size: 15px;
   resize: vertical;
 }
+.mn-decl textarea::placeholder {
+  color: var(--muted);
+}
 .mn-decl p {
-  margin: 12px 0 12px;
-  font-size: 14px;
-  line-height: 20px;
+  margin: 10px 0 12px;
+  font-size: 13px;
+  line-height: 16px;
   color: var(--muted);
 }
 
 /* ---------- checklist cards on the phone ---------- */
 .mn-wcard-h .o-ring {
   transform: scale(1.125);
-  margin-right: 4px;
+  margin-right: 8px;
 }
 .mn-wcard-h {
   display: flex;
@@ -687,7 +692,8 @@
   gap: 10px;
   width: 100%;
   text-align: left;
-  padding: 11px 14px 11px 12px;
+  padding: 0 12px 0 16px;
+  height: 70px;
 }
 .mn-wcard-t {
   flex: 1;
@@ -732,7 +738,7 @@
 }
 .mn-stat {
   position: relative;
-  padding: 11px 12px 12px;
+  padding: 9px 12px 10px;
 }
 .mn-sl {
   font-size: 14px;
@@ -818,7 +824,7 @@
   background: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .mn-stage .mn-ph {
   border: 0;
@@ -829,9 +835,9 @@
 .mn-stage .mn-ph h2 {
   font-size: 20px;
 }
-.mn-cnt {
-  font-size: 16px;
-  font-weight: 600;
+.mn-ph > .mn-cnt {
+  font-size: 15px;
+  font-weight: 700;
   color: var(--ink);
 }
 .mn-gr {
@@ -842,7 +848,10 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 12px 12px 0;
+  padding: 13px 12px 0;
+}
+.mn-gr + .mn-gr {
+  margin-top: 0;
 }
 .mn-gn {
   grid-area: gn;
@@ -860,8 +869,8 @@
 }
 .mn-gamt {
   grid-area: amt;
-  margin-top: 4px;
-  padding-bottom: 8px;
+  margin-top: 5px;
+  padding-bottom: 9px;
   line-height: 26px;
   font-size: 14px;
   color: var(--muted);
@@ -876,7 +885,7 @@
 }
 .mn-gdt {
   grid-area: dt;
-  padding: 10px 0 12px;
+  padding: 9px 0 11px;
   border-top: 1px solid var(--line);
   font-size: 14px;
   font-weight: 600;
@@ -897,7 +906,7 @@
   padding: 2px 10px;
 }
 .mn-gmore {
-  padding: 2px 0 0;
+  padding: 6px 14px 14px;
   font-size: 15px;
   font-weight: 600;
 }
@@ -920,16 +929,16 @@
 .mn-pcard {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 12px 12px 14px;
+  gap: 15px;
+  padding: 10px 12px 11px 14px;
   border-bottom: 1px solid var(--line);
 }
 .mn-pcard:last-child {
   border-bottom: 0;
 }
 .mn-pcard .mn-av.pp {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
 }
 .mn-pcard-n {
   flex: 1;
@@ -940,11 +949,13 @@
 .mn-pcard-n b {
   font-size: 16px;
   font-weight: 700;
+  line-height: 20px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .mn-pcard-n span {
+  line-height: 20px;
   font-size: 14px;
   color: var(--muted);
   overflow: hidden;
@@ -985,6 +996,10 @@
 
 /* ---------- laptop ---------- */
 @media (min-width: 900px) {
+  /* the page column fills the room beside the sidebar even when its content is narrower */
+  .o-app > .o-col {
+    flex: 1 1 0%;
+  }
   .mn-chiprow,
   .mn-q4card {
     display: none;
@@ -1212,7 +1227,7 @@
   }
   .mn-wrow {
     display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) 150px 120px 144px;
+    grid-template-columns: 24px minmax(0, 1fr) 150px 104px 160px;
     column-gap: 14px;
     align-items: center;
     padding: 0 16px 0 20px;
@@ -1326,12 +1341,13 @@
     grid-template-columns: 100px 190px minmax(0, 1fr) 110px;
     column-gap: 10px;
     align-items: center;
-    padding: 0 20px;
+    padding: 0 18px 0 20px;
     height: 38px;
     font-size: 15px;
   }
   .mn-grow.mn-th {
     height: 30px;
+    font-size: 12px;
   }
   .mn-grow > b {
     font-weight: 600;
@@ -1339,9 +1355,6 @@
   .mn-gifts .mn-ph,
   .mn-src .mn-ph {
     padding: 14px 20px 11px;
-  }
-  .mn-ph h2 {
-    font-size: 22px;
   }
   .mn-src-b {
     padding: 14px 20px 0;
@@ -1388,8 +1401,8 @@
   }
   .mn-gr {
     display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) 150px 120px;
-    grid-template-areas: 'gn gn ow dt';
+    grid-template-columns: 24px minmax(0, 1fr) 150px 104px 160px;
+    grid-template-areas: 'gn gn ow dt dt';
     column-gap: 14px;
     align-items: center;
     background: var(--bg);
