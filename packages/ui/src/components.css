@@ -324,7 +324,9 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  /* 8px, not the drafts' 12px: in Google Sans "Freshman Sophomore Junior Senior" overflowed the 348px field (Figma
+     fixed the same way, 2026-10-09) */
+  padding: 0 8px;
   font-size: 16px;
   font-weight: 500;
   border-left: 1.5px solid var(--ink);
