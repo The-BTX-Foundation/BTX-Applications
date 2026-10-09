@@ -150,6 +150,8 @@ export function ReviewForm({
     }
     setBusy(false);
     if (r.ok) {
+      // the confirmation email is sent by the server (it only logs until the email service is configured)
+      if (getAuthMode() !== 'mock') void fetch('/api/application-submitted', { method: 'POST' }).catch(() => {});
       router.push('/status');
       router.refresh();
       return;

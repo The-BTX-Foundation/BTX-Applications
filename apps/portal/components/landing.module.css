@@ -40,6 +40,11 @@
   color: var(--muted);
   margin-top: 12px;
 }
+.sub :global(.lk) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
 .sub {
   display: flex;
   align-items: center;
@@ -142,6 +147,10 @@
   .sub {
     min-height: 0;
     margin-top: 20px;
+  }
+  .sub :global(.lk) {
+    display: inline;
+    min-height: 0;
   }
 
   .card {

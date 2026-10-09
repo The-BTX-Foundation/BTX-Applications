@@ -572,6 +572,9 @@ a {
   justify-content: space-between;
   padding: 0 12px 0 20px;
 }
+.top .brand {
+  min-height: 44px;
+}
 .top .brand img {
   height: 28px;
 }
