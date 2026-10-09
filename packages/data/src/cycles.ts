@@ -36,8 +36,8 @@ export async function fetchPublishedCycle(client: BtxClient): Promise<{ cycle: C
   }
 }
 
-// True when the database refused starting a draft because the address is not a Terpmail address: the insert is
-// refused by row-level security (code 42501, "new row violates row-level security policy").
+// True when the database refused starting a draft (row-level security, code 42501). That rule also refuses when the
+// cycle is not open, so the caller decides which it was from the signed-in address (see refusalIsTerpmail).
 export function isTerpmailRefusal(error: { code?: string; message?: string }): boolean {
   return error.code === '42501' || /row-level security/i.test(error.message ?? '');
 }
@@ -45,7 +45,7 @@ export function isTerpmailRefusal(error: { code?: string; message?: string }): b
 export type EnsureResult =
   | { kind: 'ok'; cycle: Cycle; application: Application }
   | { kind: 'closed' }
-  | { kind: 'terpmail' }
+  | { kind: 'refused' }
   | { kind: 'error'; message: string };
 
 // Finds the signed-in student's application for the published cycle, or starts one. The insert sends only cycle_id:
@@ -60,7 +60,7 @@ export async function ensureApplication(client: BtxClient): Promise<EnsureResult
   if (cycleVariant(cycle) !== 'open') return { kind: 'closed' };
   if (found.data) return { kind: 'ok', cycle, application: found.data };
   const made = await client.from('applications').insert({ cycle_id: cycle.id }).select('*').single();
-  if (made.error) return isTerpmailRefusal(made.error) ? { kind: 'terpmail' } : { kind: 'error', message: made.error.message };
+  if (made.error) return isTerpmailRefusal(made.error) ? { kind: 'refused' } : { kind: 'error', message: made.error.message };
   return { kind: 'ok', cycle, application: made.data };
 }
 

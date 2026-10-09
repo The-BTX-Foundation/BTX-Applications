@@ -8,7 +8,8 @@ import Link from 'next/link';
 import { TopBar } from '@btx/ui';
 import { stepPath } from '@/lib/steps';
 import { TerpmailRefusal } from './terpmail-refusal';
-import { ensureApplication, getAuthMode, getBrowserClient } from '@btx/data';
+import { ensureApplication, getAuthMode, getBrowserClient, getSignedInEmail } from '@btx/data';
+import { refusalIsTerpmail } from '@/lib/terpmail';
 
 export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
   const router = useRouter();
@@ -31,7 +32,11 @@ export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
       const r = await ensureApplication(getBrowserClient());
       if (!live) return;
       if (r.kind === 'closed') router.replace('/');
-      else if (r.kind === 'terpmail') setTerpmail(true);
+      else if (r.kind === 'refused') {
+        // a refused insert is the Terpmail rule only when her address fails it; otherwise the cycle closed under her
+        if (refusalIsTerpmail(await getSignedInEmail())) setTerpmail(true);
+        else router.replace('/');
+      }
       else if (r.kind === 'error') setProblem(r.message);
       else if (r.application.status === 'submitted') router.replace('/status');
       else router.replace(next ?? stepPath(r.application.current_step));

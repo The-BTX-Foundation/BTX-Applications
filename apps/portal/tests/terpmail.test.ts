@@ -20,7 +20,7 @@ describe('Terpmail rule', () => {
   });
 });
 
-import { TERPMAIL_REFUSAL } from '@/lib/terpmail';
+import { TERPMAIL_REFUSAL, refusalIsTerpmail } from '@/lib/terpmail';
 import { submitApplication } from '../../../packages/data/src/submit';
 import { ensureApplication, isTerpmailRefusal } from '../../../packages/data/src/cycles';
 import type { BtxClient } from '../../../packages/data/src/client';
@@ -38,7 +38,7 @@ describe('database refusal of non-Terpmail applicants', () => {
     expect(isTerpmailRefusal({ message: 'new row violates row-level security policy' })).toBe(true);
     expect(isTerpmailRefusal({ code: '23505', message: 'duplicate key' })).toBe(false);
   });
-  it('ensureApplication returns terpmail when the draft insert is refused', async () => {
+  it('ensureApplication reports a refused draft insert', async () => {
     const cycle = { id: 'c1', status: 'published', opens_at: '2020-01-01T00:00:00Z', closes_at: '2099-01-01T00:00:00Z' };
     const client = {
       from: (table: string) =>
@@ -49,6 +49,15 @@ describe('database refusal of non-Terpmail applicants', () => {
               insert: () => ({ select: () => ({ single: async () => ({ data: null, error: { code: '42501', message: 'new row violates row-level security policy' } }) }) }),
             },
     } as unknown as BtxClient;
-    expect(await ensureApplication(client)).toEqual({ kind: 'terpmail' });
+    expect(await ensureApplication(client)).toEqual({ kind: 'refused' });
+  });
+});
+
+describe('which refusal it was', () => {
+  it('shows the Terpmail copy only when the signed-in address fails the rule', () => {
+    expect(refusalIsTerpmail('someone@gmail.com', [])).toBe(true);
+    expect(refusalIsTerpmail('ecoleman@terpmail.umd.edu', [])).toBe(false); // the cycle closed, not her address
+    expect(refusalIsTerpmail(null, [])).toBe(false);
+    expect(refusalIsTerpmail('tester@example.com', ['tester@example.com'])).toBe(false);
   });
 });

@@ -17,3 +17,10 @@ export function terpmailError(raw: string, allow: string[] = TEST_EMAILS): strin
 
 /** The words shown when the database refuses a non-Terpmail applicant (same copy as the sign-in field). */
 export const TERPMAIL_REFUSAL = `Use your Terpmail address, like yourname${TERPMAIL_DOMAIN}.`;
+
+/** After the database refused starting a draft: true only when the signed-in address itself fails the Terpmail rule.
+ *  The same refusal also happens when the cycle closed between page load and click, so a Terpmail address is never
+ *  told to "use your Terpmail address". */
+export function refusalIsTerpmail(email: string | null | undefined, allow: string[] = TEST_EMAILS): boolean {
+  return Boolean(email) && terpmailError(email as string, allow) !== null;
+}
