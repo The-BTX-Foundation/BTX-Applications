@@ -99,7 +99,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -122,7 +122,7 @@ body {
 }
 .o-bd {
   position: absolute;
-  top: -7px;
+  top: -4px;
   left: 14px;
   min-width: 18px;
   height: 18px;
