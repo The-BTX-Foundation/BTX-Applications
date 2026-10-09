@@ -428,9 +428,6 @@
 }
 
 @media (max-width: 899px) {
-  .ar-stack {
-    gap: 10px;
-  }
   .pg-sp {
     gap: 13px;
   }

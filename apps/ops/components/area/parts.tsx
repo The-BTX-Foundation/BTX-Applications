@@ -127,9 +127,9 @@ export function Notice({ text }: { text: string | null }) {
 }
 
 /** The page header for the area pages: laptop and phone can word the title and the line under it differently. */
-export function AreaHeader({ title, phoneTitle, sub, phoneSub, children, phoneAction }: { title: string; phoneTitle?: string; sub: string; phoneSub?: string; children?: ReactNode; phoneAction?: ReactNode }) {
+export function AreaHeader({ title, phoneTitle, sub, phoneSub, children, phoneAction, tall }: { tall?: boolean; title: string; phoneTitle?: string; sub: string; phoneSub?: string; children?: ReactNode; phoneAction?: ReactNode }) {
   return (
-    <div className="o-top ar-top">
+    <div className={`o-top ar-top${tall ? ' tall' : ''}`}>
       <div className="o-top-t">
         <h1>
           <span className="o-lg">{title}</span>

@@ -12,7 +12,7 @@ export const NOT_CONNECTED = 'Not connected yet.';
 export const isMock = () => !hasSupabaseEnv();
 
 /** The answer for an action the draft schema has no table or function for. */
-export function notConnected(): ActionResult {
+export function notConnected(): { ok: false; message: string } {
   return { ok: false, message: NOT_CONNECTED };
 }
 

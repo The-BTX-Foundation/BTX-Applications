@@ -1,5 +1,6 @@
 // MOCK: the sample people and chat shapes the Programs and Outreach pages share (names come from the Figma frames).
-export type Person = { name: string; initials: string };
+/** A staff member; `id` is the staff_profiles.user_id in live mode. */
+export type Person = { name: string; initials: string; id?: string };
 /** An owner cell: a person, "Unassigned" (a dashed circle with a ?), or nothing. */
 export type Owner = Person | 'unassigned' | null;
 

@@ -327,3 +327,29 @@ button.ar-ck:hover {
     height: auto;
   }
 }
+
+/* pages whose last panel stretches to the bottom of the window (Plan, Instagram, Newsletter) */
+@media (min-width: 900px) {
+  .ar-tall {
+    min-height: calc(100dvh - 44px);
+  }
+}
+
+/* Outreach frames put the line under the title and the button 2px lower */
+@media (min-width: 900px) {
+  .ar-top.tall {
+    height: 58px;
+  }
+  .ar-top.tall .o-top-t p {
+    margin-top: 5px;
+  }
+  .ar-top.tall .o-top-a {
+    margin-bottom: -2px;
+  }
+}
+
+@media (max-width: 899px) {
+  .ar-stack {
+    gap: 10px;
+  }
+}
