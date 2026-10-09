@@ -188,3 +188,154 @@
     display: none;
   }
 }
+
+/* ---------- before-open and closed variants (drafts landing-soon*.html and landing-closed*.html) ---------- */
+.phoneOnly {
+  display: inline;
+}
+.dotOpen {
+  background: transparent;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+}
+.soon .block h2 {
+  margin-top: 24px;
+}
+.soon .block:first-child h2,
+.closed .block:first-child h2 {
+  margin-top: 20px;
+}
+.soon .block:first-child h2 {
+  margin-top: 24px;
+}
+.notifyRow {
+  display: block;
+  margin-top: 20px;
+}
+.notifyBtn {
+  width: 100%;
+  margin-top: 12px;
+}
+.notifyNote {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.notice span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.notice button {
+  flex: none;
+  font-size: 15px;
+}
+.wait {
+  margin-top: 24px;
+  order: 3;
+}
+.waitHead {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.waitList {
+  margin-top: 4px;
+}
+.waitList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.waitList a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.social {
+  display: flex;
+  gap: 24px;
+}
+.social a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.closed .nomination {
+  order: 2;
+}
+
+@media (min-width: 1024px) {
+  .phoneOnly {
+    display: none;
+  }
+  .card {
+    display: block;
+  }
+  .soon .block h2,
+  .soon .block:first-child h2,
+  .closed .block:first-child h2 {
+    margin: 0 0 12px;
+  }
+  .notifyRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .notifyField {
+    width: 400px;
+    flex: none;
+  }
+  .notifyBtn {
+    width: auto;
+    margin-top: 29px; /* label (21px) + gap (8px): lines the button up with the field */
+  }
+  .notifyNote {
+    margin-top: 12px;
+  }
+  .notice {
+    width: 600px;
+    max-width: 100%;
+    margin-top: 32px;
+  }
+  .wait {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  .waitList {
+    margin-top: 6px;
+  }
+  .waitList li {
+    min-height: 32px;
+  }
+  .waitList a {
+    min-height: 0;
+  }
+  .social {
+    gap: 28px;
+    margin-top: 2px;
+  }
+}

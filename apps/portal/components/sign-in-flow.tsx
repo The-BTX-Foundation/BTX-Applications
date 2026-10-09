@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, CodeBoxes, CODE_LENGTH, ErrorIcon, TextField, TopBar } from '@btx/ui';
 import { getAuthMode, requestSignInCode, verifySignInCode } from '@btx/data';
-import { cycle, OPS_HUB_URL } from '@/lib/cycle';
+import { OPS_HUB_URL } from '@/lib/config';
 import { terpmailError } from '@/lib/terpmail';
 import s from './sign-in-flow.module.css';
 
@@ -21,7 +21,20 @@ type Problem = 'incomplete' | 'wrong' | 'expired' | null;
 const RESEND_SECONDS = 30;
 const DEMO_EMAIL = 'ecoleman@terpmail.umd.edu';
 
-export function SignInFlow({ demo }: { demo?: DemoState }) {
+export function SignInFlow({
+  demo,
+  next,
+  codeLifetime,
+  lifetimeMinutes,
+}: {
+  demo?: DemoState;
+  /** Where to go after signing in (set by the proxy when it sends a signed-out visitor here). */
+  next?: string;
+  /** How long a code works, for the expired screen: "30 minutes" or "[time]". */
+  codeLifetime: string;
+  /** The same in minutes, to tell an expired code from a wrong one (Supabase reports both the same way). */
+  lifetimeMinutes: number;
+}) {
   const router = useRouter();
   const [stage, setStage] = useState<'email' | 'code'>(demo && demo !== 'email' ? 'code' : 'email');
   const [email, setEmail] = useState(demo && demo !== 'email' ? DEMO_EMAIL : '');
@@ -31,6 +44,8 @@ export function SignInFlow({ demo }: { demo?: DemoState }) {
   const [seconds, setSeconds] = useState(demo === 'code' ? 24 : RESEND_SECONDS);
   const [busy, setBusy] = useState(false);
   const codeRef = useRef<HTMLDivElement>(null);
+  // When the current code was sent, to tell "expired" from "wrong" (Supabase uses one error for both).
+  const sentAt = useRef<number>(Date.now());
 
   // Counts the resend timer down once a second on the code screen (frozen in demo mode).
   useEffect(() => {
@@ -65,6 +80,7 @@ export function SignInFlow({ demo }: { demo?: DemoState }) {
       setCode('');
       setProblem(null);
       setSeconds(RESEND_SECONDS);
+      sentAt.current = Date.now();
       setStage('code');
     }
   }
@@ -81,11 +97,19 @@ export function SignInFlow({ demo }: { demo?: DemoState }) {
     const r = await verifySignInCode(email, code);
     setBusy(false);
     if (r.ok) {
-      router.push('/apply/basic-info');
+      // /apply/start finds or creates her application and sends her to the right step
+      router.push(next ? `/apply/start?next=${encodeURIComponent(next)}` : '/apply/start');
       return;
     }
     setCode('');
-    setProblem(r.reason === 'expired' ? 'expired' : 'wrong');
+    if (r.reason === 'failed') {
+      setProblem(null);
+      setEmailError("We couldn't check the code. Check your connection and try again.");
+      return;
+    }
+    // "invalid-or-expired" is one error from Supabase: call it expired only when the code is older than its lifetime
+    const old = Date.now() - sentAt.current > lifetimeMinutes * 60_000;
+    setProblem(r.reason === 'invalid-or-expired' && (getAuthMode() === 'mock' || old) ? 'expired' : 'wrong');
     codeRef.current?.querySelector('input')?.focus();
   }
 
@@ -96,6 +120,7 @@ export function SignInFlow({ demo }: { demo?: DemoState }) {
       setProblem(null);
       setEmailError(null);
       setSeconds(RESEND_SECONDS);
+      sentAt.current = Date.now();
       codeRef.current?.querySelector('input')?.focus();
     }
   }
@@ -193,7 +218,7 @@ export function SignInFlow({ demo }: { demo?: DemoState }) {
                       Send a new code
                     </button>
                   ) : problem === 'expired' ? (
-                    <span className="mu">Codes work for {cycle.codeLifetime}.</span>
+                    <span className="mu">Codes work for {codeLifetime}.</span>
                   ) : seconds > 0 ? (
                     <span className="mu">Resend code in {seconds} seconds</span>
                   ) : (

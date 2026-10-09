@@ -4,6 +4,7 @@
 // Validation follows the BTX form rule: Continue is never disabled. A field shows its error when you leave it
 // (or after Continue), and Continue also puts a summary at the top that links to each problem.
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   BottomBar,
   Button,
@@ -15,11 +16,12 @@ import {
   StepRail,
   TextField,
   TopBar,
-  type Step,
   type SummaryItem,
 } from '@btx/ui';
-import { getSignedInEmail } from '@btx/data';
-import { cycle } from '@/lib/cycle';
+import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type Application } from '@btx/data';
+import type { CycleView } from '@/lib/cycle';
+import { savedTime } from '@/lib/format';
+import { STEPS } from '@/lib/steps';
 import {
   EMPTY,
   GENDERS,
@@ -36,14 +38,6 @@ import {
 } from '@/lib/basic-info';
 import s from './basic-info-form.module.css';
 
-const STEPS: Step[] = [
-  { name: 'Basic info', status: 'In progress' },
-  { name: 'Scholarship and programs', status: 'Not started' },
-  { name: 'Essay', status: 'Optional' },
-  { name: 'Documents', status: 'Not started' },
-  { name: 'Review and submit', status: 'Not started' },
-];
-
 // The sample answers from the draft (Ebony Coleman, phone one digit short), shown with ?demo=1 for design review.
 const DEMO: BasicInfo = {
   ...EMPTY,
@@ -54,17 +48,80 @@ const DEMO: BasicInfo = {
   hear: 'A friend or mentor shared it with me',
 };
 
-export function BasicInfoForm({ demo }: { demo?: boolean }) {
-  const [v, setV] = useState<BasicInfo>(demo ? DEMO : EMPTY);
+// Turns the form's answers into the application's columns. Blank answers save as null; a credits value that is not a
+// whole number from 0 to 300 is left out (it stays unsaved until it is valid).
+type Patch = NonNullable<Parameters<typeof saveApplication>[2]>;
+function toPatch(v: BasicInfo): Patch {
+  const text = (x: string) => (x.trim() ? x.trim() : null);
+  const patch: Patch = {
+    full_name: text(v.fullName),
+    secondary_email: text(v.secondaryEmail),
+    phone: text(v.phone),
+    gender: text(v.gender),
+    race: text(v.race),
+    heard_from: text(v.hear),
+    major: text(v.major),
+  };
+  if (v.year === '' || (YEARS as readonly string[]).includes(v.year)) {
+    patch.year_in_school = (v.year || null) as Patch['year_in_school'];
+  }
+  const credits = v.credits.trim();
+  if (credits === '') patch.credits_left = null;
+  else if (/^\d{1,3}$/.test(credits) && Number(credits) <= 300) patch.credits_left = Number(credits);
+  return patch;
+}
+
+// The saved application's answers as form values.
+function fromApplication(a: Application): BasicInfo {
+  return {
+    fullName: a.full_name ?? '',
+    secondaryEmail: a.secondary_email ?? '',
+    phone: a.phone ?? '',
+    gender: a.gender ?? '',
+    race: a.race ?? '',
+    hear: a.heard_from ?? '',
+    year: a.year_in_school ?? '',
+    credits: a.credits_left === null ? '' : String(a.credits_left),
+    major: a.major ?? '',
+  };
+}
+
+const SAVE_DELAY_MS = 800;
+
+export function BasicInfoForm({
+  demo,
+  application,
+  email: initialEmail,
+  view,
+}: {
+  demo?: boolean;
+  /** The saved application (live mode), or null in mock mode. */
+  application: Application | null;
+  /** The signed-in address (live mode); mock mode reads it in the browser. */
+  email?: string;
+  view: CycleView;
+}) {
+  const router = useRouter();
+  const [v, setV] = useState<BasicInfo>(demo ? DEMO : application ? fromApplication(application) : EMPTY);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>(demo ? { phone: true } : {});
   const [submitted, setSubmitted] = useState(false);
-  const [good, setGood] = useState(false);
-  const [email, setEmail] = useState(demo ? 'ecoleman@terpmail.umd.edu' : '');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [email, setEmail] = useState(demo ? 'ecoleman@terpmail.umd.edu' : (initialEmail ?? ''));
+  // The time of the last save, as an ISO string. A fresh draft (never edited) shows no save time.
+  const [savedAt, setSavedAt] = useState<string | null>(
+    application && application.updated_at !== application.created_at ? application.updated_at : null,
+  );
+  const [saving, setSaving] = useState<'idle' | 'error'>('idle');
   const summary = useRef<HTMLDivElement>(null);
+  // What the database already holds, so only changed fields are sent.
+  const saved = useRef<Patch>(application ? toPatch(fromApplication(application)) : {});
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef(v);
+  const accountName = demo ? 'Ebony Coleman' : application?.full_name || 'Your account';
 
-  // Reads the signed-in Terpmail address for the read-only field.
+  // Mock mode: read the tab's remembered sign-in address for the read-only field.
   useEffect(() => {
-    if (demo) return;
+    if (demo || initialEmail || getAuthMode() !== 'mock') return;
     let live = true;
     getSignedInEmail().then((e) => {
       if (live && e) setEmail(e);
@@ -72,12 +129,58 @@ export function BasicInfoForm({ demo }: { demo?: boolean }) {
     return () => {
       live = false;
     };
-  }, [demo]);
+  }, [demo, initialEmail]);
 
-  // Updates one answer; the other flags reset so old messages do not linger after an edit.
+  // Sends the changed answers (and any extra columns) to the database. Returns true when saved.
+  async function flush(extra: Partial<Patch> = {}): Promise<boolean> {
+    if (demo) return true;
+    const next = toPatch(latest.current);
+    const changed: Record<string, unknown> = { ...extra };
+    for (const [k, val] of Object.entries(next)) {
+      if (saved.current[k as keyof Patch] !== val) changed[k] = val;
+    }
+    if (Object.keys(changed).length === 0) return true;
+    // mock mode keeps nothing; it only pretends to save
+    if (!application) {
+      Object.assign(saved.current, next);
+      setSavedAt(new Date().toISOString());
+      return true;
+    }
+    const r = await saveApplication(getBrowserClient(), application.id, changed as Patch);
+    if (!r.ok) {
+      setSaving('error');
+      return false;
+    }
+    Object.assign(saved.current, next);
+    setSaving('idle');
+    setSavedAt(r.savedAt);
+    return true;
+  }
+
+  // Waits for a pause in typing (about 0.8 seconds), then saves.
+  function scheduleSave() {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void flush();
+    }, SAVE_DELAY_MS);
+  }
+
+  // Stops a pending save if the page goes away.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  // Updates one answer and schedules the autosave.
   function set<K extends FieldKey>(key: K, value: string) {
-    setV((prev) => ({ ...prev, [key]: value }));
-    setGood(false);
+    const next = { ...latest.current, [key]: value };
+    latest.current = next;
+    setV(next);
+    setSaveError(null);
+    scheduleSave();
   }
 
   // Marks a field as visited so its error can show.
@@ -98,12 +201,17 @@ export function BasicInfoForm({ demo }: { demo?: boolean }) {
     : [];
 
   // Continue: show every problem with a summary, or accept the answers.
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
     const bad = ORDER.some((k) => fieldError(k, v));
-    setGood(!bad);
-    if (bad) {
+    if (!bad) {
+      if (timer.current) clearTimeout(timer.current);
+      // save every answer and move her on to step 2 (never backwards if she has been further)
+      const ok = await flush({ current_step: Math.max(application?.current_step ?? 1, 2) });
+      if (ok) router.push('/apply/coming-next?step=2');
+      else setSaveError("We couldn't save your answers. Check your connection and try again.");
+    } else {
       // wait a tick so the summary is in the page, then move focus to it
       setTimeout(() => {
         summary.current?.scrollIntoView({ block: 'center' });
@@ -112,21 +220,22 @@ export function BasicInfoForm({ demo }: { demo?: boolean }) {
     }
   }
 
-  const saved = demo ? 'Saved 4:12 PM' : undefined;
+  const savedLabel = demo ? 'Saved 4:12 PM' : saving === 'error' ? "Couldn't save yet" : savedAt ? `Saved ${savedTime(savedAt)}` : undefined;
 
   return (
     <div className="app">
       <TopBar
         variant="signed-in"
-        accountName={demo ? 'Ebony Coleman' : 'Your account'}
-        progress={<StepProgress total={STEPS.length} current={1} saved={saved} />}
+        accountName={accountName}
+        progress={<StepProgress total={STEPS.length} current={1} saved={savedLabel} />}
       />
       <form className="wiz" onSubmit={onSubmit} noValidate>
         <StepRail
           steps={STEPS}
           current={1}
-          subtitle={`${cycle.scholarshipName}. Apply by ${cycle.applyBy}, ${cycle.deadlineTime} Eastern.`}
-          saved={saved}
+          title={`${view.term ?? '[term]'} application`}
+          subtitle={`${view.awardName ?? '[award name]'}. Apply by ${view.applyByLong}, ${view.deadlineTime} Eastern.`}
+          saved={savedLabel}
         />
         <div className="wiz-main">
           <main className="wk">
@@ -250,9 +359,9 @@ export function BasicInfoForm({ demo }: { demo?: boolean }) {
                   onBlur={() => touch('major')}
                 />
               </div>
-              {good ? (
-                <p className={s.good} role="status">
-                  Every answer looks good. The next step is not built yet.
+              {saveError ? (
+                <p className={s.good} role="alert">
+                  {saveError}
                 </p>
               ) : null}
             </div>
