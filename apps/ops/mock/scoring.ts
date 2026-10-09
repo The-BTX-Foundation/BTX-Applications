@@ -3,6 +3,8 @@
 // The sample values are the Figma "Scholarships > Applicants" frames' (a Sunday, Oct 4). In live mode a code with no
 // fixture here gets a plain default row, so real applicants are never shown made-up scores.
 import { dayLabel } from '@/lib/format';
+import { pairingFor } from './interviews';
+import { staffById } from './staff';
 
 export type Stage = {
   kind: 'needs-score' | 'waiting' | 'interview' | 'scored' | 'none';
@@ -160,7 +162,12 @@ const FIXTURES: Record<string, Scoring> = {
 // scores, no interviewers, and an interview line only if it has a booking.
 export function scoringFor(code: string, real?: { interviewAt?: string }): Scoring {
   const f = FIXTURES[code];
-  if (f) return f;
+  if (f) {
+    // The interviewer pair comes from mock/interviews.ts (the Interviews frame), so every page names the same pair.
+    const pr = pairingFor(code);
+    const pair = pr ? [staffById(pr.interviewer_a)?.initials, staffById(pr.interviewer_b)?.initials].filter((x): x is string => !!x) : f.interviewers;
+    return pair.length === 2 ? { ...f, interviewers: pair } : f;
+  }
   const at = real?.interviewAt;
   return {
     group: 'attention',

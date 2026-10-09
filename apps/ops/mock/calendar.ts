@@ -15,6 +15,7 @@ export const CAL_PEOPLE: CalPerson[] = [
   { id: "cillisha", name: "Cillisha Knights" },
   { id: "darien", name: "Darien Strachan" },
   { id: "chariah", name: "Chariah Ghee" },
+  { id: "marcus", name: "Marcus Davis" },
 ];
 
 const base: CalItem[] = [
@@ -120,7 +121,7 @@ const base: CalItem[] = [
     chip: "7:00 Interview",
     title: "Interview APP-2026-00018",
     start: "7:00 PM",
-    people: ["kelsey", "chariah"],
+    people: ["marcus", "kelsey"],
     video: true,
   },
   {
@@ -240,7 +241,7 @@ const stress: CalItem[] = [
     chip: "10:00 Interview",
     title: "Interview APP-2026-00120",
     start: "10:00 AM",
-    people: ["cillisha", "darien"],
+    people: ["kelsey", "tomi"],
     video: true,
     chipRank: 1,
   },
@@ -263,7 +264,7 @@ const stress: CalItem[] = [
     chip: "8:00 AM Interview",
     title: "Interview APP-2026-00014",
     start: "8:00 AM",
-    people: ["darien", "chariah"],
+    people: ["kelsey", "tomi"],
     chipRank: 0,
   },
   {

@@ -9,7 +9,6 @@ export type OverviewArea = {
   /** Ring: how far along, 0 to 1, and its label ("5/13"). */
   ring: { frac: number; label: string; color: 'gold' | 'ink' };
   /** The phone card's ring counts differently (1/6, 65%). */
-  phoneRing: { frac: number; label: string; color: 'gold' | 'ink' };
   big: string;
   label: string;
   /** The muted line; laptop and phone differ a little ("$9,800 of $15,000 raised"). */
@@ -54,7 +53,6 @@ export const TODAY = {
       id: 'scholarships',
       name: 'Scholarships',
       ring: { frac: 5 / 13, label: '5/13', color: 'gold' },
-      phoneRing: { frac: 1 / 6, label: '1/6', color: 'gold' },
       big: '10 / 18',
       label: 'scored',
       line: 'Interviews end Fri Oct 9',
@@ -65,7 +63,6 @@ export const TODAY = {
       id: 'money',
       name: 'Money',
       ring: { frac: 0.5, label: '2/4', color: 'gold' },
-      phoneRing: { frac: 0.65, label: '65%', color: 'gold' },
       big: '$18,600',
       label: 'on hand',
       line: '$9,800 of $15,000 raised',
@@ -76,7 +73,6 @@ export const TODAY = {
       id: 'programs',
       name: 'Programs',
       ring: { frac: 0.2, label: '1/5', color: 'ink' },
-      phoneRing: { frac: 0.2, label: '1/5', color: 'ink' },
       big: 'Certifications',
       label: 'in setup',
       line: 'Planning call Thu Oct 22',
@@ -87,7 +83,6 @@ export const TODAY = {
       id: 'outreach',
       name: 'Outreach',
       ring: { frac: 0, label: '0/3', color: 'ink' },
-      phoneRing: { frac: 0, label: '0/3', color: 'ink' },
       big: '3 posts',
       label: 'planned in October',
       line: 'Next post Wed Oct 7',
