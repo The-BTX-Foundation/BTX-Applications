@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd btx-frontend && npm install --legacy-peer-deps && npm run build",
-  "outputDirectory": "btx-frontend/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}

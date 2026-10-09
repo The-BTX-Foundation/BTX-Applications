@@ -1,62 +1,54 @@
 # BTX Platform
 
-Monorepo for the BTX Foundation's two web apps, backed by one shared Supabase project.
+Monorepo for the BTX Foundation's web apps, backed by one shared Supabase project (`btx-platform`).
 
-## Apps
+The two old Vue apps (the Ops Hub in `btx-frontend/` and the Portal in `btx-frontend-portal/`) were removed when the
+rebuild started. They stay in the git history. The Ops Hub is rebuilt after the Portal launches; the design for both is
+the Figma file "BTX Apps".
 
-- **`btx-frontend/`** — **Ops Hub**: staff-facing dashboard (budgeting, fundraising, marketing, event tracking, program planning, scholarship review). A standalone Vue/Vite app with its own `package.json`.
-- **`btx-frontend-portal/`** — **Scholarship Portal**: public-facing application wizard for scholarship applicants, plus a staff preview of that flow. Also a standalone Vue/Vite app with its own `package.json`.
-- **`supabase/`** — the database migrations and Edge Functions shared by both apps above.
+## Layout
 
-Each app is its own npm project — `cd` into it before running `npm install`/`npm run ...`; there is no root-level `package.json`.
+- **`apps/portal/`**: the Scholarship Portal (applicants). Next.js (App Router, TypeScript), plain CSS, no Tailwind.
+- **`packages/ui/`**: design tokens (`tokens.css`), shared component styles and the shared React components
+  (top bar, buttons, fields, step progress, bottom bar, dates drawing).
+- **`packages/data/`**: the Supabase client helpers and the place for generated database types.
+- **`supabase/`**: database migrations and Edge Functions. Untouched by the rebuild so far.
+
+An Ops Hub app will be added as `apps/ops/` later and share `packages/ui` and `packages/data`.
 
 ## Prerequisites
 
-- Node matching the `engines` field in each app's `package.json` (currently `^22.18.0 || >=24.12.0`)
-- npm
-- Access to the project's Supabase instance (URL + publishable key) for local dev
+- Node 22.18 or newer (built with Node 26), npm 10 or newer
+- For real sign-in: the Supabase project URL and publishable key. Without them the Portal runs against a local mock.
 
 ## Local setup
 
-For either app:
-
 ```sh
-cd btx-frontend          # or: cd btx-frontend-portal
-npm install
-cp .env.example .env.local   # fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
-npm run dev
+npm install                              # installs every workspace from the repo root
+cp apps/portal/.env.example apps/portal/.env.local   # optional: add the Supabase URL and publishable key
+npm run dev                              # Portal on http://localhost:3000
 ```
 
-See each app's own `.env.example` for the full list of variables it reads, with a comment explaining each one.
+## npm scripts (run from the repo root)
 
-## npm scripts
-
-- **btx-frontend**: `dev`, `build`, `preview`, `lint` (oxlint + eslint, auto-fix), `format` (prettier)
-- **btx-frontend-portal**: `dev`, `build`, `preview`
+- `npm run dev`: start the Portal dev server
+- `npm run build`: production build of the Portal
+- `npm run start`: serve the production build
+- `npm run lint`: lint the Portal
 
 ## Deploys
 
-Two separate Vercel projects, each auto-deploying on push to `master`:
-
-- **Ops Hub** — the root `vercel.json` (`buildCommand: cd btx-frontend && npm install --legacy-peer-deps && npm run build`, `outputDirectory: btx-frontend/dist`). Vercel project's Root Directory is the repo root.
-- **Scholarship Portal** — `btx-frontend-portal/vercel.json`, self-contained within that folder. Vercel project's Root Directory is `btx-frontend-portal`.
+Each app is its own Vercel project with its own Root Directory (`apps/portal` for the Portal). Every change goes
+branch, preview, pull request, merge. Nothing here deploys by itself yet.
 
 ## Roles
 
-Every signed-in user's role lives in their Supabase Auth `user_metadata.role` and is read both by RLS policies (`auth.jwt() -> 'user_metadata' ->> 'role'`) and by application code — never from a client-supplied field. Known roles:
+Every signed-in user's role lives in their Supabase Auth `user_metadata.role` and is read both by RLS policies
+(`auth.jwt() -> 'user_metadata' ->> 'role'`) and by application code. That is the known security hole being fixed on
+the `fix/rls-role-app-metadata` branch: roles move to `app_metadata`. Known roles:
 
-- `admin`, `board`, `reviewer` — Ops Hub staff (also used for the Portal's staff preview gate)
-- `applicant` — Portal self-service accounts; enforced as the default by a role-safety trigger, not just a client-side assumption
-
-## Database changes
-
-Schema changes in this repo are **not** made by hand-writing a migration file and running it against the live database first. The actual workflow:
-
-1. Apply the change live via the Supabase SQL Editor.
-2. Write the equivalent SQL into a new timestamped file under `supabase/migrations/`, matching what was actually applied.
-3. Reconcile local migration history with the live database using `supabase migration repair` (which records the migration as applied without re-running its SQL) — see the comment at the top of `supabase/migrations/20260815000000_baseline_missing_tables.sql` for a worked example of why this order matters.
-
-Never run an untested migration file directly against the live database.
+- `admin`, `board`, `reviewer`: Ops Hub staff
+- `applicant`: Portal self-service accounts
 
 ## Edge Function secrets
 
