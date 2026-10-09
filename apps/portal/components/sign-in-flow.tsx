@@ -156,7 +156,7 @@ export function SignInFlow({
   return (
     <div className="app">
       <TopBar variant="sign-in" />
-      <main className="pm">
+      <main id="main" className="pm">
         <div className={s.wrap}>
           <div className={s.left}>
             <h1 className={`st ${s.title}`}>Sign in.</h1>

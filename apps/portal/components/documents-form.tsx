@@ -96,6 +96,17 @@ export function DocumentsForm({
   const auto = useAutosave(application?.id ?? null, application && application.updated_at !== application.created_at ? application.updated_at : null);
   const saved = demo ? DEMO_SAVED[4] : auto.failed ? "Couldn't save yet" : auto.savedAt ? `Saved ${savedTime(auto.savedAt)}` : undefined;
 
+  // What a screen reader hears: when an upload starts, stops, or finishes (not every progress tick).
+  const live = (() => {
+    const list = KINDS.map(({ kind }) => slots[kind]);
+    const up = list.find((x) => x.phase === 'uploading');
+    if (up && up.phase === 'uploading') return `Uploading ${up.name}.`;
+    const paused = list.find((x) => x.phase === 'paused');
+    if (paused && paused.phase === 'paused') return `Upload of ${paused.name} did not finish.`;
+    const n = list.filter((x) => x.phase === 'done').length;
+    return `${n} of 2 documents uploaded.${saved ? ` ${saved}.` : ''}`;
+  })();
+
   const setSlot = (k: DocKind, v: Slot) => setSlots((p) => ({ ...p, [k]: v }));
   const setProblem = (k: DocKind, m: string | undefined) => setProblems((p) => ({ ...p, [k]: m }));
 
@@ -190,6 +201,7 @@ export function DocumentsForm({
       saved={saved}
       onSubmit={onSubmit}
       backHref="/apply/essay"
+      live={live}
       primary={<Button type="submit">Continue</Button>}
     >
       <h1 className="st">Documents.</h1>

@@ -12,7 +12,7 @@ export function LandingLoadError() {
   return (
     <div className="app">
       <TopBar variant="signed-out" />
-      <main className="pm">
+      <main id="main" className="pm">
         <LoadError onRetry={() => router.refresh()} />
       </main>
     </div>
@@ -28,7 +28,7 @@ export function ApplyLoadError({ status }: { status?: boolean }) {
   return (
     <div className="app">
       <TopBar variant="signed-in" accountName={name} />
-      <main className="pm">
+      <main id="main" className="pm">
         <LoadError onRetry={() => router.refresh()} />
       </main>
     </div>

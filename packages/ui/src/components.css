@@ -983,3 +983,37 @@ a {
     font-size: 28px;
   }
 }
+
+/* ---------- accessibility helpers ---------- */
+/* "Skip to main content": hidden until it takes keyboard focus. */
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -64px;
+  z-index: 100;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 12px 16px;
+  font-weight: 600;
+}
+.skip:focus {
+  top: 12px;
+}
+/* On a phone every tap target is at least 44px: a checkbox row's hit area grows past its drawn box. */
+@media (max-width: 1023.98px) {
+  .cr {
+    position: relative;
+  }
+  .cr::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -10px;
+    bottom: -10px;
+  }
+  .cr.cd::after {
+    top: 0;
+    bottom: 0;
+  }
+}

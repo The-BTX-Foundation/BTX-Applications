@@ -100,7 +100,7 @@ export function Landing({ variant, view, notified }: { variant: CycleVariant; vi
   return (
     <div className="app">
       <TopBar variant="signed-out" />
-      <main className={`pm ${root}`}>
+      <main id="main" className={`pm ${root}`}>
         <div className={s.top}>
           <div className={s.left}>
             <p className={s.status}>

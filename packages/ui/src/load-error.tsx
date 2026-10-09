@@ -16,6 +16,7 @@ export function LoadError({
 }) {
   return (
     <div className="er-c">
+      <h1 className="sr-only">{title}</h1>
       <div className="es" role="alert">
         <p>
           <ErrorIcon />

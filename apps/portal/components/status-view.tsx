@@ -53,7 +53,7 @@ export function StatusView({
   return (
     <div className="app">
       <TopBar variant="signed-in" accountName={accountName} />
-      <main className={`pm ${s.page}`}>
+      <main id="main" className={`pm ${s.page}`}>
         <div className={s.wrap}>
           <p className={s.stamp}>
             {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}. Copy sent to {email}
