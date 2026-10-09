@@ -4,16 +4,31 @@ import Link from 'next/link';
 import { OIcon } from '@/components/icons';
 import { Ring } from '@/components/ring';
 import { TasksCard } from '@/components/tasks-card';
-import { TODAY } from '@/mock/today';
+import { LoadError } from '@/components/load-error';
+import { PageHeader } from '@/components/page-header';
+import { TODAY, TODAY_STRESS } from '@/mock/today';
 
 // The page.
-export default function TodayPage() {
+export default async function TodayPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  // ?demo=error draws the "didn't load" state, ?demo=stress the stress frames' data.
+  if (demo === 'error') {
+    return (
+      <>
+        <PageHeader title="Today" />
+        <div className="o-todayerr">
+          <LoadError what="Today" />
+        </div>
+      </>
+    );
+  }
+  const TODAY_DATA = demo === 'stress' ? TODAY_STRESS : TODAY;
   return (
     <>
       <div className="o-top o-hd">
         <div className="o-top-t">
-          <h1>{TODAY.headline}</h1>
-          <p>{TODAY.dateLine}</p>
+          <h1>{TODAY_DATA.headline}</h1>
+          <p>{TODAY_DATA.dateLine}</p>
         </div>
         <div className="o-search o-lg" role="search">
           <OIcon name="search" size={20} />
@@ -33,7 +48,7 @@ export default function TodayPage() {
           </Link>
         </div>
         <div className="o-ovg">
-          {TODAY.areas.map((a) => (
+          {TODAY_DATA.areas.map((a) => (
             <Link key={a.id} href={a.href} className="o-oc">
               <span className="o-oct">
                 <span className="o-lg">
@@ -53,7 +68,7 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <TasksCard />
+      <TasksCard data={TODAY_DATA} />
     </>
   );
 }

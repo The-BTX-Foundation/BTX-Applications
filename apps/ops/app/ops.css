@@ -2262,3 +2262,23 @@ body {
     margin: 0;
   }
 }
+
+/* Today: the headline column is 780px wide on a laptop (long stress headline wraps as drawn), and the phone load-error card */
+@media (min-width: 900px) {
+  .o-hd .o-top-t {
+    max-width: 780px;
+  }
+}
+@media (max-width: 899.98px) {
+  .o-todayerr .o-err {
+    max-width: none;
+    padding: 21px;
+  }
+  .o-todayerr .o-err h2 {
+    margin-top: 12px;
+  }
+  .o-todayerr .o-err .o-btn {
+    width: 100%;
+    margin-top: 14px;
+  }
+}

@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { OIcon } from './icons';
-import { TODAY, type TaskRow } from '@/mock/today';
+import type { TodayData, TaskRow } from '@/mock/today';
 
 type Tab = 'mine' | 'team' | 'approvals';
 
@@ -36,6 +36,12 @@ function Row({ row }: { row: TaskRow }) {
             {row.typeLabel}
             <i className="o-dots" />
             {row.sub}
+            {row.sub2 ? (
+              <>
+                <i className="o-dots" />
+                {row.sub2}
+              </>
+            ) : null}
             {row.commentsInSub ? (
               <>
                 <i className="o-dots" />
@@ -88,9 +94,9 @@ function Row({ row }: { row: TaskRow }) {
 }
 
 // The panel.
-export function TasksCard() {
+export function TasksCard({ data }: { data: TodayData }) {
   const [tab, setTab] = useState<Tab>('mine');
-  const { counts, groups } = TODAY;
+  const { counts, groups } = data;
   const shown = groups
     .map((g) => ({ ...g, rows: tab === 'approvals' ? g.rows.filter((r) => r.approval) : g.rows }))
     .filter((g) => g.rows.length > 0);
