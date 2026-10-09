@@ -102,7 +102,7 @@
     column-gap: 52px;
     align-items: start;
     min-height: 586px; /* the dates drawing starts 586px below the header in the draft */
-    padding: 56px 48px 48px;
+    padding: 56px 48px 48px; /* the 48px keeps the dates apart when the card is tall (narrow laptops) */
     max-width: 1440px;
     margin: 0 auto;
     width: 100%;
@@ -195,6 +195,12 @@
   }
   .phoneBar {
     display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .top {
+    padding-bottom: 0;
   }
 }
 
@@ -346,5 +352,12 @@
   .social {
     gap: 28px;
     margin-top: 2px;
+  }
+}
+
+/* wide laptops: the dates start where the draft puts them (586px below the header) */
+@media (min-width: 1280px) {
+  .top {
+    padding-bottom: 0;
   }
 }

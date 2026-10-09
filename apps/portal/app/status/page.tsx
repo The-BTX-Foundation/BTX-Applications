@@ -5,6 +5,7 @@ import { StatusView } from '@/components/status-view';
 import { loadSubmitted } from '@/lib/apply';
 import { MOCK_VIEW } from '@/lib/cycle';
 import { easternDate } from '@/lib/format';
+import { STRESS } from '@/lib/stress';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
@@ -14,11 +15,12 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
   if (d && d.failed) return <ApplyLoadError status />;
   // mock mode: the draft's sample (Ebony Coleman, submitted Sat Sep 12 at 4:52 PM Eastern)
   if (!d) {
+    const stress = demo === 'stress';
     return (
       <StatusView
         view={MOCK_VIEW}
-        accountName="Ebony Coleman"
-        email="ecoleman@terpmail.umd.edu"
+        accountName={stress ? STRESS.name : 'Ebony Coleman'}
+        email={stress ? STRESS.email : 'ecoleman@terpmail.umd.edu'}
         submittedAt="2026-09-12T20:52:00Z"
         today="2026-09-13"
       />
