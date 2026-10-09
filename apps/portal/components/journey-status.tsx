@@ -6,7 +6,7 @@ import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { INTERVIEW_JOIN_URL } from '@/lib/config';
 import { easternDate, longDay } from '@/lib/format';
 import { buildIcs, icsHref } from '@/lib/ics';
-import { clock, countdown, dayLabel, describeFreeTimes, range, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
+import { countdown, dayLabel, describeFreeTimes, range, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
 import type { CycleView } from '@/lib/cycle';
 import { FollowCard } from './follow-card';
 import { JourneyDrawing } from './journey-drawing';

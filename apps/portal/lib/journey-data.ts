@@ -30,6 +30,8 @@ export type JourneyData = {
   decision: Decision;
   interviewers: string[];
   slots: Slot[];
+  preselect: string | null;
+  note: string;
   stress: boolean;
   demoName: string | null;
   /** The application id, for the booking calls (live only). */
@@ -49,16 +51,18 @@ const fromDemo = (d: Demo, raw: string | undefined): JourneyData => ({
   decision: d.decision,
   interviewers: d.interviewers,
   slots: d.slots,
+  preselect: d.preselect,
+  note: d.note,
   stress: d.stress,
   demoName: raw ?? null,
   applicationId: null,
 });
 
 /** Loads the data for `here` (the return address after sign-in). `fallback` is the demo shown in mock mode without ?demo=. */
-export async function loadJourney(here: string, raw: string | undefined, fallback: DemoName | 'waiting'): Promise<JourneyData | { failed: true }> {
+export async function loadJourney(here: string, raw: string | undefined, fallback: DemoName | 'waiting', at?: string): Promise<JourneyData | { failed: true }> {
   if (getAuthMode() === 'mock') {
     if (raw === 'error') return { failed: true };
-    return fromDemo(buildDemo(raw, fallback), raw);
+    return fromDemo(buildDemo(raw, fallback, at), raw);
   }
   const client = await sessionClient();
   const { data: auth } = await client.auth.getUser();
@@ -106,6 +110,8 @@ export async function loadJourney(here: string, raw: string | undefined, fallbac
     decision: null,
     interviewers: [],
     slots: rows.filter((r) => new Date(r.starts_at) > now && r.id !== booking?.slotId).map((r) => ({ id: r.id, startsAt: r.starts_at, endsAt: r.ends_at })),
+    preselect: null,
+    note: '',
     stress: false,
     demoName: null,
     applicationId: app.id,

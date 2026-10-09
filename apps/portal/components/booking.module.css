@@ -1,0 +1,533 @@
+/* The booking pages: schedule your interview, change your time, none of these times work (drafts schedule*.html,
+   schedule-taken*.html, reschedule*.html, notimes*.html, with their phone versions). Phone first; laptop from 1024px.
+   The laptop calendars and the phone day lists are both in the page; CSS shows one. */
+.page {
+  flex: 1;
+  padding: 24px 20px 32px;
+  min-width: 0;
+}
+.phoneBar {
+  display: block;
+}
+.title {
+  font-size: 32px;
+  line-height: 1.08;
+}
+.lead {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+.mk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.mk span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.taken {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-top: 12px;
+}
+.err {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* the time button */
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: transparent;
+  text-align: center;
+}
+.chip.on {
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}
+.chip :global(.i) {
+  width: 16px;
+  height: 16px;
+  stroke: var(--surface);
+  stroke-width: 2.2;
+}
+
+/* schedule: phone shows the week list, laptop the calendar */
+.sc {
+  min-width: 0;
+}
+.grid,
+.actions {
+  display: none;
+}
+.phoneList {
+  display: block;
+}
+.weeks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.weeks button {
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-left: 1.5px solid var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.weeks button:first-child {
+  border-left: 0;
+}
+.weeks button span {
+  font-size: 13px;
+  font-weight: 400;
+}
+.weeks .weekOn {
+  background: var(--ink);
+  color: var(--surface);
+}
+.day {
+  margin-top: 18px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.dayChip {
+  width: 110px;
+  height: 44px;
+  font-size: 15px;
+}
+.noLink {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  margin-top: 20px;
+  font-size: 16px;
+}
+
+/* change your time */
+.back {
+  display: none;
+}
+.sw {
+  font-size: 16px;
+  line-height: 1.45;
+  margin-top: 8px;
+}
+.rgrid {
+  display: none;
+}
+.rday {
+  margin-top: 18px;
+}
+.rchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.cur {
+  width: 110px;
+  height: 44px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: var(--line-soft);
+  font-weight: 500;
+}
+.curNote {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.note {
+  margin-top: 24px;
+}
+.ta {
+  display: block;
+  width: 100%;
+  height: 96px;
+  margin-top: 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: var(--bg);
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+}
+.rNo {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 8px;
+  font-size: 16px;
+}
+.rActions {
+  display: none;
+}
+
+/* none of these times work */
+.bk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  margin: -8px 0 4px;
+  font-size: 15px;
+}
+.nf {
+  margin-top: 22px;
+}
+.tg {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.tb {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 48px;
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tb.on {
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}
+.tb :global(.i) {
+  width: 16px;
+  height: 16px;
+  stroke: var(--surface);
+  stroke-width: 2.2;
+}
+.tt {
+  flex-direction: column;
+  gap: 8px;
+}
+.tt .tb {
+  flex: none;
+  font-size: 16px;
+}
+.fit {
+  margin-top: 14px;
+}
+.fitN {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.fitS {
+  font-size: 16px;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+.fitR {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.fitR .chip {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 15px;
+}
+.more {
+  font-size: 15px;
+  margin-left: 6px;
+}
+.nAct {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .page {
+    padding: 26px 48px 0;
+  }
+  .phoneBar,
+  .phoneList {
+    display: none;
+  }
+  .title {
+    font-size: 44px;
+  }
+  .sc {
+    width: 1040px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .grid {
+    display: block;
+    margin-top: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .gridTaken {
+    margin-top: 12px;
+  }
+  .heads,
+  .row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .head {
+    height: 34px;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+  }
+  .head + .head {
+    border-left: 1px solid var(--line);
+  }
+  .cell {
+    height: 120px;
+    padding: 6px 8px 0;
+    overflow: hidden;
+  }
+  .gridTaken .cell {
+    height: 114px;
+  }
+  .cellOpen {
+    height: auto;
+    min-height: 120px;
+    padding-bottom: 8px;
+  }
+  .row + .row .cell {
+    border-top: 1px solid var(--line);
+  }
+  .cell + .cell {
+    border-left: 1px solid var(--line);
+  }
+  .cell :global(.cdt) {
+    font-size: 13px;
+    line-height: 20px;
+    margin-bottom: 4px;
+  }
+  .cellChip {
+    width: 100%;
+    height: 36px;
+    font-size: 15px;
+  }
+  .cellChip + .cellChip {
+    margin-top: 6px;
+  }
+  .cn {
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+  .more {
+    display: block;
+    margin-top: 6px;
+    font-size: 15px;
+    margin-left: 0;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+  }
+  .gridTaken + .actions {
+    margin-top: 12px;
+  }
+  .xl {
+    height: 56px;
+  }
+
+  /* change your time */
+  .back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 32px;
+    font-size: 15px;
+    height: 24px;
+  }
+  .rc {
+    width: 880px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .rc,
+  .nc {
+    margin-top: -26px;
+  }
+  .rc .title,
+  .nc .title {
+    margin-top: 16px;
+  }
+  .rc .lead,
+  .nc .lead {
+    font-size: 18px;
+    line-height: 1.55;
+    margin-top: 12px;
+  }
+  .rgrid {
+    display: block;
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .rheads,
+  .rrow {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .rwide .rheads,
+  .rwide .rrow {
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .rhead {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+  }
+  .rhead :global(.cdt) {
+    font-size: 13px;
+  }
+  .rhead + .rhead,
+  .rcell + .rcell {
+    border-left: 1px solid var(--line);
+  }
+  .rrow + .rheads,
+  .rgrid .rheads:not(:first-child) {
+    border-top: 1px solid var(--line);
+  }
+  .rcell {
+    height: 118px;
+    padding: 8px;
+    overflow: hidden;
+  }
+  .rcell > * + * {
+    margin-top: 6px;
+  }
+  .rcell .dayChip,
+  .rcell .cur {
+    width: 100%;
+    height: 36px;
+    font-size: 15px;
+  }
+  .rcell .curNote {
+    margin-top: 4px;
+  }
+  .rday {
+    display: none;
+  }
+  .rNo {
+    display: none;
+  }
+  .sw {
+    display: none;
+  }
+  .note {
+    margin-top: 20px;
+  }
+  .rActions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 20px;
+    font-size: 15px;
+  }
+  .rSw {
+    font-size: 16px;
+    color: var(--ink);
+  }
+
+  /* none of these times work */
+  .nc {
+    width: 720px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .bk {
+    height: 24px;
+    margin: 32px 0 0;
+  }
+  .tg {
+    gap: 8px;
+  }
+  .tb {
+    font-size: 16px;
+  }
+  .tt {
+    flex-direction: row;
+  }
+  .tt .tb {
+    flex: 1 1 0;
+  }
+  .ta64 {
+    height: 64px;
+  }
+  .fitR .chip {
+    height: 36px;
+  }
+  .nAct {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 24px;
+    font-size: 15px;
+  }
+}

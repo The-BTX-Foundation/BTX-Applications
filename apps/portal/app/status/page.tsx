@@ -14,9 +14,9 @@ import { easternDate } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
-export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
-  const { demo } = await searchParams;
-  const d = await loadJourney('/status', demo, 'waiting');
+export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string; at?: string }> }) {
+  const { demo, at } = await searchParams;
+  const d = await loadJourney('/status', demo, 'waiting', at);
   if ('failed' in d) return <ApplyLoadError status />;
   const state = pickState({
     now: d.now,

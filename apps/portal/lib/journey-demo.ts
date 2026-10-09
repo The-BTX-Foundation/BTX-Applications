@@ -39,7 +39,7 @@ export function parseDemo(raw?: string): { name: DemoName | 'waiting' | null; st
 
 // Eastern clock time on a date (EDT, UTC-4, which holds through Oct 31, 2026) as an ISO string.
 export function et(date: string, h: number, m = 0): string {
-  return new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00-04:00`).toISOString();
+  return new Date(new Date(`${date}T${String(h).padStart(2, '0')}:00:00-04:00`).getTime() + m * 60000).toISOString();
 }
 const slot = (date: string, h: number, m = 0): Slot => ({ id: `demo-${date}-${h}-${m}`, startsAt: et(date, h, m), endsAt: et(date, h, m + 30) });
 
@@ -53,16 +53,38 @@ const OPEN: Record<string, number[]> = {
 export function demoSlots(stress: boolean): Slot[] {
   const list = Object.entries(OPEN).flatMap(([d, hs]) => hs.map((h) => slot(d, h)));
   if (!stress) return list;
-  // the stress frames: a busy Sep 30 (11 open times, 8:00 AM to 9:30 PM) and a 9:30 PM time on Sep 30 that she picks
-  const busy = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].slice(0, 10).map((h) => slot('2026-09-30', h)).concat([slot('2026-09-30', 21, 30)]);
-  return [...list.filter((s) => !s.id.includes('2026-09-30')), ...busy];
+  // the stress frames: busy days (ten open times on Sep 30 from 5:00 PM to 9:30 PM, ten on Oct 1 from 8:00 AM)
+  const half = (d: string, h0: number) => Array.from({ length: 10 }, (_, k) => slot(d, h0 + Math.floor(k / 2), (k % 2) * 30));
+  const busy = [...half('2026-09-30', 17), ...half('2026-10-01', 8)];
+  return [...list.filter((s) => !s.id.includes('2026-09-30') && !s.id.includes('2026-10-01')), ...busy].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 // The change-your-time frames: the week of Oct 5, her current time Tue Oct 6 6:00 PM.
 export function demoChangeSlots(stress: boolean): Slot[] {
   if (stress) {
-    return [slot('2026-09-28', 8), slot('2026-09-29', 19), slot('2026-09-29', 21, 30), slot('2026-09-30', 8), slot('2026-10-01', 18), slot('2026-10-02', 12), slot('2026-10-02', 13)];
+    return [slot('2026-09-28', 8), slot('2026-09-29', 8), slot('2026-09-30', 20), slot('2026-10-01', 21, 30), slot('2026-10-02', 8), slot('2026-10-02', 21, 30)];
   }
   return [slot('2026-10-05', 18), slot('2026-10-06', 19), slot('2026-10-07', 18), slot('2026-10-08', 18), slot('2026-10-09', 12), slot('2026-10-09', 13)];
+}
+
+function slotsFor(name: string, stress: boolean): Slot[] {
+  if (name === 'change') return demoChangeSlots(stress);
+  const all = demoSlots(stress);
+  // the "was just taken" frames: the time she tried (Tue Oct 6 6:00 PM; stress: Sep 30 9:30 PM) is gone
+  const gone = stress ? et('2026-09-30', 21, 30) : et('2026-10-06', 18);
+  return name === 'taken' ? all.filter((s) => s.startsAt !== gone) : all;
+}
+function preselectFor(name: string, stress: boolean): string | null {
+  if (name === 'schedule') return stress ? `demo-2026-09-30-21-30` : 'demo-2026-10-06-18-0';
+  if (name === 'change') return stress ? 'demo-2026-09-29-8-0' : 'demo-2026-10-07-18-0';
+  return null;
+}
+
+const LONG_NOTE =
+  'I have labs every weekday until 6:00 PM, a part-time shift at the campus library on Saturdays until 4:00 PM, and a Society of Women Engineers meeting on Sunday mornings. Any weekday after 7:00 PM works best, and I can do a video call from my dorm or from the engineering building.';
+function noteFor(name: string, stress: boolean): string {
+  if (name === 'change') return 'I have a lab until 6:30 PM on Tuesdays this month.';
+  if (name === 'no-time') return stress ? LONG_NOTE : 'I have labs every weekday until 6:00 PM.';
+  return '';
 }
 
 export type Demo = {
@@ -79,12 +101,17 @@ export type Demo = {
   decision: Decision;
   interviewers: string[];
   slots: Slot[];
+  /** The time that is already picked when the screen opens (the frames show one picked). */
+  preselect: string | null;
+  /** The note already typed in the frames (change your time, none of these times work). */
+  note: string;
 };
 
 const EBONY = { fullName: 'Ebony Coleman', firstName: 'Ebony', email: 'ecoleman@terpmail.umd.edu' };
 const SUBMITTED = '2026-09-12T20:52:00Z';
 
-export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting' = 'waiting'): Demo {
+export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting' = 'waiting', atRaw?: string): Demo {
+  const at = atRaw && !Number.isNaN(Date.parse(atRaw)) ? atRaw : undefined;
   const { name: parsed, stress } = parseDemo(raw);
   const name = parsed ?? fallback;
   const who = stress
@@ -117,6 +144,7 @@ export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting
     story: '2026-10-23T14:00:00Z',
     'not-picked': '2026-10-23T14:00:00Z',
   };
+  if (stress && name === 'change') nowOf.change = '2026-09-27T16:00:00Z';
   const now = new Date(nowOf[name]);
   const before = (ms: number) => new Date(now.getTime() - ms).toISOString();
   let booking: Booking | null = null;
@@ -124,8 +152,14 @@ export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting
   if (name === 'switched') booking = interview('2026-10-07', before(60000), true);
   if (name === 'soon' || name === 'after') booking = interview('2026-10-06', '2026-09-15T16:00:00Z');
   if (name === 'today') booking = interview('2026-10-06', '2026-09-15T16:00:00Z');
-  if (name === 'change') booking = interview('2026-10-06', '2026-09-15T16:00:00Z');
+  if (name === 'change') booking = interview(stress ? '2026-09-30' : '2026-10-06', '2026-09-15T16:00:00Z');
   if (name === 'won' || name === 'won-sent' || name === 'not-picked' || name === 'story') booking = interview('2026-10-06', '2026-09-15T16:00:00Z');
+  // ?at=<ISO start>: a mock booking made on the booking pages, so the status screen shows the time she picked
+  if (at && booking === null && (name === 'booked' || name === 'switched')) {
+    booking = { slotId: 'demo-at', startsAt: new Date(at).toISOString(), endsAt: new Date(new Date(at).getTime() + 30 * 60000).toISOString(), bookedAt: before(60000), switched: name === 'switched' };
+  } else if (at && booking && (name === 'booked' || name === 'switched')) {
+    booking = { ...booking, startsAt: new Date(at).toISOString(), endsAt: new Date(new Date(at).getTime() + 30 * 60000).toISOString() };
+  }
   const freeTimes: FreeTimes | null =
     name === 'sent'
       ? stress
@@ -145,7 +179,9 @@ export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting
     freeTimes,
     decision,
     interviewers: ['Cillisha Knights', 'Darien Strachan'],
-    slots: name === 'change' ? demoChangeSlots(stress) : demoSlots(stress),
+    slots: slotsFor(name, stress),
+    preselect: preselectFor(name, stress),
+    note: noteFor(name, stress),
   };
 }
 

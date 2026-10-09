@@ -10,3 +10,5 @@ export { checkPdf, listFiles, MAX_PDF_BYTES, uploadDocument, viewUrl } from './f
 export type { AppFile, DocKind, UploadHandle } from './files';
 export { submitApplication } from './submit';
 export type { SubmitResult } from './submit';
+export { bookSlot } from './booking';
+export type { BookResult } from './booking';
