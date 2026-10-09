@@ -155,7 +155,7 @@
 @media (min-width: 900px) {
   .pg-th {
     display: grid;
-    grid-template-columns: 38px 292px 160px 1fr;
+    grid-template-columns: 38px 300px 152px 1fr;
     height: 30px;
     align-items: center;
     padding: 0 20px;
@@ -165,7 +165,7 @@
     color: var(--muted);
   }
   .pg-st {
-    grid-template-columns: 38px 292px 160px 92px 1fr;
+    grid-template-columns: 38px 300px 152px 100px 1fr;
     column-gap: 0;
     padding: 0 20px 0 20px;
     min-height: 46px;
@@ -216,7 +216,7 @@
   }
   .pg-ac .o-btn {
     height: 32px;
-    min-width: 113px;
+    min-width: 110px;
   }
   .pg-st.next {
     background: var(--gold-tint);

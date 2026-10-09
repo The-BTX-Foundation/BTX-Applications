@@ -5,7 +5,7 @@
 // lib/actions/outreach.ts (in memory in mock mode). Post images are not stored yet (the draft has no bucket), so the
 // photo box is a placeholder in every mode.
 import { useLayoutEffect, useRef, useState } from 'react';
-import { addPost, sendPostForApproval } from '@/lib/actions/outreach';
+import { sendPostForApproval } from '@/lib/actions/outreach';
 import type { InstagramData, Post, PostStep } from '@/mock/outreach';
 import { OIcon } from '../icons';
 import { Ring } from '../ring';

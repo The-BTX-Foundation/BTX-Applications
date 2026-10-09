@@ -322,10 +322,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
-  column-gap: 10px;
+  column-gap: 4px;
   width: 100%;
   text-align: left;
-  padding: 10px 14px;
+  padding: 13px 14px;
   border-top: 1px solid var(--line);
   background: none;
 }
@@ -363,7 +363,7 @@
   display: inline-flex;
   align-items: center;
   height: 24px;
-  padding: 0 11px;
+  padding: 0 9px;
   border: 1px solid var(--ink);
   border-radius: 999px;
   white-space: nowrap;
@@ -391,6 +391,8 @@
 }
 .ou-all {
   display: block;
+  width: 100%;
+  text-align: left;
   padding: 12px 14px 14px;
   border-top: 1px solid var(--line);
 }
@@ -884,6 +886,19 @@
     line-height: 17px;
     margin-top: 2px;
   }
+  .ou-st {
+    position: relative;
+    top: -6px;
+  }
+  .ou-ih h2 {
+    line-height: 21px;
+    position: relative;
+    top: -3px;
+  }
+  .ou-ih p {
+    position: relative;
+    top: 4px;
+  }
   .ou-sec.done .ou-st b {
     color: var(--muted);
   }
@@ -927,37 +942,37 @@
     height: auto;
   }
   .ou-mail h3 {
-    margin-top: 12px;
+    margin-top: 17px;
     font-size: 26px;
     font-weight: 500;
     line-height: 32px;
   }
   .ou-intro {
-    margin-top: 12px;
-    font-size: 15.5px;
-    line-height: 23px;
+    margin-top: 11px;
+    font-size: 15px;
+    line-height: 22px;
   }
   .ou-mail ul {
-    margin-top: 16px;
+    margin-top: 15px;
   }
   .ou-mail li {
-    padding: 12px 0 10px;
+    padding: 15px 0 12px;
     border-top: 1px solid var(--line);
     display: flex;
     flex-direction: column;
   }
   .ou-mail li b {
-    font-size: 15.5px;
-    line-height: 19px;
+    font-size: 15px;
+    line-height: 18px;
   }
   .ou-mail li span {
-    font-size: 14px;
-    line-height: 20px;
+    font-size: 13.5px;
+    line-height: 19px;
     color: var(--muted);
   }
   .ou-unsub {
     margin-top: auto;
-    font-size: 14px;
+    font-size: 13.5px;
     line-height: 18px;
     color: var(--muted);
   }

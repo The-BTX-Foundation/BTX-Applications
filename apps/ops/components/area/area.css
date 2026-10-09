@@ -170,9 +170,9 @@ button.ar-ck:hover {
   z-index: 30;
   background: var(--scrim);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
+  padding: max(16px, calc(50dvh - 282px)) 16px 16px;
 }
 .ar-modal {
   background: var(--surface);
@@ -180,7 +180,7 @@ button.ar-ck:hover {
   max-width: 100%;
   max-height: 100%;
   overflow: auto;
-  padding: 26px 29px 29px;
+  padding: 28px 29px 28px;
   display: flex;
   flex-direction: column;
 }
@@ -188,12 +188,15 @@ button.ar-ck:hover {
   font-size: 24px;
   font-weight: 500;
   line-height: 28px;
+  margin-bottom: 13px;
 }
 .ar-f {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 6px;
+  gap: 12px;
+}
+.ar-f + .ar-f {
+  margin-top: 12px;
 }
 .ar-f > span {
   font-size: 15px;
@@ -245,7 +248,7 @@ button.ar-ck:hover {
 .ar-hint {
   font-size: 15px;
   line-height: 21px;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 .ar-err {
   font-size: 14px;
@@ -256,7 +259,7 @@ button.ar-ck:hover {
 .ar-btns {
   display: flex;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 .ar-btns .o-btn {
   height: 36px;
@@ -351,5 +354,12 @@ button.ar-ck:hover {
 @media (max-width: 899px) {
   .ar-stack {
     gap: 10px;
+  }
+}
+
+/* on a laptop the dialog is centred over the page, not over the sidebar */
+@media (min-width: 900px) {
+  .ar-scrim {
+    padding-left: 264px;
   }
 }
