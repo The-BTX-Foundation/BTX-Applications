@@ -30,8 +30,25 @@ function OwnerMark({ o }: { o: Owner }) {
 
 // One checklist row.
 function Row({ r }: { r: ChecklistRow }) {
+  // The phone's one-line summary: owner, due date and how late or soon.
+  const phoneSub = [r.owner.label, r.due, r.rel?.text.toLowerCase()].filter(Boolean).join(' · ');
   return (
-    <div className="o-cl-row">
+    <div className={`o-cl-rw${r.state === 'late' ? ' late' : ''}`}>
+      <div className="o-cl-ph o-ph">
+        <span className={`o-cl-ck ${r.state}`} aria-label={r.state === 'done' ? 'Done' : r.state === 'late' ? 'Late' : 'To do'}>
+          {r.state === 'done' ? <OIcon name="check" size={16} /> : null}
+        </span>
+        <span className="o-cl-pt">
+          <b>{r.title}</b>
+          <span>{phoneSub}</span>
+          {r.action ? (
+            <Link href="/tasks" className={`o-btn ${r.action.kind}`}>
+              {r.action.label}
+            </Link>
+          ) : null}
+        </span>
+      </div>
+    <div className="o-cl-row o-lg">
       <span className={`o-cl-ck ${r.state}`} aria-label={r.state === 'done' ? 'Done' : r.state === 'late' ? 'Late' : 'To do'}>
         {r.state === 'done' ? <OIcon name="check" size={16} /> : r.state === 'late' ? '!' : null}
       </span>
@@ -60,6 +77,7 @@ function Row({ r }: { r: ChecklistRow }) {
           </Link>
         ) : null}
       </span>
+    </div>
     </div>
   );
 }
@@ -104,9 +122,20 @@ export function CycleView({ cycle }: { cycle: CycleOverview }) {
   const cl = MOCK_CHECKLIST;
   return (
     <>
-      <PageHeader title={cycle.title} sub={cycle.sub}>
-        <Link href="/scholarships/cycle/settings" className="o-btn s lg">
+      <PageHeader
+        title={cycle.title}
+        sub={
+          <>
+            <span className="o-lg">{cycle.sub}</span>
+            <span className="o-ph">{cycle.phoneSub}</span>
+          </>
+        }
+      >
+        <Link href="/scholarships/cycle/settings" className="o-btn s lg o-lg">
           Cycle settings
+        </Link>
+        <Link href="/scholarships/cycle/settings" className="o-sq o-ph" aria-label="Cycle settings">
+          <OIcon name="more" size={22} />
         </Link>
       </PageHeader>
 
@@ -115,9 +144,22 @@ export function CycleView({ cycle }: { cycle: CycleOverview }) {
           <h2 className="o-h2" id="cy-where">
             Where the cycle is
           </h2>
-          <span>Working schedule</span>
+          <span className="o-lg">Working schedule</span>
         </div>
-        <ol className="o-phases">
+        <div className="o-ph o-pstep">
+          <ol>
+            {cycle.phases.map((p, i) => (
+              <li key={p.n} className={p.state}>
+                {i > 0 ? <span className={`o-ps-line${cycle.phases[i - 1].state === 'done' ? ' on' : ''}`} /> : null}
+                <span className="o-ph-c">{p.state === 'done' ? <OIcon name="check" size={16} /> : p.n}</span>
+                <span className="o-ps-l">{p.short}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="o-ps-now">{cycle.nowLine}</p>
+          <p className="o-ps-next">{cycle.nextLine}</p>
+        </div>
+        <ol className="o-phases o-lg">
           {cycle.phases.map((p, i) => {
             const prev = cycle.phases[i - 1];
             return (
@@ -144,7 +186,7 @@ export function CycleView({ cycle }: { cycle: CycleOverview }) {
             <p>{`${cl.done} of ${cl.total} done, now ${cycle.nowLabel}`}</p>
           </div>
         </div>
-        <div className="o-cl-th" aria-hidden="true">
+        <div className="o-cl-th o-lg" aria-hidden="true">
           <span>Step</span>
           <span>Owner</span>
           <span>Due</span>

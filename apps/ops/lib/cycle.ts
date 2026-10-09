@@ -8,7 +8,7 @@ import { sessionClient } from './supabase-server';
 import { MOCK_CYCLE, MOCK_SCHEDULE } from '@/mock/cycle';
 import { MOCK_NOW } from '@/mock/applicants';
 
-export type Phase = { n: number; label: string; dates: string; state: 'done' | 'now' | 'up' };
+export type Phase = { n: number; label: string; short: string; dates: string; state: 'done' | 'now' | 'up' };
 
 export type CycleOverview = {
   title: string;
@@ -16,6 +16,10 @@ export type CycleOverview = {
   phases: Phase[];
   /** The label of the phase that is happening now ("Interviews"), for the checklist header. */
   nowLabel: string;
+  /** Phone only: the sub line ("Scholarships · Legacy · open · 18 applicants"), "Now: ..." and "Next: ..." lines. */
+  phoneSub: string;
+  nowLine: string;
+  nextLine: string;
   failed: boolean;
 };
 
@@ -46,13 +50,13 @@ function build(d: {
 }): CycleOverview {
   const range = (a: string | null, b: string | null) => (a && b ? `${shortDate(a)} - ${shortDate(b)}` : 'Not set');
   const one = (a: string | null) => (a ? dateOnlyLabel(a) : 'Not set');
-  const raw: { label: string; dates: string; start: string | null; end: string | null }[] = [
-    { label: 'Applications', dates: range(d.open, d.close), start: d.open, end: d.close },
-    { label: 'Interviews', dates: range(d.iStart, d.iEnd), start: d.iStart, end: d.iEnd },
-    { label: 'Scores due', dates: one(MOCK_SCHEDULE.scoresDue), start: d.iEnd, end: MOCK_SCHEDULE.scoresDue },
-    { label: 'Selection meeting', dates: one(MOCK_SCHEDULE.selectionMeeting), start: MOCK_SCHEDULE.scoresDue, end: MOCK_SCHEDULE.selectionMeeting },
-    { label: 'Award announced', dates: one(d.decision), start: MOCK_SCHEDULE.selectionMeeting, end: d.decision },
-    { label: 'Funds sent', dates: one(MOCK_SCHEDULE.fundsSent), start: d.decision, end: MOCK_SCHEDULE.fundsSent },
+  const raw: { label: string; short: string; dates: string; start: string | null; end: string | null }[] = [
+    { label: 'Applications', short: 'Apply', dates: range(d.open, d.close), start: d.open, end: d.close },
+    { label: 'Interviews', short: 'Interview', dates: range(d.iStart, d.iEnd), start: d.iStart, end: d.iEnd },
+    { label: 'Scores due', short: 'Scores', dates: one(MOCK_SCHEDULE.scoresDue), start: d.iEnd, end: MOCK_SCHEDULE.scoresDue },
+    { label: 'Selection meeting', short: 'Select', dates: one(MOCK_SCHEDULE.selectionMeeting), start: MOCK_SCHEDULE.scoresDue, end: MOCK_SCHEDULE.selectionMeeting },
+    { label: 'Award announced', short: 'Award', dates: one(d.decision), start: MOCK_SCHEDULE.selectionMeeting, end: d.decision },
+    { label: 'Funds sent', short: 'Funds', dates: one(MOCK_SCHEDULE.fundsSent), start: d.decision, end: MOCK_SCHEDULE.fundsSent },
   ];
   // The first phase that is not finished is "now" (only phases 1 and 2 show Done / Now words in the design).
   let nowSeen = false;
@@ -62,10 +66,22 @@ function build(d: {
       if (nowSeen) state = 'up';
       nowSeen = true;
     }
-    return { n: i + 1, label: r.label, dates: r.dates, state };
+    return { n: i + 1, label: r.label, short: r.short, dates: r.dates, state };
   });
   const now = phases.find((p) => p.state === 'now');
+  // The phone's two sentences: where the cycle is now (with the days left in that phase) and what follows.
+  const nowRaw = raw[phases.findIndex((p) => p.state === 'now')];
+  const left = nowRaw?.end ? Math.round((Date.parse(nowRaw.end) - Date.parse(d.today)) / 86_400_000) : null;
+  const nowLine = now ? `Now: ${now.label.toLowerCase()}${nowRaw?.end ? `, to ${dateOnlyLabel(nowRaw.end)}` : ''}${left !== null && left >= 0 ? ` (${left} day${left === 1 ? '' : 's'} left)` : ''}` : 'Not started';
+  const after = phases.filter((p) => p.state === 'up');
+  // the phone's wording: "scores due", "selection meeting", "award", "funds sent"
+  const word = (p: Phase) => (p.label === 'Award announced' ? 'award' : p.label.toLowerCase());
+  const phrase = (p: Phase) => `${word(p)} ${p.dates}`;
+  const nextLine = after.length ? `Next: ${after.slice(0, 4).map(phrase).join(', ')}` : '';
   return {
+    phoneSub: `Scholarships · ${(d.award ?? 'Scholarship').replace(/ Scholarship$/, '')} · ${d.status} · ${d.applicants} applicants`,
+    nowLine,
+    nextLine,
     title: d.title,
     sub: `${d.award ?? 'Scholarship'} · ${d.status} · ${d.applicants} applicants`,
     phases,
@@ -76,7 +92,7 @@ function build(d: {
 
 // Loads the overview for the published cycle (as the signed-in person; staff may read every cycle row).
 export async function loadCycle(opts: { forceError?: boolean } = {}): Promise<CycleOverview> {
-  const empty: CycleOverview = { title: '', sub: '', phases: [], nowLabel: '', failed: true };
+  const empty: CycleOverview = { title: '', sub: '', phases: [], nowLabel: '', phoneSub: '', nowLine: '', nextLine: '', failed: true };
   if (opts.forceError) return empty;
   if (!hasSupabaseEnv()) {
     const c = MOCK_CYCLE;
@@ -103,7 +119,7 @@ export async function loadCycle(opts: { forceError?: boolean } = {}): Promise<Cy
       .limit(1)
       .maybeSingle();
     if (error) throw error;
-    if (!c) return { title: 'No open cycle', sub: 'Nothing is published yet', phases: [], nowLabel: '', failed: false };
+    if (!c) return { title: 'No open cycle', sub: 'Nothing is published yet', phases: [], nowLabel: '', phoneSub: 'Nothing is published yet', nowLine: '', nextLine: '', failed: false };
     // RLS: staff may count submitted applications (applications_select_staff).
     const { count, error: e2 } = await client.from('applications').select('id', { count: 'exact', head: true }).eq('cycle_id', c.id).eq('status', 'submitted');
     if (e2) throw e2;

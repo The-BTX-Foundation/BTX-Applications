@@ -409,7 +409,7 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 8px;
 }
 .o-top-t h1 {
   font-size: 30px;
@@ -422,6 +422,9 @@ body {
   margin-top: 2px;
 }
 @media (min-width: 900px) {
+  .o-top {
+    gap: 16px;
+  }
   .o-top-t h1 {
     font-size: 32px;
     line-height: 35.2px;
@@ -1037,7 +1040,7 @@ body {
 }
 .o-si-in {
   height: 46px;
-  margin-top: 6px;
+  margin-top: 7px;
   border: 1px solid var(--ink);
   border-radius: 2px;
   background: var(--surface);
@@ -1099,6 +1102,7 @@ body {
   border-radius: 2px;
   font-size: 15px;
   font-weight: 700;
+  text-align: center;
 }
 .o-si-btn.code {
   margin-top: 20px;
@@ -1121,8 +1125,9 @@ body {
   cursor: pointer;
 }
 .o-si-foot {
-  width: 377px;
+  width: 420px;
   max-width: 100%;
+  box-sizing: border-box;
   margin-top: 22px;
   padding-left: 34px;
   font-size: 15px;
@@ -1133,7 +1138,7 @@ body {
   color: var(--muted);
 }
 .o-si.code .o-si-foot {
-  width: 352px;
+  padding-right: 34px;
 }
 
 /* ---------- Applicants ---------- */
@@ -1757,9 +1762,10 @@ body {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  padding: 14px 20px 11px;
-  border-bottom: 1px solid var(--line);
-  height: 51px;
+  padding: 14px 15px 0;
+}
+.o-ph2:not(.list) .o-h2 {
+  font-size: 20px;
 }
 .o-ph2 > span {
   font-size: 13px;
@@ -1769,7 +1775,8 @@ body {
   align-items: center;
   gap: 14px;
   height: 54px;
-  padding: 4px 20px;
+  padding: 4px 16px;
+  border-bottom: 1px solid var(--line);
 }
 .o-ph2.list p {
   font-size: 13px;
@@ -1820,12 +1827,29 @@ body {
   align-items: center;
   justify-content: center;
 }
-.o-phases li.done .o-ph-c {
+.o-phases li.done .o-ph-c,
+.o-pstep li.done .o-ph-c {
   background: var(--ink);
   color: var(--surface);
 }
-.o-phases li.now .o-ph-c {
+.o-phases li.now .o-ph-c,
+.o-pstep li.now .o-ph-c {
   background: var(--gold);
+}
+.o-cl-ck {
+  border-radius: 999px;
+  border: 2px solid var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.o-cl-ck.done {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.o-cl-ck.late {
+  border-color: var(--ink);
 }
 .o-ph-line {
   display: none;
@@ -1871,7 +1895,106 @@ body {
 .o-up {
   transform: rotate(180deg);
 }
+.o-pstep {
+  padding: 14px 16px 16px;
+}
+.o-pstep .o-ph-c {
+  border-radius: 999px;
+}
+.o-pstep ol {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+}
+.o-pstep li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.o-pstep .o-ph-c {
+  position: static;
+  margin: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  z-index: 1;
+}
+.o-ps-line {
+  position: absolute;
+  top: 13px;
+  right: 50%;
+  margin-right: 14px;
+  width: calc(100% - 28px);
+  height: 2px;
+  background: var(--line);
+}
+.o-ps-line.on {
+  background: var(--ink);
+}
+.o-ps-l {
+  font-size: 13px;
+  font-weight: 600;
+}
+.o-ps-now {
+  margin-top: 18px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 21px;
+}
+.o-ps-next {
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--muted);
+}
+.o-cl-rw {
+  border-bottom: 1px solid var(--line);
+}
+.o-cl-rw.late {
+  background: var(--gold-tint);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.o-cl-ph {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.o-cl-ph .o-cl-ck {
+  position: static;
+  margin: 0;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin-top: 0;
+}
+.o-cl-pt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.o-cl-pt b {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 21px;
+}
+.o-cl-pt > span {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--muted);
+}
+.o-cl-pt .o-btn {
+  margin-top: 10px;
+  height: 36px;
+}
+.o-cl-tg {
+  font-size: 13px;
+}
 @media (min-width: 900px) {
+  .o-cl-rw {
+    border-bottom: 0;
+  }
   .o-cy {
     flex-direction: row;
     gap: 0;
@@ -2006,6 +2129,11 @@ body {
   /* phases */
   .o-ph2 {
     height: 50px;
+    padding: 14px 20px 11px;
+    border-bottom: 1px solid var(--line);
+  }
+  .o-ph2:not(.list) .o-h2 {
+    font-size: 21px;
   }
   .o-phases {
     grid-template-columns: repeat(6, 121px);
@@ -2051,7 +2179,7 @@ body {
     padding-left: 54px;
     padding-right: 18px;
   }
-  .o-cl-row {
+  .o-cl-rw .o-cl-row {
     display: grid;
     position: relative;
     height: 38.5px;

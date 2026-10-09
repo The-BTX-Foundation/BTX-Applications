@@ -109,6 +109,13 @@ const PATHS = {
       <path d="M6.8 10.2l2.2 2.2 4.2-4.4" />
     </>
   ),
+  more: (
+    <>
+      <circle cx="4.5" cy="10" r="1.1" fill="currentColor" />
+      <circle cx="10" cy="10" r="1.1" fill="currentColor" />
+      <circle cx="15.5" cy="10" r="1.1" fill="currentColor" />
+    </>
+  ),
   send: <path d="M10 16V4.5M5 9.5l5-5 5 5" />,
   refresh: (
     <>
