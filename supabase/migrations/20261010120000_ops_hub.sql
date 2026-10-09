@@ -174,6 +174,11 @@ create table public.budget_quarter_plans (
   submitted_at timestamptz,
   decided_by   uuid references public.staff_profiles (user_id) on delete set null,
   decided_at   timestamptz,
+  -- How the plan was just before the last decision (for undo_budget_decision).
+  prev_status       text check (prev_status in ('draft', 'awaiting_approval', 'declined')),
+  prev_submitted_by uuid references public.staff_profiles (user_id) on delete set null,
+  prev_submitted_at timestamptz,
+  prev_decline_note text check (char_length(prev_decline_note) <= 2000),
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   constraint budget_quarter_plans_one_per_quarter unique (year, quarter),
@@ -1068,27 +1073,56 @@ $$;
 revoke all on function public.open_direct_channel(uuid) from public, anon;
 grant execute on function public.open_direct_channel(uuid) to authenticated, service_role;
 
--- When a quarter plan is approved or declined, records who decided and when;
--- moving it back to draft / awaiting approval clears that. Submitting stamps
--- who sent it for approval.
+-- Status changes on a quarter plan:
+--  * approved / declined: records who decided and when, and keeps the plan's
+--    status, submitter, submit time and decline note from just before the
+--    decision (prev_*), so undo_budget_decision() can put them back.
+--  * a real submit (to awaiting_approval from draft, or from declined when the
+--    drafter sends it again): stamps who sent it and when.
+--  * approved -> anything else is refused: taking an approval back goes
+--    through undo_budget_decision() only.
+--  * during undo_budget_decision() (transaction-local setting
+--    btx.budget_undo = the plan id) nothing is stamped: the function writes
+--    the restored values itself.
 create function public.budget_plan_stamp()
 returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
-  if new.status is distinct from old.status then
-    if new.status in ('approved', 'declined') then
-      new.decided_by := auth.uid();
-      new.decided_at := now();
-    else
-      new.decided_by := null;
-      new.decided_at := null;
-    end if;
-    if new.status = 'awaiting_approval' then
-      new.submitted_by := auth.uid();
-      new.submitted_at := now();
-    end if;
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+
+  -- The undo function restores the old values itself; stamp nothing.
+  if current_setting('btx.budget_undo', true) = old.id::text then
+    return new;
+  end if;
+
+  if old.status = 'approved' then
+    raise exception 'use_undo_budget_decision' using errcode = 'P0001';
+  end if;
+
+  if new.status in ('approved', 'declined') then
+    new.prev_status       := old.status;
+    new.prev_submitted_by := old.submitted_by;
+    new.prev_submitted_at := old.submitted_at;
+    new.prev_decline_note := old.decline_note;
+    new.decided_by := auth.uid();
+    new.decided_at := now();
+    return new;
+  end if;
+
+  -- Draft or a resubmission: the decision (if any) no longer applies.
+  new.decided_by := null;
+  new.decided_at := null;
+  new.prev_status := null;
+  new.prev_submitted_by := null;
+  new.prev_submitted_at := null;
+  new.prev_decline_note := null;
+  if new.status = 'awaiting_approval' then
+    new.submitted_by := auth.uid();
+    new.submitted_at := now();
   end if;
   return new;
 end;
@@ -1098,6 +1132,62 @@ revoke all on function public.budget_plan_stamp() from public, anon, authenticat
 
 create trigger budget_quarter_plans_stamp before update on public.budget_quarter_plans
   for each row execute function public.budget_plan_stamp();
+
+-- Takes back an approval or a decline: the plan returns exactly to how it was
+-- before the decision (status, submitter, submit time, decline note) and the
+-- decision stamp is cleared. Only the person who decided, or an admin, may
+-- undo. No time limit (the Budget page has none).
+-- Security definer so it can write the restored submitter, which the trigger
+-- would otherwise overwrite; it checks the caller's role itself.
+-- Errors: not_found, not_decided, not_allowed.
+create function public.undo_budget_decision(p_plan_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_plan public.budget_quarter_plans%rowtype;
+begin
+  -- Role check: admin or board only.
+  if coalesce(public.app_role() in ('admin', 'board'), false) is not true then
+    raise exception 'not_allowed' using errcode = '42501';
+  end if;
+
+  select * into v_plan from public.budget_quarter_plans where id = p_plan_id for update;
+  if not found then
+    raise exception 'not_found' using errcode = 'P0002';
+  end if;
+  if v_plan.status not in ('approved', 'declined') then
+    raise exception 'not_decided' using errcode = 'P0001';
+  end if;
+  -- Only the decider, or an admin.
+  if v_plan.decided_by is distinct from auth.uid() and public.app_role() <> 'admin' then
+    raise exception 'not_allowed' using errcode = '42501';
+  end if;
+
+  -- Tell the trigger this is an undo of this plan (until the transaction ends).
+  perform set_config('btx.budget_undo', p_plan_id::text, true);
+
+  update public.budget_quarter_plans
+     set status            = coalesce(v_plan.prev_status, 'awaiting_approval'),
+         submitted_by      = v_plan.prev_submitted_by,
+         submitted_at      = v_plan.prev_submitted_at,
+         decline_note      = v_plan.prev_decline_note,
+         decided_by        = null,
+         decided_at        = null,
+         prev_status       = null,
+         prev_submitted_by = null,
+         prev_submitted_at = null,
+         prev_decline_note = null
+   where id = p_plan_id;
+
+  perform set_config('btx.budget_undo', '', true);
+end;
+$$;
+
+revoke all on function public.undo_budget_decision(uuid) from public, anon;
+grant execute on function public.undo_budget_decision(uuid) to authenticated, service_role;
 
 -- Keeps completed_at / completed_by in step with a task's status, so ticking
 -- the circle is a plain status update.

@@ -94,8 +94,13 @@ interviewers publish"). Reviewers never see other people's scores.
   one step ("Nobody logs it twice").
 - `mark_award_funds_sent(award, date)`: ticks "Funds sent", sets the paid date and logs the amount under that year's
   Scholarships category, in one step. Refuses a second payment.
+- `undo_budget_decision(p_plan_id)`: takes back an approval or a decline. The plan returns exactly to how it was
+  before the decision (status, who sent it and when, decline note) and the decision stamp is cleared. Only the person
+  who decided, or an admin. No time limit. Errors: `not_found`, `not_decided`, `not_allowed`. An approval can't be
+  taken back with a plain update (`use_undo_budget_decision`); a declined plan sent again by its drafter is a real
+  resubmission and is stamped with the new sender and time.
 - Triggers: scores are checked and weighted automatically; approving or declining a quarter plan records who and
-  when; ticking a task records who and when; recording an award creates its five steps.
+  when (and keeps the previous state for undo); ticking a task records who and when; recording an award creates its five steps.
 
 ## Seeded rows
 
@@ -125,7 +130,7 @@ the 2021 fundraisers; programs otherwise) and, where it fits, a program (MS-001 
 - Every statement and every PL/pgSQL body parses with the Postgres 17 parser (`@libpg-query/parser` 17.8.0): 193
   statements, 12 PL/pgSQL bodies, 0 errors.
 - Dry run on a local Postgres 17 (PGlite) with a stand-in for Supabase's `auth` and `storage`, the exact 24 live
-  milestone names and the live task counts: the fresh start and then this change both applied, and 47 of 47
+  milestone names and the live task counts: the fresh start and then this change both applied, and 57 of 57
   role checks passed (the same checks as below, plus chat, money and award flows).
 - Not run against the real project (that is the apply step).
 
