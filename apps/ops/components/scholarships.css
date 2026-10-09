@@ -322,22 +322,24 @@
 .s-dlg {
   max-width: 100%;
   background: var(--surface);
-  padding: 28px;
+  padding: 27px 28px 24px;
+  border: 1px solid var(--line);
+  transform: translateY(-40px);
 }
 .s-dlg h2 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 28px;
 }
 .s-dlg p {
-  margin-top: 16px;
+  margin-top: 14px;
   font-size: 15px;
   line-height: 21px;
 }
 .s-dlg-b {
   display: flex;
   gap: 10px;
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 /* ---- Scoring ---- */
@@ -788,7 +790,8 @@
     font-size: 15px;
     line-height: 21.8px;
   }
-  .s-pn {
+  .s-pnl {
+    display: block;
     margin: 16px 20px 0;
     font-size: 14px;
     font-weight: 700;
@@ -838,7 +841,7 @@
   overflow: hidden;
 }
 .s-aw > div {
-  padding: 9.6px 14px 14px;
+  padding: 11.6px 14px 12px;
 }
 .s-aw > div.opt {
   background: var(--gold-tint);
@@ -1228,6 +1231,7 @@
 }
 .s-chipsel span {
   margin-right: 1px;
+  white-space: nowrap;
 }
 .s-chipsel select {
   position: absolute;
@@ -1242,13 +1246,23 @@
   gap: 10px;
 }
 .s-awc {
-  padding: 12px 14px 0;
+  padding: 12px 14px 16px;
 }
 .s-awc .t {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 44px;
+}
+.s-awc .t > span:not(.s-ring) {
+  flex: 1;
+  min-width: 0;
+}
+.s-awc .t b,
+.s-awc .t > span > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .s-awc .t b {
   display: block;
@@ -1258,6 +1272,9 @@
 }
 .s-awc .t strong {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
 }
@@ -1290,7 +1307,7 @@
   white-space: nowrap;
 }
 .s-awa {
-  padding: 12px 14px 14px;
+  padding: 12px 14px 16px;
 }
 .s-awa > b {
   display: block;
@@ -1344,7 +1361,7 @@
   .s-ath,
   .s-atr {
     display: grid;
-    grid-template-columns: 138px 152px 66px 66px 94px 94px 1fr;
+    grid-template-columns: 138px 150px 68px 66px 94px 94px 1fr;
     column-gap: 0;
     align-items: center;
     padding: 0 20px;
@@ -1419,6 +1436,11 @@
   }
   .s-tot b {
     font-weight: 700;
+  }
+  .s-tot span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .s-dh {
     height: 108px;

@@ -233,7 +233,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
               <blockquote>{q.text}</blockquote>
             </div>
           ))}
-          <label className="s-pn" htmlFor="s-private">
+          <label className="s-pnl" htmlFor="s-private">
             Your private notes
           </label>
           <textarea
@@ -294,7 +294,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
 
       {confirm ? (
         <Dialog title={`Publish your score for ${sheet.code} ${sheet.initials}?`} onClose={() => setConfirm(false)}>
-          <p>{sheet.otherPublished ? `${sheet.otherName.split(' ')[0]} has published, so you'll both see both scores.` : 'Your score stays private until both interviewers publish.'}</p>
+          <p>{sheet.otherPublished ? `${sheet.otherName.split(' ')[0]} has published, so you’ll both see both scores.` : 'Your score stays private until both interviewers publish.'}</p>
           <div className="s-dlg-b">
             <button type="button" className="o-btn p lg" onClick={publish}>
               Publish score

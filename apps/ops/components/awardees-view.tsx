@@ -210,7 +210,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                   </span>
                   <span>
                     <i>Accepted</i>
-                    <b>{r.cells.waiting ? `${r.cells.accepted[0]} ${r.cells.accepted[1]}` : r.cells.accepted[1]}</b>
+                    <b>{r.cells.waiting ? (r.cells.accepted[1].startsWith('Since') ? r.cells.accepted[1] : `${r.cells.accepted[0]} ${r.cells.accepted[1]}`) : r.cells.accepted[1]}</b>
                   </span>
                   <span>
                     <i>Payment</i>
