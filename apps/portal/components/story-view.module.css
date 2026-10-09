@@ -1,0 +1,119 @@
+/* Photo and story (drafts story.html / story-phone.html). Phone first; laptop from 1024px. */
+.wrap {
+  min-width: 0;
+}
+.title {
+  font-size: 32px;
+  line-height: 1.08;
+}
+.grid {
+  display: block;
+}
+.pk {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+.ph {
+  width: 112px;
+  height: 140px;
+  object-fit: cover;
+  border: 1px solid var(--ink);
+  flex: none;
+}
+.phEmpty {
+  background: var(--bg);
+  border-style: dashed;
+}
+.pkText b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.pkText span {
+  display: block;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.replace {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 16px;
+  min-height: 44px;
+  text-align: left;
+}
+.ta {
+  height: 120px;
+  resize: none;
+}
+.ta:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.ct {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 15px;
+}
+.ct b {
+  font-weight: 600;
+}
+.overCount {
+  text-decoration: underline;
+}
+.consent {
+  margin-top: 16px;
+}
+.actions {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .wrap {
+    margin: 22px 0 0;
+  }
+  .title {
+    font-size: 56px;
+    line-height: 1.05;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 500px 700px;
+    gap: 64px;
+    margin-top: 36px;
+    align-items: start;
+  }
+  .grid > div {
+    margin-top: 0 !important;
+  }
+  .ph {
+    width: 136px;
+    height: 170px;
+  }
+  .ta {
+    height: 168px;
+  }
+  .ct :global(.mu) {
+    visibility: hidden;
+  }
+  .wrap > p:nth-of-type(1) {
+    font-size: 18px;
+    line-height: 1.55;
+    margin-top: 12px;
+  }
+  .consent {
+    margin-top: 24px;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 40px;
+    font-size: 15px;
+  }
+}

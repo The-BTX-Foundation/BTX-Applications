@@ -60,6 +60,24 @@ const PATHS = {
       <path d="M3 5.5l7 5.5 7-5.5" />
     </>
   ),
+  clock: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6v4.2l2.8 1.8" />
+    </>
+  ),
+  video: (
+    <>
+      <rect x="2.5" y="5.5" width="10.5" height="9" rx="1.5" />
+      <path d="M13 9l4.5-2.5v7L13 11" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="4.5" width="14" height="12.5" rx="2" />
+      <path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -11,3 +11,6 @@ export const TEST_EMAILS: string[] = (process.env.NEXT_PUBLIC_PORTAL_TEST_EMAILS
 
 /** BTX's LinkedIn page. */
 export const LINKEDIN_URL = 'https://www.linkedin.com/company/thebtxfoundation/';
+
+/** Where "Read the guides" points (BTX's website until the guides have their own page). */
+export const GUIDES_URL = process.env.NEXT_PUBLIC_GUIDES_URL || 'https://thebtxfoundation.org';

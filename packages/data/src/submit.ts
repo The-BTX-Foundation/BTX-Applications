@@ -4,7 +4,7 @@ import type { BtxClient } from './client';
 
 export type SubmitResult =
   | { ok: true; code: string }
-  | { ok: false; kind: 'cycle_closed' | 'missing_files' | 'not_agreed' | 'not_found' | 'network' | 'unknown' }
+  | { ok: false; kind: 'terpmail_required' | 'cycle_closed' | 'missing_files' | 'not_agreed' | 'not_found' | 'network' | 'unknown' }
   | { ok: false; kind: 'missing_answers'; columns: string[] };
 
 export async function submitApplication(client: BtxClient, applicationId: string): Promise<SubmitResult> {
@@ -12,6 +12,7 @@ export async function submitApplication(client: BtxClient, applicationId: string
   if (!error) return { ok: true, code: data };
   const msg = error.message ?? '';
   if (msg.startsWith('missing_answers:')) return { ok: false, kind: 'missing_answers', columns: msg.slice(16).split(',').map((c) => c.trim()) };
+  if (msg.includes('terpmail_required')) return { ok: false, kind: 'terpmail_required' };
   for (const kind of ['cycle_closed', 'missing_files', 'not_agreed', 'not_found'] as const) {
     if (msg.includes(kind)) return { ok: false, kind };
   }
