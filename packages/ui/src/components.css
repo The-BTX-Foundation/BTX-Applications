@@ -460,6 +460,18 @@ a {
   margin-top: 2px;
 }
 
+/* ---------- load error ---------- */
+.er-t {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 6px;
+  font-weight: 400;
+}
+.er-c .er-btn {
+  width: 100%;
+  margin-top: 24px;
+}
+
 /* ---------- gold diamond list ---------- */
 .ed {
   list-style: none;
@@ -747,6 +759,14 @@ a {
 
   .pm {
     padding: 0;
+  }
+  .er-c {
+    width: 720px;
+    max-width: calc(100% - 96px);
+    margin: 48px 0 0 48px;
+  }
+  .er-c .er-btn {
+    width: auto;
   }
 
   .wiz {

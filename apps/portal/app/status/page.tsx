@@ -1,5 +1,6 @@
 // The status page after submitting. `?demo=1` draws the draft's sample in mock mode.
 import type { Metadata } from 'next';
+import { ApplyLoadError } from '@/components/load-error-pages';
 import { StatusView } from '@/components/status-view';
 import { loadSubmitted } from '@/lib/apply';
 import { MOCK_VIEW } from '@/lib/cycle';
@@ -7,8 +8,10 @@ import { easternDate } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
-export default async function StatusPage() {
-  const d = await loadSubmitted();
+export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  const d = await loadSubmitted(demo);
+  if (d && d.failed) return <ApplyLoadError status />;
   // mock mode: the draft's sample (Ebony Coleman, submitted Sat Sep 12 at 4:52 PM Eastern)
   if (!d) {
     return (
