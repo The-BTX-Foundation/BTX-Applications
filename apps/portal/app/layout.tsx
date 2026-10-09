@@ -21,7 +21,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${googleSansFlex.variable} ${googleSansCode.variable}`}>
-      <body>{children}</body>
+      <body>
+        <a href="#main" className="skip">
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

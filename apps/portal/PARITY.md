@@ -1,0 +1,52 @@
+# Portal parity sheet
+
+One row per route and state: the Figma frame(s), the screenshot pair, and how far the built page is from the draft the frame was made from.
+
+- **Figma file:** BTX Apps (`byg3AToqjCajJKPI88DkOz`), page "Scholarship Portal (applicants)". Frame IDs are from `apps/design/figma-frames.md`.
+- **How the diff is measured:** the app (production build, mock mode, Google Sans) is screenshotted at 1440x900 and 390x844 and compared with the matching draft rendered through `fontswap.mjs`. A pixel counts as different only when no draft pixel within 1px matches it to within 48/255 in every channel (the same measure as `figma-frames.md`).
+- **Screenshot pairs:** `~/BTX Foundation/apps/portal-build/parity/<id>-side.png` (draft | app | diff) and `<id>-phone-side.png`. Mock-mode review states are reached with `?demo=...` or `?preview=...` (they never run against the live database).
+- Numbers below are from the `portal/polish` build.
+
+| Route | State | Figma 1440 | Figma 390 | Screenshot pair | Diff 1440 | Diff 390 | Notes |
+|---|---|---|---|---|---|---|---|
+| `/` | open | [18:342](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=18-342) | [28:165](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=28-165) | `landing-side.png` / `landing-phone-side.png` | 0.04% | 0.25% |  |
+| `/ (before open)` | before open | [28:239](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=28-239) | [28:334](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=28-334) | `landing-soon-side.png` / `landing-soon-phone-side.png` | 0.03% | 0.65% | Phone sits 1-2 px high from "Who can apply" down. |
+| `/ (closed)` | closed | [18:511](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=18-511) | [28:86](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=28-86) | `landing-closed-side.png` / `landing-closed-phone-side.png` | 0.03% | 0.34% |  |
+| `/sign-in` | code sent (laptop) / first visit (phone) | [18:689](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=18-689) | [29:2](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-2) | `signin-side.png` / `signin-phone-side.png` | 2.21% | 0.01% | Laptop differs by the added line "Or use the link in the email." (email links until the template carries the code). |
+| `/sign-in` | wrong code | [29:26](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-26) | [29:72](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-72) | `signin-wrong-side.png` / `signin-wrong-phone-side.png` | 2.42% | 8.73% | Differs by the added link line. |
+| `/sign-in` | expired code | [28:554](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=28-554) | [28:599](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=28-599) | `signin-expired-side.png` / `signin-expired-phone-side.png` | 2.38% | 8.59% | Differs by the added link line. |
+| `/apply/basic-info` | one field with an error | [18:933](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=18-933) | [18:1082](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=18-1082) | `step1-side.png` / `step1-phone-side.png` | 0.25% | 0.16% |  |
+| `/apply/scholarship` | this fall's scholarship | [19:2](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-2) | [19:126](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-126) | `step2-side.png` / `step2-phone-side.png` | 0.22% | 0.17% |  |
+| `/apply/essay` | essay | [19:209](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-209) | [19:310](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-310) | `step3-side.png` / `step3-phone-side.png` | 1.67% | 1.08% | Essay paragraphs: a typed blank line is taller than the draft's 12px paragraph gap. |
+| `/apply/documents` | one to go (laptop) / uploading (phone) | [19:366](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-366) | [19:477](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-477) | `step4-side.png` / `step4-phone-side.png` | 0.26% | 0.24% |  |
+| `/apply/documents` | failed upload | [29:391](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-391) | [29:514](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-514) | `step4-failed-side.png` / `step4-failed-phone-side.png` | 0.24% | 0.26% |  |
+| `/apply/review` | review and submit | [19:761](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-761) | [19:900](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=19-900) | `step5-side.png` / `step5-phone-side.png` | 0.65% | 0.92% |  |
+| `/apply/review` | failed submit | [29:599](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-599) | [29:748](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-748) | `step5-failed-side.png` / `step5-failed-phone-side.png` | 0.35% | 0.54% |  |
+| `/status` | submitted, waiting | [20:2](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=20-2) | [29:335](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=29-335) | `status-side.png` / `status-phone-side.png` | 0.02% | 0.04% |  |
+| `/sign-in` | stress | [68:1574](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1574) | [68:1613](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1613) | `signin-stress-side.png` / `signin-stress-phone-side.png` | 2.26% | 0.01% | Laptop: added link line. |
+| `/sign-in` | stress, wrong code | [68:1637](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1637) | [68:1683](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1683) | `signin-wrong-stress-side.png` / `signin-wrong-stress-phone-side.png` | 2.46% | 8.73% | Added link line. |
+| `/sign-in` | stress, expired code | [68:1728](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1728) | [68:1773](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1773) | `signin-expired-stress-side.png` / `signin-expired-stress-phone-side.png` | 2.43% | 8.59% | Added link line. |
+| `/apply/basic-info` | stress | [68:1819](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1819) | [68:1968](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-1968) | `step1-stress-side.png` / `step1-stress-phone-side.png` | 0.59% | 0.18% |  |
+| `/apply/scholarship` | stress | [68:2215](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2215) | none drawn | `step2-stress-side.png` | 0.22% | - | The drafts have no phone stress frame. |
+| `/apply/essay` | stress (3,000 characters) | [68:2340](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2340) | [68:2447](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2447) | `step3-stress-side.png` / `step3-stress-phone-side.png` | 1.29% | 0.19% | The draft counts "3,000 of 3,000 characters"; the app counts words (544 of 500) and shows the over-limit message. Needs Dominick's decision (see below). |
+| `/apply/documents` | stress | [68:2509](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2509) | [68:2647](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2647) | `step4-stress-side.png` / `step4-stress-phone-side.png` | 0.22% | 0.20% |  |
+| `/apply/documents` | stress, failed upload | [68:2742](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2742) | [68:2885](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2885) | `step4-failed-stress-side.png` / `step4-failed-stress-phone-side.png` | 0.41% | 0.53% |  |
+| `/apply/review` | stress | [68:2990](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-2990) | [68:3130](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-3130) | `step5-stress-side.png` / `step5-stress-phone-side.png` | 0.61% | 0.79% | Essay row says "N words"; the draft says "3,000 characters". |
+| `/apply/review` | stress, failed submit | [68:3237](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-3237) | [68:3387](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-3387) | `step5-failed-stress-side.png` / `step5-failed-stress-phone-side.png` | 0.32% | 0.55% |  |
+| `/status` | stress | [68:3656](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=68-3656) | none drawn | `status-stress-side.png` | 0.02% | - | No phone stress frame in the drafts. |
+| `/ (before open)` | stress, after Email me | [209:301](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=209-301) | [209:394](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=209-394) | `soon-after-stress-side.png` / `soon-after-stress-phone-side.png` | 0.66% | 0.67% |  |
+| `/` | load error | [59:1378](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=59-1378) | [59:1400](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=59-1400) | `landing-error-side.png` / `landing-error-phone-side.png` | 0.01% | 0.01% |  |
+| `/apply/*` | load error | [59:1421](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=59-1421) | [59:1448](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=59-1448) | `apply-error-side.png` / `apply-error-phone-side.png` | 0.01% | 0.01% |  |
+| `/status` | load error | [59:1470](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=59-1470) | [59:1497](https://www.figma.com/design/byg3AToqjCajJKPI88DkOz?node-id=59-1497) | `status-error-side.png` / `status-error-phone-side.png` | 0.01% | 0.01% |  |
+
+## Not covered by a Figma frame
+
+- `/apply/start` (the "Opening your application" hand-off), `/auth/callback` (the email-link landing; failures go to `/sign-in?error=link`, which shows the sign-in email step with the expired-link message) and the confirmation email (`/email-preview` in mock mode) have no Figma frame.
+- The later status pages (interview booked, decision) are built after launch and are not part of this sheet.
+
+## Known differences from the drafts (and why)
+
+- **Sign-in code screens:** one added muted line, "Or use the link in the email." Supabase's default email carries a link, not a code, until custom SMTP lets the template change. Remove the line when the template carries the code.
+- **Essay:** the draft stress frame shows a 3,000-character counter; the app counts words against 500. See the decisions in the polish report.
+- **Essay text box:** typed blank lines between paragraphs are taller than the drafts' 12px paragraph gap.
+- **Inputs:** long values are clipped at the field edge (as the stress frames draw them), not shortened with an ellipsis.

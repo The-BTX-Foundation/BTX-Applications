@@ -10,3 +10,4 @@ export { Checkbox, Field, SelectField, Segmented, TextField } from './field';
 export { ErrorIcon, Icon, type IconName } from './icons';
 export { StepProgress, StepRail, type Step } from './steps';
 export { HELP_EMAIL, TopBar } from './top-bar';
+export { LoadError } from './load-error';

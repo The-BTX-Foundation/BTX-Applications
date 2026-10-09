@@ -3,7 +3,7 @@
 // them in). In mock mode (no Supabase env) the view is the Fall 2026 example from the drafts, and `?preview=` picks
 // which landing to draw. In live mode the view comes from the published cycle row.
 import { createAnonClient } from '@btx/data/server';
-import { cycleVariant, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
+import { cycleVariant, fetchPublishedCycle, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
 import { PLACEHOLDER, daysBetween, easternDate, easternTime, formatMoney, longDay, shortDay } from './format';
 
 export type CycleView = {
@@ -21,6 +21,9 @@ export type CycleView = {
   /** "Oct" style month for the closed landing, or "[month]". */
   nextMonth: string;
   requirements: string[];
+  /** The essay prompt and how the essay is used, or null when not set. */
+  essayPrompt: string | null;
+  essayUse: string | null;
   /** "30 minutes", or "[time]" */
   codeLifetime: string;
   /** Inputs for the dates drawing (all "YYYY-MM-DD"), or null when the dates are not all set. */
@@ -47,6 +50,8 @@ const MOCK: CycleView = {
   deadlineTime: PLACEHOLDER.time,
   nextMonth: 'October',
   requirements: [],
+  essayPrompt: null,
+  essayUse: null,
   codeLifetime: PLACEHOLDER.time,
   drawing: {
     opens: '2026-08-17',
@@ -59,7 +64,7 @@ const MOCK: CycleView = {
 };
 
 // Turns a cycle row into the view.
-function toView(c: Cycle): CycleView {
+export function toView(c: Cycle): CycleView {
   const opens = c.opens_at ? easternDate(c.opens_at) : null;
   const apply = c.closes_at ? easternDate(c.closes_at) : null;
   const complete = opens && apply && c.interview_start && c.interview_end && c.decision_date;
@@ -72,6 +77,8 @@ function toView(c: Cycle): CycleView {
     applyByLong: longDay(apply),
     deadlineTime: easternTime(c.closes_at),
     nextMonth: c.next_cycle_month ?? PLACEHOLDER.month,
+    essayPrompt: c.essay_prompt,
+    essayUse: c.essay_use,
     requirements: Array.isArray(c.requirements) ? c.requirements.filter((r): r is string => typeof r === 'string') : [],
     codeLifetime: c.code_lifetime_minutes ? `${c.code_lifetime_minutes} minutes` : PLACEHOLDER.time,
     drawing: complete
@@ -88,8 +95,9 @@ function toView(c: Cycle): CycleView {
 }
 
 // Loads which landing to show and the cycle's settings. `preview` only works in mock mode.
-export async function loadLanding(preview?: string): Promise<Landing> {
+export async function loadLanding(preview?: string): Promise<Landing | { failed: true }> {
   if (getAuthMode() === 'mock') {
+    if (preview === 'error') return { failed: true };
     const variant: CycleVariant = preview === 'soon' ? 'before-open' : preview === 'closed' ? 'closed' : 'open';
     const view =
       variant === 'before-open'
@@ -97,7 +105,8 @@ export async function loadLanding(preview?: string): Promise<Landing> {
         : MOCK;
     return { variant, view };
   }
-  const cycle = await getPublishedCycle(createAnonClient());
+  const { cycle, failed } = await fetchPublishedCycle(createAnonClient());
+  if (failed) return { failed: true };
   return {
     variant: cycleVariant(cycle),
     view: cycle ? toView(cycle) : { ...MOCK, id: null, term: null, awardName: null, amount: PLACEHOLDER.amount, opensLong: PLACEHOLDER.date, applyByLong: PLACEHOLDER.date, nextMonth: PLACEHOLDER.month, drawing: null },
@@ -138,3 +147,6 @@ export async function loadCodeLifetime(): Promise<{ text: string; minutes: numbe
   const minutes = cycle?.code_lifetime_minutes ?? null;
   return { text: minutes ? `${minutes} minutes` : PLACEHOLDER.time, minutes: minutes ?? 60 };
 }
+
+// The example cycle used by the mock mode.
+export const MOCK_VIEW = MOCK;

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { BottomBar, ButtonLink, DatesDrawing, Icon, TopBar } from '@btx/ui';
 import type { CycleVariant } from '@btx/data';
 import { drawingProps, type CycleView } from '@/lib/cycle';
+import { LINKEDIN_URL } from '@/lib/config';
 import { PLACEHOLDER } from '@/lib/format';
 import { NotifyForm } from './notify-form';
 import s from './landing.module.css';
@@ -72,7 +73,7 @@ function WhileYouWait() {
           </svg>
           <span>@btxfoundation</span>
         </a>
-        <a href="#" aria-label="BTX Foundation on LinkedIn">
+        <a href={LINKEDIN_URL} aria-label="BTX Foundation on LinkedIn">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="var(--ink)"
@@ -87,7 +88,7 @@ function WhileYouWait() {
   );
 }
 
-export function Landing({ variant, view }: { variant: CycleVariant; view: CycleView }) {
+export function Landing({ variant, view, notified }: { variant: CycleVariant; view: CycleView; notified?: string }) {
   const name = view.awardName ?? NAME_FALLBACK;
   const season = view.term?.split(' ')[0].toLowerCase() ?? 'fall';
   const [l1, l2] = headlineLines(name);
@@ -99,7 +100,7 @@ export function Landing({ variant, view }: { variant: CycleVariant; view: CycleV
   return (
     <div className="app">
       <TopBar variant="signed-out" />
-      <main className={`pm ${root}`}>
+      <main id="main" className={`pm ${root}`}>
         <div className={s.top}>
           <div className={s.left}>
             <p className={s.status}>
@@ -170,9 +171,9 @@ export function Landing({ variant, view }: { variant: CycleVariant; view: CycleV
                 </p>
               </>
             ) : soon ? (
-              <NotifyForm kind="applications_open" label="Email me when applications open" when="applications open" />
+              <NotifyForm initialSaved={notified} kind="applications_open" label="Email me when applications open" when="applications open" />
             ) : (
-              <NotifyForm kind="next_cycle" label="Email me when the next cycle opens" when="the next cycle opens" />
+              <NotifyForm initialSaved={notified} kind="next_cycle" label="Email me when the next cycle opens" when="the next cycle opens" />
             )}
             {soon ? null : (
               <p className={s.sub}>
