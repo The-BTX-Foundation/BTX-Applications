@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@supabase/supabase-js": "^2" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./proxy": "./src/proxy.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2"
+  },
+  "peerDependencies": {
+    "next": "^16"
+  }
 }

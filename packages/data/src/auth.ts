@@ -9,13 +9,12 @@ import { getBrowserClient, hasSupabaseEnv } from './client';
 export type AuthMode = 'supabase' | 'mock';
 
 export type SendResult = { ok: true } | { ok: false; reason: 'rate-limited' | 'failed' };
-export type VerifyResult = { ok: true; email: string } | { ok: false; reason: 'wrong' | 'expired' | 'failed' };
+export type VerifyResult = { ok: true; email: string } | { ok: false; reason: 'wrong' | 'invalid-or-expired' | 'failed' };
 
 // Which backend sign-in uses right now.
 export function getAuthMode(): AuthMode {
   const flag = process.env.NEXT_PUBLIC_AUTH_MODE;
   if (flag === 'mock') return 'mock';
-  if (flag === 'supabase') return hasSupabaseEnv() ? 'supabase' : 'mock';
   return hasSupabaseEnv() ? 'supabase' : 'mock';
 }
 
@@ -44,6 +43,19 @@ export async function getSignedInEmail(): Promise<string | null> {
   return data.user?.email ?? null;
 }
 
+// Signs the person out of this browser.
+export async function signOut(): Promise<void> {
+  if (getAuthMode() === 'mock') {
+    try {
+      sessionStorage.removeItem(MOCK_KEY);
+    } catch {
+      // nothing to clear
+    }
+    return;
+  }
+  await getBrowserClient().auth.signOut();
+}
+
 // A short pause so the mock feels like a network call.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -58,10 +70,15 @@ export async function requestSignInCode(email: string): Promise<SendResult> {
     options: { shouldCreateUser: true },
   });
   if (!error) return { ok: true };
-  return { ok: false, reason: error.code === 'over_email_send_rate_limit' ? 'rate-limited' : 'failed' };
+  const limited =
+    error.code === 'over_email_send_rate_limit' || error.code === 'over_request_rate_limit' || error.status === 429;
+  return { ok: false, reason: limited ? 'rate-limited' : 'failed' };
 }
 
-// Checks the code the student typed. On success Supabase stores the session in the browser.
+// Checks the code the student typed. On success Supabase stores the session in cookies.
+// Supabase answers both "too old" and "never matched" with the same error (otp_expired, "Token has expired or is
+// invalid"), so that case comes back as 'invalid-or-expired'; the caller decides which screen to show from how long
+// ago the code was sent. The mock can tell them apart.
 export async function verifySignInCode(email: string, token: string): Promise<VerifyResult> {
   if (getAuthMode() === 'mock') {
     await pause(250);
@@ -69,13 +86,11 @@ export async function verifySignInCode(email: string, token: string): Promise<Ve
       rememberMockEmail(email);
       return { ok: true, email };
     }
-    if (token === '000000') return { ok: false, reason: 'expired' };
-    return { ok: false, reason: 'wrong' };
+    return { ok: false, reason: token === '000000' ? 'invalid-or-expired' : 'wrong' };
   }
   const { data, error } = await getBrowserClient().auth.verifyOtp({ email, token, type: 'email' });
   if (!error && data.user) return { ok: true, email: data.user.email ?? email };
-  // Supabase reports an old code as otp_expired; a code that never matched comes back as a plain auth error.
-  if (error?.code === 'otp_expired') return { ok: false, reason: 'expired' };
+  if (error?.code === 'otp_expired') return { ok: false, reason: 'invalid-or-expired' };
   if (error && error.status !== undefined && error.status >= 400 && error.status < 500) return { ok: false, reason: 'wrong' };
   return { ok: false, reason: 'failed' };
 }
