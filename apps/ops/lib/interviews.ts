@@ -142,7 +142,7 @@ function stress(): InterviewsData {
   const row = (r: Omit<UpcomingInterview, 'slotId' | 'videoUrl'>, i: number): UpcomingInterview => ({ ...r, slotId: `stress-${i}`, videoUrl: r.pair.length ? 'https://meet.example.org/btx/stress' : null });
   return {
     sub: 'Interviews end Fri Oct 9 · all on video',
-    endsLabel: 'ends Fri Oct 9',
+    endsLabel: 'ends Thu Dec 31',
     done: 116,
     total: 120,
     upcoming: [

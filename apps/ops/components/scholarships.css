@@ -253,6 +253,7 @@
   line-height: 22px;
 }
 .s-ivt-p {
+  min-height: 76px;
   flex: 1;
   min-width: 0;
   display: flex;
