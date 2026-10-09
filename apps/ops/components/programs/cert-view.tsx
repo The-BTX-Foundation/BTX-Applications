@@ -83,7 +83,7 @@ export function CertView({ data }: { data: CertData }) {
       </section>
 
       {/* phone: the four numbers */}
-      <div className="pg-stats o-ph">
+      <div className="pg-stats four o-ph">
         <div>
           <p>Pilot budget</p>
           <b>{data.plan.budget}</b>

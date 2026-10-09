@@ -36,6 +36,9 @@
   gap: 6px 10px;
   margin-bottom: 4px;
 }
+.pg-stats.four {
+  margin-bottom: 2px;
+}
 .pg-stats > div {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -245,7 +248,7 @@
   align-items: stretch;
 }
 .pg-sp-cnt {
-  padding: 0 14px 8px;
+  padding: 0 14px 10px;
   margin-top: -1px;
   font-size: 14px;
   color: var(--muted);
@@ -275,7 +278,7 @@
 }
 .pg-sp-t > span {
   font-size: 14px;
-  line-height: 20px;
+  line-height: 19.5px;
   color: var(--muted);
 }
 .pg-sp-ph {
@@ -302,7 +305,7 @@
 }
 .pg-how li > span > span {
   font-size: 14px;
-  line-height: 20px;
+  line-height: 19.5px;
   color: var(--muted);
 }
 .pg-num {
@@ -323,9 +326,10 @@
   border: 0;
 }
 .pg-how-sub {
-  padding: 2px 14px 10px;
+  padding: 0 14px 9px;
+  margin-top: -1px;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 19px;
   color: var(--muted);
 }
 @media (min-width: 900px) {
