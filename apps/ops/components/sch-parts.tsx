@@ -49,13 +49,13 @@ export function Dialog({ title, width = 460, onClose, children }: { title: strin
 
 // A progress ring for scoring: n of 6 criteria picked. Gold arc while a draft is open, ink when all six are in (Figma
 // "Progress ring", sizes 38 on the queue and 52 on the phone card).
-export function ScoreRing({ n, size }: { n: number; size: 38 | 52 }) {
-  const stroke = size === 38 ? 3.5 : 4.5;
+export function ScoreRing({ n, size, of = 6 }: { n: number; size: 38 | 44 | 52; of?: number }) {
+  const stroke = size === 38 ? 3.5 : size === 44 ? 4 : 4.5;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const half = size / 2;
   return (
-    <span className="s-ring" style={{ width: size, height: size, fontSize: size === 38 ? 12 : 13 }}>
+    <span className="s-ring" style={{ width: size, height: size, fontSize: size === 38 ? 12 : size === 44 ? 12 : 13 }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
         <circle cx={half} cy={half} r={r} fill="none" stroke="var(--line)" strokeWidth={stroke} />
         {n > 0 ? (
@@ -64,15 +64,15 @@ export function ScoreRing({ n, size }: { n: number; size: 38 | 52 }) {
             cy={half}
             r={r}
             fill="none"
-            stroke={n >= 6 ? 'var(--ink)' : 'var(--gold)'}
+            stroke={n >= of ? 'var(--ink)' : 'var(--gold)'}
             strokeWidth={stroke}
             strokeLinecap="round"
-            strokeDasharray={`${((c * n) / 6).toFixed(1)} ${c.toFixed(1)}`}
+            strokeDasharray={`${((c * n) / of).toFixed(1)} ${c.toFixed(1)}`}
             transform={`rotate(-90 ${half} ${half})`}
           />
         ) : null}
       </svg>
-      <b>{n}/6</b>
+      <b>{n}/{of}</b>
     </span>
   );
 }
