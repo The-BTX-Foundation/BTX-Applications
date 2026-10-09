@@ -3,7 +3,7 @@
 // them in). In mock mode (no Supabase env) the view is the Fall 2026 example from the drafts, and `?preview=` picks
 // which landing to draw. In live mode the view comes from the published cycle row.
 import { createAnonClient } from '@btx/data/server';
-import { cycleVariant, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
+import { cycleVariant, fetchPublishedCycle, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
 import { PLACEHOLDER, daysBetween, easternDate, easternTime, formatMoney, longDay, shortDay } from './format';
 
 export type CycleView = {
@@ -95,8 +95,9 @@ export function toView(c: Cycle): CycleView {
 }
 
 // Loads which landing to show and the cycle's settings. `preview` only works in mock mode.
-export async function loadLanding(preview?: string): Promise<Landing> {
+export async function loadLanding(preview?: string): Promise<Landing | { failed: true }> {
   if (getAuthMode() === 'mock') {
+    if (preview === 'error') return { failed: true };
     const variant: CycleVariant = preview === 'soon' ? 'before-open' : preview === 'closed' ? 'closed' : 'open';
     const view =
       variant === 'before-open'
@@ -104,7 +105,8 @@ export async function loadLanding(preview?: string): Promise<Landing> {
         : MOCK;
     return { variant, view };
   }
-  const cycle = await getPublishedCycle(createAnonClient());
+  const { cycle, failed } = await fetchPublishedCycle(createAnonClient());
+  if (failed) return { failed: true };
   return {
     variant: cycleVariant(cycle),
     view: cycle ? toView(cycle) : { ...MOCK, id: null, term: null, awardName: null, amount: PLACEHOLDER.amount, opensLong: PLACEHOLDER.date, applyByLong: PLACEHOLDER.date, nextMonth: PLACEHOLDER.month, drawing: null },

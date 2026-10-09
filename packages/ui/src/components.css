@@ -257,7 +257,7 @@ a {
   font: inherit;
   color: inherit;
   outline: none;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 .in-el::placeholder {
   color: var(--muted);
@@ -359,7 +359,7 @@ a {
 .sg.g2 button:nth-child(-n + 2) {
   border-top: 0;
 }
-/* gp = a 2 x 2 grid on phone only (four options that do not fit in one row), one joined row on laptop */
+/* gp = a 2 x 2 grid on phone (four options that do not fit in one row), one joined row on laptop */
 @media (max-width: 1023.98px) {
   .sg.gp {
     display: grid;
@@ -458,6 +458,18 @@ a {
   font-size: 16px;
   line-height: 1.5;
   margin-top: 2px;
+}
+
+/* ---------- load error ---------- */
+.er-t {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 6px;
+  font-weight: 400;
+}
+.er-c .er-btn {
+  width: 100%;
+  margin-top: 24px;
 }
 
 /* ---------- gold diamond list ---------- */
@@ -559,6 +571,9 @@ a {
   align-items: center;
   justify-content: space-between;
   padding: 0 12px 0 20px;
+}
+.top .brand {
+  min-height: 44px;
 }
 .top .brand img {
   height: 28px;
@@ -733,6 +748,9 @@ a {
     gap: 28px;
     font-size: 15px;
   }
+  .acct span {
+    white-space: nowrap;
+  }
   .acct {
     display: flex;
     align-items: center;
@@ -744,6 +762,14 @@ a {
 
   .pm {
     padding: 0;
+  }
+  .er-c {
+    width: 720px;
+    max-width: calc(100% - 96px);
+    margin: 48px 0 0 48px;
+  }
+  .er-c .er-btn {
+    width: auto;
   }
 
   .wiz {
@@ -958,5 +984,39 @@ a {
     width: 56px;
     height: 64px;
     font-size: 28px;
+  }
+}
+
+/* ---------- accessibility helpers ---------- */
+/* "Skip to main content": hidden until it takes keyboard focus. */
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -64px;
+  z-index: 100;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  padding: 12px 16px;
+  font-weight: 600;
+}
+.skip:focus {
+  top: 12px;
+}
+/* On a phone every tap target is at least 44px: a checkbox row's hit area grows past its drawn box. */
+@media (max-width: 1023.98px) {
+  .cr {
+    position: relative;
+  }
+  .cr::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -10px;
+    bottom: -10px;
+  }
+  .cr.cd::after {
+    top: 0;
+    bottom: 0;
   }
 }

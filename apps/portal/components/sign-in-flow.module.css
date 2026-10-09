@@ -86,6 +86,11 @@
   color: var(--muted);
   margin-top: 12px;
 }
+.ops :global(.lk) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
 .ops {
   margin-top: auto;
   padding-top: 4px;
@@ -164,6 +169,10 @@
   }
   .phoneNote {
     display: none;
+  }
+  .ops :global(.lk) {
+    display: inline;
+    min-height: 0;
   }
   .ops {
     margin-top: 24px;
