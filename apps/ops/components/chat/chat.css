@@ -1,5 +1,5 @@
 /* Board chat (prefix ch-). Numbers from the Figma "Board chat" laptop (1440 x 900) and phone (390 x 844) frames. */
-.ch {
+.ch-root {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -68,13 +68,15 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* column-reverse: the scroll starts at the newest message and stays there as messages are added */
+  display: flex;
+  flex-direction: column-reverse;
+}
+.ch-mi {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   gap: 12px;
-}
-.ch-msgs > :first-child {
-  margin-top: auto;
+  flex: none;
 }
 .ch-none {
   color: var(--muted);
@@ -172,12 +174,13 @@
   padding: 9px 13px;
   font-size: 17px;
   line-height: 22.5px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .ch-bub.bot {
   background: var(--surface);
   border-radius: 14px;
   padding: 11px 13px;
+  font-size: 15.6px;
   line-height: 21px;
 }
 .ch-bub b {
@@ -265,7 +268,7 @@
   justify-content: center;
 }
 .ch-go:disabled {
-  opacity: 0.45;
+  cursor: default;
 }
 .ch-err {
   position: absolute;
@@ -276,7 +279,7 @@
 }
 
 @media (min-width: 900px) {
-  .ch {
+  .ch-root {
     flex-direction: row;
     gap: 0;
     margin: -24px -32px -20px;
@@ -421,6 +424,7 @@
     max-width: 100%;
   }
   .ch-bub.bot {
+    font-size: 15px;
     background: transparent;
   }
   .ch-m.me {
@@ -485,5 +489,20 @@
   }
   .ch-pin-i {
     flex: none;
+  }
+}
+
+/* The load-error card on a phone: tighter, with a full-width button (the Figma error frame). */
+@media (max-width: 899px) {
+  .ch-errp {
+    margin-top: -5px;
+  }
+  .ch-errp .o-err {
+    padding: 20px;
+  }
+  .ch-errp .o-err .o-btn {
+    width: 100%;
+    height: 44px;
+    margin-top: 20px;
   }
 }
