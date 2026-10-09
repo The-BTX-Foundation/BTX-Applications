@@ -1,0 +1,419 @@
+/* Goals page. Numbers from the Figma "Goals" frames (laptop 34:1150, phone 34:506). Prefix gl-. */
+.gl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gl .o-top {
+  flex-wrap: wrap;
+}
+.gl .gl-d {
+  display: none;
+}
+.gl-acts {
+  display: contents;
+}
+.gl-edit-goals {
+  display: none;
+}
+.gl .gl-seg {
+  order: 3;
+  flex: 1 0 100%;
+  height: 46px;
+  padding: 0;
+  box-sizing: border-box;
+  margin-top: 1px;
+}
+.gl .gl-seg button {
+  flex: 1;
+  height: 42px;
+  font-size: 16px;
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+}
+.gl-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6.5px;
+}
+.gl-card,
+.gl-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-width: 0;
+}
+.gl-card {
+  padding: 7px 14px 0;
+}
+.gl-t {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+.gl-t h3 {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+  margin: 1px 0 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gl-st {
+  flex: none;
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 23px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gl-v {
+  line-height: 26px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 1px;
+}
+.gl-v b {
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.gl-u {
+  line-height: 17px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.gl-track {
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--wash);
+  overflow: hidden;
+}
+.gl-track span {
+  display: block;
+  width: calc(var(--pf) * 100%);
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink);
+}
+.gl-f {
+  font-size: 15px;
+  line-height: 19px;
+  padding: 5px 0 6px;
+  overflow-wrap: anywhere;
+}
+.gl-panel h2 {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 23px;
+}
+.gl-chart {
+  padding: 11px 14px 6px;
+}
+.gl-cols {
+  display: flex;
+  gap: 8px;
+  height: 50px;
+  align-items: flex-end;
+  margin-top: 3px;
+}
+.gl-col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 49px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+.gl-col b {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.gl-bar {
+  width: 100%;
+  height: calc(var(--n) * 8px);
+  min-height: 0;
+  flex: 0 1 auto;
+  background: var(--ink);
+  border-radius: 3px 3px 0 0;
+}
+.gl-col.next .gl-bar {
+  background: none;
+  border: 1px dashed var(--ink);
+  border-bottom: 0;
+  height: 12px;
+}
+.gl-lbls {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 15px;
+  color: var(--muted);
+  text-align: center;
+}
+.gl-lbls > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.gl .gl-m {
+  display: inline;
+}
+.gl p.gl-m {
+  display: block;
+}
+.gl-none {
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+/* phone load-error card (Figma 60:5914): tighter padding, full-width Try again */
+.gl-err {
+  margin-top: -6px;
+}
+.gl-err .o-err {
+  max-width: none;
+  padding: 20px 20px 20px;
+}
+.gl-err .o-err h2 {
+  margin-top: 12px;
+}
+.gl-err .o-err .o-btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 14px;
+}
+
+@media (min-width: 900px) {
+  .gl-err {
+    margin-top: 0;
+  }
+  .gl-err .o-err {
+    padding: 32px;
+  }
+  .gl-err .o-err h2 {
+    margin-top: 16px;
+  }
+  .gl-err .o-err .o-btn {
+    width: auto;
+    height: 38px;
+    margin-top: 16px;
+  }
+  /* the shell column only fills the window when something inside asks it to */
+  .o-col:has(.gl) {
+    flex: 1;
+  }
+  .gl-v {
+    line-height: 33px;
+  }
+  .gl {
+    gap: 14px;
+  }
+  .gl .o-top {
+    flex-wrap: nowrap;
+  }
+  .gl .gl-d {
+    display: inline;
+  }
+  .gl p.gl-d {
+    display: block;
+  }
+  .gl .gl-m,
+  .gl p.gl-m {
+    display: none;
+  }
+  .gl-acts {
+    display: flex;
+  }
+  .gl-edit-goals {
+    display: inline-flex;
+    padding: 0 15px;
+  }
+  .gl .gl-seg {
+    padding: 1px;
+    order: 0;
+    flex: none;
+    margin-top: 0;
+    height: 32px;
+  }
+  .gl .gl-seg button {
+    flex: none;
+    width: 60px;
+    height: 30px;
+    font-size: 14px;
+    padding-top: 6px;
+    justify-content: flex-start;
+    align-items: baseline;
+    justify-content: center;
+  }
+  .gl-cards {
+    flex-direction: row;
+    gap: 14px;
+  }
+  .gl-card {
+    flex: 1 1 0;
+    padding: 16px 18px 0;
+    height: 177px;
+    box-sizing: border-box;
+  }
+  .gl-t {
+    flex-direction: column;
+    gap: 0;
+    min-height: 48px;
+  }
+  .gl-st {
+    order: 0;
+    height: 21px;
+    font-size: 12px;
+    padding: 0 9px;
+  }
+  .gl-t h3 {
+    order: 1;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 19.5px;
+    margin: 8px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .gl-v {
+    margin-top: 10px;
+  }
+  .gl-v b {
+    font-size: 30px;
+    line-height: 33px;
+  }
+  .gl-track span {
+    width: calc(var(--f) * 100%);
+  }
+  .gl-track {
+    height: 10px;
+    margin-top: 12px;
+  }
+  .gl-f {
+    font-size: 14px;
+    line-height: 19.6px;
+    padding: 9px 0 0;
+  }
+  .gl-panel h2 {
+    font-size: 20px;
+    line-height: normal;
+  }
+  .gl-chart {
+    height: 257px;
+    box-sizing: border-box;
+    padding: 16px 20px 0;
+  }
+  .gl-cols {
+    gap: 12px;
+    height: 150px;
+    margin-top: 12px;
+    padding-bottom: 1px;
+    border-bottom: 1px solid var(--ink);
+  }
+  .gl-col {
+    height: 149px;
+    gap: 6px;
+  }
+  .gl-bar {
+    width: 46px;
+    height: calc(var(--n) * 22px);
+  }
+  .gl-col.next .gl-bar {
+    height: 22px;
+  }
+  .gl-lbls {
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .gl-yoy {
+    height: 166px;
+    box-sizing: border-box;
+  }
+  .gl-yph {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 14px 20px 11px;
+    border-bottom: 1px solid var(--line);
+    height: 50px;
+    box-sizing: border-box;
+  }
+  .gl-yph p {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .gl-yrow {
+    display: grid;
+    grid-template-columns: 220px repeat(3, minmax(0, 221.5px));
+    align-items: center;
+    height: 40px;
+    padding: 0 0 0 20px;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .gl-yrow > b {
+    font-weight: 700;
+  }
+  .gl-yh {
+    height: 34px;
+    border-top: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .gl-add {
+    justify-self: start;
+    height: 19px;
+    width: 69px;
+    text-align: left;
+    padding: 0 6px;
+    border: 1px dashed var(--muted);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .gl-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .gl-edit input {
+    width: 130px;
+    height: 30px;
+    box-sizing: border-box;
+    padding: 0 9px;
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    background: var(--surface);
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .gl-edit input::placeholder {
+    color: var(--muted);
+  }
+  .gl-edit button {
+    font-size: 13px;
+    text-decoration: underline;
+    color: var(--ink);
+  }
+}

@@ -1,0 +1,770 @@
+/* Tasks page (Figma "Tasks, laptop / phone"). Prefix tk2-. Laptop layout from 900px, phone below. */
+.tk2 {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+.tk2-sq {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.tk2-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  align-items: flex-start;
+}
+.tk2-seg {
+  width: 100%;
+  height: 46px;
+  background: var(--bg);
+}
+.tk2-seg button {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  align-items: center;
+  font-size: 16px;
+}
+.tk2-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 43px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 16px;
+  position: relative;
+}
+.tk2-chip > span {
+  color: var(--muted);
+}
+.tk2-chip i {
+  font-style: normal;
+}
+.tk2-chip select {
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0 18px 0 0;
+  margin-right: -18px;
+  field-sizing: content;
+  cursor: pointer;
+  outline: none;
+}
+.tk2-chip:focus-within {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.tk2-chip .o-i {
+  pointer-events: none;
+}
+.tk2-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.tk2-add input {
+  flex: 1 1 200px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  font: inherit;
+}
+.tk2-add select {
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--surface);
+  font: inherit;
+}
+.tk2-add .o-btn {
+  height: 38px;
+}
+
+/* the list */
+.tk2-tab {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 0;
+}
+.tk2-tg {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 14px 2px;
+  display: flex;
+  gap: 4px;
+  line-height: 16px;
+}
+.tk2-tg b {
+  color: var(--muted);
+}
+.tk2-scroll > div + div .tk2-tg {
+  border-top: 1px solid var(--line);
+}
+.tk2-row {
+  border-top: 1px solid var(--line);
+}
+.tk2-row:first-child,
+.tk2-tg + .tk2-row {
+  border-top: 0;
+}
+.tk2-main {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 8px 14px;
+  min-height: 58px;
+  cursor: pointer;
+}
+.tk2-lead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tk2-ck {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 2px solid var(--muted);
+  background: none;
+  flex: none;
+  padding: 0;
+}
+.tk2-ck:hover {
+  border-color: var(--ink);
+}
+.tk2-tt {
+  min-width: 0;
+}
+.tk2-tt b {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+}
+.tk2-ty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  line-height: 17px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.tk2-ty .o-i {
+  color: var(--ink);
+}
+.tk2-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: none;
+}
+.tk2-cm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.tk2-pd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  align-self: start;
+}
+.tk2-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tk2-pill.late {
+  background: var(--ink);
+  color: var(--surface);
+}
+.tk2-pdl {
+  line-height: 14px;
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tk2-act {
+  display: flex;
+  gap: 10px;
+  padding: 0 14px 12px 52px;
+}
+.tk2-act .o-btn {
+  flex: 1;
+  height: 44px;
+  font-size: 15px;
+}
+.tk2-all,
+.tk2-done {
+  display: flex;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+}
+.tk2-all {
+  padding: 8px 14px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tk2-done {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.tk2-done > span:first-child {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.tk2-dn {
+  color: var(--muted);
+}
+.tk2-done .o-i.up {
+  transform: rotate(180deg);
+}
+.tk2-dl {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px 12px;
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tk2-none {
+  padding: 24px 16px;
+  color: var(--muted);
+}
+.tk2-av {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.tk2-av.sm {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.tk2-av.none {
+  background: none;
+  color: var(--muted);
+  border: 1.5px dashed var(--muted);
+}
+
+/* details: phone shows them only after "Open", above the list */
+.tk2-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tk2-dt {
+  display: none;
+  order: -1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-width: 0;
+}
+.tk2-body.open .tk2-dt {
+  display: flex;
+  flex-direction: column;
+}
+.tk2-close {
+  float: right;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tk2-dt-empty {
+  padding: 20px;
+  color: var(--muted);
+}
+.tk2-dth {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.tk2-dty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 17px;
+}
+.tk2-dth h2 {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 30px;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.tk2-meta {
+  display: flex;
+  gap: 10px 12px;
+  margin-top: 14px;
+}
+.tk2-meta p {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tk2-meta p:last-child {
+  flex: none;
+  width: 138px;
+}
+.tk2-meta span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 15px;
+}
+.tk2-meta p:not(:last-child) b {
+  white-space: nowrap;
+}
+.tk2-meta b {
+  font-size: 14.3px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.tk2-dtb {
+  padding: 13px 20px 16px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.tk2-sum {
+  font-size: 16px;
+  line-height: 22px;
+}
+.tk2-sum span {
+  display: block;
+}
+.tk2-sum b {
+  font-weight: 700;
+}
+.tk2-bl {
+  margin-top: 10.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.tk2-bl p {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14.3px;
+  line-height: 21px;
+  margin-top: 8.25px;
+}
+.tk2-bl > div:first-child p {
+  margin-top: 0;
+}
+.tk2-bl b {
+  font-weight: 700;
+}
+.tk2-bt {
+  display: block;
+  height: 6px;
+  background: var(--wash);
+  margin-top: 2px;
+}
+.tk2-bt span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+.tk2-hint {
+  margin-top: 6px;
+  font-size: 13.4px;
+  line-height: 21px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tk2-dta {
+  display: flex;
+  gap: 10px;
+  margin-top: 10.5px;
+}
+.tk2-dta .o-btn:first-child {
+  flex: 0 0 200px;
+  padding: 0 12px;
+}
+.tk2-dta .o-btn.s {
+  flex: 1;
+}
+.tk2-cmh {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 11px 20px 0;
+  height: 34px;
+  flex: none;
+}
+.tk2-cmh b {
+  font-weight: 700;
+  color: var(--muted);
+}
+.tk2-cml {
+  flex: 1 0 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 3px 20px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tk2-cmt {
+  display: flex;
+  gap: 10px;
+}
+.tk2-cmt > div {
+  min-width: 0;
+  flex: 1;
+}
+.tk2-mh {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 14.3px;
+  line-height: 18px;
+}
+.tk2-mh b {
+  font-weight: 700;
+}
+.tk2-mh span {
+  font-size: 14px;
+  color: var(--muted);
+}
+.tk2-bub {
+  margin-top: 3px;
+  padding: 10px 14px;
+  background: var(--wash);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 15.2px;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+.tk2-cmp {
+  display: flex;
+  align-items: center;
+  margin: 8px 20px 20px;
+  height: 44px;
+  flex: none;
+  position: sticky;
+  bottom: 20px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: var(--surface);
+  padding: 0 6px 0 14px;
+}
+.tk2-cmp input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+}
+.tk2-cmp:focus-within {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.tk2-go {
+  width: 32px;
+  height: 32px;
+  background: var(--ink);
+  color: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+
+@media (max-width: 899.98px) {
+  .tk2-lg {
+    display: none !important;
+  }
+}
+@media (min-width: 900px) {
+  .tk2-ph {
+    display: none !important;
+  }
+  .tk2 {
+    gap: 14px;
+  }
+  .tk2-acts {
+    gap: 12px;
+    align-items: flex-end;
+    padding-bottom: 0;
+  }
+  .tk2-search {
+    width: 300px;
+  }
+  .tk2-bar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .tk2-seg {
+    width: auto;
+    height: 32px;
+  }
+  .tk2-seg button {
+    flex: none;
+    height: 30px;
+    font-size: 14px;
+    padding: 6px 12px 0;
+    gap: 4px;
+    align-items: baseline;
+    justify-content: flex-start;
+  }
+  .tk2-chip {
+    height: 34px;
+    font-size: 14px;
+    padding: 0 6px 0 12px;
+    margin-left: 8px;
+  }
+  .tk2-chip + .tk2-chip {
+    margin-left: 0;
+  }
+  .tk2-body {
+    display: grid;
+    grid-template-columns: minmax(0, 740px) 372px;
+    gap: 16px;
+    height: calc(100dvh - 164.2px);
+    min-height: 520px;
+  }
+  .tk2-tab {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .tk2-dt {
+    display: flex;
+    flex-direction: column;
+    order: 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .tk2-th,
+  .tk2-main {
+    grid-template-columns: 36px 256px 146px 116px 112px minmax(0, 1fr);
+    gap: 0;
+  }
+  .tk2-th {
+    display: grid;
+    flex: none;
+    height: 30px;
+    align-items: center;
+    padding-left: 20px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .tk2-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .tk2-tg {
+    height: 30px;
+    padding: 9px 20px 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .tk2-tg:not(:first-child),
+  .tk2-scroll > div + div .tk2-tg {
+    border-top: 1px solid var(--line);
+  }
+  .tk2-row {
+    border-top: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tk2-row.sel {
+    background: var(--gold-tint);
+    box-shadow: inset 3px 0 0 var(--gold);
+  }
+  /* the row is 52px with its 1px line (Figma pitch), the circle and icon sit 24px wide at the table's left padding */
+  .tk2-lead {
+    width: 24px;
+  }
+  .tk2-ck {
+    width: 24px;
+    height: 24px;
+  }
+  .tk2-main {
+    height: 51px;
+    min-height: 0;
+    padding: 0 0 0 20px;
+    align-items: center;
+  }
+  .tk2-tt {
+    padding-right: 12px;
+  }
+  .tk2-tt b {
+    font-size: 15.2px;
+    line-height: 19px;
+  }
+  .tk2-tt b span,
+  .tk2-ty {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tk2-ty {
+    display: flex;
+    flex-wrap: nowrap;
+    line-height: 17px;
+    margin: 0 -12px 0 0;
+    gap: 6px;
+    font-size: 13.4px;
+  }
+  .tk2-ty .o-i {
+    flex: none;
+  }
+  /* the Figma area pill starts 6px left of its column header */
+  .tk2-ar {
+    margin-left: -6px;
+  }
+  .tk2-ow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding-right: 8px;
+    font-size: 14.3px;
+    font-weight: 600;
+  }
+  .tk2-ow span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tk2-du {
+    display: flex !important;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+    font-size: 14.3px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+  .tk2-late {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--surface);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .tk2-rel {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    line-height: 15px;
+  }
+  .tk2-all {
+    padding: 12px 20px 8px;
+  }
+  .tk2-done {
+    padding: 13px 20px;
+    font-size: 14.3px;
+  }
+  .tk2-done b {
+    font-weight: 600;
+  }
+  .tk2-dl {
+    padding: 0 20px 14px;
+    font-size: 15px;
+  }
+  .tk2-dn {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tk2-done > span:first-child {
+    flex-wrap: nowrap;
+  }
+}
+
+/* the load-error card on a phone: tighter padding and a full-width button (Figma "Tasks, load error, phone") */
+@media (max-width: 899.98px) {
+  .tk2-errwrap {
+    margin-top: -5px;
+  }
+  .tk2-errwrap .o-err {
+    padding: 21px;
+    max-width: none;
+  }
+  .tk2-errwrap .o-err h2 {
+    margin-top: 12px;
+  }
+  .tk2-errwrap .o-err .o-btn {
+    width: 100%;
+    margin-top: 14px;
+  }
+}

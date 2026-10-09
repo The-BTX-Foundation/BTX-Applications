@@ -7,7 +7,12 @@
     "build": "npm run build -w @btx/portal",
     "start": "npm run start -w @btx/portal",
     "lint": "npm run lint -w @btx/portal",
-    "typecheck": "npm run typecheck -w @btx/portal"
+    "typecheck": "npm run typecheck -w @btx/portal",
+    "dev:ops": "npm run dev -w @btx/ops",
+    "build:ops": "npm run build -w @btx/ops",
+    "start:ops": "npm run start -w @btx/ops",
+    "lint:ops": "npm run lint -w @btx/ops",
+    "typecheck:ops": "npm run typecheck -w @btx/ops"
   },
   "engines": { "node": ">=22.18.0", "npm": ">=10" }
 }
