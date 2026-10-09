@@ -15,3 +15,6 @@ export const LINKEDIN_URL = 'https://www.linkedin.com/company/thebtxfoundation/'
 /** The video-call link for interviews ("Join the video call"). The live schema has no per-interview link, so this is one
  *  address from the environment; when it is empty the button is left out. */
 export const INTERVIEW_JOIN_URL = process.env.NEXT_PUBLIC_INTERVIEW_JOIN_URL || '';
+
+/** Where "Read the guides" points (BTX's website until the guides have their own page). */
+export const GUIDES_URL = process.env.NEXT_PUBLIC_GUIDES_URL || 'https://thebtxfoundation.org';

@@ -87,6 +87,39 @@ function noteFor(name: string, stress: boolean): string {
   return '';
 }
 
+/** What the decision screens show about her award and scholar page (sample values from the frames). Needs the Ops Hub
+ *  tables (awards, award steps) in live mode, so it only exists in the mock for now. */
+export type AwardSample = {
+  slug: string;
+  yearMajor: string;
+  school: string;
+  story: string;
+  photo: string | null;
+  /** "Fri Nov 6" */
+  payDate: string;
+  /** "Fri Oct 23" */
+  sentDate: string;
+  certification: boolean;
+  mentoring: boolean;
+  reminder: boolean;
+  news: boolean;
+};
+export function awardSample(stress: boolean, sent: boolean): AwardSample {
+  return {
+    slug: stress ? 'adaeze-grace-okonkwo-whitfield' : 'ebony-coleman',
+    yearMajor: stress ? 'Sophomore, Materials Science and Engineering' : 'Junior, Mechanical Engineering',
+    school: 'University of Maryland, Clark School',
+    story: "I'm a junior in mechanical engineering from Prince George's County. I want to design medical devices.",
+    photo: sent ? '/sample-photo.png' : null,
+    payDate: 'Fri Nov 6',
+    sentDate: 'Fri Oct 23',
+    certification: true,
+    mentoring: false,
+    reminder: true,
+    news: true,
+  };
+}
+
 export type Demo = {
   name: DemoName | 'waiting';
   stress: boolean;
@@ -105,6 +138,7 @@ export type Demo = {
   preselect: string | null;
   /** The note already typed in the frames (change your time, none of these times work). */
   note: string;
+  award: AwardSample | null;
 };
 
 const EBONY = { fullName: 'Ebony Coleman', firstName: 'Ebony', email: 'ecoleman@terpmail.umd.edu' };
@@ -182,6 +216,7 @@ export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting
     slots: slotsFor(name, stress),
     preselect: preselectFor(name, stress),
     note: noteFor(name, stress),
+    award: decision ? awardSample(stress, name === 'won-sent') : null,
   };
 }
 

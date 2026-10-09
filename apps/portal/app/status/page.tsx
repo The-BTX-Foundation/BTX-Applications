@@ -5,6 +5,7 @@
 // (a bare `stress` is the waiting screen's stress demo).
 import type { Metadata } from 'next';
 import { ApplyLoadError } from '@/components/load-error-pages';
+import { NotPickedStatus, WonStatus } from '@/components/decision-status';
 import { JourneyStatus } from '@/components/journey-status';
 import { StatusView } from '@/components/status-view';
 import { journeyLinks } from '@/lib/journey-demo';
@@ -41,10 +42,12 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
       />
     );
   }
-  if (state === 'won' || state === 'won-sent' || state === 'not-picked') {
-    // built in a later commit
-    return null;
+  if ((state === 'won' || state === 'won-sent' || state === 'not-picked') && d.award) {
+    const common = { accountName: d.fullName, firstName: d.firstName, fullName: d.fullName, view: d.view, award: d.award };
+    const links = journeyLinks(d.mock ? (d.demoName ?? '') : null);
+    return state === 'not-picked' ? <NotPickedStatus {...common} /> : <WonStatus {...common} sent={state === 'won-sent'} storyHref={links.story} />;
   }
+  if (state === 'won' || state === 'won-sent' || state === 'not-picked') return null;
   return (
     <JourneyStatus
       state={state}

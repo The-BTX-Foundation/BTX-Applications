@@ -12,7 +12,7 @@
 import { redirect } from 'next/navigation';
 import { fetchPublishedCycle, getAuthMode, type Application } from '@btx/data';
 import { toView, type CycleView } from './cycle';
-import { buildDemo, type Demo, type DemoName } from './journey-demo';
+import { buildDemo, type AwardSample, type Demo, type DemoName } from './journey-demo';
 import type { Booking, Decision, FreeTimes, Slot } from './journey';
 import { sessionClient } from './supabase-server';
 
@@ -32,6 +32,7 @@ export type JourneyData = {
   slots: Slot[];
   preselect: string | null;
   note: string;
+  award: AwardSample | null;
   stress: boolean;
   demoName: string | null;
   /** The application id, for the booking calls (live only). */
@@ -53,6 +54,7 @@ const fromDemo = (d: Demo, raw: string | undefined): JourneyData => ({
   slots: d.slots,
   preselect: d.preselect,
   note: d.note,
+  award: d.award,
   stress: d.stress,
   demoName: raw ?? null,
   applicationId: null,
@@ -112,6 +114,7 @@ export async function loadJourney(here: string, raw: string | undefined, fallbac
     slots: rows.filter((r) => new Date(r.starts_at) > now && r.id !== booking?.slotId).map((r) => ({ id: r.id, startsAt: r.starts_at, endsAt: r.ends_at })),
     preselect: null,
     note: '',
+    award: null,
     stress: false,
     demoName: null,
     applicationId: app.id,

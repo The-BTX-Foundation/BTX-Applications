@@ -26,6 +26,13 @@ export type CycleView = {
   essayUse: string | null;
   /** "30 minutes", or "[time]" */
   codeLifetime: string;
+  /** The photo-and-story due date ("Fri Nov 6"), or "[date]". */
+  photoDue: string;
+  /** How the award is paid (the cycle's payment note), or "[How it's paid]". */
+  paymentNote: string;
+  /** The scholars' event: its date ("Fri Dec 4"), or "[Event date]" when the date is not set; `eventOn` says it is planned. */
+  eventDate: string;
+  eventOn: boolean;
   /** Inputs for the dates drawing (all "YYYY-MM-DD"), or null when the dates are not all set. */
   drawing: null | {
     opens: string;
@@ -49,6 +56,10 @@ const MOCK: CycleView = {
   applyByLong: 'Mon Sep 14',
   deadlineTime: PLACEHOLDER.time,
   nextMonth: 'October',
+  photoDue: PLACEHOLDER.date,
+  paymentNote: "[How it's paid]",
+  eventDate: '[Event date]',
+  eventOn: true,
   requirements: [],
   essayPrompt: null,
   essayUse: null,
@@ -77,6 +88,10 @@ export function toView(c: Cycle): CycleView {
     applyByLong: longDay(apply),
     deadlineTime: easternTime(c.closes_at),
     nextMonth: c.next_cycle_month ?? PLACEHOLDER.month,
+    photoDue: longDay(c.photo_due),
+    paymentNote: c.payment_note?.trim() || "[How it's paid]",
+    eventDate: c.event_enabled && c.event_at ? longDay(easternDate(c.event_at)) : '[Event date]',
+    eventOn: c.event_enabled,
     essayPrompt: c.essay_prompt,
     essayUse: c.essay_use,
     requirements: Array.isArray(c.requirements) ? c.requirements.filter((r): r is string => typeof r === 'string') : [],
