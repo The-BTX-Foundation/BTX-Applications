@@ -6,3 +6,7 @@ export type { AuthMode, SendResult, VerifyResult } from './auth';
 export { cycleVariant, ensureApplication, getPublishedCycle, requestCycleEmail, saveApplication } from './cycles';
 export type { Application, Cycle, CycleVariant, EnsureResult, NotifyKind } from './cycles';
 export type { Database, Json, Row, Insert, Update } from './database.types';
+export { checkPdf, listFiles, MAX_PDF_BYTES, uploadDocument, viewUrl } from './files';
+export type { AppFile, DocKind, UploadHandle } from './files';
+export { submitApplication } from './submit';
+export type { SubmitResult } from './submit';

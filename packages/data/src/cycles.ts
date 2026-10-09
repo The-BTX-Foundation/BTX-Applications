@@ -34,12 +34,12 @@ export type EnsureResult =
 // user_id and terpmail default from her token, and status stays "draft" (she has no column privilege to set it).
 export async function ensureApplication(client: BtxClient): Promise<EnsureResult> {
   const cycle = await getPublishedCycle(client);
-  if (!cycle || cycleVariant(cycle) !== 'open') {
-    // A closed cycle still lets her see an application she already has, but there is nothing to start.
-    return { kind: 'closed' };
-  }
+  if (!cycle) return { kind: 'closed' };
   const found = await client.from('applications').select('*').eq('cycle_id', cycle.id).maybeSingle();
   if (found.error) return { kind: 'error', message: found.error.message };
+  // a submitted application stays reachable after the deadline (the status page)
+  if (found.data?.status === 'submitted') return { kind: 'ok', cycle, application: found.data };
+  if (cycleVariant(cycle) !== 'open') return { kind: 'closed' };
   if (found.data) return { kind: 'ok', cycle, application: found.data };
   const made = await client.from('applications').insert({ cycle_id: cycle.id }).select('*').single();
   if (made.error) return { kind: 'error', message: made.error.message };
@@ -62,6 +62,11 @@ export async function saveApplication(
       | 'year_in_school'
       | 'credits_left'
       | 'major'
+      | 'interest_certification'
+      | 'interest_mentoring'
+      | 'essay'
+      | 'stay_in_touch'
+      | 'agreed_true'
       | 'current_step'
     >
   >,

@@ -6,6 +6,7 @@ export function BottomBar({
   back,
   primary,
   note,
+  phoneNote,
   className,
 }: {
   /** The Back button or link (leave out on the first screen). */
@@ -14,14 +15,17 @@ export function BottomBar({
   primary: ReactNode;
   /** A small muted note beside the action (laptop only), like "Saved 4:12 PM". */
   note?: ReactNode;
+  /** Show the note on phone too, on its own line above the buttons (a taller bar). */
+  phoneNote?: boolean;
   className?: string;
 }) {
   return (
-    <div className={className ? `bar ${className}` : 'bar'}>
+    <div className={['bar', phoneNote ? 'tall' : '', className].filter(Boolean).join(' ')}>
       <div className="bw">
+        {phoneNote && note ? <span className="bn bn-top">{note}</span> : null}
         {back}
         <div className="bx">
-          {note ? <span className="bn">{note}</span> : null}
+          {note ? <span className="bn bn-side">{note}</span> : null}
           {primary}
         </div>
       </div>

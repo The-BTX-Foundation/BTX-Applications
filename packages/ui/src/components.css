@@ -679,6 +679,22 @@ a {
   font-size: 15px;
   color: var(--muted);
 }
+/* a bar with its note on phone: taller, note on its own line above the buttons */
+.bar.tall {
+  height: 124px;
+}
+.bar.tall .bw {
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 10px;
+}
+.bar.tall .bn-top {
+  display: block;
+  flex: 0 0 100%;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--ink);
+}
 
 /* ---------- laptop shell (1024px and wider) ---------- */
 @media (min-width: 1024px) {
@@ -833,7 +849,7 @@ a {
     padding: 0 48px 48px;
   }
   .col {
-    width: 720px;
+    width: var(--col, 720px);
     max-width: 100%;
     margin: 48px auto 0;
   }
@@ -850,7 +866,7 @@ a {
     padding: 0;
   }
   .bw {
-    width: 720px;
+    width: var(--col, 720px);
     max-width: calc(100% - 96px);
     margin: 0 auto;
     justify-content: space-between;
@@ -868,6 +884,16 @@ a {
   }
   .bn {
     display: block;
+  }
+  .bar.tall {
+    height: 88px;
+  }
+  .bar.tall .bw {
+    flex-wrap: nowrap;
+    align-content: normal;
+  }
+  .bar.tall .bn-top {
+    display: none;
   }
 
   .rl {
