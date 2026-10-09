@@ -7,10 +7,10 @@
 // The folding areas open on their own page and fold with a click. The user card at the bottom signs out.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut } from '@btx/data';
 import { GROUPS, PEOPLE, TOP, type NavGroup } from '@/lib/nav';
-import { NAV_COUNTS } from '@/mock/nav';
+import { NAV_COUNTS, NAV_COUNTS_STRESS_MENU, NAV_COUNTS_STRESS_SIDE, NAV_COUNTS_STRESS_TABS, type Counts } from '@/mock/nav';
 import { OIcon } from './icons';
 
 type ShellUser = { name: string; initials: string; roleText: string };
@@ -21,8 +21,8 @@ function isHere(pathname: string, href: string): boolean {
 }
 
 // The gold count pill (or the plain number on Board chat).
-function Count({ n, plain }: { n?: number; plain?: boolean }) {
-  if (!n) return null;
+function Count({ n, plain }: { n?: number | string; plain?: boolean }) {
+  if (n === undefined) return null;
   return <span className={plain ? 'o-ct plain' : 'o-ct'}>{n}</span>;
 }
 
@@ -51,9 +51,9 @@ function UserCard({ user, className }: { user: ShellUser; className: string }) {
 }
 
 // One folding area in the sidebar or the phone menu.
-function Group({ group, pathname, open, onToggle, phone }: { group: NavGroup; pathname: string; open: boolean; onToggle: () => void; phone?: boolean }) {
+function Group({ group, pathname, open, onToggle, phone, counts }: { group: NavGroup; pathname: string; open: boolean; onToggle: () => void; phone?: boolean; counts: Counts }) {
   const prefix = phone ? 'o-m' : 'o-s';
-  const count = NAV_COUNTS[group.id];
+  const count = counts[group.id];
   return (
     <div className={`o-ng ${open ? 'open' : 'shut'}`}>
       <button type="button" className={`${prefix}-gr`} aria-expanded={open} onClick={onToggle}>
@@ -69,7 +69,7 @@ function Group({ group, pathname, open, onToggle, phone }: { group: NavGroup; pa
             return (
               <Link key={item.id} href={item.href} className={`${prefix}-sub${here ? ' on' : ''}`} aria-current={here ? 'page' : undefined}>
                 <span>{item.label}</span>
-                <Count n={NAV_COUNTS[item.id]} />
+                <Count n={counts[item.id]} />
               </Link>
             );
           })}
@@ -95,6 +95,11 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
   const [menuPath, setMenuPath] = useState<string | null>(null);
   const menu = menuPath === pathname;
   const setMenu = (open: boolean) => setMenuPath(open ? pathname : null);
+  // ?demo=stress draws the counts the Figma stress frames show; the normal view keeps the sample counts.
+  const stress = useSearchParams().get('demo') === 'stress';
+  const sideCounts: Counts = stress ? NAV_COUNTS_STRESS_SIDE : NAV_COUNTS;
+  const tabCounts: Counts = stress ? NAV_COUNTS_STRESS_TABS : NAV_COUNTS;
+  const menuCounts: Counts = stress ? NAV_COUNTS_STRESS_MENU : NAV_COUNTS;
   const side = useOpenGroups(pathname);
   // the phone menu opens with Scholarships unfolded (the Figma menu frame)
   const sheet = useOpenGroups(pathname, { scholarships: true });
@@ -123,13 +128,13 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
               <Link key={t.id} href={t.href} className={`o-tl${here ? ' on' : ''}`} aria-current={here ? 'page' : undefined}>
                 <OIcon name={t.icon} size={19} />
                 <span>{t.label}</span>
-                <Count n={NAV_COUNTS[t.id]} plain={!needs} />
+                <Count n={sideCounts[t.id]} plain={!needs} />
               </Link>
             );
           })}
           <div className="o-sep" />
           {GROUPS.map((g) => (
-            <Group key={g.id} group={g} pathname={pathname} open={side.isOpen(g)} onToggle={() => side.toggle(g)} />
+            <Group key={g.id} group={g} pathname={pathname} open={side.isOpen(g)} onToggle={() => side.toggle(g)} counts={sideCounts} />
           ))}
           <div className="o-sep b" />
           <Link href={PEOPLE.href} className={`o-adm${isHere(pathname, PEOPLE.href) ? ' on' : ''}`}>
@@ -158,7 +163,7 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
               <Link key={t.id} href={t.href} className={`o-tab${here ? ' on' : ''}`} aria-current={here ? 'page' : undefined}>
                 <span className="o-tab-i">
                   <OIcon name={t.icon} size={22} />
-                  {NAV_COUNTS[t.id] ? <span className={`o-bd${t.id === 'chat' ? ' k' : ''}`}>{NAV_COUNTS[t.id]}</span> : null}
+                  {tabCounts[t.id] !== undefined ? <span className={`o-bd${t.id === 'chat' ? ' k' : ''}`}>{tabCounts[t.id]}</span> : null}
                 </span>
                 {t.id === 'chat' ? 'Chat' : t.label}
               </Link>
@@ -183,12 +188,12 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
                 <Link key={t.id} href={t.href} className={`o-m-r${here ? ' on' : ''}`} aria-current={here ? 'page' : undefined}>
                   <OIcon name={t.icon} size={22} />
                   <span className="o-m-l">{t.label}</span>
-                  <Count n={NAV_COUNTS[t.id]} plain={t.id !== 'today'} />
+                  <Count n={menuCounts[t.id]} plain={t.id !== 'today'} />
                 </Link>
               );
             })}
             {GROUPS.map((g) => (
-              <Group key={g.id} group={g} pathname={pathname} open={sheet.isOpen(g)} onToggle={() => sheet.toggle(g)} phone />
+              <Group key={g.id} group={g} pathname={pathname} open={sheet.isOpen(g)} onToggle={() => sheet.toggle(g)} phone counts={menuCounts} />
             ))}
             <div className="o-m-sep" />
             <Link href={PEOPLE.href} className="o-m-r">
