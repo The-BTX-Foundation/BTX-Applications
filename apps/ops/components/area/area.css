@@ -1,0 +1,329 @@
+/* Styles the Programs and Outreach pages share (prefix ar-). Numbers come from the Figma frames. */
+
+/* header */
+.ar-top {
+  align-items: flex-end;
+}
+.ar-top .o-top-t h1 {
+  font-size: 30px;
+}
+@media (min-width: 900px) {
+  .ar-top {
+    height: 56px;
+    gap: 16px;
+  }
+  .ar-top .o-top-t h1 {
+    font-size: 30px;
+    line-height: 33px;
+  }
+  .ar-top .o-top-t p {
+    margin-top: 3px;
+    line-height: 19px;
+  }
+}
+
+/* the area chat: header with the people count under the title, and the bot card's roomier padding */
+.ar-chat .o-chat-h {
+  height: 85px;
+  padding: 22px 20px 15px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.ar-chat .o-chat-h h2 {
+  line-height: 25px;
+}
+.ar-chat .o-chat-h span {
+  font-size: 14px;
+  line-height: 17px;
+}
+.ar-chat .o-bub.bot {
+  padding: 11px 13px;
+  border-radius: 14px;
+}
+
+/* panels */
+.ar-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ar-ph {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 20px 11px;
+  border-bottom: 1px solid var(--line);
+  min-height: 50px;
+}
+.ar-ph h2 {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: normal;
+}
+.ar-ph > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.ar-ph.ring {
+  align-items: center;
+  gap: 14px;
+  padding: 11px 20px 11px;
+  min-height: 67px;
+}
+.ar-ph.ring p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* owner chip and avatars */
+.ar-own {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ar-av {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.ar-av.q {
+  background: none;
+  color: var(--muted);
+  border: 1px dashed var(--muted);
+  font-size: 11px;
+}
+.ar-av.q.solid {
+  background: var(--ink);
+  color: var(--surface);
+  border: 0;
+}
+.ar-un {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* step circle */
+.ar-ck {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 999px;
+  border: 2px solid var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+}
+.ar-ck.done {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+button.ar-ck:hover {
+  border-color: var(--ink);
+}
+
+/* pills */
+.ar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex: none;
+}
+.ar-pill.ink {
+  background: var(--ink);
+  color: var(--surface);
+}
+.ar-pill.soft {
+  background: var(--wash);
+  border-color: var(--line);
+}
+
+.ar-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* modal (the "Log a sponsorship" style form) */
+.ar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.ar-modal {
+  background: var(--surface);
+  width: 460px;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  padding: 26px 29px 29px;
+  display: flex;
+  flex-direction: column;
+}
+.ar-modal h2 {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.ar-f {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ar-f > span {
+  font-size: 15px;
+  font-weight: 700;
+}
+.ar-f input,
+.ar-f select,
+.ar-f textarea {
+  height: 40px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: var(--surface);
+  padding: 0 14px;
+  font: inherit;
+  font-size: 15px;
+  width: 100%;
+}
+.ar-f textarea {
+  height: 96px;
+  padding: 10px 14px;
+  resize: vertical;
+}
+.ar-f input::placeholder,
+.ar-f textarea::placeholder {
+  color: var(--muted);
+}
+.ar-f input:focus-visible,
+.ar-f select:focus-visible,
+.ar-f textarea:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+.ar-money {
+  position: relative;
+}
+.ar-money > i {
+  position: absolute;
+  left: 14px;
+  top: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  font-style: normal;
+  font-size: 15px;
+}
+.ar-money input {
+  padding-left: 28px;
+}
+.ar-hint {
+  font-size: 15px;
+  line-height: 21px;
+  margin-top: 8px;
+}
+.ar-err {
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 600;
+  margin-top: 8px;
+}
+.ar-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.ar-btns .o-btn {
+  height: 36px;
+  font-size: 14px;
+  padding: 0 16px;
+}
+
+/* page wrappers: the shell's column only grows to its content, so the area pages ask it to fill the width */
+.ar-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .o-col:has(.ar-fill) {
+    flex: 1 1 auto;
+  }
+  .o-cy-main.ar-main {
+    gap: 14px;
+  }
+}
+.ar-top .o-top-t h1 {
+  margin-top: 1px;
+}
+
+@media (max-width: 899px) {
+  .ar-top {
+    margin-bottom: 3px;
+  }
+  .ar-ph.ring {
+    padding: 10px 16px 11px;
+  }
+  .ar-ph.ring .o-ring {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .ar-ph.ring .o-ring svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* the load-error state */
+.ar-errw {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (max-width: 899px) {
+  .ar-errw .o-err {
+    padding: 27px 21px 24px;
+  }
+  .ar-errw .o-err h2 {
+    margin-top: 12px;
+  }
+  .ar-errw .o-err p {
+    margin-top: 6px;
+  }
+  .ar-errw .o-err .o-btn {
+    margin-top: 17px;
+    height: 44px;
+    width: 100%;
+  }
+}
+@media (min-width: 900px) {
+  .ar-errw .ar-top {
+    height: auto;
+  }
+}
