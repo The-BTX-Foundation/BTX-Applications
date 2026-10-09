@@ -48,7 +48,7 @@ export function StoryView(p: StoryProps) {
   }
   function send() {
     if (!photo) return setProblem('Add your photo first.');
-    if (over) return setProblem(`Shorten your story by ${words - LIMIT} words.`);
+    if (over) return setProblem(`Shorten your story by ${words - LIMIT} ${words - LIMIT === 1 ? 'word' : 'words'}.`);
     if (!agree) return setProblem('Check the box to let BTX show your photo and story.');
     setProblem(null);
     router.push(`/status?demo=won-sent${p.stress ? '-stress' : ''}`);

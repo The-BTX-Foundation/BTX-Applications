@@ -9,6 +9,11 @@ const pages = [
   '/apply/basic-info?demo=1', '/apply/basic-info?demo=stress', '/apply/scholarship?demo=1', '/apply/essay?demo=1',
   '/apply/documents?demo=empty', '/apply/documents?demo=uploading', '/apply/documents?demo=failed',
   '/apply/review?demo=1', '/apply/review?demo=failed', '/status',
+  '/apply/review?demo=terpmail', '/apply/start?demo=terpmail',
+  '/status?demo=before-booking', '/status?demo=sent', '/status?demo=booked', '/status?demo=switched', '/status?demo=soon', '/status?demo=today',
+  '/status?demo=after', '/status?demo=won', '/status?demo=won-sent', '/status?demo=not-picked', '/status?demo=booked-stress', '/status?demo=won-stress',
+  '/status/schedule?demo=schedule', '/status/schedule?demo=taken', '/status/schedule?demo=schedule-stress', '/status/change?demo=change',
+  '/status/no-time?demo=no-time', '/status/no-time?demo=no-time-stress', '/status/story?demo=story', '/status/schedule?demo=error',
 ];
 
 // axe-core on every page at laptop and phone width: no serious or critical problems (and, today, no moderate ones).

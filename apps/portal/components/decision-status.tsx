@@ -5,7 +5,6 @@
 import Link from 'next/link';
 import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { GUIDES_URL, LINKEDIN_URL } from '@/lib/config';
-import { longDay } from '@/lib/format';
 import type { AwardSample } from '@/lib/journey-demo';
 import type { CycleView } from '@/lib/cycle';
 import { PrintLink } from './print-link';

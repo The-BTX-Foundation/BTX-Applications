@@ -3,15 +3,17 @@
 import { NextResponse } from 'next/server';
 import { getAuthMode } from '@btx/data';
 import { confirmationHtml } from '@/lib/email/confirmation';
+import { STRESS } from '@/lib/stress';
 import { bookHtml, notPickedHtml, wonHtml } from '@/lib/email/journey';
 
 export async function GET(request: Request) {
   if (getAuthMode() !== 'mock') return new NextResponse('Not found', { status: 404 });
   const which = new URL(request.url).searchParams.get('email') ?? 'confirmation';
   const origin = new URL(request.url).origin;
+  const stress = new URL(request.url).searchParams.get('stress') === '1';
   const base = {
-    firstName: 'Ebony',
-    to: 'ecoleman@terpmail.umd.edu',
+    firstName: stress ? STRESS.firstName : 'Ebony',
+    to: stress ? STRESS.email : 'ecoleman@terpmail.umd.edu',
     code: 'APP-2026-00016',
     term: 'Fall 2026',
     award: 'Legacy Scholarship',

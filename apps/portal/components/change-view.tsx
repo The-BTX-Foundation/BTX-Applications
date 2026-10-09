@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Button, Icon } from '@btx/ui';
 import { easternDate, shortDay } from '@/lib/format';
-import { addDays, clock, dayLabel, groupByDay, mondayOf, type Booking, type Slot } from '@/lib/journey';
+import { addDays, clock, dayLabel, mondayOf, type Booking, type Slot } from '@/lib/journey';
 import { Chip, ErrorBox, useBook } from './booking-parts';
 import { JourneyPage } from './journey-page';
 import b from './booking.module.css';
