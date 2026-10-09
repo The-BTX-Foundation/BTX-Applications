@@ -3,7 +3,7 @@
 // Six-digit code entry. One real input (numbers only, with the one-time-code hint so phones suggest the code
 // from the email) sits invisibly over six drawn boxes. The next empty box shows the focus ring and a caret.
 // `error` draws the thicker box borders of the wrong-code and expired-code states.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const CODE_LENGTH = 6;
 
@@ -25,6 +25,12 @@ export function CodeBoxes({
   onComplete?: (code: string) => void;
 }) {
   const [focused, setFocused] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  // Focus on mount (instead of the autoFocus attribute) so the focus event reaches the handlers below.
+  useEffect(() => {
+    if (autoFocus) input.current?.focus();
+  }, [autoFocus]);
   const active = value.length < CODE_LENGTH ? value.length : -1;
 
   // Keeps only digits, caps at six, and tells the parent when the code is complete.
@@ -49,7 +55,7 @@ export function CodeBoxes({
         pattern="[0-9]*"
         maxLength={CODE_LENGTH}
         value={value}
-        autoFocus={autoFocus}
+        ref={input}
         aria-label="6-digit code"
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}

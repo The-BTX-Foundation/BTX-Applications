@@ -357,6 +357,25 @@ a {
 .sg.g2 button:nth-child(-n + 2) {
   border-top: 0;
 }
+/* gp = a 2 x 2 grid on phone only (four options that do not fit in one row), one joined row on laptop */
+@media (max-width: 1023.98px) {
+  .sg.gp {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: auto;
+  }
+  .sg.gp button {
+    height: 46px;
+    border-left: 1.5px solid var(--ink);
+    border-top: 1.5px solid var(--ink);
+  }
+  .sg.gp button:nth-child(odd) {
+    border-left: 0;
+  }
+  .sg.gp button:nth-child(-n + 2) {
+    border-top: 0;
+  }
+}
 .f.err .sg {
   border-width: 2.5px;
 }

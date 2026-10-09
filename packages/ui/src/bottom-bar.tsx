@@ -6,6 +6,7 @@ export function BottomBar({
   back,
   primary,
   note,
+  className,
 }: {
   /** The Back button or link (leave out on the first screen). */
   back?: ReactNode;
@@ -13,9 +14,10 @@ export function BottomBar({
   primary: ReactNode;
   /** A small muted note beside the action (laptop only), like "Saved 4:12 PM". */
   note?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="bar">
+    <div className={className ? `bar ${className}` : 'bar'}>
       <div className="bw">
         {back}
         <div className="bx">

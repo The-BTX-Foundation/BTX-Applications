@@ -117,8 +117,7 @@ export function SelectField({
   );
 }
 
-// A segmented choice: one answer out of a few, drawn as a joined row (a 2 x 2 grid with grid=true, the phone
-// layout for four options). The buttons use aria-pressed; the group is named by the label.
+// A segmented choice: one answer out of a few, drawn as a joined row (a 2 x 2 grid on phone with gridOnPhone). The buttons use aria-pressed; the group is named by the label.
 export function Segmented({
   id,
   label,
@@ -128,14 +127,14 @@ export function Segmented({
   options,
   value,
   onChange,
-  grid,
+  gridOnPhone,
   className,
 }: FieldFrame & {
   options: readonly string[];
   value: string;
   onChange: (next: string) => void;
-  /** Draw as two columns (phone, four options). */
-  grid?: boolean;
+  /** Draw as two columns on phone (four options that do not fit in one row). */
+  gridOnPhone?: boolean;
   className?: string;
 }) {
   const frame = { id, label, note, hint, error };
@@ -150,7 +149,7 @@ export function Segmented({
           {hint}
         </p>
       ) : null}
-      <div className={grid ? 'sg g2' : 'sg'} aria-describedby={describedBy(frame)}>
+      <div className={gridOnPhone ? 'sg gp' : 'sg'} aria-describedby={describedBy(frame)}>
         {options.map((o, i) => (
           <button
             key={o}

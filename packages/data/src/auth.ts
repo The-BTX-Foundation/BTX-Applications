@@ -19,6 +19,31 @@ export function getAuthMode(): AuthMode {
   return hasSupabaseEnv() ? 'supabase' : 'mock';
 }
 
+const MOCK_KEY = 'btx-mock-email';
+
+// Remembers the mock session's email for this browser tab (the mock has no real session).
+function rememberMockEmail(email: string) {
+  try {
+    sessionStorage.setItem(MOCK_KEY, email);
+  } catch {
+    // storage blocked: the mock session is simply not remembered
+  }
+}
+
+// The email of whoever is signed in, or null. Mock mode reads the tab's remembered email; Supabase mode asks the
+// stored session.
+export async function getSignedInEmail(): Promise<string | null> {
+  if (getAuthMode() === 'mock') {
+    try {
+      return sessionStorage.getItem(MOCK_KEY);
+    } catch {
+      return null;
+    }
+  }
+  const { data } = await getBrowserClient().auth.getUser();
+  return data.user?.email ?? null;
+}
+
 // A short pause so the mock feels like a network call.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -40,7 +65,10 @@ export async function requestSignInCode(email: string): Promise<SendResult> {
 export async function verifySignInCode(email: string, token: string): Promise<VerifyResult> {
   if (getAuthMode() === 'mock') {
     await pause(250);
-    if (token === '123456') return { ok: true, email };
+    if (token === '123456') {
+      rememberMockEmail(email);
+      return { ok: true, email };
+    }
     if (token === '000000') return { ok: false, reason: 'expired' };
     return { ok: false, reason: 'wrong' };
   }
