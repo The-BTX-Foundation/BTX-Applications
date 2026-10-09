@@ -91,3 +91,14 @@ describe('journey text', () => {
     expect(describeFreeTimes({ days: ['Tue', 'Sun'], windows: ['evening', 'morning'], note: '' })).toBe('Tuesdays and Sundays, mornings and evenings.');
   });
 });
+
+import { buildIcs } from '@/lib/ics';
+describe('calendar file', () => {
+  it('writes one event in UTC', () => {
+    const ics = buildIcs({ uid: 'x', startsAt: '2026-10-06T22:00:00Z', endsAt: '2026-10-06T22:30:00Z', title: 'BTX interview', description: 'Video call, 30 minutes', now: new Date('2026-09-15T16:00:00Z') });
+    expect(ics).toContain('DTSTART:20261006T220000Z');
+    expect(ics).toContain('DTEND:20261006T223000Z');
+    expect(ics).toContain('DESCRIPTION:Video call\\, 30 minutes');
+    expect(ics.split('\r\n')[0]).toBe('BEGIN:VCALENDAR');
+  });
+});

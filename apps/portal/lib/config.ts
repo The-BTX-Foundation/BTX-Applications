@@ -11,3 +11,7 @@ export const TEST_EMAILS: string[] = (process.env.NEXT_PUBLIC_PORTAL_TEST_EMAILS
 
 /** BTX's LinkedIn page. */
 export const LINKEDIN_URL = 'https://www.linkedin.com/company/thebtxfoundation/';
+
+/** The video-call link for interviews ("Join the video call"). The live schema has no per-interview link, so this is one
+ *  address from the environment; when it is empty the button is left out. */
+export const INTERVIEW_JOIN_URL = process.env.NEXT_PUBLIC_INTERVIEW_JOIN_URL || '';
