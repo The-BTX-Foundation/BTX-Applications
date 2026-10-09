@@ -3,7 +3,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/page-header';
-import { AlertMark } from '@/components/icons';
+import { NotBuilt as Card } from '@/components/not-built';
 import { ALL_ROUTES } from '@/lib/nav';
 
 type Props = { params: Promise<{ slug: string[] }> };
@@ -28,11 +28,7 @@ export default async function NotBuilt({ params }: Props) {
   return (
     <>
       <PageHeader title={e.label} />
-      <section className="o-err" aria-live="polite">
-        <AlertMark />
-        <h2>Not built yet</h2>
-        <p>This page is still being designed and built.</p>
-      </section>
+      <Card />
     </>
   );
 }

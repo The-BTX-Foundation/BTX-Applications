@@ -103,6 +103,13 @@ const PATHS = {
       <path d="M14 13.5l1.4 1.4 2.6-2.8" />
     </>
   ),
+  meeting: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M6.8 10.2l2.2 2.2 4.2-4.4" />
+    </>
+  ),
+  send: <path d="M10 16V4.5M5 9.5l5-5 5 5" />,
   refresh: (
     <>
       <path d="M16 8.5A6 6 0 0 0 5.2 6.3L4 7.8" />
