@@ -5,7 +5,6 @@ const base: JourneyInput = {
   now: new Date('2026-09-15T16:00:00Z'),
   interviewStart: '2026-09-15',
   interviewEnd: '2026-10-09',
-  decisionDate: '2026-10-23',
   booking: null,
   freeTimes: null,
   decision: null,
@@ -43,13 +42,15 @@ describe('status state picker', () => {
     expect(pickState({ ...base, now: new Date('2026-10-06T23:00:00Z'), booking: oct6 })).toBe('after');
     expect(pickState({ ...base, now: new Date('2026-10-10T16:00:00Z') })).toBe('after');
   });
-  it('shows the decision only from the decision date, and only when one is recorded', () => {
+  it('shows the decision whenever the database returns one (null until released), with no date check', () => {
     const late = new Date('2026-10-23T14:00:00Z');
     expect(pickState({ ...base, now: late, booking: oct6 })).toBe('after');
     expect(pickState({ ...base, now: late, booking: oct6, decision: { kind: 'won', storySent: false } })).toBe('won');
     expect(pickState({ ...base, now: late, booking: oct6, decision: { kind: 'won', storySent: true } })).toBe('won-sent');
     expect(pickState({ ...base, now: late, booking: oct6, decision: { kind: 'not-picked' } })).toBe('not-picked');
-    expect(pickState({ ...base, now: new Date('2026-10-22T14:00:00Z'), booking: oct6, decision: { kind: 'won', storySent: false } })).toBe('after');
+    // released early by an admin: it shows; not released: the database sends null and the interview-done screen stays
+    expect(pickState({ ...base, now: new Date('2026-10-12T14:00:00Z'), booking: oct6, decision: { kind: 'won', storySent: false } })).toBe('won');
+    expect(pickState({ ...base, now: new Date('2026-10-30T14:00:00Z'), booking: oct6, decision: null })).toBe('after');
   });
 });
 

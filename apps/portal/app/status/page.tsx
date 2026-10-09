@@ -25,7 +25,6 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
     now: d.now,
     interviewStart: d.view.drawing?.interviewStart ?? null,
     interviewEnd: d.view.drawing?.interviewEnd ?? null,
-    decisionDate: d.view.drawing?.decision ?? null,
     booking: d.booking,
     freeTimes: d.freeTimes,
     decision: d.decision,
@@ -60,7 +59,7 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
       freeTimes={d.freeTimes}
       interviewers={d.interviewers}
       links={journeyLinks(d.mock ? (d.demoName ?? '') : null)}
-      mock={d.mock}
+      joinUrl={d.joinUrl}
     />
   );
 }

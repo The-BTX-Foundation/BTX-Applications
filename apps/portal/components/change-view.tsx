@@ -23,8 +23,6 @@ export type ChangeProps = {
   noTimeHref: string;
   stress: boolean;
   initialNote: string;
-  /** The note box needs a place to save it that the live schema does not have yet, so only the mock shows it. */
-  showNote: boolean;
 };
 
 type Item = { slot: Slot; current: boolean };
@@ -57,7 +55,7 @@ export function ChangeView(p: ChangeProps) {
   const old = dayLabel(p.booking.startsAt);
   const label = picked ? `Switch to ${dayLabel(picked.startsAt)}, ${clock(picked.startsAt)}` : 'Switch to a new time';
   const phoneLabel = picked ? `Switch to ${dayLabel(picked.startsAt)}` : 'Switch to a new time';
-  const submit = () => void book(picked);
+  const submit = () => void book(picked, note);
   const pick = (s: Slot) => setPickedId(s.id);
   const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -90,6 +88,12 @@ export function ChangeView(p: ChangeProps) {
         ) : null}
         <p className={b.sw}>Your {old} time is released when you switch.</p>
         {problem === 'pick' ? <ErrorBox>Pick a time first.</ErrorBox> : null}
+        {problem === 'saved' ? (
+          <p className={b.taken} role="status">
+            Note saved.
+          </p>
+        ) : null}
+        {problem === 'note_long' ? <ErrorBox>Shorten your note to 1,000 characters or fewer.</ErrorBox> : null}
         {problem === 'failed' ? <ErrorBox>We couldn&apos;t switch your time. Check your connection and try again.</ErrorBox> : null}
 
         {/* laptop: a column per weekday */}
@@ -150,14 +154,14 @@ export function ChangeView(p: ChangeProps) {
           </div>
         ))}
 
-        {p.showNote ? (
+        {(
           <div className={`f ${b.note}`}>
             <label className="lb" htmlFor="change-note">
               Anything we should know? <i style={{ fontStyle: 'normal', fontWeight: 400, color: 'var(--muted)' }}>(optional)</i>
             </label>
-            <textarea id="change-note" className={b.ta} value={note} onChange={(e) => setNote(e.target.value)} />
+            <textarea id="change-note" className={b.ta} value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
           </div>
-        ) : null}
+        )}
         <p className={b.rNo}>
           <Link href={p.noTimeHref} className="lk">
             None of these times work

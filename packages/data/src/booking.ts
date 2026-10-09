@@ -9,10 +9,12 @@ import type { BtxClient } from './client';
 
 export type BookResult =
   | { ok: true; result: 'booked' | 'switched' | 'unchanged' }
-  | { ok: false; kind: 'taken' | 'slot_gone' | 'not_submitted' | 'network' | 'unknown' };
+  | { ok: false; kind: 'taken' | 'slot_gone' | 'note_too_long' | 'not_submitted' | 'network' | 'unknown' };
 
-export async function bookSlot(client: BtxClient, slotId: string): Promise<BookResult> {
-  const { data, error } = await client.rpc('switch_booking', { p_new_slot: slotId });
+// `note` is "Anything we should know?" (up to 1,000 characters); it is saved on the new booking.
+export async function bookSlot(client: BtxClient, slotId: string, note?: string): Promise<BookResult> {
+  const trimmed = note?.trim();
+  const { data, error } = await client.rpc('switch_booking', trimmed ? { p_new_slot: slotId, p_note: trimmed } : { p_new_slot: slotId });
   if (!error) {
     if (data === 'taken') return { ok: false, kind: 'taken' };
     if (data === 'booked' || data === 'switched' || data === 'unchanged') return { ok: true, result: data };
@@ -21,6 +23,7 @@ export async function bookSlot(client: BtxClient, slotId: string): Promise<BookR
   const msg = error.message ?? '';
   // slot_not_found and slot_in_past both mean the time can no longer be booked
   if (msg.includes('slot_not_found') || msg.includes('slot_in_past')) return { ok: false, kind: 'slot_gone' };
+  if (msg.includes('note_too_long')) return { ok: false, kind: 'note_too_long' };
   if (msg.includes('no_submitted_application')) return { ok: false, kind: 'not_submitted' };
   return { ok: false, kind: error.code ? 'unknown' : 'network' };
 }

@@ -38,7 +38,6 @@ export type JourneyInput = {
   /** "YYYY-MM-DD" cycle dates, or null when the cycle does not set them. */
   interviewStart: string | null;
   interviewEnd: string | null;
-  decisionDate: string | null;
   booking: Booking | null;
   freeTimes: FreeTimes | null;
   decision: Decision;
@@ -47,14 +46,15 @@ export type JourneyInput = {
 const DAY = 86400000;
 
 // Picks the screen. Rules, in order:
-//  1. A decision shows from the decision date on (never earlier, and never when none is recorded).
+//  1. A decision shows when the database returns one (my_decision is null until an admin releases the decisions), so
+//     there is no date check here.
 //  2. Before the interviews open (or when the cycle sets no interview dates): the waiting screen.
 //  3. With a booking: interview day, then just booked or switched (first 24 hours), then 1 to 3 days away, then
 //     plain booked; once the interview has ended: the after screen.
 //  4. Without one: after the interview weeks, the after screen; free times sent, the sent screen; otherwise book.
 export function pickState(i: JourneyInput): JourneyState {
   const today = easternDate(i.now);
-  if (i.decision && i.decisionDate && today >= i.decisionDate) {
+  if (i.decision) {
     if (i.decision.kind === 'not-picked') return 'not-picked';
     return i.decision.storySent ? 'won-sent' : 'won';
   }

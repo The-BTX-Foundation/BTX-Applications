@@ -33,7 +33,7 @@ export function ErrorBox({ children, id }: { children: React.ReactNode; id?: str
   );
 }
 
-export type BookProblem = 'pick' | 'failed' | null;
+export type BookProblem = 'pick' | 'failed' | 'note_long' | 'saved' | null;
 
 // Books (or switches to) a slot. In mock mode there is no database: it goes to the matching status preview with the
 // time she picked. Live, it calls switch_booking; 'taken' sends her back to the open times with the notice.
@@ -43,7 +43,8 @@ export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) 
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<BookProblem>(null);
 
-  async function book(slot: Slot | null) {
+  // `note` is the "Anything we should know?" box on change your time; it travels with the switch.
+  async function book(slot: Slot | null, note?: string) {
     if (!slot) {
       setProblem('pick');
       return;
@@ -55,7 +56,13 @@ export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) 
       router.push(`/status?demo=${demo}&at=${encodeURIComponent(slot.startsAt)}`);
       return;
     }
-    const r = await bookSlot(getBrowserClient(), slot.id);
+    const r = await bookSlot(getBrowserClient(), slot.id, note);
+    if (r.ok && r.result === 'unchanged' && note?.trim()) {
+      // she kept the same time and sent a note: the database saved it
+      setBusy(false);
+      setProblem('saved');
+      return;
+    }
     if (r.ok) {
       router.push('/status');
       router.refresh();
@@ -67,7 +74,7 @@ export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) 
       router.refresh();
       return;
     }
-    setProblem('failed');
+    setProblem(r.kind === 'note_too_long' ? 'note_long' : 'failed');
   }
   return { book, busy, problem, setProblem };
 }

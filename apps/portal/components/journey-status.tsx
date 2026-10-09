@@ -3,7 +3,6 @@
 // switched to a new time, interview soon, interview day, and the interview-done screen.
 import Link from 'next/link';
 import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
-import { INTERVIEW_JOIN_URL } from '@/lib/config';
 import { easternDate, longDay } from '@/lib/format';
 import { buildIcs, icsHref } from '@/lib/ics';
 import { countdown, dayLabel, describeFreeTimes, range, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
@@ -29,8 +28,8 @@ export type JourneyStatusProps = {
   /** Board members who interview her (names only; none known in live mode yet). */
   interviewers: string[];
   links: JourneyLinks;
-  /** Mock mode: show the join button even without an address. */
-  mock?: boolean;
+  /** The video-call link for her interview, or null (the join button is left out). */
+  joinUrl: string | null;
 };
 
 const nb = (t: string) => t.replace(/ /g, ' ');
@@ -152,8 +151,8 @@ export function JourneyStatus(p: JourneyStatusProps) {
               {calendar('s')}
             </>
           ) : state === 'today' ? (
-            INTERVIEW_JOIN_URL || p.mock ? (
-              <a href={INTERVIEW_JOIN_URL || '#'} className="btn p">
+            p.joinUrl ? (
+              <a href={p.joinUrl} className="btn p">
                 <Icon name="video" />
                 Join the video call
               </a>

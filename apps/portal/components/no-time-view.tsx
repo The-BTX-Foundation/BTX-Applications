@@ -3,13 +3,12 @@
 // None of these times work (drafts notimes.html, notimes-phone.html). She picks the days and times she is free. If an
 // open time fits, those times are offered as buttons and the gold button books one; otherwise "No open times fit." and
 // Send passes her free times to BTX, who email a time.
-// Sending free times has no table in the live schema yet (see lib/journey-data.ts), so live mode shows a failure with
-// the help address. NOT TESTED AGAINST LIVE DATA.
+// Live, Send saves her answer in interview_free_times (an upsert, one row per application). NOT TESTED AGAINST LIVE DATA.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Button, HELP_EMAIL, Icon } from '@btx/ui';
-import { getAuthMode } from '@btx/data';
+import { Button, Icon } from '@btx/ui';
+import { getAuthMode, getBrowserClient, saveFreeTimes } from '@btx/data';
 import { clock, dayLabel, slotsThatFit, WEEKDAYS, WINDOWS, type Slot } from '@/lib/journey';
 import { Chip, ErrorBox, useBook } from './booking-parts';
 import { JourneyPage } from './journey-page';
@@ -23,6 +22,8 @@ export type NoTimeProps = {
   initialWindows: string[];
   initialNote: string;
   stress: boolean;
+  /** Live only: the application the answer is saved on. */
+  applicationId: string | null;
 };
 
 const SHOW = 6;
@@ -34,7 +35,8 @@ export function NoTimeView(p: NoTimeProps) {
   const [note, setNote] = useState(p.initialNote);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [all, setAll] = useState(false);
-  const [problem, setProblem] = useState<'pick' | 'unavailable' | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<'pick' | 'failed' | null>(null);
   const { book, busy, problem: bookProblem } = useBook({ mode: 'schedule', stress: p.stress });
 
   const fit = slotsThatFit(p.slots, days, windows);
@@ -43,7 +45,7 @@ export function NoTimeView(p: NoTimeProps) {
   const chosen = days.length > 0 && windows.length > 0;
   const label = picked ? `Book ${dayLabel(picked.startsAt)}, ${clock(picked.startsAt)}` : 'Send';
 
-  function send() {
+  async function send() {
     if (picked) return void book(picked);
     if (!chosen) {
       setProblem('pick');
@@ -53,8 +55,13 @@ export function NoTimeView(p: NoTimeProps) {
       router.push(`/status?demo=sent${p.stress ? '-stress' : ''}&days=${days.join(',')}&windows=${windows.join(',')}`);
       return;
     }
-    // no table for free times in the live schema yet
-    setProblem('unavailable');
+    if (!p.applicationId) return setProblem('failed');
+    setSaving(true);
+    const r = await saveFreeTimes(getBrowserClient(), p.applicationId, { days, windows, note });
+    setSaving(false);
+    if (!r.ok) return setProblem('failed');
+    router.push('/status');
+    router.refresh();
   }
 
   const shown = all ? fit : fit.slice(0, SHOW);
@@ -68,7 +75,7 @@ export function NoTimeView(p: NoTimeProps) {
         </Link>
       }
       primary={
-        <Button onClick={send} disabled={busy}>
+        <Button onClick={() => void send()} disabled={busy || saving}>
           {label}
         </Button>
       }
@@ -81,15 +88,7 @@ export function NoTimeView(p: NoTimeProps) {
         <h1 className={`st ${b.title}`}>Tell us when you&apos;re free.</h1>
         <p className={b.lead}>Pick the days and times you&apos;re free.</p>
         {problem === 'pick' ? <ErrorBox>Pick at least one day and one time.</ErrorBox> : null}
-        {problem === 'unavailable' ? (
-          <ErrorBox>
-            We couldn&apos;t send your times. Email{' '}
-            <a href={`mailto:${HELP_EMAIL}`} className="lk">
-              {HELP_EMAIL}
-            </a>{' '}
-            and we&apos;ll find you a time.
-          </ErrorBox>
-        ) : null}
+        {problem === 'failed' ? <ErrorBox>We couldn&apos;t send your times. Check your connection and try again.</ErrorBox> : null}
         {bookProblem === 'failed' ? <ErrorBox>We couldn&apos;t book that time. Check your connection and try again.</ErrorBox> : null}
         <div className={`f ${b.nf}`} role="group" aria-labelledby="nt-days">
           <p className="lb" id="nt-days">
@@ -155,7 +154,7 @@ export function NoTimeView(p: NoTimeProps) {
           <textarea id="nt-note" className={`${b.ta} ${b.ta64}`} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
         <div className={b.nAct}>
-          <Button size="xl" onClick={send} disabled={busy}>
+          <Button size="xl" onClick={() => void send()} disabled={busy || saving}>
             {label}
           </Button>
         </div>

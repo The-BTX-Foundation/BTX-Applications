@@ -28,7 +28,6 @@ export default async function ChangePage({ searchParams }: { searchParams: Promi
       noTimeHref={links.noTime}
       stress={d.stress}
       initialNote={d.note}
-      showNote={d.mock}
     />
   );
 }

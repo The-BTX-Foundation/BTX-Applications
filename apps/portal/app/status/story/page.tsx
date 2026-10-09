@@ -12,7 +12,21 @@ export default async function StoryPage({ searchParams }: { searchParams: Promis
   const { demo } = await searchParams;
   const d = await loadJourney('/status/story', demo, 'story');
   if ('failed' in d) return <ApplyLoadError status />;
-  if (!d.mock || !d.award) redirect('/status');
+  if (!d.award || d.decision?.kind !== 'won') redirect('/status');
+  if (!d.mock) {
+    // live: the story she has saved so far; consent starts unticked unless she ticked it before
+    return (
+      <StoryView
+        accountName={d.fullName}
+        photo={d.award.photo && d.story?.photoPath ? { url: d.award.photo, name: d.story.photoPath.split('/').pop() ?? 'photo', meta: '' } : null}
+        story={d.award.story}
+        saved=""
+        stress={false}
+        live={d.awardId && d.userId ? { awardId: d.awardId, userId: d.userId, photoPath: d.story?.photoPath ?? null } : null}
+        initialConsent={d.story?.consent ?? false}
+      />
+    );
+  }
   return (
     <StoryView
       accountName={d.fullName}
@@ -20,6 +34,8 @@ export default async function StoryPage({ searchParams }: { searchParams: Promis
       story={d.award.story}
       saved="Saved 10:42 AM"
       stress={d.stress}
+      live={null}
+      initialConsent
     />
   );
 }
