@@ -80,8 +80,8 @@ function Group({ group, pathname, open, onToggle, phone }: { group: NavGroup; pa
 }
 
 // Which folding areas are open: the one holding the current page, plus whatever the person has opened or folded.
-function useOpenGroups(pathname: string) {
-  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+function useOpenGroups(pathname: string, initial: Record<string, boolean> = {}) {
+  const [overrides, setOverrides] = useState<Record<string, boolean>>(initial);
   const isOpen = (g: NavGroup) => overrides[g.id] ?? g.items.some((i) => isHere(pathname, i.href));
   const toggle = (g: NavGroup) => setOverrides((o) => ({ ...o, [g.id]: !isOpen(g) }));
   return { isOpen, toggle };
@@ -93,7 +93,8 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const side = useOpenGroups(pathname);
-  const sheet = useOpenGroups(pathname);
+  // the phone menu opens with Scholarships unfolded (the Figma menu frame)
+  const sheet = useOpenGroups(pathname, { scholarships: true });
 
   // "Keep me signed in" off: a new browser session (the tab's storage is gone) signs out. The sign-in screen sets
   // btx-ops-keep to 0 when the box is unticked, and btx-ops-alive for the current session.

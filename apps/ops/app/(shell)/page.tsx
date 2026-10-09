@@ -40,7 +40,7 @@ export default function TodayPage() {
                   <Ring {...a.ring} size={44} />
                 </span>
                 <span className="o-ph">
-                  <Ring {...a.ring} size={32} />
+                  <Ring {...a.phoneRing} size={32} />
                 </span>
                 <b>{a.name}</b>
               </span>
