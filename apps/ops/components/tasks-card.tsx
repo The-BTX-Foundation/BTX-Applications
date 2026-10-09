@@ -22,12 +22,10 @@ function Comments({ n }: { n: number }) {
 
 // One task row, in both layouts (the other layout's parts are hidden by CSS).
 function Row({ row }: { row: TaskRow }) {
-  return (
-    <div className="o-tr">
-      <div className="o-tr-main">
-        <span className="o-lead o-lg">{row.lead === 'circle' ? <span className="o-ck" /> : <OIcon name={row.typeIcon} size={20} />}</span>
-        <span className="o-ck o-ph" />
-        <span className="o-tt">
+  // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button).
+  const href = row.approval ? '/money/budget/approval' : '/tasks';
+  const titleParts = (
+    <>
           <b>
             <span className="o-lg">{row.title}</span>
             <span className="o-ph">{row.phoneTitle ?? row.title}</span>
@@ -45,7 +43,20 @@ function Row({ row }: { row: TaskRow }) {
               </>
             ) : null}
           </span>
-        </span>
+    </>
+  );
+  return (
+    <div className="o-tr">
+      <div className="o-tr-main">
+        <span className="o-lead o-lg">{row.lead === 'circle' ? <span className="o-ck" /> : <OIcon name={row.typeIcon} size={20} />}</span>
+        <span className="o-ck o-ph" />
+        {row.approval ? (
+          <Link href={href} className="o-tt" style={{ color: 'inherit', textDecoration: 'none' }}>
+            {titleParts}
+          </Link>
+        ) : (
+          <span className="o-tt">{titleParts}</span>
+        )}
         <span className="o-ar o-lg">
           <span className="o-area">{row.area}</span>
         </span>
@@ -56,7 +67,7 @@ function Row({ row }: { row: TaskRow }) {
         <span className="o-cmc o-lg">{row.comments ? <Comments n={row.comments} /> : null}</span>
         <span className="o-ra o-lg">
           {row.action ? (
-            <Link href="/tasks" className={`o-btn ${row.action.kind}`}>
+            <Link href={href} className={`o-btn ${row.action.kind}`}>
               {row.action.label}
             </Link>
           ) : null}
