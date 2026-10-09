@@ -13,6 +13,7 @@ type Loose = {
     update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => PromiseLike<Result> };
     insert: (v: Record<string, unknown>) => { select: (c: string) => { single: () => PromiseLike<Result> } } & PromiseLike<Result>;
   };
+  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<Result>;
 };
 const db = () => getBrowserClient() as unknown as Loose;
 
@@ -25,10 +26,10 @@ export async function approvePlan(planId: string, taskId: string): Promise<boole
 }
 
 // Takes an approval or a decline back: the plan waits for approval again and the task is open.
-// NOTE (schema): budget_plan_stamp stamps submitted_by with whoever sets 'awaiting_approval', so an undo changes who is
-// shown as the person who sent the plan. Ask Dominick whether the stamp should only set it when it is empty.
+// undo_budget_decision puts the plan back exactly as it was before the decision (status, sender, send time, decline
+// note); a plain update would stamp the approver as the sender, and the schema refuses one after an approval.
 export async function reopenPlan(planId: string, taskId: string): Promise<boolean> {
-  const a = await db().from('budget_quarter_plans').update({ status: 'awaiting_approval', decline_note: null }).eq('id', planId);
+  const a = await db().rpc('undo_budget_decision', { p_plan_id: planId });
   if (a.error) return false;
   const b = await db().from('tasks').update({ status: 'open', completed_at: null }).eq('id', taskId);
   return !b.error;
