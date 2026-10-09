@@ -11,3 +11,13 @@
 *.crt
 credentials.json
 service-account*.json
+
+# Node / Next.js
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+
+# Local-only database backups (contain test personal data; never commit or publish)
+supabase/backups/

@@ -1,0 +1,168 @@
+/* Sign-in screen. Phone first (drafts signin-phone / signin-wrong-phone / signin-expired-phone, 390px), laptop from
+   1024px (signin.html and its wrong and expired states, 1440px). */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  /* phone: the page area is the screen less the 61px top, the 24px padding and the 88px a bar would take */
+  min-height: calc(100dvh - 173px);
+}
+.left {
+  display: contents;
+}
+.title {
+  order: 0;
+  font-size: 40px;
+  line-height: 1.05;
+}
+.lead {
+  display: none;
+}
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+}
+.cardTitle {
+  display: none;
+}
+.emailField {
+  margin-top: 28px;
+}
+.sentTo {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 16px;
+}
+.label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 24px;
+}
+.action,
+.actionErr {
+  margin-top: 24px;
+}
+.form button.btn {
+  height: 48px;
+  padding: 0 24px;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 15px;
+}
+.row > * {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+.stack {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+.phoneNote {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 16px;
+}
+.devNote {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.ops {
+  margin-top: auto;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+}
+
+@media (min-width: 1024px) {
+  .wrap {
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 0;
+    padding: 0 48px;
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    gap: 48px;
+  }
+  .left {
+    display: block;
+    width: 652px;
+    max-width: 100%;
+  }
+  .title {
+    font-size: 64px;
+  }
+  .lead {
+    display: block;
+    font-size: 20px;
+    line-height: 1.55;
+    margin: 20px 0 28px;
+    max-width: 600px;
+  }
+  .card {
+    flex: none;
+    width: 552px;
+    max-width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--ink);
+    padding: 40px;
+  }
+  .cardTitle {
+    display: block;
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .emailField {
+    margin-top: 24px;
+  }
+  .sentTo {
+    margin-top: 10px;
+  }
+  .action {
+    margin-top: 28px;
+  }
+  .form button.btn {
+    height: 56px;
+    padding: 0 28px;
+  }
+  .row {
+    margin-top: 18px;
+  }
+  .row > * {
+    min-height: 0;
+  }
+  .stack {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .phoneNote {
+    display: none;
+  }
+  .ops {
+    margin-top: 24px;
+    padding-top: 20px;
+    min-height: 0;
+    display: block;
+  }
+}

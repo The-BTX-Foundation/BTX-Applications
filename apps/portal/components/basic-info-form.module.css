@@ -1,0 +1,46 @@
+/* Step 1 form layout. Phone: one column (draft step1-phone.html). Laptop: two columns inside the 720px column
+   (draft step1.html). The DOM follows the phone order; the first four fields are placed explicitly on laptop. */
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 24px;
+}
+.summary {
+  margin-top: 24px;
+}
+.good {
+  margin-top: 24px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+    row-gap: 24px;
+    margin-top: 32px;
+    align-items: start;
+  }
+  .summary {
+    margin-top: 28px;
+  }
+  .name {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .phone {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .terp {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .secondary {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
