@@ -6,7 +6,7 @@ import { hasSupabaseEnv } from '@btx/data';
 import { sessionClient } from './supabase-server';
 import { isStaffRole, roleLabel, type StaffRole } from './role';
 
-export type OpsUser = { name: string; initials: string; role: StaffRole; roleText: string; email: string; mock: boolean };
+export type OpsUser = { id: string; name: string; initials: string; role: StaffRole; roleText: string; email: string; mock: boolean };
 
 // "dania.morris@x.org" -> "Dania Morris".
 function nameFromEmail(email: string): string {
@@ -27,7 +27,7 @@ export function initialsOf(name: string): string {
 // Loads the signed-in staff member, or redirects.
 export async function requireStaff(): Promise<OpsUser> {
   if (!hasSupabaseEnv()) {
-    return { name: 'Dania Morris', initials: 'DM', role: 'admin', roleText: 'Admin', email: 'dania@example.org', mock: true };
+    return { id: 'dm', name: 'Dania Morris', initials: 'DM', role: 'admin', roleText: 'Admin', email: 'dania@example.org', mock: true };
   }
   const client = await sessionClient();
   // getUser() asks the auth server, so a removed account or a changed role takes effect at once.
@@ -39,5 +39,5 @@ export async function requireStaff(): Promise<OpsUser> {
   const email = user.email ?? '';
   const meta = user.user_metadata as { full_name?: string } | undefined;
   const name = meta?.full_name || nameFromEmail(email) || 'BTX staff';
-  return { name, initials: initialsOf(name), role, roleText: roleLabel(role), email, mock: false };
+  return { id: user.id, name, initials: initialsOf(name), role, roleText: roleLabel(role), email, mock: false };
 }
