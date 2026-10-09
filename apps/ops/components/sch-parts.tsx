@@ -4,6 +4,8 @@
 // dialog (scrim + a white card with a title, a paragraph and two buttons) used by "Re-run pairing", "Publish score" and
 // the Selection confirm.
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { OIcon } from './icons';
 
 // The video-camera mark beside "Video" (17px on laptop, 15px on the phone cards).
 export function VideoMark({ size = 17 }: { size?: number }) {
@@ -41,6 +43,50 @@ export function Dialog({ title, width = 460, onClose, children }: { title: strin
         <h2>{title}</h2>
         {children}
       </div>
+    </div>
+  );
+}
+
+// A progress ring for scoring: n of 6 criteria picked. Gold arc while a draft is open, ink when all six are in (Figma
+// "Progress ring", sizes 38 on the queue and 52 on the phone card).
+export function ScoreRing({ n, size }: { n: number; size: 38 | 52 }) {
+  const stroke = size === 38 ? 3.5 : 4.5;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const half = size / 2;
+  return (
+    <span className="s-ring" style={{ width: size, height: size, fontSize: size === 38 ? 12 : 13 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle cx={half} cy={half} r={r} fill="none" stroke="var(--line)" strokeWidth={stroke} />
+        {n > 0 ? (
+          <circle
+            cx={half}
+            cy={half}
+            r={r}
+            fill="none"
+            stroke={n >= 6 ? 'var(--ink)' : 'var(--gold)'}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${((c * n) / 6).toFixed(1)} ${c.toFixed(1)}`}
+            transform={`rotate(-90 ${half} ${half})`}
+          />
+        ) : null}
+      </svg>
+      <b>{n}/6</b>
+    </span>
+  );
+}
+
+// The phone scorecard's own top bar: a back arrow, the title and the avatar (it covers the shell's phone top bar).
+export function PhoneBar({ title, initials = 'DM' }: { title: string; initials?: string }) {
+  const router = useRouter();
+  return (
+    <div className="s-pbar o-ph">
+      <button type="button" className="o-ib" aria-label="Back" onClick={() => router.back()}>
+        <OIcon name="right" size={22} className="s-back" />
+      </button>
+      <b>{title}</b>
+      <span className="o-av">{initials}</span>
     </div>
   );
 }
