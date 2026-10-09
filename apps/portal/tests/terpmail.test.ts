@@ -19,3 +19,36 @@ describe('Terpmail rule', () => {
     expect(terpmailError('other@example.com', ['tester@example.com'])).not.toBeNull();
   });
 });
+
+import { TERPMAIL_REFUSAL } from '@/lib/terpmail';
+import { submitApplication } from '../../../packages/data/src/submit';
+import { ensureApplication, isTerpmailRefusal } from '../../../packages/data/src/cycles';
+import type { BtxClient } from '../../../packages/data/src/client';
+
+describe('database refusal of non-Terpmail applicants', () => {
+  it('uses the sign-in copy', () => {
+    expect(TERPMAIL_REFUSAL).toBe('Use your Terpmail address, like yourname@terpmail.umd.edu.');
+  });
+  it('maps the submit_application refusal terpmail_required', async () => {
+    const client = { rpc: async () => ({ data: null, error: { message: 'terpmail_required', code: '42501' } }) } as unknown as BtxClient;
+    expect(await submitApplication(client, 'x')).toEqual({ ok: false, kind: 'terpmail_required' });
+  });
+  it('recognises the row-level-security refusal on starting a draft', () => {
+    expect(isTerpmailRefusal({ code: '42501', message: 'new row violates row-level security policy for table "applications"' })).toBe(true);
+    expect(isTerpmailRefusal({ message: 'new row violates row-level security policy' })).toBe(true);
+    expect(isTerpmailRefusal({ code: '23505', message: 'duplicate key' })).toBe(false);
+  });
+  it('ensureApplication returns terpmail when the draft insert is refused', async () => {
+    const cycle = { id: 'c1', status: 'published', opens_at: '2020-01-01T00:00:00Z', closes_at: '2099-01-01T00:00:00Z' };
+    const client = {
+      from: (table: string) =>
+        table === 'cycles'
+          ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: cycle, error: null }) }) }) }
+          : {
+              select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+              insert: () => ({ select: () => ({ single: async () => ({ data: null, error: { code: '42501', message: 'new row violates row-level security policy' } }) }) }),
+            },
+    } as unknown as BtxClient;
+    expect(await ensureApplication(client)).toEqual({ kind: 'terpmail' });
+  });
+});

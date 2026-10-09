@@ -14,3 +14,6 @@ export function terpmailError(raw: string, allow: string[] = TEST_EMAILS): strin
   }
   return null;
 }
+
+/** The words shown when the database refuses a non-Terpmail applicant (same copy as the sign-in field). */
+export const TERPMAIL_REFUSAL = `Use your Terpmail address, like yourname${TERPMAIL_DOMAIN}.`;

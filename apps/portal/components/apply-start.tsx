@@ -7,11 +7,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TopBar } from '@btx/ui';
 import { stepPath } from '@/lib/steps';
+import { TerpmailRefusal } from './terpmail-refusal';
 import { ensureApplication, getAuthMode, getBrowserClient } from '@btx/data';
 
-export function ApplyStart({ next }: { next?: string }) {
+export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
   const router = useRouter();
   const [problem, setProblem] = useState<string | null>(null);
+  const [terpmail, setTerpmail] = useState(false);
 
   // Runs once on arrival.
   useEffect(() => {
@@ -19,12 +21,17 @@ export function ApplyStart({ next }: { next?: string }) {
     (async () => {
       // mock mode has no database: go straight to step 1
       if (getAuthMode() === 'mock') {
+        if (demo === 'terpmail') {
+          setTerpmail(true);
+          return;
+        }
         router.replace(next ?? '/apply/basic-info');
         return;
       }
       const r = await ensureApplication(getBrowserClient());
       if (!live) return;
       if (r.kind === 'closed') router.replace('/');
+      else if (r.kind === 'terpmail') setTerpmail(true);
       else if (r.kind === 'error') setProblem(r.message);
       else if (r.application.status === 'submitted') router.replace('/status');
       else router.replace(next ?? stepPath(r.application.current_step));
@@ -32,15 +39,16 @@ export function ApplyStart({ next }: { next?: string }) {
     return () => {
       live = false;
     };
-  }, [router, next]);
+  }, [router, next, demo]);
 
   return (
     <div className="app">
       <TopBar variant="signed-in" />
       <main id="main" className="pm">
         <h1 className="st" style={{ fontSize: 32, lineHeight: 1.08 }}>
-          {problem ? "We couldn't open your application." : 'Opening your application.'}
+          {problem || terpmail ? "We couldn't open your application." : 'Opening your application.'}
         </h1>
+        {terpmail ? <TerpmailRefusal /> : null}
         {problem ? (
           <p className="ld">
             Something went wrong on our side. <Link href="/apply/start" className="lk">Try again</Link>, or email us if it keeps happening.
