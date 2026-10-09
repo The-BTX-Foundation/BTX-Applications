@@ -6,22 +6,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  BottomBar,
   Button,
-  ButtonLink,
   ErrorSummary,
   Segmented,
   SelectField,
-  StepProgress,
-  StepRail,
   TextField,
-  TopBar,
   type SummaryItem,
 } from '@btx/ui';
-import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type Application } from '@btx/data';
+import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type AppFile, type Application } from '@btx/data';
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
-import { STEPS } from '@/lib/steps';
+import { railSteps } from '@/lib/steps';
+import { ApplyShell } from './apply-shell';
 import {
   EMPTY,
   GENDERS,
@@ -33,6 +29,8 @@ import {
   YEARS,
   fieldError,
   formatPhone,
+  fromApplication,
+  toPatch,
   type BasicInfo,
   type FieldKey,
 } from '@/lib/basic-info';
@@ -48,55 +46,21 @@ const DEMO: BasicInfo = {
   hear: 'A friend or mentor shared it with me',
 };
 
-// Turns the form's answers into the application's columns. Blank answers save as null; a credits value that is not a
-// whole number from 0 to 300 is left out (it stays unsaved until it is valid).
 type Patch = NonNullable<Parameters<typeof saveApplication>[2]>;
-function toPatch(v: BasicInfo): Patch {
-  const text = (x: string) => (x.trim() ? x.trim() : null);
-  const patch: Patch = {
-    full_name: text(v.fullName),
-    secondary_email: text(v.secondaryEmail),
-    phone: text(v.phone),
-    gender: text(v.gender),
-    race: text(v.race),
-    heard_from: text(v.hear),
-    major: text(v.major),
-  };
-  if (v.year === '' || (YEARS as readonly string[]).includes(v.year)) {
-    patch.year_in_school = (v.year || null) as Patch['year_in_school'];
-  }
-  const credits = v.credits.trim();
-  if (credits === '') patch.credits_left = null;
-  else if (/^\d{1,3}$/.test(credits) && Number(credits) <= 300) patch.credits_left = Number(credits);
-  return patch;
-}
-
-// The saved application's answers as form values.
-function fromApplication(a: Application): BasicInfo {
-  return {
-    fullName: a.full_name ?? '',
-    secondaryEmail: a.secondary_email ?? '',
-    phone: a.phone ?? '',
-    gender: a.gender ?? '',
-    race: a.race ?? '',
-    hear: a.heard_from ?? '',
-    year: a.year_in_school ?? '',
-    credits: a.credits_left === null ? '' : String(a.credits_left),
-    major: a.major ?? '',
-  };
-}
 
 const SAVE_DELAY_MS = 800;
 
 export function BasicInfoForm({
   demo,
   application,
+  files,
   email: initialEmail,
   view,
 }: {
   demo?: boolean;
   /** The saved application (live mode), or null in mock mode. */
   application: Application | null;
+  files: AppFile[];
   /** The signed-in address (live mode); mock mode reads it in the browser. */
   email?: string;
   view: CycleView;
@@ -209,7 +173,7 @@ export function BasicInfoForm({
       if (timer.current) clearTimeout(timer.current);
       // save every answer and move her on to step 2 (never backwards if she has been further)
       const ok = await flush({ current_step: Math.max(application?.current_step ?? 1, 2) });
-      if (ok) router.push('/apply/coming-next?step=2');
+      if (ok) router.push('/apply/scholarship');
       else setSaveError("We couldn't save your answers. Check your connection and try again.");
     } else {
       // wait a tick so the summary is in the page, then move focus to it
@@ -223,23 +187,16 @@ export function BasicInfoForm({
   const savedLabel = demo ? 'Saved 4:12 PM' : saving === 'error' ? "Couldn't save yet" : savedAt ? `Saved ${savedTime(savedAt)}` : undefined;
 
   return (
-    <div className="app">
-      <TopBar
-        variant="signed-in"
-        accountName={accountName}
-        progress={<StepProgress total={STEPS.length} current={1} saved={savedLabel} />}
-      />
-      <form className="wiz" onSubmit={onSubmit} noValidate>
-        <StepRail
-          steps={STEPS}
-          current={1}
-          title={`${view.term ?? '[term]'} application`}
-          subtitle={`${view.awardName ?? '[award name]'}. Apply by ${view.applyByLong}, ${view.deadlineTime} Eastern.`}
-          saved={savedLabel}
-        />
-        <div className="wiz-main">
-          <main className="wk">
-            <div className="col">
+    <ApplyShell
+      current={1}
+      steps={railSteps(application, files, 1, demo ? [false, false, false, false, false] : undefined)}
+      view={view}
+      accountName={accountName}
+      saved={savedLabel}
+      onSubmit={onSubmit}
+      backHref="/"
+      primary={<Button type="submit">Continue</Button>}
+    >
               <h1 className="st">Basic info.</h1>
               <p className="ld">Tell us who you are and where you are in school.</p>
               {items.length ? (
@@ -364,19 +321,7 @@ export function BasicInfoForm({
                   {saveError}
                 </p>
               ) : null}
-            </div>
-          </main>
-          <BottomBar
-            back={
-              <ButtonLink kind="s" icon="left" href="/">
-                Back
-              </ButtonLink>
-            }
-            primary={<Button type="submit">Continue</Button>}
-          />
-        </div>
-      </form>
-    </div>
+    </ApplyShell>
   );
 }
 

@@ -6,12 +6,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TopBar } from '@btx/ui';
+import { stepPath } from '@/lib/steps';
 import { ensureApplication, getAuthMode, getBrowserClient } from '@btx/data';
-
-// The route for a step number; only step 1 exists so far.
-export function stepPath(step: number): string {
-  return step <= 1 ? '/apply/basic-info' : `/apply/coming-next?step=${step}`;
-}
 
 export function ApplyStart({ next }: { next?: string }) {
   const router = useRouter();
@@ -30,6 +26,7 @@ export function ApplyStart({ next }: { next?: string }) {
       if (!live) return;
       if (r.kind === 'closed') router.replace('/');
       else if (r.kind === 'error') setProblem(r.message);
+      else if (r.application.status === 'submitted') router.replace('/status');
       else router.replace(next ?? stepPath(r.application.current_step));
     })();
     return () => {

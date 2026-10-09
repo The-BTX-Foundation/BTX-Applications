@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { BottomBar, ButtonLink, DatesDrawing, Icon, TopBar } from '@btx/ui';
 import type { CycleVariant } from '@btx/data';
 import { drawingProps, type CycleView } from '@/lib/cycle';
+import { LINKEDIN_URL } from '@/lib/config';
 import { PLACEHOLDER } from '@/lib/format';
 import { NotifyForm } from './notify-form';
 import s from './landing.module.css';
@@ -72,7 +73,7 @@ function WhileYouWait() {
           </svg>
           <span>@btxfoundation</span>
         </a>
-        <a href="#" aria-label="BTX Foundation on LinkedIn">
+        <a href={LINKEDIN_URL} aria-label="BTX Foundation on LinkedIn">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="var(--ink)"

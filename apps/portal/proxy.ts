@@ -8,7 +8,7 @@ import { updateSession } from '@btx/data/proxy';
 export async function proxy(request: NextRequest) {
   const { response, userId, live } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
-  if (live && !userId && (pathname === '/apply' || pathname.startsWith('/apply/'))) {
+  if (live && !userId && (pathname === '/apply' || pathname.startsWith('/apply/') || pathname === '/status')) {
     const url = request.nextUrl.clone();
     url.pathname = '/sign-in';
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
