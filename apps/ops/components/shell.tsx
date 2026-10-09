@@ -91,7 +91,10 @@ function useOpenGroups(pathname: string, initial: Record<string, boolean> = {}) 
 export function Shell({ user, children }: { user: ShellUser; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [menu, setMenu] = useState(false);
+  // The phone menu is open for one page: it remembers the path it was opened on, so going to another page closes it.
+  const [menuPath, setMenuPath] = useState<string | null>(null);
+  const menu = menuPath === pathname;
+  const setMenu = (open: boolean) => setMenuPath(open ? pathname : null);
   const side = useOpenGroups(pathname);
   // the phone menu opens with Scholarships unfolded (the Figma menu frame)
   const sheet = useOpenGroups(pathname, { scholarships: true });
@@ -107,9 +110,6 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
       // storage blocked: the session simply stays
     }
   }, [router]);
-
-  // Closes the phone menu whenever the page changes.
-  useEffect(() => setMenu(false), [pathname]);
 
   return (
     <div className="o-app">

@@ -1727,7 +1727,7 @@ body {
 .o-cy-main {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 .o-chat {
@@ -1762,7 +1762,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  padding: 14px 15px 0;
+  padding: 11px 15px 0;
 }
 .o-ph2:not(.list) .o-h2 {
   font-size: 20px;
@@ -1896,7 +1896,7 @@ body {
   transform: rotate(180deg);
 }
 .o-pstep {
-  padding: 14px 16px 16px;
+  padding: 10px 16px 16px;
 }
 .o-pstep .o-ph-c {
   border-radius: 999px;
@@ -1915,17 +1915,17 @@ body {
 .o-pstep .o-ph-c {
   position: static;
   margin: 0;
-  width: 28px;
-  height: 28px;
-  font-size: 13px;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
   z-index: 1;
 }
 .o-ps-line {
   position: absolute;
-  top: 13px;
+  top: 14px;
   right: 50%;
-  margin-right: 14px;
-  width: calc(100% - 28px);
+  margin-right: 15px;
+  width: calc(100% - 30px);
   height: 2px;
   background: var(--line);
 }
@@ -1937,7 +1937,7 @@ body {
   font-weight: 600;
 }
 .o-ps-now {
-  margin-top: 18px;
+  margin-top: 14px;
   font-size: 15px;
   font-weight: 700;
   line-height: 21px;
@@ -1975,7 +1975,7 @@ body {
   min-width: 0;
 }
 .o-cl-pt b {
-  font-size: 15px;
+  font-size: 14.6px;
   font-weight: 700;
   line-height: 21px;
 }

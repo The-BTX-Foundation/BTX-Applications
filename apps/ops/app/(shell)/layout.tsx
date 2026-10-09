@@ -2,6 +2,9 @@
 import { Shell } from '@/components/shell';
 import { requireStaff } from '@/lib/user';
 
+// The shell reads the session cookie, so every page under it is rendered per request, never prebuilt.
+export const dynamic = 'force-dynamic';
+
 // Wraps the page in the sidebar, phone bars and menu.
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
   const user = await requireStaff();
