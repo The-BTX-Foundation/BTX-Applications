@@ -25,7 +25,7 @@ An Ops Hub app will be added as `apps/ops/` later and share `packages/ui` and `p
 
 ```sh
 npm install                              # installs every workspace from the repo root
-cp apps/portal/.env.example apps/portal/.env.local   # optional: add the Supabase URL and publishable key
+cp apps/portal/.env.example apps/portal/.env.local   # Supabase URL and publishable key (public); clear them to run the local mock
 npm run dev                              # Portal on http://localhost:3000
 ```
 

@@ -201,7 +201,7 @@ export function Landing({ variant, view }: { variant: CycleVariant; view: CycleV
                   <li key={t}>{t}</li>
                 ))}
               </ul>
-              {view.requirements.length === 0 ? <p className={s.note}>[{name.split(' ')[0]} requirements to confirm]</p> : null}
+              {view.requirements.length === 0 ? <p className={s.note}>{view.awardName ? `[${name.split(' ')[0]} requirements to confirm]` : '[Requirements to confirm]'}</p> : null}
             </div>
             {closed ? null : (
               <div className={s.block}>
