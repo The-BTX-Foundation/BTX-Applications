@@ -26,6 +26,7 @@ export function SignInFlow({
   next,
   codeLifetime,
   lifetimeMinutes,
+  linkError,
 }: {
   demo?: DemoState;
   /** Where to go after signing in (set by the proxy when it sends a signed-out visitor here). */
@@ -34,11 +35,14 @@ export function SignInFlow({
   codeLifetime: string;
   /** The same in minutes, to tell an expired code from a wrong one (Supabase reports both the same way). */
   lifetimeMinutes: number;
+  /** She followed an email link that had expired or was already used. */
+  linkError?: boolean;
 }) {
   const router = useRouter();
   const [stage, setStage] = useState<'email' | 'code'>(demo && demo !== 'email' ? 'code' : 'email');
   const [email, setEmail] = useState(demo && demo !== 'email' ? DEMO_EMAIL : '');
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [linkProblem, setLinkProblem] = useState(Boolean(linkError));
   const [code, setCode] = useState(demo === 'code' ? '4829' : '');
   const [problem, setProblem] = useState<Problem>(demo === 'wrong' ? 'wrong' : demo === 'expired' ? 'expired' : null);
   const [seconds, setSeconds] = useState(demo === 'code' ? 24 : RESEND_SECONDS);
@@ -57,7 +61,10 @@ export function SignInFlow({
   // Sends (or re-sends) the code. Returns true when it went out.
   async function send(address: string): Promise<boolean> {
     setBusy(true);
-    const r = await requestSignInCode(address);
+    const r = await requestSignInCode(
+      address,
+      `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? '/apply/start')}`,
+    );
     setBusy(false);
     if (r.ok) return true;
     setEmailError(
@@ -71,6 +78,7 @@ export function SignInFlow({
   // Email screen: check the address, then ask for the code.
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
+    setLinkProblem(false);
     const err = terpmailError(email);
     setEmailError(err);
     if (err) return;
@@ -155,6 +163,12 @@ export function SignInFlow({
             {stage === 'email' ? (
               <form onSubmit={submitEmail} noValidate className={s.form}>
                 <h2 className={s.cardTitle}>Enter your email</h2>
+                {linkProblem ? (
+                  <p className="em" role="alert" style={{ marginTop: 12 }}>
+                    <ErrorIcon />
+                    <span>That sign-in link has expired or was already used. Send a new one.</span>
+                  </p>
+                ) : null}
                 <TextField
                   id="email"
                   label="Terpmail address"
@@ -201,6 +215,7 @@ export function SignInFlow({
                     describedBy={message ? 'code-err' : undefined}
                   />
                 </div>
+                <p className={s.linkHint}>Or use the link in the email.</p>
                 {message ? (
                   <p className="em" id="code-err" role="alert" style={{ marginTop: 12 }}>
                     <ErrorIcon />

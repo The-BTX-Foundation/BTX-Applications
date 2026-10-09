@@ -3,16 +3,16 @@
 import type { Metadata } from 'next';
 import { SignInFlow, type DemoState } from '@/components/sign-in-flow';
 import { loadCodeLifetime } from '@/lib/cycle';
+import { safeNext as cleanNext } from '@/lib/safe-next';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
 const DEMOS: DemoState[] = ['email', 'code', 'wrong', 'expired'];
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ demo?: string; next?: string }> }) {
-  const { demo, next } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ demo?: string; next?: string; error?: string }> }) {
+  const { demo, next, error } = await searchParams;
   const { text, minutes } = await loadCodeLifetime();
-  // only same-site paths under /apply are accepted as a return address
-  const safeNext = next && /^\/apply(\/|$)/.test(next) && !next.startsWith('//') ? next : undefined;
+  const safeNext = cleanNext(next);
   const state = DEMOS.find((d) => d === demo);
-  return <SignInFlow demo={state} next={safeNext} codeLifetime={text} lifetimeMinutes={minutes} />;
+  return <SignInFlow demo={state} next={safeNext} codeLifetime={text} lifetimeMinutes={minutes} linkError={error === 'link'} />;
 }

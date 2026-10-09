@@ -59,15 +59,17 @@ export async function signOut(): Promise<void> {
 // A short pause so the mock feels like a network call.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Asks for a new 6-digit code by email. shouldCreateUser is true: signing in creates the account on a first visit.
-export async function requestSignInCode(email: string): Promise<SendResult> {
+// Asks for a new 6-digit code (and sign-in link) by email. shouldCreateUser is true: signing in creates the account on a first visit.
+export async function requestSignInCode(email: string, redirectTo?: string): Promise<SendResult> {
   if (getAuthMode() === 'mock') {
     await pause(250);
     return { ok: true };
   }
   const { error } = await getBrowserClient().auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    // emailRedirectTo: until the email template can carry the 6-digit code, the email holds a link; the link lands on
+    // the app's /auth/callback route, which signs her in and sends her on
+    options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
   });
   if (!error) return { ok: true };
   const limited =
