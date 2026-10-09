@@ -257,7 +257,7 @@ a {
   font: inherit;
   color: inherit;
   outline: none;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 .in-el::placeholder {
   color: var(--muted);
@@ -732,6 +732,9 @@ a {
     align-items: center;
     gap: 28px;
     font-size: 15px;
+  }
+  .acct span {
+    white-space: nowrap;
   }
   .acct {
     display: flex;

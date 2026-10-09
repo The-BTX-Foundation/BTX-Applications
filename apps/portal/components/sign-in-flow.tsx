@@ -27,6 +27,7 @@ export function SignInFlow({
   codeLifetime,
   lifetimeMinutes,
   linkError,
+  demoEmail,
 }: {
   demo?: DemoState;
   /** Where to go after signing in (set by the proxy when it sends a signed-out visitor here). */
@@ -37,10 +38,12 @@ export function SignInFlow({
   lifetimeMinutes: number;
   /** She followed an email link that had expired or was already used. */
   linkError?: boolean;
+  /** Review mode: the address shown on the code screens (the stress frames use a very long one). */
+  demoEmail?: string;
 }) {
   const router = useRouter();
   const [stage, setStage] = useState<'email' | 'code'>(demo && demo !== 'email' ? 'code' : 'email');
-  const [email, setEmail] = useState(demo && demo !== 'email' ? DEMO_EMAIL : '');
+  const [email, setEmail] = useState(demo ? (demo !== 'email' ? (demoEmail ?? DEMO_EMAIL) : (demoEmail ?? '')) : '');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [linkProblem, setLinkProblem] = useState(Boolean(linkError));
   const [code, setCode] = useState(demo === 'code' ? '4829' : '');

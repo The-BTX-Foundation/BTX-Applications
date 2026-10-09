@@ -17,6 +17,7 @@ import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type 
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
 import { railSteps } from '@/lib/steps';
+import { STRESS, withValue } from '@/lib/stress';
 import { ApplyShell } from './apply-shell';
 import {
   EMPTY,
@@ -48,6 +49,19 @@ const DEMO: BasicInfo = {
 
 type Patch = NonNullable<Parameters<typeof saveApplication>[2]>;
 
+// The stress sample: longest name, emails and answers, credits at 120, phone one digit short.
+const DEMO_STRESS: BasicInfo = {
+  ...EMPTY,
+  fullName: STRESS.name,
+  secondaryEmail: STRESS.secondaryEmail,
+  phone: '(301) 555-019',
+  gender: 'Prefer not to say',
+  race: STRESS.race,
+  hear: STRESS.hear,
+  credits: '120',
+  major: STRESS.major,
+};
+
 const SAVE_DELAY_MS = 800;
 
 export function BasicInfoForm({
@@ -57,7 +71,8 @@ export function BasicInfoForm({
   email: initialEmail,
   view,
 }: {
-  demo?: boolean;
+  /** Review mode: "1" (the draft's sample) or "stress" (the longest realistic values). */
+  demo?: string;
   /** The saved application (live mode), or null in mock mode. */
   application: Application | null;
   files: AppFile[];
@@ -66,11 +81,11 @@ export function BasicInfoForm({
   view: CycleView;
 }) {
   const router = useRouter();
-  const [v, setV] = useState<BasicInfo>(demo ? DEMO : application ? fromApplication(application) : EMPTY);
+  const [v, setV] = useState<BasicInfo>(demo ? (demo === 'stress' ? DEMO_STRESS : DEMO) : application ? fromApplication(application) : EMPTY);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>(demo ? { phone: true } : {});
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [email, setEmail] = useState(demo ? 'ecoleman@terpmail.umd.edu' : (initialEmail ?? ''));
+  const [email, setEmail] = useState(demo ? (demo === 'stress' ? STRESS.email : 'ecoleman@terpmail.umd.edu') : (initialEmail ?? ''));
   // The time of the last save, as an ISO string. A fresh draft (never edited) shows no save time.
   const [savedAt, setSavedAt] = useState<string | null>(
     application && application.updated_at !== application.created_at ? application.updated_at : null,
@@ -81,7 +96,7 @@ export function BasicInfoForm({
   const saved = useRef<Patch>(application ? toPatch(fromApplication(application)) : {});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(v);
-  const accountName = demo ? 'Ebony Coleman' : application?.full_name || 'Your account';
+  const accountName = demo ? (demo === 'stress' ? STRESS.name : 'Ebony Coleman') : application?.full_name || 'Your account';
 
   // Mock mode: read the tab's remembered sign-in address for the read-only field.
   useEffect(() => {
@@ -268,7 +283,7 @@ export function BasicInfoForm({
                 <SelectField
                   id="race"
                   label="Race"
-                  options={RACES}
+                  options={withValue(RACES, v.race)}
                   value={v.race}
                   error={shown('race')}
                   onChange={(e) => set('race', e.target.value)}
@@ -277,7 +292,7 @@ export function BasicInfoForm({
                 <SelectField
                   id="hear"
                   label="How did you hear about this scholarship?"
-                  options={HEARD_FROM}
+                  options={withValue(HEARD_FROM, v.hear)}
                   value={v.hear}
                   error={shown('hear')}
                   onChange={(e) => set('hear', e.target.value)}
@@ -309,7 +324,7 @@ export function BasicInfoForm({
                   id="major"
                   label="Major"
                   placeholder="Choose your major"
-                  options={MAJORS}
+                  options={withValue(MAJORS, v.major)}
                   value={v.major}
                   error={shown('major')}
                   onChange={(e) => set('major', e.target.value)}

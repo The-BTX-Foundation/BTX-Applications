@@ -8,6 +8,6 @@ export const metadata: Metadata = { title: 'Essay' };
 export default async function EssayPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
   const d = await loadApply('/apply/essay');
-  if (d.mock) return <EssayForm application={null} files={[]} view={d.view} demo={demo === '1'} />;
+  if (d.mock) return <EssayForm application={null} files={[]} view={d.view} demo={demo} />;
   return <EssayForm application={d.application} files={d.files} view={d.view} />;
 }

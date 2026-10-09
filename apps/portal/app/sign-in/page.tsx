@@ -9,10 +9,10 @@ export const metadata: Metadata = { title: 'Sign in' };
 
 const DEMOS: DemoState[] = ['email', 'code', 'wrong', 'expired'];
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ demo?: string; next?: string; error?: string }> }) {
-  const { demo, next, error } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ demo?: string; next?: string; error?: string; stress?: string }> }) {
+  const { demo, next, error, stress } = await searchParams;
   const { text, minutes } = await loadCodeLifetime();
   const safeNext = cleanNext(next);
   const state = DEMOS.find((d) => d === demo);
-  return <SignInFlow demo={state} next={safeNext} codeLifetime={text} lifetimeMinutes={minutes} linkError={error === 'link'} />;
+  return <SignInFlow demo={state} next={safeNext} codeLifetime={text} lifetimeMinutes={minutes} linkError={error === 'link'} demoEmail={stress === '1' ? 'aokonkwowhitfield@terpmail.umd.edu' : undefined} />;
 }

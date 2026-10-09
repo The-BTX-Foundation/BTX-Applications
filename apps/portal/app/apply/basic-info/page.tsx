@@ -8,6 +8,6 @@ export const metadata: Metadata = { title: 'Basic info' };
 export default async function BasicInfoPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
   const d = await loadApply('/apply/basic-info');
-  if (d.mock) return <BasicInfoForm demo={demo === '1'} application={null} files={[]} view={d.view} />;
+  if (d.mock) return <BasicInfoForm demo={demo} application={null} files={[]} view={d.view} />;
   return <BasicInfoForm application={d.application} files={d.files} email={d.email} view={d.view} />;
 }

@@ -2,13 +2,14 @@
 
 // Step 3: Essay, optional (drafts step4.html and step4-phone.html). The prompt comes from the cycle; a live word count
 // shows against the 500-word limit. Only going over the limit blocks Continue, with the field's error style.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, ErrorIcon } from '@btx/ui';
 import type { AppFile, Application } from '@btx/data';
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
 import { DEMO_SAVED, demoDone, railSteps } from '@/lib/steps';
+import { STRESS } from '@/lib/stress';
 import { useAutosave } from '@/lib/use-autosave';
 import { ESSAY_WORD_LIMIT, countWords } from '@/lib/words';
 import { ApplyShell } from './apply-shell';
@@ -34,19 +35,27 @@ export function EssayForm({
   application: Application | null;
   files: AppFile[];
   view: CycleView;
-  demo?: boolean;
+  /** Review mode: "1" (the draft's sample) or "stress" (a 3,000-character essay). */
+  demo?: string;
 }) {
   const router = useRouter();
-  const [text, setText] = useState(demo ? DEMO_ESSAY : (application?.essay ?? ''));
-  const [over, setOver] = useState(false);
+  const [text, setText] = useState(demo ? (demo === 'stress' ? STRESS.essay : DEMO_ESSAY) : (application?.essay ?? ''));
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const auto = useAutosave(application?.id ?? null, application && application.updated_at !== application.created_at ? application.updated_at : null);
-  const words = demo ? 412 : countWords(text);
+  const words = demo === '1' ? 412 : countWords(text);
   const tooLong = words > ESSAY_WORD_LIMIT;
-  const showOver = over && tooLong;
+  const showOver = tooLong;
   const prompt = demo ? DEMO_PROMPT : view.essayPrompt;
   const saved = demo ? DEMO_SAVED[3] : auto.failed ? "Couldn't save yet" : auto.savedAt ? `Saved ${savedTime(auto.savedAt)}` : undefined;
+
+  // The box grows with the essay (the stress frame shows it taller than the 300px minimum).
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 3}px`;
+  }, [text]);
 
   // In review mode the box starts focused, as the draft draws it.
   useEffect(() => {
@@ -57,7 +66,6 @@ export function EssayForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (tooLong) {
-      setOver(true);
       box.current?.focus();
       return;
     }
@@ -71,7 +79,7 @@ export function EssayForm({
       current={3}
       steps={railSteps(application, files, 3, demo ? demoDone(3) : undefined)}
       view={view}
-      accountName={demo ? 'Ebony Coleman' : application?.full_name || 'Your account'}
+      accountName={demo ? (demo === 'stress' ? STRESS.name : 'Ebony Coleman') : application?.full_name || 'Your account'}
       saved={saved}
       onSubmit={onSubmit}
       backHref="/apply/scholarship"

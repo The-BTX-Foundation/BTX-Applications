@@ -8,6 +8,6 @@ export const metadata: Metadata = { title: "This fall's scholarship" };
 export default async function ScholarshipPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
   const d = await loadApply('/apply/scholarship');
-  if (d.mock) return <ScholarshipForm application={null} files={[]} view={d.view} demo={demo === '1'} />;
+  if (d.mock) return <ScholarshipForm application={null} files={[]} view={d.view} demo={demo} />;
   return <ScholarshipForm application={d.application} files={d.files} view={d.view} />;
 }

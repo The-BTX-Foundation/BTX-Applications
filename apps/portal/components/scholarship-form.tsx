@@ -10,6 +10,7 @@ import type { AppFile, Application } from '@btx/data';
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
 import { DEMO_SAVED, demoDone, railSteps } from '@/lib/steps';
+import { STRESS } from '@/lib/stress';
 import { useAutosave } from '@/lib/use-autosave';
 import { ApplyShell } from './apply-shell';
 import s from './scholarship-form.module.css';
@@ -23,7 +24,7 @@ export function ScholarshipForm({
   application: Application | null;
   files: AppFile[];
   view: CycleView;
-  demo?: boolean;
+  demo?: string;
 }) {
   const router = useRouter();
   const [cert, setCert] = useState(demo ? true : (application?.interest_certification ?? false));
@@ -51,7 +52,7 @@ export function ScholarshipForm({
       current={2}
       steps={railSteps(application, files, 2, demo ? demoDone(2) : undefined)}
       view={view}
-      accountName={demo ? 'Ebony Coleman' : application?.full_name || 'Your account'}
+      accountName={demo ? (demo === 'stress' ? STRESS.name : 'Ebony Coleman') : application?.full_name || 'Your account'}
       saved={saved}
       onSubmit={onSubmit}
       backHref="/apply/basic-info"
