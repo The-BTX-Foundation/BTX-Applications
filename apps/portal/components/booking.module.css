@@ -207,12 +207,7 @@
 
 /* none of these times work */
 .bk {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  margin: -8px 0 4px;
-  font-size: 15px;
+  display: none;
 }
 .nf {
   margin-top: 22px;
@@ -499,11 +494,15 @@
   .nc {
     width: 720px;
     max-width: 100%;
-    margin: 0 auto;
+    margin: -26px auto 0;
   }
   .bk {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     height: 24px;
     margin: 32px 0 0;
+    font-size: 15px;
   }
   .tg {
     gap: 8px;

@@ -14,9 +14,11 @@ import { easternDate } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
-export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string; at?: string }> }) {
-  const { demo, at } = await searchParams;
+export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string; at?: string; days?: string; windows?: string }> }) {
+  const { demo, at, days, windows } = await searchParams;
   const d = await loadJourney('/status', demo, 'waiting', at);
+  // mock: the free times she just sent on the none-of-these-times page
+  if ('mock' in d && d.mock && d.freeTimes && days && windows) d.freeTimes = { days: days.split(','), windows: windows.split(','), note: '' };
   if ('failed' in d) return <ApplyLoadError status />;
   const state = pickState({
     now: d.now,
