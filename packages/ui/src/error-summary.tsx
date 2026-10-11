@@ -9,6 +9,8 @@ export type SummaryItem = {
   /** The control's id, so the link can focus it. */
   fieldId: string;
   message: string;
+  /** A link to another page (a problem fixed on a different step). Without it the link focuses the field here. */
+  href?: string;
 };
 
 // Moves focus to a field's control (the text input, select or first segmented button).
@@ -33,12 +35,16 @@ export const ErrorSummary = forwardRef<HTMLDivElement, { items: SummaryItem[] }>
         {items.map((item) => (
           <li key={item.fieldId}>
             <a
-              href={`#${item.fieldId}`}
+              href={item.href ?? `#${item.fieldId}`}
               className="lk"
-              onClick={(e) => {
-                e.preventDefault();
-                focusField(item.fieldId);
-              }}
+              onClick={
+                item.href
+                  ? undefined
+                  : (e) => {
+                      e.preventDefault();
+                      focusField(item.fieldId);
+                    }
+              }
             >
               {item.message}
             </a>

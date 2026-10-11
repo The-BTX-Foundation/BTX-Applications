@@ -8,3 +8,6 @@ export const TEST_EMAILS: string[] = (process.env.NEXT_PUBLIC_PORTAL_TEST_EMAILS
   .split(',')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
+
+/** BTX's LinkedIn page. */
+export const LINKEDIN_URL = 'https://www.linkedin.com/company/thebtxfoundation/';

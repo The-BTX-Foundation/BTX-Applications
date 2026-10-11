@@ -17,6 +17,17 @@
 
 @media (min-width: 1024px) {
   .grid {
+    gap: 24px;
+    margin-top: 32px;
+  }
+  .summary {
+    margin-top: 28px;
+  }
+}
+
+/* two columns need the full 720px column, which the work area has from about 1240px */
+@media (min-width: 1240px) {
+  .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     column-gap: 24px;
@@ -26,21 +37,5 @@
   }
   .summary {
     margin-top: 28px;
-  }
-  .name {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .phone {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .terp {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .secondary {
-    grid-column: 2;
-    grid-row: 2;
   }
 }

@@ -75,10 +75,21 @@
   color: var(--muted);
   margin-top: 16px;
 }
+.linkHint {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 12px;
+}
 .devNote {
   font-size: 14px;
   color: var(--muted);
   margin-top: 12px;
+}
+.ops :global(.lk) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .ops {
   margin-top: auto;
@@ -158,6 +169,10 @@
   }
   .phoneNote {
     display: none;
+  }
+  .ops :global(.lk) {
+    display: inline;
+    min-height: 0;
   }
   .ops {
     margin-top: 24px;

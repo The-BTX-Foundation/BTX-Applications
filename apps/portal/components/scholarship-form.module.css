@@ -1,0 +1,98 @@
+/* Step 2 (draft step3.html / step3-phone.html). Phone first; laptop from 1024px. */
+.top {
+  margin-top: 20px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  padding: 20px;
+}
+.head {
+  display: block;
+}
+.name {
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.amount {
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 8px;
+}
+.rule {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+.list {
+  list-style: none;
+  margin-top: 10px;
+}
+.list li {
+  display: flex;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.list li:first-child {
+  margin-top: 0;
+}
+.dm {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--gold);
+  transform: rotate(45deg);
+  margin: 9px 3px 0 2px;
+}
+.text {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.programs {
+  margin-top: 24px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-top: 10px;
+}
+.grid > button {
+  height: 100%;
+}
+
+@media (min-width: 1024px) {
+  .card {
+    padding: 22px 32px;
+  }
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .name {
+    font-size: 26px;
+  }
+  .amount {
+    font-size: 56px;
+    margin: 0 0 0 16px;
+  }
+  .rule {
+    margin-top: 14px;
+    padding-top: 14px;
+  }
+  .programs {
+    margin-top: 20px;
+  }
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

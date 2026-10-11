@@ -181,13 +181,15 @@ export function Checkbox({
   sub,
   text,
   card,
+  id,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   label?: string;
   sub?: string;
+  id?: string;
   /** A plain (not bold) sentence instead of a bold label, for long agreements. */
-  text?: string;
+  text?: ReactNode;
   /** Draw inside a bordered card. */
   card?: boolean;
 }) {
@@ -195,6 +197,7 @@ export function Checkbox({
     <button
       type="button"
       className={['cr', card ? 'cd' : ''].filter(Boolean).join(' ')}
+      id={id}
       role="checkbox"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
