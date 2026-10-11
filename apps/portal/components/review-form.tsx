@@ -19,10 +19,12 @@ import type { CycleView } from '@/lib/cycle';
 import { LABELS } from '@/lib/basic-info';
 import { savedTime } from '@/lib/format';
 import { DEMO_SAVED, STEP_PATHS, demoDone, railSteps, stepsDone } from '@/lib/steps';
+import { STRESS } from '@/lib/stress';
 import { useAutosave } from '@/lib/use-autosave';
 import { countWords } from '@/lib/words';
 import { HELP_EMAIL } from '@btx/ui';
 import { ApplyShell } from './apply-shell';
+import { FileName, Name } from './text';
 import s from './review-form.module.css';
 
 // Database column -> the field id on the Basic info page and its label.
@@ -64,7 +66,7 @@ export function ReviewForm({
   const [stay, setStay] = useState(demo ? true : (application?.stay_in_touch ?? false));
   const [agreed, setAgreed] = useState(demo ? true : (application?.agreed_true ?? false));
   const [agreeError, setAgreeError] = useState(false);
-  const [failure, setFailure] = useState<Failure | null>(demo === 'failed' ? { kind: 'connection' } : null);
+  const [failure, setFailure] = useState<Failure | null>(demo?.startsWith('failed') ? { kind: 'connection' } : null);
   const [open, setOpen] = useState<'essay' | 'docs' | null>(null);
   const [busy, setBusy] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -73,18 +75,29 @@ export function ReviewForm({
 
   const done = demo ? [true, true, true, true, false] : stepsDone(application, files);
   const a = application;
-  const words = demo ? DEMO.words : countWords(a?.essay ?? '');
+  const stress = Boolean(demo?.includes('stress'));
+  const words = stress ? countWords(STRESS.essay) : demo ? DEMO.words : countWords(a?.essay ?? '');
   const name = view.awardName ?? '[award name]';
   const programs = [a?.interest_certification ? 'the certification program' : '', a?.interest_mentoring ? 'mentoring' : ''].filter(Boolean);
   const rows = [
     {
       step: 1,
       title: 'Basic info',
-      text: demo
-        ? DEMO.basic
-        : done[0] && a
-          ? `${a.full_name}, ${a.phone}. ${a.year_in_school}, ${a.major}, ${a.credits_left} credits left.`
-          : 'Some answers are missing.',
+      text: stress ? (
+        <>
+          <Name>{STRESS.name}</Name>, (301) 555-0148. Sophomore, {STRESS.major}, 120 credits left.
+        </>
+      ) : demo ? (
+        <>
+          <Name>Ebony Coleman</Name>, (301) 555-0148. Junior, Mechanical Engineering, 48 credits left.
+        </>
+      ) : done[0] && a ? (
+        <>
+          <Name>{a.full_name ?? ''}</Name>, {a.phone}. {a.year_in_school}, {a.major}, {a.credits_left} credits left.
+        </>
+      ) : (
+        'Some answers are missing.'
+      ),
     },
     {
       step: 2,
@@ -95,7 +108,16 @@ export function ReviewForm({
     {
       step: 4,
       title: 'Documents',
-      text: demo ? DEMO.files.join(', ') : files.length ? files.map((f) => f.filename).join(', ') : 'No files yet.',
+      text: (stress ? [STRESS.resume.name, STRESS.transcript.name] : demo ? DEMO.files : files.map((f) => f.filename)).length ? (
+        (stress ? [STRESS.resume.name, STRESS.transcript.name] : demo ? DEMO.files : files.map((f) => f.filename)).map((n, i) => (
+          <span key={n}>
+            {i > 0 ? ', ' : ''}
+            <FileName>{n}</FileName>
+          </span>
+        ))
+      ) : (
+        'No files yet.'
+      ),
       view: files.length || demo ? ('docs' as const) : undefined,
     },
   ];
@@ -128,6 +150,8 @@ export function ReviewForm({
     }
     setBusy(false);
     if (r.ok) {
+      // the confirmation email is sent by the server (it only logs until the email service is configured)
+      if (getAuthMode() !== 'mock') void fetch('/api/application-submitted', { method: 'POST' }).catch(() => {});
       router.push('/status');
       router.refresh();
       return;
@@ -161,7 +185,7 @@ export function ReviewForm({
       current={5}
       steps={railSteps(application, files, 5, demo ? demoDone(5) : undefined).map((st, i) => ({ ...st, done: done[i] }))}
       view={view}
-      accountName={demo ? 'Ebony Coleman' : application?.full_name || 'Your account'}
+      accountName={demo ? (demo.includes('stress') ? STRESS.name : 'Ebony Coleman') : application?.full_name || 'Your account'}
       saved={saved}
       onSubmit={onSubmit}
       backHref="/apply/documents"

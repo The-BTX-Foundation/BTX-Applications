@@ -20,7 +20,7 @@ export function BottomBar({
   className?: string;
 }) {
   return (
-    <div className={['bar', phoneNote ? 'tall' : '', className].filter(Boolean).join(' ')}>
+    <section aria-label="Actions" className={['bar', phoneNote ? 'tall' : '', className].filter(Boolean).join(' ')}>
       <div className="bw">
         {phoneNote && note ? <span className="bn bn-top">{note}</span> : null}
         {back}
@@ -29,6 +29,6 @@ export function BottomBar({
           {primary}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

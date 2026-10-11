@@ -18,6 +18,7 @@ export function ApplyShell({
   note,
   phoneNote,
   wide,
+  live,
   children,
 }: {
   /** The step on screen, counting from 1. */
@@ -35,6 +36,8 @@ export function ApplyShell({
   phoneNote?: boolean;
   /** 800px column (step 2) instead of 720px. */
   wide?: boolean;
+  /** A short message for screen readers (an upload started, finished or paused). The save time is announced too. */
+  live?: string;
   children: ReactNode;
 }) {
   return (
@@ -60,7 +63,10 @@ export function ApplyShell({
           saved={saved}
         />
         <div className="wiz-main">
-          <main className="wk">
+          <div className="sr-only" role="status" aria-live="polite">
+            {live ?? saved}
+          </div>
+          <main id="main" className="wk">
             <div className="col">{children}</div>
           </main>
           <BottomBar

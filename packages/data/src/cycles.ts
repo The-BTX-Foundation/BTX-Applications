@@ -25,6 +25,17 @@ export async function getPublishedCycle(client: BtxClient): Promise<Cycle | null
   return data;
 }
 
+// Like getPublishedCycle, but says whether the read failed (so a screen can show the load error instead of treating a
+// failed read as "no cycle").
+export async function fetchPublishedCycle(client: BtxClient): Promise<{ cycle: Cycle | null; failed: boolean }> {
+  try {
+    const { data, error } = await client.from('cycles').select('*').eq('status', 'published').maybeSingle();
+    return { cycle: data, failed: Boolean(error) };
+  } catch {
+    return { cycle: null, failed: true };
+  }
+}
+
 export type EnsureResult =
   | { kind: 'ok'; cycle: Cycle; application: Application }
   | { kind: 'closed' }

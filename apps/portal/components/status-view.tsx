@@ -4,7 +4,6 @@ import { DatesDrawing, HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import type { CycleView } from '@/lib/cycle';
 import { daysBetween, easternDate, longDay, shortDay } from '@/lib/format';
 import { LINKEDIN_URL } from '@/lib/config';
-import { PrintLink } from './print-link';
 import s from './status-view.module.css';
 
 // "Sat Sep 12, 4:52 PM" in Eastern time.
@@ -22,6 +21,7 @@ export function StatusView({
   code,
   submittedAt,
   today,
+  copySent,
 }: {
   view: CycleView;
   accountName: string;
@@ -31,6 +31,8 @@ export function StatusView({
   submittedAt: string;
   /** "YYYY-MM-DD" for the Today marker. */
   today: string;
+  /** Whether the confirmation email is really sent (the email service is set up). Without it, no "Confirmation sent" line. */
+  copySent: boolean;
 }) {
   const d = view.drawing;
   const start = easternDate(submittedAt);
@@ -53,17 +55,14 @@ export function StatusView({
   return (
     <div className="app">
       <TopBar variant="signed-in" accountName={accountName} />
-      <main className={`pm ${s.page}`}>
+      <main id="main" className={`pm ${s.page}`}>
         <div className={s.wrap}>
           <p className={s.stamp}>
-            {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}. Copy sent to {email}
+            {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}.{copySent ? ` Confirmation sent to ${email}` : ''}
           </p>
           <h1 className={s.title}>Application submitted.</h1>
           <p className={s.lead}>We&apos;ll email you {interviewDay} to schedule your video interview.</p>
-          {/* TODO: the confirmation email itself ("Copy sent to ...") is sent later; this line is text only for now. */}
-          <p className={s.copy}>
-            {code ? `Application ${code}. ` : ''}Copy sent to {email}
-          </p>
+          {copySent ? <p className={s.copy}>Confirmation sent to {email}</p> : null}
           <div className={s.drawing}>
             <DatesDrawing {...drawing} />
           </div>
@@ -85,7 +84,6 @@ export function StatusView({
                 </div>
               </div>
               <div className={s.foot}>
-                <PrintLink className={s.footLink} />
                 <span className={s.questions}>
                   Questions?{' '}
                   <a href={`mailto:${HELP_EMAIL}`} className="lk">
@@ -126,6 +124,8 @@ export function StatusView({
               </section>
             </div>
           </div>
+          {/* phone only: the application number as a small line at the very bottom (laptop shows it in the stamp) */}
+          {code ? <p className={s.appCode}>Application {code}</p> : null}
         </div>
       </main>
     </div>

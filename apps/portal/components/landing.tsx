@@ -88,7 +88,7 @@ function WhileYouWait() {
   );
 }
 
-export function Landing({ variant, view }: { variant: CycleVariant; view: CycleView }) {
+export function Landing({ variant, view, notified }: { variant: CycleVariant; view: CycleView; notified?: string }) {
   const name = view.awardName ?? NAME_FALLBACK;
   const season = view.term?.split(' ')[0].toLowerCase() ?? 'fall';
   const [l1, l2] = headlineLines(name);
@@ -100,7 +100,7 @@ export function Landing({ variant, view }: { variant: CycleVariant; view: CycleV
   return (
     <div className="app">
       <TopBar variant="signed-out" />
-      <main className={`pm ${root}`}>
+      <main id="main" className={`pm ${root}`}>
         <div className={s.top}>
           <div className={s.left}>
             <p className={s.status}>
@@ -171,9 +171,9 @@ export function Landing({ variant, view }: { variant: CycleVariant; view: CycleV
                 </p>
               </>
             ) : soon ? (
-              <NotifyForm kind="applications_open" label="Email me when applications open" when="applications open" />
+              <NotifyForm initialSaved={notified} kind="applications_open" label="Email me when applications open" when="applications open" />
             ) : (
-              <NotifyForm kind="next_cycle" label="Email me when the next cycle opens" when="the next cycle opens" />
+              <NotifyForm initialSaved={notified} kind="next_cycle" label="Email me when the next cycle opens" when="the next cycle opens" />
             )}
             {soon ? null : (
               <p className={s.sub}>

@@ -37,7 +37,7 @@ export function ApplyStart({ next }: { next?: string }) {
   return (
     <div className="app">
       <TopBar variant="signed-in" />
-      <main className="pm">
+      <main id="main" className="pm">
         <h1 className="st" style={{ fontSize: 32, lineHeight: 1.08 }}>
           {problem ? "We couldn't open your application." : 'Opening your application.'}
         </h1>

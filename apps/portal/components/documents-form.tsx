@@ -21,8 +21,10 @@ import {
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
 import { DEMO_SAVED, demoDone, railSteps } from '@/lib/steps';
+import { STRESS } from '@/lib/stress';
 import { useAutosave } from '@/lib/use-autosave';
 import { ApplyShell } from './apply-shell';
+import { FileName } from './text';
 import s from './documents-form.module.css';
 
 type Slot =
@@ -49,6 +51,12 @@ function slotFrom(f: AppFile): Slot {
 
 // The states the drafts draw, for ?demo review: resume uploaded and the transcript empty, uploading or paused.
 function demoSlots(demo: string): Record<DocKind, Slot> {
+  if (demo === 'stress' || demo === 'failed-stress' || demo === 'stress-uploading') {
+    const resume: Slot = { phase: 'done', name: STRESS.resume.name, size: STRESS.resume.size, at: STRESS.resume.at, path: null };
+    if (demo === 'stress-uploading') return { resume, transcript: { phase: 'uploading', name: STRESS.transcript.name, sent: 6.3 * 1048576, total: STRESS.transcript.size } };
+    if (demo === 'stress') return { resume, transcript: { phase: 'done', name: STRESS.transcript.name, size: STRESS.transcript.size, at: STRESS.transcript.at, path: null } };
+    return { resume, transcript: { phase: 'paused', name: STRESS.transcript.name, sent: 2.1 * 1048576, total: STRESS.transcript.size, offline: true } };
+  }
   const resume: Slot = { phase: 'done', name: 'Coleman_Resume.pdf', size: 184 * 1024, at: '2026-09-12T20:31:00Z', path: null };
   const name = 'Coleman_Unofficial_Transcript.pdf';
   if (demo === 'uploading') return { resume, transcript: { phase: 'uploading', name, sent: 2.1 * 1048576, total: 3.3 * 1048576 } };
@@ -87,6 +95,17 @@ export function DocumentsForm({
   const summaryRef = useRef<HTMLDivElement>(null);
   const auto = useAutosave(application?.id ?? null, application && application.updated_at !== application.created_at ? application.updated_at : null);
   const saved = demo ? DEMO_SAVED[4] : auto.failed ? "Couldn't save yet" : auto.savedAt ? `Saved ${savedTime(auto.savedAt)}` : undefined;
+
+  // What a screen reader hears: when an upload starts, stops, or finishes (not every progress tick).
+  const live = (() => {
+    const list = KINDS.map(({ kind }) => slots[kind]);
+    const up = list.find((x) => x.phase === 'uploading');
+    if (up && up.phase === 'uploading') return `Uploading ${up.name}.`;
+    const paused = list.find((x) => x.phase === 'paused');
+    if (paused && paused.phase === 'paused') return `Upload of ${paused.name} did not finish.`;
+    const n = list.filter((x) => x.phase === 'done').length;
+    return `${n} of 2 documents uploaded.${saved ? ` ${saved}.` : ''}`;
+  })();
 
   const setSlot = (k: DocKind, v: Slot) => setSlots((p) => ({ ...p, [k]: v }));
   const setProblem = (k: DocKind, m: string | undefined) => setProblems((p) => ({ ...p, [k]: m }));
@@ -178,10 +197,11 @@ export function DocumentsForm({
       current={4}
       steps={railSteps(application, files, 4, demo ? demoDone(4) : undefined)}
       view={view}
-      accountName={demo ? 'Ebony Coleman' : application?.full_name || 'Your account'}
+      accountName={demo ? (demo.includes('stress') ? STRESS.name : 'Ebony Coleman') : application?.full_name || 'Your account'}
       saved={saved}
       onSubmit={onSubmit}
       backHref="/apply/essay"
+      live={live}
       primary={<Button type="submit">Continue</Button>}
     >
       <h1 className="st">Documents.</h1>
@@ -227,7 +247,9 @@ export function DocumentsForm({
                   <Icon name="file" />
                 </span>
                 <div className={s.meta}>
-                  <b>{slot.name}</b>
+                  <b>
+                    <FileName>{slot.name}</FileName>
+                  </b>
                   <span>
                     PDF, {size(slot.size)}. Uploaded {savedTime(slot.at)}.
                   </span>
@@ -269,7 +291,9 @@ export function DocumentsForm({
                   <Icon name="file" />
                 </span>
                 <div className={`${s.meta} ${s.wide}`}>
-                  <b>{slot.name}</b>
+                  <b>
+                    <FileName>{slot.name}</FileName>
+                  </b>
                   <div className={s.track}>
                     <div style={{ width: `${Math.min(100, Math.round((slot.sent / Math.max(1, slot.total)) * 100))}%` }} />
                   </div>

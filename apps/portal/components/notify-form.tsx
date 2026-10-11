@@ -8,6 +8,8 @@ import { getAuthMode, getBrowserClient, requestCycleEmail, type NotifyKind } fro
 import s from './landing.module.css';
 
 type Props = {
+  /** Review mode: start on the confirmation line for this address. */
+  initialSaved?: string;
   kind: NotifyKind;
   /** The field label, e.g. "Email me when applications open". */
   label: string;
@@ -17,10 +19,10 @@ type Props = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function NotifyForm({ kind, label, when }: Props) {
+export function NotifyForm({ kind, label, when, initialSaved }: Props) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(initialSaved ?? null);
   const [busy, setBusy] = useState(false);
 
   // Checks the address, saves it, and switches to the confirmation.
