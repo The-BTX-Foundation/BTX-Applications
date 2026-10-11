@@ -4,7 +4,6 @@ import { DatesDrawing, HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import type { CycleView } from '@/lib/cycle';
 import { daysBetween, easternDate, longDay, shortDay } from '@/lib/format';
 import { LINKEDIN_URL } from '@/lib/config';
-import { PrintLink } from './print-link';
 import s from './status-view.module.css';
 
 // "Sat Sep 12, 4:52 PM" in Eastern time.
@@ -32,7 +31,7 @@ export function StatusView({
   submittedAt: string;
   /** "YYYY-MM-DD" for the Today marker. */
   today: string;
-  /** Whether the confirmation email is really sent (the email service is set up). Without it, no "Copy sent" line. */
+  /** Whether the confirmation email is really sent (the email service is set up). Without it, no "Confirmation sent" line. */
   copySent: boolean;
 }) {
   const d = view.drawing;
@@ -59,11 +58,11 @@ export function StatusView({
       <main id="main" className={`pm ${s.page}`}>
         <div className={s.wrap}>
           <p className={s.stamp}>
-            {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}.{copySent ? ` Copy sent to ${email}` : ''}
+            {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}.{copySent ? ` Confirmation sent to ${email}` : ''}
           </p>
           <h1 className={s.title}>Application submitted.</h1>
           <p className={s.lead}>We&apos;ll email you {interviewDay} to schedule your video interview.</p>
-          {copySent ? <p className={s.copy}>Copy sent to {email}</p> : null}
+          {copySent ? <p className={s.copy}>Confirmation sent to {email}</p> : null}
           <div className={s.drawing}>
             <DatesDrawing {...drawing} />
           </div>
@@ -85,7 +84,6 @@ export function StatusView({
                 </div>
               </div>
               <div className={s.foot}>
-                <PrintLink className={s.footLink} />
                 <span className={s.questions}>
                   Questions?{' '}
                   <a href={`mailto:${HELP_EMAIL}`} className="lk">

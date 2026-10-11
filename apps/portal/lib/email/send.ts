@@ -3,7 +3,7 @@
 // never committed. The Idempotency-Key header makes a repeated request (a double click, a retry) send once.
 export type Mail = { to: string; subject: string; html: string; text: string; idempotencyKey?: string };
 
-// True when the server can really send email (both values set). The status page only says "Copy sent" when it is.
+// True when the server can really send email (both values set). The status page only says "Confirmation sent" when it is.
 export function emailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.PORTAL_EMAIL_FROM);
 }
