@@ -3,12 +3,13 @@
 //   signed-out: laptop "Questions? Email us" + Sign in; phone Sign in. (Landing)
 //   sign-in:    laptop "Questions? Email us" only; phone nothing. (The sign-in screen)
 //   signed-in:  laptop Help + account menu; phone menu button. (Inside the application) Both open AccountMenu.
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AccountMenu } from './account-menu';
 import { ButtonLink } from './button';
 
 export const HELP_EMAIL = 'info@thebtxfoundation.org';
+/** The BTX website's homepage: where the logo goes. */
+export const WEBSITE_URL = 'https://thebtxfoundation.org';
 
 type Props = {
   variant: 'signed-out' | 'sign-in' | 'signed-in';
@@ -16,23 +17,23 @@ type Props = {
   accountName?: string;
   /** Phone only: the step progress drawn under the header row (the wizard). */
   progress?: ReactNode;
-  /** Where the logo links to. */
+  /** Where the logo links to (the BTX website's homepage unless set). */
   homeHref?: string;
 };
 
-// The logo lockup: BTX logo, a hairline, and "Scholarship application".
+// The logo lockup: BTX logo, a hairline, and "Scholarship application". Links to the BTX website.
 function Brand({ homeHref }: { homeHref: string }) {
   return (
-    <Link href={homeHref} className="brand">
+    <a href={homeHref} className="brand">
       {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size PNG logo, no optimization needed */}
       <img src="/btx-logo-on-light.png" alt="The BTX Foundation" />
       <span>Scholarship application</span>
-    </Link>
+    </a>
   );
 }
 
 // Draws the laptop and phone headers for the chosen variant.
-export function TopBar({ variant, accountName = 'Your account', progress, homeHref = '/' }: Props) {
+export function TopBar({ variant, accountName = 'Your account', progress, homeHref = WEBSITE_URL }: Props) {
   const mail = `mailto:${HELP_EMAIL}`;
   return (
     <>

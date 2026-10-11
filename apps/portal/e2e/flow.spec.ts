@@ -95,6 +95,7 @@ test('a load failure shows the shared error block', async ({ page }) => {
 test('the account menu opens on laptop and phone, closes on Escape, and signs out', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/status');
+  await expect(page.locator('header.hd a.brand')).toHaveAttribute('href', 'https://thebtxfoundation.org');
   const acct = page.getByRole('button', { name: /^Account:/ });
   await acct.click();
   await expect(acct).toHaveAttribute('aria-expanded', 'true');
