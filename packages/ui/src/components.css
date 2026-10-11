@@ -711,6 +711,49 @@ a {
   color: var(--ink);
 }
 
+/* account menu (top bar, signed in): a small list under the account or menu button */
+.am {
+  position: relative;
+  flex: none;
+}
+.am-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: 0 8px 24px rgba(21, 23, 26, 0.12);
+  padding: 6px 0;
+}
+.am-name {
+  padding: 8px 16px 6px;
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.am-item {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+}
+.am-item:hover {
+  background: var(--wash);
+}
+.am-item:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
 /* ---------- laptop shell (1024px and wider) ---------- */
 @media (min-width: 1024px) {
   .top {

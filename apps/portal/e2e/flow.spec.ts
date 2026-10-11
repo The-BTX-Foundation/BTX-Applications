@@ -91,3 +91,21 @@ test('a load failure shows the shared error block', async ({ page }) => {
   await expect(page.locator('.es[role=alert]')).toContainText("This page didn't load.");
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
 });
+
+test('the account menu opens on laptop and phone, closes on Escape, and signs out', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/status');
+  await expect(page.locator('header.hd a.brand')).toHaveAttribute('href', 'https://thebtxfoundation.org');
+  const acct = page.getByRole('button', { name: /^Account:/ });
+  await acct.click();
+  await expect(acct).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('link', { name: 'Sign out' })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await menu.click();
+  await expect(page.getByRole('link', { name: 'Help: email us' })).toHaveAttribute('href', /^mailto:/);
+  await page.getByRole('link', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/$/);
+});

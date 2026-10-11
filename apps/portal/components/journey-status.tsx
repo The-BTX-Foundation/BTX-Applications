@@ -9,7 +9,6 @@ import { countdown, dayLabel, describeFreeTimes, range, soonTitle, type Booking,
 import type { CycleView } from '@/lib/cycle';
 import { FollowCard } from './follow-card';
 import { JourneyDrawing } from './journey-drawing';
-import { PrintLink } from './print-link';
 import { Name } from './text';
 import s from './status-view.module.css';
 import j from './journey-status.module.css';
@@ -197,7 +196,6 @@ export function JourneyStatus(p: JourneyStatusProps) {
   );
   const foot = (
     <div className={`${s.foot} ${j.ft}`}>
-      <PrintLink className={s.footLink} />
       <span className={s.questions}>
         Questions?{' '}
         <a href={`mailto:${HELP_EMAIL}`} className="lk">

@@ -7,7 +7,6 @@ import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { GUIDES_URL, LINKEDIN_URL } from '@/lib/config';
 import type { AwardSample } from '@/lib/journey-demo';
 import type { CycleView } from '@/lib/cycle';
-import { PrintLink } from './print-link';
 import { Name } from './text';
 import d from './decision-status.module.css';
 
@@ -48,7 +47,6 @@ function Joint({ state }: { state: 'done' | 'now' | 'next' }) {
 function Foot() {
   return (
     <div className={d.foot}>
-      <PrintLink className={d.footLink} />
       <span className={d.questions}>
         Questions?{' '}
         <a href={`mailto:${HELP_EMAIL}`} className="lk">
@@ -299,7 +297,6 @@ export function NotPickedStatus(p: Common) {
                 </div>
               </div>
             </div>
-            <PrintLink className={d.npFt} />
           </div>
         </div>
       </main>
