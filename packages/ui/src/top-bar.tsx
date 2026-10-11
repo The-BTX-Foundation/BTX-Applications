@@ -2,11 +2,11 @@
 // phone top (`header.top` with `div.hb`) below that. Variants:
 //   signed-out: laptop "Questions? Email us" + Sign in; phone Sign in. (Landing)
 //   sign-in:    laptop "Questions? Email us" only; phone nothing. (The sign-in screen)
-//   signed-in:  laptop Help + account button; phone menu button. (Inside the application)
+//   signed-in:  laptop Help + account menu; phone menu button. (Inside the application) Both open AccountMenu.
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { AccountMenu } from './account-menu';
 import { ButtonLink } from './button';
-import { Icon } from './icons';
 
 export const HELP_EMAIL = 'info@thebtxfoundation.org';
 
@@ -44,11 +44,7 @@ export function TopBar({ variant, accountName = 'Your account', progress, homeHr
               <a href={mail} className="lk">
                 Help
               </a>
-              <button type="button" className="acct" aria-label={`Account: ${accountName}`}>
-                <Icon name="user" />
-                <span>{accountName}</span>
-                <Icon name="down" small />
-              </button>
+              <AccountMenu kind="laptop" accountName={accountName} helpHref={mail} />
             </>
           ) : (
             <>
@@ -73,9 +69,7 @@ export function TopBar({ variant, accountName = 'Your account', progress, homeHr
             </ButtonLink>
           ) : null}
           {variant === 'signed-in' ? (
-            <button type="button" className="ib" aria-label="Menu">
-              <Icon name="menu" />
-            </button>
+            <AccountMenu kind="phone" accountName={accountName} helpHref={mail} />
           ) : null}
         </div>
         {progress}

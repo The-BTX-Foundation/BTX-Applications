@@ -1,6 +1,7 @@
 // Public surface of @btx/ui. Styles are imported separately by the app:
 //   import '@btx/ui/tokens.css';
 //   import '@btx/ui/components.css';
+export { AccountMenu } from './account-menu';
 export { Button, ButtonLink } from './button';
 export { BottomBar } from './bottom-bar';
 export { CodeBoxes, CODE_LENGTH } from './code-boxes';

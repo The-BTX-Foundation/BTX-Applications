@@ -43,8 +43,11 @@ One row per route and state: the Figma frame(s), the screenshot pair, and how fa
 
 - `/apply/start` (the "Opening your application" hand-off), `/auth/callback` (the email-link landing; failures go to `/sign-in?error=link`, which shows the sign-in email step with the expired-link message) and the confirmation email (`/email-preview` in mock mode) have no Figma frame.
 - The later status pages (interview booked, decision) are built after launch and are not part of this sheet.
+- The open account menu (laptop: Sign out; phone: name, Help, Sign out) and `/sign-out` have no Figma frame yet. Frames to be drawn after launch.
 
 ## Known differences from the drafts (and why)
+
+- **Status page, phone:** the "Application ... Copy sent to" line is 14px (was 16px, the same as body text), at Dominick's ask on 2026-10-11. The Figma phone frame still shows 16px until it is updated.
 
 - **Sign-in code screens:** one added muted line, "Or use the link in the email." Supabase's default email carries a link, not a code, until custom SMTP lets the template change. Remove the line when the template carries the code.
 - **Essay:** the draft stress frame shows a 3,000-character counter; the app counts words against 500. See the decisions in the polish report.
