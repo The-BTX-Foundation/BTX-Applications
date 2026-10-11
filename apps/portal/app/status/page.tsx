@@ -6,6 +6,7 @@ import { loadSubmitted } from '@/lib/apply';
 import { MOCK_VIEW } from '@/lib/cycle';
 import { easternDate } from '@/lib/format';
 import { STRESS } from '@/lib/stress';
+import { emailConfigured } from '@/lib/email/send';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
@@ -24,6 +25,7 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
         code={stress ? STRESS.applicationCode : undefined}
         submittedAt="2026-09-12T20:52:00Z"
         today="2026-09-13"
+        copySent
       />
     );
   }
@@ -35,6 +37,7 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
       code={d.application.applicant_code ?? undefined}
       submittedAt={d.application.submitted_at ?? d.application.updated_at}
       today={easternDate(new Date())}
+      copySent={emailConfigured()}
     />
   );
 }

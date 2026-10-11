@@ -47,7 +47,7 @@ One row per route and state: the Figma frame(s), the screenshot pair, and how fa
 
 ## Known differences from the drafts (and why)
 
-- **Status page, phone:** the "Application ... Copy sent to" line is 13px (was 16px, the same as body text), at Dominick's ask on 2026-10-11. The Figma phone frame still shows 16px until it is updated.
+- **Status page, phone:** the "Application ... Copy sent to" line is 13px (was 16px, the same as body text), at Dominick's ask on 2026-10-11. The Figma phone frame still shows 16px until it is updated. On phone the application number moved out of that line to a small footer line at the bottom of the page (13px, hairline above), also at his ask. Live pages show "Copy sent to" only when the email service is set up (RESEND_API_KEY and PORTAL_EMAIL_FROM); demo pages always show it, as the drafts do.
 
 - **Sign-in code screens:** one added muted line, "Or use the link in the email." Supabase's default email carries a link, not a code, until custom SMTP lets the template change. Remove the line when the template carries the code.
 - **Essay:** the draft stress frame shows a 3,000-character counter; the app counts words against 500. See the decisions in the polish report.
