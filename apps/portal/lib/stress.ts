@@ -5,6 +5,7 @@ export const STRESS = {
   name: 'Adaeze-Grace Okonkwo-Whitfield',
   firstName: 'Adaeze-Grace',
   email: 'aokonkwowhitfield@terpmail.umd.edu',
+  applicationCode: 'APP-2026-00001',
   secondaryEmail: 'adaeze.grace.okonkwowhitfield@gmail.com',
   race: 'Native Hawaiian or Other Pacific Islander',
   hear: 'A friend or mentor shared it with me!',

@@ -20,7 +20,8 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
       <StatusView
         view={MOCK_VIEW}
         accountName={stress ? STRESS.name : 'Ebony Coleman'}
-        email={stress ? STRESS.email : 'ecoleman@terpmail.umd.edu'}
+        email={stress ? STRESS.secondaryEmail : 'ecoleman@terpmail.umd.edu'}
+        code={stress ? STRESS.applicationCode : undefined}
         submittedAt="2026-09-12T20:52:00Z"
         today="2026-09-13"
       />
