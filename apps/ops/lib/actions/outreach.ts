@@ -1,17 +1,15 @@
 'use client';
 
 // The Outreach pages' writes, called from the page components in the browser. Mock mode (no Supabase env): each action
-// succeeds in memory and the component keeps the new row in its own state. Live mode calls the draft Ops Hub tables as
-// defined in the draft schema (NOT TESTED: needs the Ops Hub tables). Past issues have no screen or query in the draft
-// plan, so that answers "not connected yet".
+// succeeds in memory and the component keeps the new row in its own state. Live mode writes the Ops Hub tables as the
+// signed-in person (admin or board; tested live). Past issues stay out (O14), so that answers "not connected yet".
 import { failure, isMock, localId, loose, notConnected, type ActionResult } from './common';
 
 /** "Add a channel" on Plan: a row in `outreach_channels` (status starts as not_started). */
-export async function addChannel(input: { name: string; kind?: 'instagram' | 'newsletter' | 'linkedin' | 'campus_events' | 'other' }): Promise<ActionResult<{ id: string }>> {
+export async function addChannel(input: { name: string; kind?: 'instagram' | 'newsletter' | 'linkedin' | 'campus_events' | 'other'; position?: number }): Promise<ActionResult<{ id: string }>> {
   if (isMock()) return { ok: true, id: localId('channel') };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
-    const { data, error } = await loose().from('outreach_channels').insert({ name: input.name, kind: input.kind ?? 'other' }).select('id').single();
+    const { data, error } = await loose().from('outreach_channels').insert({ name: input.name, kind: input.kind ?? 'other', position: input.position ?? 0 }).select('id').single();
     if (error || !data) throw error ?? new Error('not saved');
     return { ok: true, id: String(data.id) };
   } catch (e) {
@@ -24,7 +22,6 @@ export async function addPost(input: { channelId?: string; title: string; postOn
   if (isMock()) return { ok: true, id: localId('post') };
   if (!input.channelId) return notConnected();
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const row: Record<string, unknown> = { channel_id: input.channelId, title: input.title, post_on: input.postOn };
     if (input.ownerId) row.owner_id = input.ownerId;
     const { data, error } = await loose().from('posts').insert(row).select('id').single();
@@ -39,7 +36,6 @@ export async function addPost(input: { channelId?: string; title: string; postOn
 export async function sendPostForApproval(postId: string): Promise<ActionResult> {
   if (isMock() || postId.includes('-new-') || /^p\d$/.test(postId)) return { ok: true };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const { error } = await loose().from('posts').update({ status: 'awaiting_approval' }).eq('id', postId);
     if (error) throw error;
     return { ok: true };
@@ -52,7 +48,6 @@ export async function sendPostForApproval(postId: string): Promise<ActionResult>
 export async function setSectionDone(sectionId: string, done: boolean): Promise<ActionResult> {
   if (isMock() || /^n\d$/.test(sectionId)) return { ok: true };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const { error } = await loose().from('newsletter_sections').update({ status: done ? 'done' : 'not_started' }).eq('id', sectionId);
     if (error) throw error;
     return { ok: true };

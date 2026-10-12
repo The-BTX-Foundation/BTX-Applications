@@ -1,5 +1,5 @@
-// Programs > Sponsorships: this year's one-off sponsorships and how one works, with "Log a sponsorship". MOCK today
-// (see lib/programs.ts). ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
+// Programs > Sponsorships: this year's one-off sponsorships and how one works, with "Log a sponsorship".
+// Data comes from lib/programs.ts. ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AreaLoadError } from '@/components/area/parts';

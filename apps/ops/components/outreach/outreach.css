@@ -991,3 +991,34 @@
     font-weight: 700;
   }
 }
+
+/* Long names (real staff) wrap inside their column instead of running under the next one. */
+.ou-po {
+  min-width: 0;
+  padding-right: 8px;
+}
+.ou-po .ar-own {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.15;
+}
+.ou-ih > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ou-iown {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.ou-iown b {
+  min-width: 0;
+  white-space: normal;
+}
+@media (min-width: 900px) {
+  .ou-ih p {
+    white-space: normal;
+  }
+  .ou-ih h2 {
+    overflow-wrap: anywhere;
+  }
+}

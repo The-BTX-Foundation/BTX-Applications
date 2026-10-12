@@ -1,9 +1,9 @@
 'use client';
 
 // The Programs pages' writes, called from the page components in the browser. Mock mode (no Supabase env): each action
-// succeeds in memory and the component keeps the new row in its own state. Live mode calls the draft Ops Hub tables and
-// functions as defined in the draft schema (NOT TESTED: needs the Ops Hub tables). Mentor pairings and sharing the
-// mentor application have no table or function in the draft, so they answer "not connected yet".
+// succeeds in memory and the component keeps the new row in its own state. Live mode writes the Ops Hub tables as the
+// signed-in person (admin or board; tested live). Mentor pairings and sharing the mentor application have no table or
+// function in the schema, so they answer "not connected yet".
 import { failure, isMock, localId, loose, notConnected, type ActionResult } from './common';
 
 /** "Add an idea" on Certifications: a row in `certification_ideas` (decision starts as not_decided). */
@@ -11,7 +11,6 @@ export async function addCertificationIdea(input: { programId?: string; name: st
   if (isMock()) return { ok: true, id: localId('idea') };
   if (!input.programId) return { ok: false, message: 'Not connected yet.' };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const { data, error } = await loose().from('certification_ideas').insert({ program_id: input.programId, name: input.name }).select('id').single();
     if (error || !data) throw error ?? new Error('not saved');
     return { ok: true, id: String(data.id) };
@@ -20,16 +19,24 @@ export async function addCertificationIdea(input: { programId?: string; name: st
   }
 }
 
-/** "Add a task" on a program page: a row in `tasks` under the Programs area (and the setup checklist when known). */
-export async function addProgramTask(input: { title: string; checklistId?: string }): Promise<ActionResult<{ id: string }>> {
+/**
+ * "Add a task" on a program page: a row in `tasks` under the Programs area, on the program's setup checklist. When the
+ * program has no checklist yet it is created first (`checklists`, owned by the program).
+ */
+export async function addProgramTask(input: { title: string; checklistId?: string; programId?: string; position?: number }): Promise<ActionResult<{ id: string; checklistId?: string }>> {
   if (isMock()) return { ok: true, id: localId('task') };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
-    const row: Record<string, unknown> = { title: input.title, area: 'programs' };
-    if (input.checklistId) row.checklist_id = input.checklistId;
+    let checklistId = input.checklistId;
+    if (!checklistId && input.programId) {
+      const made = await loose().from('checklists').insert({ title: 'Setup checklist', area: 'programs', program_id: input.programId }).select('id').single();
+      if (made.error || !made.data) throw made.error ?? new Error('not saved');
+      checklistId = String(made.data.id);
+    }
+    const row: Record<string, unknown> = { title: input.title, area: 'programs', position: input.position ?? 0 };
+    if (checklistId) row.checklist_id = checklistId;
     const { data, error } = await loose().from('tasks').insert(row).select('id').single();
     if (error || !data) throw error ?? new Error('not saved');
-    return { ok: true, id: String(data.id) };
+    return { ok: true, id: String(data.id), checklistId };
   } catch (e) {
     return failure(e);
   }
@@ -39,7 +46,6 @@ export async function addProgramTask(input: { title: string; checklistId?: strin
 export async function setStepDone(taskId: string, done: boolean): Promise<ActionResult> {
   if (isMock() || taskId.includes('-new-') || /^[a-z]\d$/.test(taskId)) return { ok: true };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const { error } = await loose().from('tasks').update({ status: done ? 'done' : 'open' }).eq('id', taskId);
     if (error) throw error;
     return { ok: true };
@@ -59,7 +65,6 @@ export async function logSponsorship(input: {
 }): Promise<ActionResult<{ id: string }>> {
   if (isMock()) return { ok: true, id: localId('spons') };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const { data, error } = await loose().rpc('log_sponsorship', {
       p_title: input.title,
       p_kind: input.kind,

@@ -1,5 +1,5 @@
-// Programs > Mentorship: the "Where it stands" checklist of the planned mentorship program. MOCK today (see
-// lib/programs.ts). ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
+// Programs > Mentorship: the "Where it stands" checklist of the planned mentorship program.
+// Data comes from lib/programs.ts. ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AreaLoadError } from '@/components/area/parts';

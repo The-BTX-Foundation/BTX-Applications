@@ -3,10 +3,12 @@
 // Outreach > Newsletter (Figma "Outreach > Newsletter", laptop and phone): the next issue as a checklist of sections,
 // the email preview, and a strip of facts. Ticking a section writes newsletter_sections.status (in memory in mock
 // mode). Subscriber numbers, the last issue and the email tool are not stored yet (README-ops-hub.md), so they show the
-// design's [placeholders] unless the newsletter channel has an audience_count. "Past issues" is not connected yet.
+// design's [placeholders] in mock mode. Live data reads "Not set" or the channel's audience_count. "Past issues" stays
+// out in live mode (O14).
 import { useState } from 'react';
 import { setSectionDone, showPastIssues } from '@/lib/actions/outreach';
 import type { NewsletterData, Section } from '@/mock/outreach';
+import { isMock } from '@/lib/actions/common';
 import { Ring } from '../ring';
 import { AreaHeader, Notice, OwnerChip, StepCheck } from '../area/parts';
 import '../programs/programs.css';
@@ -48,9 +50,11 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
         sub={data.subtitle}
         phoneSub={data.phoneSub}
       >
-        <button type="button" className="o-btn s lg" onClick={past}>
-          Past issues
-        </button>
+        {isMock() ? (
+          <button type="button" className="o-btn s lg" onClick={past}>
+            Past issues
+          </button>
+        ) : null}
       </AreaHeader>
       <Notice text={note} />
 
@@ -76,7 +80,7 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
       <div className="ou-nl">
         <section className="ar-panel ou-issue" aria-labelledby="nl-issue">
           <div className="ou-ih">
-            <Ring frac={done / total} label={`${done}/${total}`} color="gold" size={44} />
+            <Ring frac={total ? done / total : 0} label={`${done}/${total}`} color="gold" size={44} />
             <div>
               <h2 id="nl-issue">{data.issueTitle}</h2>
               <p>
@@ -84,11 +88,14 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
                 <span className="o-ph">{line}</span>
               </p>
             </div>
-            <span className="ou-iown o-lg">
-              <OwnerChip o={data.owner} />
-              <b>Owner: {data.owner.name}</b>
-            </span>
+            {data.owner.name ? (
+              <span className="ou-iown o-lg">
+                <OwnerChip o={data.owner} />
+                <b>Owner: {data.owner.name}</b>
+              </span>
+            ) : null}
           </div>
+          {total === 0 ? <p className="pg-empty">No sections yet.</p> : null}
           {sections.map((s) => (
             <div key={s.id} className={`ou-sec ${s.state}`}>
               <StepCheck done={s.state === 'done'} label={s.title} onClick={() => toggle(s.id)} />

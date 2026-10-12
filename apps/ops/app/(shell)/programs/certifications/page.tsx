@@ -1,5 +1,5 @@
-// Programs > Certifications: the pilot plan, the setup checklist, the ideas and the Programs chat. MOCK today (see
-// lib/programs.ts). ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
+// Programs > Certifications: the pilot plan, the setup checklist, the ideas and the Programs chat.
+// Data comes from lib/programs.ts. ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AreaChatPanel } from '@/components/area/area-chat';
