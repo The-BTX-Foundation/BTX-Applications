@@ -3,6 +3,8 @@
 // Step 3: Short answers. Three required questions (SHORT_ANSWER_QUESTIONS in @btx/data), each with a live word count
 // against the 400-word limit. Continue shows an error under every blank or too-long answer and moves focus to the
 // first one; otherwise it saves and goes to Documents. Built in code first (2026-10-12) from the old essay step.
+// Pasting and dropping text are turned off in the three boxes (2026-10-12), so students type their own answers;
+// a blocked paste shows a short notice under that box. Typing, spellcheck, autocorrect and phone keyboards still work.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, ErrorIcon } from '@btx/ui';
@@ -18,6 +20,17 @@ import s from './short-answers-form.module.css';
 
 type Answers = [string, string, string];
 const COLUMNS = ['answer_1', 'answer_2', 'answer_3'] as const;
+const PASTE_NOTICE = 'Pasting is turned off. Type your answer here.';
+// The input types that insert text without typing it (paste, drag and drop, the Emacs-style yank).
+const BLOCKED_INPUT = new Set(['insertFromPaste', 'insertFromPasteAsQuotation', 'insertFromDrop', 'insertFromYank']);
+// Switches off in-box AI writing helpers where the browser or extension honours them (spellcheck stays on).
+// Passed as a spread so the lowercase `writingsuggestions` attribute reaches the DOM (React's types don't list it).
+const NO_WRITING_HELPERS: Record<string, string> = {
+  writingsuggestions: 'false',
+  'data-gramm': 'false',
+  'data-gramm_editor': 'false',
+  'data-enable-grammarly': 'false',
+};
 
 // Sample answers for ?demo=1 review: a UMD mechanical engineering junior, one per question.
 export const DEMO_ANSWERS: Answers = [
@@ -61,6 +74,8 @@ export function ShortAnswersForm({
   // After Continue, blank answers show their error too (too-long ones always do).
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which boxes show the paste notice (the stress review shows it on question 3, as the Figma frame draws it).
+  const [pasteNotice, setPasteNotice] = useState<boolean[]>(demo === 'stress' ? [false, false, true] : [false, false, false]);
   const boxes = useRef<(HTMLTextAreaElement | null)[]>([]);
   const auto = useAutosave(application?.id ?? null, application && application.updated_at !== application.created_at ? application.updated_at : null);
   const words = answers.map(countWords);
@@ -83,6 +98,29 @@ export function ShortAnswersForm({
     }
   }, [answers]);
 
+  // Shows (or clears) the paste notice under box i.
+  function notice(i: number, on: boolean) {
+    setPasteNotice((n) => (n[i] === on ? n : n.map((v, j) => (j === i ? on : v))));
+  }
+
+  // Cancels pastes, drops and yanks at the input level too (covers paths that skip the paste and drop events).
+  // Plain typing, spellcheck replacements and IME or dictation input are left alone.
+  useEffect(() => {
+    const els = boxes.current.slice();
+    const handlers = els.map((el, i) => {
+      if (!el) return null;
+      const h = (e: InputEvent) => {
+        if (BLOCKED_INPUT.has(e.inputType)) {
+          e.preventDefault();
+          notice(i, true);
+        }
+      };
+      el.addEventListener('beforeinput', h);
+      return h;
+    });
+    return () => els.forEach((el, i) => handlers[i] && el?.removeEventListener('beforeinput', handlers[i]));
+  }, []);
+
   // In review mode the first box starts focused, as the old essay draft drew it.
   useEffect(() => {
     if (demo) boxes.current[0]?.focus();
@@ -94,6 +132,7 @@ export function ShortAnswersForm({
     next[i] = value;
     setAnswers(next);
     setError(null);
+    notice(i, false);
     auto.schedule({ [COLUMNS[i]]: value.trim() ? value : null });
   }
 
@@ -128,10 +167,16 @@ export function ShortAnswersForm({
       primary={<Button type="submit">Continue</Button>}
     >
       <h1 className="st">Short answers.</h1>
-      <p className="ld">Answer all three, up to {ANSWER_WORD_LIMIT} words each. Your answers help the board get to know you.</p>
+      <p className="ld">
+        Answer all three, up to {ANSWER_WORD_LIMIT} words each. Your answers help the board get to know you. Pasting is
+        turned off, so type them here.
+      </p>
       {SHORT_ANSWER_QUESTIONS.map((question, i) => {
         const id = `answer-${i + 1}`;
         const msg = problem(i);
+        // a real error wins over the paste notice
+        const showNotice = pasteNotice[i] && !msg;
+        const describedBy = [msg ? `${id}-err` : '', showNotice ? `${id}-notice` : '', `${id}-count`].filter(Boolean).join(' ');
         return (
           <div className={s.block} key={id}>
             <p className="lb">
@@ -149,8 +194,22 @@ export function ShortAnswersForm({
               value={answers[i]}
               maxLength={4000}
               aria-invalid={msg ? true : undefined}
-              aria-describedby={msg ? `${id}-err ${id}-count` : `${id}-count`}
+              aria-describedby={describedBy}
+              {...NO_WRITING_HELPERS}
               onChange={(e) => set(i, e.target.value)}
+              onPaste={(e) => {
+                e.preventDefault();
+                notice(i, true);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                notice(i, true);
+              }}
+              onDragOver={(e) => {
+                // claim the drag only to say no drop is allowed (the cursor shows "not allowed")
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'none';
+              }}
             />
             <div className={s.count}>
               <span>
@@ -160,6 +219,10 @@ export function ShortAnswersForm({
                     <span>{msg}</span>
                   </span>
                 ) : null}
+                {/* polite live region, always in the page so the notice is announced when it appears */}
+                <span className={s.notice} id={`${id}-notice`} aria-live="polite">
+                  {showNotice ? PASTE_NOTICE : ''}
+                </span>
               </span>
               <b id={`${id}-count`}>
                 {words[i]} of {ANSWER_WORD_LIMIT} words
