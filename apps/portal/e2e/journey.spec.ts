@@ -163,16 +163,25 @@ test.describe('phone width', () => {
 });
 
 // The two guide pages do not exist yet, so no link to them shows (mock mode has no guide addresses configured).
-for (const demo of ['', 'before-booking', 'sent', 'booked', 'switched']) {
+for (const demo of ['', 'before-booking', 'sent', 'booked', 'switched', 'soon', 'today', 'after', 'won', 'not-picked']) {
   test(`no placeholder guide links on /status${demo ? `?demo=${demo}` : ''}`, async ({ page }) => {
     await page.goto(demo ? `/status?demo=${demo}` : '/status');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByText('How to prepare for your interview')).toHaveCount(0);
     await expect(page.getByText('What BTX offers students')).toHaveCount(0);
     await expect(page.getByText('Before your interview')).toHaveCount(0);
-    await expect(page.locator('a[href="#"]')).toHaveCount(0);
+    await expect(page.getByText('Read how to prepare')).toHaveCount(0);
+    // the interview-day sample's video link is a stand-in; the live link comes from the database
+    await expect(page.locator('a[href="#"]:not(:text("Join the video call"))')).toHaveCount(0);
   });
 }
+
+test('the closed landing links nowhere that does not exist yet', async ({ page }) => {
+  await page.goto('/?preview=closed');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Closed for');
+  await expect(page.getByText('The certification program')).toHaveCount(0);
+  await expect(page.locator('a[href="#"]')).toHaveCount(0);
+});
 
 test('the waiting screen keeps its While you wait section for the certification line', async ({ page }) => {
   await page.goto('/status');

@@ -144,10 +144,12 @@ export function JourneyStatus(p: JourneyStatusProps) {
         <div className={j.tkA}>
           {state === 'soon' ? (
             <>
-              <a href="#" className="btn p">
-                <Icon name="file" />
-                Read how to prepare
-              </a>
+              {PREPARE_GUIDE_URL ? (
+                <a href={PREPARE_GUIDE_URL} className="btn p">
+                  <Icon name="file" />
+                  Read how to prepare
+                </a>
+              ) : null}
               {calendar('s')}
             </>
           ) : state === 'today' ? (

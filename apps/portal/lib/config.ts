@@ -19,6 +19,8 @@ export function parseTestEmails(raw: string | undefined): string[] {
 /** The two guide pages. Empty until the pages exist; screens show each link only when its address is set. */
 export const PREPARE_GUIDE_URL = process.env.NEXT_PUBLIC_PREPARE_GUIDE_URL || '';
 export const OFFERS_URL = process.env.NEXT_PUBLIC_OFFERS_URL || '';
+/** The certification program's page. Empty until it exists; the closed landing hides the link until then. */
+export const CERTIFICATION_URL = process.env.NEXT_PUBLIC_CERTIFICATION_URL || '';
 
 /** How long a sign-in code works, everywhere the Portal says so (the same for every cycle). */
 export const CODE_LIFETIME_MINUTES = 10;
