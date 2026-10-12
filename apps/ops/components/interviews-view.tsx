@@ -4,8 +4,9 @@
 // who interviews and the video link, then the table of interviewer pairs. "Re-run pairing" (admins only) opens a
 // preview that says nothing would move.
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { InterviewsData, UpcomingInterview } from '@/lib/interviews';
-import { rerunPairing } from '@/lib/actions/interviews';
+import { previewPairing, rerunPairing, type PairingPreview } from '@/lib/actions/interviews';
 import { PageHeader } from './page-header';
 import { Avatar, Dialog, VideoMark } from './sch-parts';
 import './scholarships.css';
@@ -97,16 +98,28 @@ function PhoneCard({ r }: { r: UpcomingInterview }) {
 }
 
 export function InterviewsView({ data }: { data: InterviewsData }) {
+  const router = useRouter();
   const [rerun, setRerun] = useState(false);
+  const [preview, setPreview] = useState<PairingPreview | null>(null);
   const [note, setNote] = useState('');
   const frac = data.total > 0 ? data.done / data.total : 0;
 
-  // "Re-run anyway": asks the server to run the pairing again. The preview says nothing would move.
+  // Opens the preview: asks the server what pairing would do, without doing it.
+  async function openRerun() {
+    setPreview(null);
+    setRerun(true);
+    setPreview(await previewPairing());
+  }
+
+  // "Re-run anyway": asks the server to run the pairing again, then reloads the page's data.
   async function runAnyway() {
     const res = await rerunPairing();
     setRerun(false);
     setNote(res.message);
+    router.refresh();
   }
+
+  const nothing = preview !== null && preview.ok && preview.unpaired === 0;
 
   return (
     <div className="s-page">
@@ -150,7 +163,7 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
           <div className="s-adm">
             <span>Admins only</span>
             {data.isAdmin ? (
-              <button type="button" className="o-ul" onClick={() => setRerun(true)}>
+              <button type="button" className="o-ul" onClick={openRerun}>
                 Re-run pairing
               </button>
             ) : null}
@@ -179,15 +192,27 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
 
       {rerun ? (
         <Dialog title="Re-run pairing?" onClose={() => setRerun(false)}>
-          <p>
-            Nothing would move. {data.done} interviews are done and the {data.upcoming.length} booked this week stay as they are. Pairing already runs again on its own Tue at 9:00 AM.
-          </p>
+          {preview === null ? (
+            <p>Checking what would change.</p>
+          ) : !preview.ok ? (
+            <p>{preview.message}</p>
+          ) : nothing ? (
+            <p>
+              Nothing would move. {data.done} interviews are done and the {data.upcoming.length} booked this week stay as they are.
+              {data.source === 'mock' ? ' Pairing already runs again on its own Tue at 9:00 AM.' : ''}
+            </p>
+          ) : (
+            <p>
+              {preview.wouldPair} of the {preview.unpaired} interviews with no pair would be paired now.
+              {preview.uncovered > 0 ? ` ${preview.uncovered} could not be, because fewer than two board members are free.` : ''} Pairs already set stay as they are.
+            </p>
+          )}
           <div className="s-dlg-b">
             <button type="button" className="o-btn p lg" onClick={() => setRerun(false)}>
               Close
             </button>
-            <button type="button" className="o-btn s lg" onClick={runAnyway}>
-              Re-run anyway
+            <button type="button" className="o-btn s lg" onClick={runAnyway} disabled={preview === null || !preview.ok}>
+              {nothing ? 'Re-run anyway' : 'Re-run pairing'}
             </button>
           </div>
         </Dialog>

@@ -1,12 +1,12 @@
 // Scholarships > Interviews: the interviews left this week and the table of interviewer pairs.
-// REAL in live mode: the booked slots (`bookings` + `interview_slots`), the applicant's code and initials
-// (`applications`) and the cycle's interview end date (`cycles`).
-// MOCK (mock/interviews.ts, mock/staff.ts): who interviews (the draft table `interview_pairings`), their names
-// (`staff_profiles`) and the video link. In mock mode everything comes from the fixtures.
-// Going live later = replace pairingFor() with a read of `interview_pairings`; the page does not change.
+// LIVE (database from migration 20261013090000_ops_hub.sql): booked slots (`bookings` + `interview_slots`), the
+// applicant's code and initials (the blind view `application_reviews`, so board accounts can read it), who interviews
+// (`interview_pairings`, names from `staff_profiles` + `staff_directory()`), the video link and the cycle's interview
+// end date (`cycles`). MOCK (mock/interviews.ts, mock/staff.ts): everything, when there is no Supabase env.
 import { hasSupabaseEnv } from '@btx/data';
 import { currentStaffId } from './me';
-import { dateOnlyLabel, dayLabel, dottedInitials, timeLabel } from './format';
+import { currentCycle, readAvailability, readInterviews, readStaff, sessionRole, type AvailabilityData, type Db } from './pairing-db';
+import { dateOnlyLabel, dayLabel, timeLabel } from './format';
 import { sessionClient } from './supabase-server';
 import { MOCK_APPLICANTS, MOCK_NOW } from '@/mock/applicants';
 import { pairingFor } from '@/mock/interviews';
@@ -49,9 +49,17 @@ export type InterviewsData = {
   source: 'live' | 'mock';
 };
 
-type Booking = { slotId: string; startsAt: string; code: string; initials: string };
+type Booking = { slotId: string; startsAt: string; code: string; initials: string; pair: Interviewer[]; videoUrl: string | null };
 
 const toInterviewer = (s: StaffProfile): Interviewer => ({ userId: s.user_id, name: s.display_name, initials: s.initials });
+
+// The mock pair and link for an applicant code.
+function mockPair(code: string): { pair: Interviewer[]; videoUrl: string | null } {
+  const pr = pairingFor(code);
+  const a = pr ? staffById(pr.interviewer_a) : undefined;
+  const b = pr ? staffById(pr.interviewer_b) : undefined;
+  return { pair: a && b ? [toInterviewer(a), toInterviewer(b)] : [], videoUrl: pr?.video_url ?? null };
+}
 
 // "Tomorrow", "In 2 days" or "Today", by Eastern calendar days from now.
 function whenLabel(startsAt: string, now: Date): string {
@@ -67,16 +75,9 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
   const sorted = [...bookings].sort((x, y) => x.startsAt.localeCompare(y.startsAt));
   const past = sorted.filter((b) => new Date(b.startsAt) <= now);
   const future = sorted.filter((b) => new Date(b.startsAt) > now);
-  const resolve = (code: string): Interviewer[] => {
-    const pr = pairingFor(code);
-    if (!pr) return [];
-    const a = staffById(pr.interviewer_a);
-    const b = staffById(pr.interviewer_b);
-    return a && b ? [toInterviewer(a), toInterviewer(b)] : [];
-  };
 
   const upcoming: UpcomingInterview[] = future.map((b) => {
-    const pair = resolve(b.code);
+    const pair = b.pair;
     const wk = dayLabel(b.startsAt).split(' ');
     return {
       slotId: b.slotId,
@@ -87,7 +88,7 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
       initials: b.initials,
       pair,
       mine: meId !== null && pair.some((i) => i.userId === meId),
-      videoUrl: pairingFor(b.code)?.video_url ?? null,
+      videoUrl: b.videoUrl,
       when: whenLabel(b.startsAt, now),
     };
   });
@@ -95,7 +96,7 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
   // One row per pair: interviews done, interviews left, and the next one.
   const rows = new Map<string, { names: string; done: number; left: number; next: string | null; nextAt: string; }>();
   const touch = (b: Booking, isDone: boolean) => {
-    const pair = resolve(b.code);
+    const pair = b.pair;
     if (pair.length !== 2) return;
     const key = `${pair[0].userId}+${pair[1].userId}`;
     const row = rows.get(key) ?? { names: `${pair[0].name} + ${pair[1].name}`, done: 0, left: 0, next: null, nextAt: '' };
@@ -176,34 +177,106 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
       startsAt: a.interviewAt as string,
       code: a.code,
       initials: a.initials,
+      ...mockPair(a.code),
     }));
     return build(bookings, new Date(MOCK_NOW), '2026-10-09', me, true, 'mock');
   }
   try {
-    const client = await sessionClient();
-    const cycle = await client.from('cycles').select('id, interview_end').eq('status', 'published').order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (cycle.error) throw cycle.error;
-    if (!cycle.data) return build([], new Date(), null, me, false, 'live');
-    const rows = await client
-      .from('bookings')
-      .select('slot_id, interview_slots!inner(starts_at, cycle_id), applications!inner(applicant_code, full_name)')
-      .eq('status', 'active')
-      .eq('interview_slots.cycle_id', cycle.data.id);
-    if (rows.error) throw rows.error;
-    const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
-    const bookings: Booking[] = [];
-    for (const r of rows.data ?? []) {
-      const slot = one(r.interview_slots);
-      const app = one(r.applications);
-      if (!slot?.starts_at || !app) continue;
-      bookings.push({ slotId: r.slot_id, startsAt: slot.starts_at, code: app.applicant_code ?? '—', initials: dottedInitials(app.full_name) });
-    }
-    // The role decides whether "Re-run pairing" shows. Admin-only in the draft schema; the shell already knows the role,
-    // but this loader reads it from the session so it does not depend on the shell.
-    const auth = await client.auth.getUser();
-    const isAdmin = auth.data.user?.app_metadata?.role === 'admin';
-    return build(bookings, new Date(), cycle.data.interview_end, me, isAdmin, 'live');
+    const client = (await sessionClient()) as unknown as Db;
+    const cycle = await currentCycle(client);
+    if (!cycle) return build([], new Date(), null, me, false, 'live');
+    const [{ booked, pairs }, staff, auth] = await Promise.all([readInterviews(client, cycle.id), readStaff(client), sessionRole(client)]);
+    const byId = new Map(staff.map((s) => [s.userId, s]));
+    const person = (id: string): Interviewer | null => {
+      const s = byId.get(id);
+      return s ? { userId: s.userId, name: s.name, initials: s.initials } : null;
+    };
+    const bookings: Booking[] = booked.map((b) => {
+      const p = pairs.get(b.slotId);
+      const a = p ? person(p.a) : null;
+      const c = p ? person(p.b) : null;
+      return { slotId: b.slotId, startsAt: b.startsAt, code: b.code, initials: b.initials, pair: a && c ? [a, c] : [], videoUrl: p?.videoUrl ?? null };
+    });
+    return build(bookings, new Date(), cycle.interviewEnd, me, auth.role === 'admin', 'live');
   } catch {
     return { ...build([], new Date(), null, me, false, 'live'), failed: true, source: 'live' };
+  }
+}
+
+// ---- availability (D4) -------------------------------------------------------------------------------------------
+
+export type AvailabilityView = AvailabilityData & {
+  /** People who gave availability, with their names (admins read everyone's). */
+  people: { userId: string; name: string }[];
+  isAdmin: boolean;
+  source: 'live' | 'mock';
+};
+
+// The availability data for the signed-in person: their own picks and, for admins and board members, everyone's. Live
+// only; there is no grid on the page yet ("design pending"), so nothing calls this until a design exists.
+export async function loadAvailability(): Promise<AvailabilityView | null> {
+  if (!hasSupabaseEnv()) return null;
+  try {
+    const client = (await sessionClient()) as unknown as Db;
+    const cycle = await currentCycle(client);
+    if (!cycle) return null;
+    const [data, staff, auth] = await Promise.all([readAvailability(client, cycle), readStaff(client), sessionRole(client)]);
+    const names = new Map(staff.map((s) => [s.userId, s.name]));
+    const ids = [...new Set(data.everyone.map((a) => a.userId))];
+    return { ...data, people: ids.map((id) => ({ userId: id, name: names.get(id) ?? 'Unknown' })), isAdmin: auth.role === 'admin', source: 'live' };
+  } catch {
+    return null;
+  }
+}
+
+// ---- video links (D7) --------------------------------------------------------------------------------------------
+
+export type VideoLinkRow = { slotId: string; when: string; code: string; initials: string; names: string; url: string };
+export type VideoLinksData = {
+  rows: VideoLinkRow[];
+  /** Booked interviews ahead that have no pair yet, so no link can be added. */
+  unpaired: number;
+  failed: boolean;
+  source: 'live' | 'mock';
+};
+
+// The interviews ahead that can take a link ("Add the video links" on Today). Admins only; others get no rows.
+export async function loadVideoLinks(): Promise<VideoLinksData> {
+  const rowFor = (slotId: string, startsAt: string, code: string, initials: string, names: string, url: string | null): VideoLinkRow => ({
+    slotId,
+    when: `${dayLabel(startsAt)}, ${timeLabel(startsAt)}`,
+    code,
+    initials,
+    names,
+    url: url ?? '',
+  });
+  if (!hasSupabaseEnv()) {
+    const rows: VideoLinkRow[] = [];
+    let unpaired = 0;
+    for (const a of MOCK_APPLICANTS.filter((x) => x.interviewAt && new Date(x.interviewAt) > new Date(MOCK_NOW))) {
+      const m = mockPair(a.code);
+      if (m.pair.length !== 2) unpaired += 1;
+      else rows.push(rowFor(`mock-slot-${a.code}`, a.interviewAt as string, a.code, a.initials, `${m.pair[0].name} and ${m.pair[1].name}`, null));
+    }
+    return { rows, unpaired, failed: false, source: 'mock' };
+  }
+  try {
+    const client = (await sessionClient()) as unknown as Db;
+    const auth = await sessionRole(client);
+    const cycle = await currentCycle(client);
+    if (auth.role !== 'admin' || !cycle) return { rows: [], unpaired: 0, failed: false, source: 'live' };
+    const [{ booked, pairs }, staff] = await Promise.all([readInterviews(client, cycle.id), readStaff(client)]);
+    const name = new Map(staff.map((s) => [s.userId, s.name]));
+    const now = Date.now();
+    const rows: VideoLinkRow[] = [];
+    let unpaired = 0;
+    for (const b of booked.filter((x) => Date.parse(x.startsAt) > now)) {
+      const p = pairs.get(b.slotId);
+      if (!p) unpaired += 1;
+      else rows.push(rowFor(b.slotId, b.startsAt, b.code, b.initials, `${name.get(p.a) ?? 'Unknown'} and ${name.get(p.b) ?? 'Unknown'}`, p.videoUrl));
+    }
+    return { rows, unpaired, failed: false, source: 'live' };
+  } catch {
+    return { rows: [], unpaired: 0, failed: true, source: 'live' };
   }
 }
