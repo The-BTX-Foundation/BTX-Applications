@@ -5,6 +5,7 @@
 // lib/actions/outreach.ts (in memory in mock mode). Channels with no target yet are drawn dashed.
 import { useState } from 'react';
 import { addChannel } from '@/lib/actions/outreach';
+import { nextMonthName } from '@/lib/area-map';
 import type { ChannelCard, PlanData, PlanRow } from '@/mock/outreach';
 import { OIcon } from '../icons';
 import { Ring } from '../ring';
@@ -18,6 +19,7 @@ export function PlanView({ data }: { data: PlanData }) {
   const [cards, setCards] = useState<ChannelCard[]>(data.cards);
   const [rows, setRows] = useState<PlanRow[]>(data.rows);
   const [form, setForm] = useState<'channel' | 'post' | null>(null);
+  const nextMonth = nextMonthName(data.month) || 'next month';
 
   return (
     <>
@@ -104,7 +106,7 @@ export function PlanView({ data }: { data: PlanData }) {
         </div>
         <div className="ou-foot">
           <button type="button" className="o-btn s lg" onClick={() => setForm('post')}>
-            Plan November
+            Plan {nextMonth}
           </button>
           <span className="o-lg">Pick a date, a channel and an owner for each item.</span>
         </div>
@@ -118,7 +120,7 @@ export function PlanView({ data }: { data: PlanData }) {
           submit="Add channel"
           onClose={() => setForm(null)}
           onSubmit={async (name) => {
-            const r = await addChannel({ name });
+            const r = await addChannel({ name, position: cards.length + 1 });
             if (r.ok) setCards((l) => [...l, { id: r.id, kind: 'other', name, target: null, status: 'Not started', owner: null, phoneBig: 'Not started', phoneLines: ['Target [not set]'] }]);
             return r;
           }}
@@ -126,7 +128,7 @@ export function PlanView({ data }: { data: PlanData }) {
       ) : null}
       {form === 'post' ? (
         <PostForm
-          title="Plan November"
+          title={`Plan ${nextMonth}`}
           staff={data.staff}
           channelId={data.instagramChannelId}
           onClose={() => setForm(null)}

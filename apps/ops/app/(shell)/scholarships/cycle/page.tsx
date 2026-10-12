@@ -1,10 +1,14 @@
 // Scholarships > Fall 2026 cycle: a read-only overview. The schedule's dates come from the `cycles` row (the three the
-// table lacks are mock); the checklist and the chat are mock. In mock mode ?demo=error draws the "didn't load" state.
+// table lacks read "Not set"); the checklist is the cycle's own tasks; the chat is the Scholarships area chat. In mock
+// mode everything is the Figma sample and ?demo=error draws the "didn't load" state.
 import type { Metadata } from 'next';
+import { hasSupabaseEnv } from '@btx/data';
+import { AreaChatPanel } from '@/components/area/area-chat';
 import { ChatPanel } from '@/components/chat-panel';
 import { CycleView } from '@/components/cycle-view';
 import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';
+import { loadAreaChat, loadStaff } from '@/lib/area-db';
 import { loadCycle } from '@/lib/cycle';
 
 export const metadata: Metadata = { title: 'Cycle' };
@@ -13,6 +17,7 @@ export const metadata: Metadata = { title: 'Cycle' };
 export default async function CyclePage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
   const cycle = await loadCycle({ forceError: demo === 'error' });
+  const chat = hasSupabaseEnv() && !cycle.failed ? await loadAreaChat('scholarships', 'Scholarships chat', await loadStaff()).catch(() => null) : null;
   return (
     <div className="o-cy">
       <div className="o-cy-main">
@@ -25,7 +30,7 @@ export default async function CyclePage({ searchParams }: { searchParams: Promis
           <CycleView cycle={cycle} />
         )}
       </div>
-      <ChatPanel />
+      {hasSupabaseEnv() ? chat ? <AreaChatPanel chat={chat} composerLabel="Message Scholarships" /> : null : <ChatPanel />}
     </div>
   );
 }

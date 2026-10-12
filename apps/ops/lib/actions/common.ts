@@ -1,6 +1,6 @@
 // Shared bits for the Programs and Outreach write actions. In mock mode (no Supabase env) every action succeeds in
 // memory: the component keeps the new row in its own state and nothing is saved. In live mode the action calls the
-// draft Ops Hub tables or functions, marked "NOT TESTED: needs the Ops Hub tables". Where the draft has no table or
+// Ops Hub tables or functions as the signed-in person (tested live as admin and board). Where the schema has no table or
 // function for an action, it answers "not connected yet" instead of guessing.
 import { getBrowserClient, hasSupabaseEnv } from '@btx/data';
 
@@ -16,7 +16,7 @@ export function notConnected(): { ok: false; message: string } {
   return { ok: false, message: NOT_CONNECTED };
 }
 
-// The draft tables are not in the generated database types yet, so writes go through this loose shape.
+// The Ops Hub tables are not in the generated database types yet, so writes go through this loose shape.
 export type Loose = {
   from: (t: string) => {
     insert: (row: Record<string, unknown>) => {
@@ -27,7 +27,7 @@ export type Loose = {
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
 };
 
-/** The browser client, typed loosely for the draft tables. */
+/** The browser client, typed loosely for the Ops Hub tables. */
 export const loose = () => getBrowserClient() as unknown as Loose;
 
 /** A new local id for rows added in mock mode. */

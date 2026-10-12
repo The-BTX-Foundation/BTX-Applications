@@ -1,4 +1,4 @@
-// Outreach > Instagram: the posts by month and the selected post's checklist. MOCK today (see lib/outreach.ts).
+// Outreach > Instagram: the posts by month and the selected post's checklist. Data comes from lib/outreach.ts.
 // ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';

@@ -16,10 +16,12 @@ export function CertView({ data }: { data: CertData }) {
   const [ideas, setIdeas] = useState<CertIdea[]>(data.ideas);
   const [form, setForm] = useState<'idea' | 'task' | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [checklistId, setChecklistId] = useState<string | undefined>(data.checklistId);
 
   const done = steps.filter((s) => s.state === 'done').length;
   const nextIdx = steps.findIndex((s) => s.state !== 'done');
   const total = steps.length;
+  const frac = total ? done / total : 0;
 
   // Ticks or unticks a step; the first open step after the ticked ones becomes the "next" step.
   async function toggle(id: string) {
@@ -50,7 +52,7 @@ export function CertView({ data }: { data: CertData }) {
         title="Certification program"
         phoneTitle="Certifications"
         sub={data.subtitle}
-        phoneSub={`Programs · setting up · ${done} of ${total} steps`}
+        phoneSub={`Programs · ${data.subtitle.split(' · ')[0].toLowerCase()} · ${done} of ${total} steps`}
         phoneAction={
           <button type="button" className="o-sq" aria-label="Add a task" onClick={() => setForm('task')}>
             <OIcon name="plus" size={22} />
@@ -108,7 +110,7 @@ export function CertView({ data }: { data: CertData }) {
 
       <section className="ar-panel" aria-labelledby="ce-list">
         <div className="ar-ph ring">
-          <Ring frac={done / total} label={`${done}/${total}`} color="gold" size={44} />
+          <Ring frac={frac} label={`${done}/${total}`} color="gold" size={44} />
           <div>
             <h2 id="ce-list">Setup checklist</h2>
             <p>
@@ -123,6 +125,7 @@ export function CertView({ data }: { data: CertData }) {
           <span>Owner</span>
           <span>Due</span>
         </div>
+        {total === 0 ? <p className="pg-empty">No steps yet. Add the first task.</p> : null}
         {steps.map((s) => (
           <div key={s.id} className={`pg-st${s.state === 'next' ? ' next' : ''}${s.state === 'done' ? ' done' : ''}`}>
             <StepCheck done={s.state === 'done'} label={s.title} onClick={() => toggle(s.id)} />
@@ -190,7 +193,8 @@ export function CertView({ data }: { data: CertData }) {
           submit="Add task"
           onClose={() => setForm(null)}
           onSubmit={async (title) => {
-            const r = await addProgramTask({ title, checklistId: data.checklistId });
+            const r = await addProgramTask({ title, checklistId, programId: data.programId, position: steps.length });
+            if (r.ok && r.checklistId) setChecklistId(r.checklistId);
             if (r.ok) setSteps((l) => [...l, { id: r.id, title, sub: 'Not started', owner: null, state: l.some((x) => x.state === 'next') ? 'todo' : 'next', phoneSub: 'Not started' }]);
             return r;
           }}

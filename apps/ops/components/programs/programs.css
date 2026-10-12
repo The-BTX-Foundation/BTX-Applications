@@ -195,7 +195,14 @@
   }
   .pg-ow {
     display: flex;
+    min-width: 0;
     font-size: 14px;
+  }
+  /* a long name wraps inside its column instead of running under Due */
+  .pg-ow .ar-own {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.2;
   }
   .pg-du {
     display: flex;

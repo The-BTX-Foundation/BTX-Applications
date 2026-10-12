@@ -1,4 +1,4 @@
-// Outreach > Plan: the four channels and the month's items. MOCK today (see lib/outreach.ts). ?demo=error draws the
+// Outreach > Plan: the four channels and the month's items. Data comes from lib/outreach.ts. ?demo=error draws the
 // "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';

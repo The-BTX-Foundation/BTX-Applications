@@ -2,20 +2,22 @@
 
 // Outreach > Instagram (Figma "Outreach > Instagram", laptop and phone): the posts by month with how far each has got,
 // and the selected post's checklist, caption preview and photo. "Add a post" and "Send for approval" write through
-// lib/actions/outreach.ts (in memory in mock mode). Post images are not stored yet (the draft has no bucket), so the
+// lib/actions/outreach.ts (in memory in mock mode). Post images are not stored yet (no storage bucket), so the
 // photo box is a placeholder in every mode.
 import { useLayoutEffect, useRef, useState } from 'react';
+import { isMock } from '@/lib/actions/common';
 import { sendPostForApproval } from '@/lib/actions/outreach';
 import type { InstagramData, Post, PostStep } from '@/mock/outreach';
 import { OIcon } from '../icons';
 import { Ring } from '../ring';
 import { AreaHeader, Glyph, Notice, OwnerChip, StepCheck } from '../area/parts';
 import { dayWord, PostForm } from './post-form';
+import '../programs/programs.css';
 import './outreach.css';
 
 // The five steps of a post, from how many are done.
 function stepsOf(p: Post): PostStep[] {
-  const names = ['Draft the caption', 'Pick the photo', `Board approval: ${p.approver}`, 'Schedule it', 'Mark it posted'];
+  const names = ['Draft the caption', 'Pick the photo', p.approver ? `Board approval: ${p.approver}` : 'Board approval', 'Schedule it', 'Mark it posted'];
   return names.map((title, i) => ({ title, state: i < p.done ? 'done' : i === p.done ? 'now' : 'todo' }));
 }
 
@@ -106,7 +108,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
     const r = await sendPostForApproval(p.id);
     if (!r.ok) return setNote(r.message);
     setNote(null);
-    setPosts((l) => l.map((x) => (x.id === p.id ? { ...x, sent: true, state: `Waiting on ${x.approver.split(' ')[0]}`, phoneState: 'Waiting on the board' } : x)));
+    setPosts((l) => l.map((x) => (x.id === p.id ? { ...x, sent: true, state: x.approver ? `Waiting on ${x.approver.split(' ')[0]}` : 'Waiting on the board', phoneState: 'Waiting on the board' } : x)));
   }
 
   const row = (p: Post) => (
@@ -181,6 +183,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
             {data.monthLabel} <i>{monthCount}</i>
           </p>
           {upcoming.map(row)}
+          {posts.length === 0 ? <p className="pg-empty">No posts yet. Add the first one.</p> : null}
           <p className="ou-grp">
             {data.pastLabel} <i>{Math.max(data.pastCount, past.length)}</i>
           </p>
@@ -219,7 +222,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
           onSaved={(p) => {
             setPosts((l) => [
               ...l.filter((x) => x.group === 'upcoming'),
-              { id: p.id, title: p.title, date: dayWord(p.postOn), owner: p.owner ?? 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Kelsey Davis', caption: null, photo: '[Photo]' },
+              { id: p.id, title: p.title, date: dayWord(p.postOn), owner: p.owner ?? 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: isMock() ? 'Kelsey Davis' : '', caption: null, photo: '[Photo]' },
               ...l.filter((x) => x.group === 'posted'),
             ]);
             setSel(p.id);

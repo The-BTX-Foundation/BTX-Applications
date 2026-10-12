@@ -1,5 +1,5 @@
-// Outreach > Newsletter: the next issue's sections, the email preview and the facts strip. MOCK today (see
-// lib/outreach.ts). ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
+// Outreach > Newsletter: the next issue's sections, the email preview and the facts strip. Data comes
+// from lib/outreach.ts. ?demo=error draws the "didn't load" state, ?demo=stress the stress data. Reviewers don't see it.
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AreaLoadError } from '@/components/area/parts';
