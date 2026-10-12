@@ -12,6 +12,8 @@ export type Step = {
   status: string;
   /** Where a finished step links back to. */
   href?: string;
+  /** True when the step's required answers are complete (draws a gold joint even after the current step). */
+  done?: boolean;
 };
 
 type RailProps = {
@@ -44,7 +46,7 @@ export function StepRail({ steps, current, title = 'Fall 2026 application', subt
             <Ln key={y} x1={cx} y1={y} x2={cx + 16} y2={y} w={1} />
           ))}
           {ys.map((y, i) => (
-            <Diamond key={y} x={cx} y={y} state={i + 1 < current ? 'done' : i + 1 === current ? 'now' : 'next'} />
+            <Diamond key={y} x={cx} y={y} state={i + 1 === current ? 'now' : (steps[i].done ?? i + 1 < current) ? 'done' : 'next'} />
           ))}
         </svg>
         <ol>
@@ -55,7 +57,7 @@ export function StepRail({ steps, current, title = 'Fall 2026 application', subt
                 <span>{s.status}</span>
               </>
             );
-            if (i + 1 < current) {
+            if (i + 1 !== current && (s.done ?? i + 1 < current)) {
               return (
                 <li key={s.name} className="done">
                   {s.href ? <Link href={s.href}>{body}</Link> : <div>{body}</div>}
@@ -96,7 +98,18 @@ export function StepRail({ steps, current, title = 'Fall 2026 application', subt
 }
 
 // The phone progress: "Step 1 of 5", the save line, and the chain drawn flat across the width.
-export function StepProgress({ total, current, saved }: { total: number; current: number; saved?: string }) {
+export function StepProgress({
+  total,
+  current,
+  saved,
+  done,
+}: {
+  total: number;
+  current: number;
+  saved?: string;
+  /** Which steps (counting from 1) are complete; defaults to every step before the current one. */
+  done?: number[];
+}) {
   const w = 350;
   const pad = 12;
   const y = 12;
@@ -118,7 +131,7 @@ export function StepProgress({ total, current, saved }: { total: number; current
         <Ln x1={xs[0]} y1={y} x2={xs[total - 1]} y2={y} w={1.5} />
         {current > 1 ? <Ln x1={xs[0]} y1={y} x2={xs[current - 1]} y2={y} w={3} /> : null}
         {xs.map((x, i) => (
-          <Diamond key={x} x={x} y={y} state={i + 1 < current ? 'done' : i + 1 === current ? 'now' : 'next'} />
+          <Diamond key={x} x={x} y={y} state={i + 1 === current ? 'now' : (done ? done.includes(i + 1) : i + 1 < current) ? 'done' : 'next'} />
         ))}
       </svg>
     </div>

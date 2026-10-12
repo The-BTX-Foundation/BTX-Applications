@@ -8,8 +8,9 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Diamond, Ln } from './icons';
 
 export type DatesProps = {
-  /** open = applications are open (Apply by is the current joint); before = they have not opened yet. */
-  mode?: 'open' | 'before';
+  /** open = applications are open (Apply by is the current joint); before = they have not opened yet;
+   *  submitted = the status page: Applied (today's start), the interview weeks and the decision. */
+  mode?: 'open' | 'before' | 'submitted';
   /** Days from the opening date to each point (today is negative before opening). */
   days?: { apply: number; interviewStart: number; interviewEnd: number; decision: number; today: number };
   /** The words on the Today marker, like "Today: 2 days left". */
@@ -34,6 +35,7 @@ const FALL_2026: Required<Omit<DatesProps, 'mode'>> = {
 export function DatesDrawing(props: DatesProps) {
   const { days, todayLabel, dates, applyLabel } = { ...FALL_2026, ...props };
   const before = props.mode === 'before';
+  const sub = props.mode === 'submitted';
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(0);
 
@@ -50,7 +52,7 @@ export function DatesDrawing(props: DatesProps) {
 
   const phone = w > 0 && w < 700;
   const y = 46;
-  const x0 = phone ? 40 : 60;
+  const x0 = sub ? (phone ? 10 : 12) : phone ? 40 : 60;
   const x1 = w - (phone ? 10 : 12);
   const len = x1 - x0;
   const at = (d: number) => x0 + (len * d) / days.decision;
@@ -60,22 +62,22 @@ export function DatesDrawing(props: DatesProps) {
   const b0 = at(days.interviewStart);
   const b1 = at(days.interviewEnd);
   const bc = (b0 + b1) / 2;
-  const svgH = phone ? 107 : 63;
+  const svgH = phone && !sub ? 107 : 63;
   const tickEnd = (x: number) => (phone && x === bc ? 106 : 62);
 
   return (
-    <div className="rl" ref={box}>
+    <div className="rl" ref={box} style={w > 0 ? { minHeight: 0 } : undefined}>
       {w > 0 ? (
         <>
           <p className="tdy" style={{ left: Math.max(0, Math.round(t - 20)) }}>
-            {before ? 'Today' : todayLabel}
+            {before || sub ? 'Today' : todayLabel}
           </p>
           {before && phone ? (
             <p className="tdy" style={{ left: Math.round(a - 60), width: 120, textAlign: 'center' }}>
               {applyLabel}
             </p>
           ) : null}
-          <svg width={w} height={svgH} viewBox={`0 0 ${w} ${svgH}`} aria-hidden="true" style={{ marginBottom: phone ? -44 : 0 }}>
+          <svg width={w} height={svgH} viewBox={`0 0 ${w} ${svgH}`} aria-hidden="true" style={{ marginBottom: phone && !sub ? -44 : 0 }}>
             <Ln x1={x0} y1={y} x2={x1} y2={y} w={1.5} />
             {before ? (
               <line x1={t} y1={y} x2={x0} y2={y} stroke="var(--ink)" strokeWidth={1.5} strokeDasharray="4 3" />
@@ -83,27 +85,33 @@ export function DatesDrawing(props: DatesProps) {
               <Ln x1={x0} y1={y} x2={t} y2={y} w={3} />
             )}
             <Ln x1={x0} y1={y} x2={x0} y2={tickEnd(x0)} w={1} />
-            <Ln x1={a} y1={y} x2={a} y2={tickEnd(a)} w={1} />
-            <Ln x1={bc} y1={y + 6} x2={bc} y2={tickEnd(bc)} w={1} />
+            {sub ? null : <Ln x1={a} y1={y} x2={a} y2={tickEnd(a)} w={1} />}
+            <Ln x1={bc} y1={y + 6} x2={bc} y2={sub ? 62 : tickEnd(bc)} w={1} />
             <Ln x1={x1} y1={y} x2={x1} y2={tickEnd(x1)} w={1} />
             <rect x={b0} y={40} width={b1 - b0} height={12} fill="var(--bg)" stroke="var(--ink)" strokeWidth={1.5} strokeDasharray="4 3" />
             <path d={`M${t - 6} 32h12l-6 9z`} fill="var(--ink)" />
             <Diamond x={x0} y={y} state={before ? 'next' : 'done'} openFill="var(--bg)" />
-            <Diamond x={a} y={y} state={before ? 'next' : 'now'} openFill="var(--bg)" />
+            {sub ? null : <Diamond x={a} y={y} state={before ? 'next' : 'now'} openFill="var(--bg)" />}
             <Diamond x={x1} y={y} state="next" openFill="var(--bg)" />
           </svg>
-          <ol className="hcl" style={{ height: phone ? 92 : 48 }}>
-            <li style={{ left: x0 - (phone ? 10 : 12), textAlign: 'left' }}>
-              <span className="cdt">{dates.opens}</span>
-              <span className="clb">Opens</span>
-            </li>
-            {phone ? null : (
+          <ol className="hcl" style={{ height: phone && !sub ? 92 : 48 }}>
+            {sub ? (
+              <li style={{ left: 0, textAlign: 'left', paddingTop: 20 }}>
+                <span className="clb">Applied</span>
+              </li>
+            ) : (
+              <li style={{ left: x0 - (phone ? 10 : 12), textAlign: 'left' }}>
+                <span className="cdt">{dates.opens}</span>
+                <span className="clb">Opens</span>
+              </li>
+            )}
+            {phone || sub ? null : (
               <li style={{ left: a - 100, width: 200, textAlign: 'center' }}>
                 <span className="cdt">{dates.apply}</span>
                 <span className={before ? 'clb' : 'clb b'}>Apply by</span>
               </li>
             )}
-            <li style={phone ? { left: bc - 75, width: 150, textAlign: 'center', top: 44 } : { left: bc - 130, width: 260, textAlign: 'center' }}>
+            <li style={phone && !sub ? { left: bc - 75, width: 150, textAlign: 'center', top: 44 } : { left: bc - 130, width: 260, textAlign: 'center' }}>
               <span className="cdt">{dates.interview}</span>
               <span className="clb">Interview</span>
             </li>

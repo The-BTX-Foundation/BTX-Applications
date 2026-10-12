@@ -35,6 +35,8 @@ export const MAJORS = [
   'Mechanical Engineering',
 ] as const;
 
+import type { Application } from '@btx/data';
+
 export type BasicInfo = {
   fullName: string;
   secondaryEmail: string;
@@ -101,4 +103,52 @@ export function fieldError(key: FieldKey, v: BasicInfo): string | null {
     default:
       return v[key] ? null : 'Choose one.';
   }
+}
+
+// The columns Basic info saves.
+export type BasicPatch = {
+  full_name: string | null;
+  secondary_email: string | null;
+  phone: string | null;
+  gender: string | null;
+  race: string | null;
+  heard_from: string | null;
+  major: string | null;
+  year_in_school?: string | null;
+  credits_left?: number | null;
+};
+
+// Turns the form's answers into the application's columns. Blank answers save as null; a credits value that is not a
+// whole number from 0 to 300 is left out (it stays unsaved until it is valid).
+export function toPatch(v: BasicInfo): BasicPatch {
+  const text = (x: string) => (x.trim() ? x.trim() : null);
+  const patch: BasicPatch = {
+    full_name: text(v.fullName),
+    secondary_email: text(v.secondaryEmail),
+    phone: text(v.phone),
+    gender: text(v.gender),
+    race: text(v.race),
+    heard_from: text(v.hear),
+    major: text(v.major),
+  };
+  if (v.year === '' || (YEARS as readonly string[]).includes(v.year)) patch.year_in_school = v.year || null;
+  const credits = v.credits.trim();
+  if (credits === '') patch.credits_left = null;
+  else if (/^\d{1,3}$/.test(credits) && Number(credits) <= 300) patch.credits_left = Number(credits);
+  return patch;
+}
+
+// The saved application's answers as form values.
+export function fromApplication(a: Application): BasicInfo {
+  return {
+    fullName: a.full_name ?? '',
+    secondaryEmail: a.secondary_email ?? '',
+    phone: a.phone ?? '',
+    gender: a.gender ?? '',
+    race: a.race ?? '',
+    hear: a.heard_from ?? '',
+    year: a.year_in_school ?? '',
+    credits: a.credits_left === null ? '' : String(a.credits_left),
+    major: a.major ?? '',
+  };
 }

@@ -3,7 +3,7 @@
 // them in). In mock mode (no Supabase env) the view is the Fall 2026 example from the drafts, and `?preview=` picks
 // which landing to draw. In live mode the view comes from the published cycle row.
 import { createAnonClient } from '@btx/data/server';
-import { cycleVariant, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
+import { cycleVariant, fetchPublishedCycle, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
 import { PLACEHOLDER, daysBetween, easternDate, easternTime, formatMoney, longDay, shortDay } from './format';
 
 export type CycleView = {
@@ -29,7 +29,10 @@ export type CycleView = {
     apply: string;
     interviewStart: string;
     interviewEnd: string;
+    /** Where the decision sits on the drawing. When the cycle has no decision date yet, two weeks after the interviews. */
     decision: string;
+    /** False when the cycle has no decision date yet: the label reads "Date to come" instead of a date. */
+    decisionKnown: boolean;
     today: string;
   };
 };
@@ -54,15 +57,17 @@ const MOCK: CycleView = {
     interviewStart: '2026-09-15',
     interviewEnd: '2026-10-09',
     decision: '2026-10-23',
+    decisionKnown: true,
     today: '2026-09-12',
   },
 };
 
 // Turns a cycle row into the view.
-function toView(c: Cycle): CycleView {
+export function toView(c: Cycle): CycleView {
   const opens = c.opens_at ? easternDate(c.opens_at) : null;
   const apply = c.closes_at ? easternDate(c.closes_at) : null;
-  const complete = opens && apply && c.interview_start && c.interview_end && c.decision_date;
+  // The decision date may come later than the other dates; the drawing still shows, with "Date to come".
+  const complete = opens && apply && c.interview_start && c.interview_end;
   return {
     id: c.id,
     term: c.term,
@@ -80,7 +85,8 @@ function toView(c: Cycle): CycleView {
           apply,
           interviewStart: c.interview_start!,
           interviewEnd: c.interview_end!,
-          decision: c.decision_date!,
+          decision: c.decision_date ?? addDays(c.interview_end!, 14),
+          decisionKnown: Boolean(c.decision_date),
           today: easternDate(new Date()),
         }
       : null,
@@ -88,8 +94,9 @@ function toView(c: Cycle): CycleView {
 }
 
 // Loads which landing to show and the cycle's settings. `preview` only works in mock mode.
-export async function loadLanding(preview?: string): Promise<Landing> {
+export async function loadLanding(preview?: string): Promise<Landing | { failed: true }> {
   if (getAuthMode() === 'mock') {
+    if (preview === 'error') return { failed: true };
     const variant: CycleVariant = preview === 'soon' ? 'before-open' : preview === 'closed' ? 'closed' : 'open';
     const view =
       variant === 'before-open'
@@ -97,7 +104,8 @@ export async function loadLanding(preview?: string): Promise<Landing> {
         : MOCK;
     return { variant, view };
   }
-  const cycle = await getPublishedCycle(createAnonClient());
+  const { cycle, failed } = await fetchPublishedCycle(createAnonClient());
+  if (failed) return { failed: true };
   return {
     variant: cycleVariant(cycle),
     view: cycle ? toView(cycle) : { ...MOCK, id: null, term: null, awardName: null, amount: PLACEHOLDER.amount, opensLong: PLACEHOLDER.date, applyByLong: PLACEHOLDER.date, nextMonth: PLACEHOLDER.month, drawing: null },
@@ -125,7 +133,7 @@ export function drawingProps(view: CycleView, mode: 'open' | 'before') {
       opens: shortDay(d.opens),
       apply: shortDay(d.apply),
       interview: `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}`,
-      decision: shortDay(d.decision),
+      decision: d.decisionKnown ? shortDay(d.decision) : DECISION_TO_COME,
     },
     applyLabel: `Apply by ${shortDay(d.apply)}`,
   };
@@ -138,3 +146,16 @@ export async function loadCodeLifetime(): Promise<{ text: string; minutes: numbe
   const minutes = cycle?.code_lifetime_minutes ?? null;
   return { text: minutes ? `${minutes} minutes` : PLACEHOLDER.time, minutes: minutes ?? 60 };
 }
+
+/** The decision label while the cycle has no decision date. */
+export const DECISION_TO_COME = 'Date to come';
+
+// "2026-11-20" plus 14 days -> "2026-12-04" (calendar days, no time zone involved).
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// The example cycle used by the mock mode.
+export const MOCK_VIEW = MOCK;

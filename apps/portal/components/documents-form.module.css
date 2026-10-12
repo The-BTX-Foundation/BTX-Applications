@@ -1,0 +1,209 @@
+/* Step 4 (drafts step5.html / step5-phone.html / step5-failed*.html). Phone first; laptop from 1024px. */
+.summary {
+  margin-top: 20px;
+}
+.block {
+  margin-top: 20px;
+}
+.row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  padding: 16px;
+  margin-top: 10px;
+}
+.icon {
+  grid-row: 1 / span 3;
+  margin-top: 1px;
+}
+.icon svg {
+  width: 24px;
+  height: 24px;
+}
+.meta {
+  grid-column: 2;
+  min-width: 0;
+}
+.meta b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.meta > span {
+  display: block;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.ok {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.actions {
+  grid-column: 2;
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.actions button {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-right: 16px;
+  font-size: 15px;
+}
+.track {
+  height: 6px;
+  background: var(--line);
+  margin-top: 12px;
+}
+.track div {
+  height: 6px;
+  background: var(--ink);
+}
+.up {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.up button {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-left: 16px;
+  font-size: 15px;
+}
+.paused {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.meta .paused > span {
+  display: block;
+  font-size: 16px;
+  color: var(--ink);
+}
+.upActions {
+  display: flex !important;
+  flex-wrap: wrap;
+  column-gap: 16px;
+}
+.paused button {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-left: 0;
+  font-size: 16px;
+}
+.zone {
+  min-height: 172px;
+  margin-top: 10px;
+  border: 1.5px dashed var(--ink);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.drag {
+  display: none;
+  font-size: 16px;
+}
+.zone small {
+  font-size: 14px;
+  color: var(--muted);
+}
+.note {
+  font-size: 15px;
+  color: var(--muted);
+  margin-top: 16px;
+  line-height: 1.45;
+}
+
+@media (min-width: 1024px) {
+  .summary {
+    margin-top: 28px;
+  }
+  .block {
+    margin-top: 28px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+  }
+  .icon {
+    margin-top: 0;
+  }
+  .meta {
+    flex: 1;
+  }
+  .ok {
+    margin-top: 0;
+    white-space: nowrap;
+  }
+  .actions {
+    align-items: center;
+    gap: 20px;
+    margin: 0 0 0 24px;
+  }
+  .actions button {
+    min-height: 0;
+    padding: 0;
+  }
+  .up {
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  .up button {
+    min-height: 0;
+    padding-left: 0;
+    flex: none;
+    font-size: 16px;
+  }
+  .paused {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .meta .paused > span {
+    display: inline;
+  }
+  .upActions {
+    display: flex !important;
+    flex: none;
+  }
+  .paused button {
+    min-height: 0;
+    flex: none;
+  }
+  .drag {
+    display: block;
+  }
+  .zone {
+    height: 172px;
+  }
+  .note {
+    margin-top: 20px;
+  }
+}

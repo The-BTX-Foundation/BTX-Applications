@@ -4,14 +4,14 @@
 --
 -- The dates are moved so the cycle is open right now (opened yesterday, closes
 -- in 14 days at 11:59 PM Eastern), so a preview can walk the whole application.
--- Needs the 20261009130000_portal_fresh_start migration applied first.
+-- Needs the 20261009130000_portal_fresh_start and 20261012120000_portal_short_answers
+-- migrations applied first (a cycle no longer needs an essay prompt to publish).
 insert into public.cycles (
   term, year, status,
   award_name, award_amount_cents,
   opens_at, closes_at,
   interview_start, interview_end, decision_date,
   next_cycle_month,
-  essay_prompt, essay_use,
   requirements,
   photo_due, payment_note,
   event_enabled, event_at,
@@ -23,8 +23,6 @@ insert into public.cycles (
   (date_trunc('day', now() at time zone 'America/New_York') + interval '14 days 23 hours 59 minutes') at time zone 'America/New_York',
   (current_date + 15), (current_date + 39), (current_date + 53),
   'October',
-  '[Legacy essay prompt to confirm]',
-  '[How the essay is used, to confirm]',
   '["Full-time Clark School undergraduate working toward a B.S. in engineering",
     "12 or more credits left in your program",
     "GPA of 2.5 or higher when you apply",

@@ -21,3 +21,7 @@ next-env.d.ts
 
 # Local-only database backups (contain test personal data; never commit or publish)
 supabase/backups/
+
+# Test output
+test-results
+playwright-report

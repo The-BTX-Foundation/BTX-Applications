@@ -1,0 +1,79 @@
+/* Step 3: three short answers, stacked. Built in code first (2026-10-12) from the old essay step's styles
+   (draft step4.html / step4-phone.html); the Figma frames are redrawn to match. */
+.block {
+  margin-top: 20px;
+}
+.block + .block {
+  margin-top: 32px;
+}
+.question {
+  display: block;
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.box {
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  overflow: hidden;
+  margin-top: 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: var(--bg);
+  padding: 16px 20px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  resize: none;
+  overflow-wrap: anywhere;
+}
+.box:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.boxErr {
+  border-width: 2.5px;
+  padding: 15px 19px;
+}
+.count {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 15px;
+}
+.count b {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.notice {
+  display: block;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.notice:empty {
+  display: none;
+}
+.errMsg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+@media (min-width: 1024px) {
+  .block {
+    margin-top: 28px;
+  }
+  .block + .block {
+    margin-top: 40px;
+  }
+  .question {
+    font-size: 18px;
+    line-height: 1.55;
+  }
+}

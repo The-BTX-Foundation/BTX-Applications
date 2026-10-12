@@ -6,22 +6,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  BottomBar,
   Button,
-  ButtonLink,
   ErrorSummary,
   Segmented,
   SelectField,
-  StepProgress,
-  StepRail,
   TextField,
-  TopBar,
   type SummaryItem,
 } from '@btx/ui';
-import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type Application } from '@btx/data';
+import { getAuthMode, getBrowserClient, getSignedInEmail, saveApplication, type AppFile, type Application } from '@btx/data';
 import type { CycleView } from '@/lib/cycle';
 import { savedTime } from '@/lib/format';
-import { STEPS } from '@/lib/steps';
+import { railSteps } from '@/lib/steps';
+import { useWide } from '@/lib/use-wide';
+import { STRESS, withValue } from '@/lib/stress';
+import { ApplyShell } from './apply-shell';
 import {
   EMPTY,
   GENDERS,
@@ -33,6 +31,8 @@ import {
   YEARS,
   fieldError,
   formatPhone,
+  fromApplication,
+  toPatch,
   type BasicInfo,
   type FieldKey,
 } from '@/lib/basic-info';
@@ -48,65 +48,45 @@ const DEMO: BasicInfo = {
   hear: 'A friend or mentor shared it with me',
 };
 
-// Turns the form's answers into the application's columns. Blank answers save as null; a credits value that is not a
-// whole number from 0 to 300 is left out (it stays unsaved until it is valid).
 type Patch = NonNullable<Parameters<typeof saveApplication>[2]>;
-function toPatch(v: BasicInfo): Patch {
-  const text = (x: string) => (x.trim() ? x.trim() : null);
-  const patch: Patch = {
-    full_name: text(v.fullName),
-    secondary_email: text(v.secondaryEmail),
-    phone: text(v.phone),
-    gender: text(v.gender),
-    race: text(v.race),
-    heard_from: text(v.hear),
-    major: text(v.major),
-  };
-  if (v.year === '' || (YEARS as readonly string[]).includes(v.year)) {
-    patch.year_in_school = (v.year || null) as Patch['year_in_school'];
-  }
-  const credits = v.credits.trim();
-  if (credits === '') patch.credits_left = null;
-  else if (/^\d{1,3}$/.test(credits) && Number(credits) <= 300) patch.credits_left = Number(credits);
-  return patch;
-}
 
-// The saved application's answers as form values.
-function fromApplication(a: Application): BasicInfo {
-  return {
-    fullName: a.full_name ?? '',
-    secondaryEmail: a.secondary_email ?? '',
-    phone: a.phone ?? '',
-    gender: a.gender ?? '',
-    race: a.race ?? '',
-    hear: a.heard_from ?? '',
-    year: a.year_in_school ?? '',
-    credits: a.credits_left === null ? '' : String(a.credits_left),
-    major: a.major ?? '',
-  };
-}
+// The stress sample: longest name, emails and answers, credits at 120, phone one digit short.
+const DEMO_STRESS: BasicInfo = {
+  ...EMPTY,
+  fullName: STRESS.name,
+  secondaryEmail: STRESS.secondaryEmail,
+  phone: '(301) 555-019',
+  gender: 'Prefer not to say',
+  race: STRESS.race,
+  hear: STRESS.hear,
+  credits: '120',
+  major: STRESS.major,
+};
 
 const SAVE_DELAY_MS = 800;
 
 export function BasicInfoForm({
   demo,
   application,
+  files,
   email: initialEmail,
   view,
 }: {
-  demo?: boolean;
+  /** Review mode: "1" (the draft's sample) or "stress" (the longest realistic values). */
+  demo?: string;
   /** The saved application (live mode), or null in mock mode. */
   application: Application | null;
+  files: AppFile[];
   /** The signed-in address (live mode); mock mode reads it in the browser. */
   email?: string;
   view: CycleView;
 }) {
   const router = useRouter();
-  const [v, setV] = useState<BasicInfo>(demo ? DEMO : application ? fromApplication(application) : EMPTY);
+  const [v, setV] = useState<BasicInfo>(demo ? (demo === 'stress' ? DEMO_STRESS : DEMO) : application ? fromApplication(application) : EMPTY);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>(demo ? { phone: true } : {});
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [email, setEmail] = useState(demo ? 'ecoleman@terpmail.umd.edu' : (initialEmail ?? ''));
+  const [email, setEmail] = useState(demo ? (demo === 'stress' ? STRESS.email : 'ecoleman@terpmail.umd.edu') : (initialEmail ?? ''));
   // The time of the last save, as an ISO string. A fresh draft (never edited) shows no save time.
   const [savedAt, setSavedAt] = useState<string | null>(
     application && application.updated_at !== application.created_at ? application.updated_at : null,
@@ -117,7 +97,7 @@ export function BasicInfoForm({
   const saved = useRef<Patch>(application ? toPatch(fromApplication(application)) : {});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(v);
-  const accountName = demo ? 'Ebony Coleman' : application?.full_name || 'Your account';
+  const accountName = demo ? (demo === 'stress' ? STRESS.name : 'Ebony Coleman') : application?.full_name || 'Your account';
 
   // Mock mode: read the tab's remembered sign-in address for the read-only field.
   useEffect(() => {
@@ -209,7 +189,7 @@ export function BasicInfoForm({
       if (timer.current) clearTimeout(timer.current);
       // save every answer and move her on to step 2 (never backwards if she has been further)
       const ok = await flush({ current_step: Math.max(application?.current_step ?? 1, 2) });
-      if (ok) router.push('/apply/coming-next?step=2');
+      if (ok) router.push('/apply/scholarship');
       else setSaveError("We couldn't save your answers. Check your connection and try again.");
     } else {
       // wait a tick so the summary is in the page, then move focus to it
@@ -222,24 +202,81 @@ export function BasicInfoForm({
 
   const savedLabel = demo ? 'Saved 4:12 PM' : saving === 'error' ? "Couldn't save yet" : savedAt ? `Saved ${savedTime(savedAt)}` : undefined;
 
+  // The first four fields, in the order a reader meets them: row by row on a wide screen (name, phone, then Terpmail,
+  // secondary email) and one under another on a narrow one (name, Terpmail, secondary email, phone). Keeping the page
+  // order equal to the visual order keeps the Tab order right at both widths.
+  const wide = useWide();
+  const fieldNodes: Record<string, React.ReactNode> = {
+    fullName: (
+  <TextField
+        key="fullName"
+    id="fullName"
+    label="Full name"
+    autoComplete="name"
+    value={v.fullName}
+    error={shown('fullName')}
+    onChange={(e) => set('fullName', e.target.value)}
+    onBlur={() => touch('fullName')}
+  />
+    ),
+    terpmail: (
+  <TextField
+        key="terpmail"
+    id="terpmail"
+    label="Terpmail address"
+    note="(from your sign-in)"
+    readOnlyLock
+    value={email}
+    placeholder="yourname@terpmail.umd.edu"
+    onChange={() => {}}
+  />
+    ),
+    secondaryEmail: (
+  <TextField
+        key="secondaryEmail"
+    id="secondaryEmail"
+    label="Secondary email"
+    note="(optional)"
+    type="email"
+    inputMode="email"
+    autoComplete="email"
+    placeholder="you@example.com"
+    value={v.secondaryEmail}
+    error={shown('secondaryEmail')}
+    onChange={(e) => set('secondaryEmail', e.target.value)}
+    onBlur={() => touch('secondaryEmail')}
+  />
+    ),
+    phone: (
+  <TextField
+        key="phone"
+    id="phone"
+    label="Phone number"
+    type="tel"
+    inputMode="tel"
+    autoComplete="tel"
+    value={v.phone}
+    error={shown('phone')}
+    onChange={(e) => set('phone', e.target.value)}
+    onBlur={() => {
+      set('phone', formatPhone(v.phone));
+      touch('phone');
+    }}
+  />
+    ),
+  };
+
   return (
-    <div className="app">
-      <TopBar
-        variant="signed-in"
-        accountName={accountName}
-        progress={<StepProgress total={STEPS.length} current={1} saved={savedLabel} />}
-      />
-      <form className="wiz" onSubmit={onSubmit} noValidate>
-        <StepRail
-          steps={STEPS}
-          current={1}
-          title={`${view.term ?? '[term]'} application`}
-          subtitle={`${view.awardName ?? '[award name]'}. Apply by ${view.applyByLong}, ${view.deadlineTime} Eastern.`}
-          saved={savedLabel}
-        />
-        <div className="wiz-main">
-          <main className="wk">
-            <div className="col">
+    <ApplyShell
+      current={1}
+      steps={railSteps(application, files, 1, demo ? [false, false, false, false, false] : undefined)}
+      view={view}
+      accountName={accountName}
+      saved={savedLabel}
+      onSubmit={onSubmit}
+      backHref="/"
+      primary={<Button type="submit">Continue</Button>}
+    >
               <h1 className="st">Basic info.</h1>
               <p className="ld">Tell us who you are and where you are in school.</p>
               {items.length ? (
@@ -248,55 +285,7 @@ export function BasicInfoForm({
                 </div>
               ) : null}
               <div className={s.grid}>
-                <TextField
-                  id="fullName"
-                  label="Full name"
-                  className={s.name}
-                  autoComplete="name"
-                  value={v.fullName}
-                  error={shown('fullName')}
-                  onChange={(e) => set('fullName', e.target.value)}
-                  onBlur={() => touch('fullName')}
-                />
-                <TextField
-                  id="terpmail"
-                  label="Terpmail address"
-                  note="(from your sign-in)"
-                  className={s.terp}
-                  readOnlyLock
-                  value={email}
-                  placeholder="yourname@terpmail.umd.edu"
-                  onChange={() => {}}
-                />
-                <TextField
-                  id="secondaryEmail"
-                  label="Secondary email"
-                  note="(optional)"
-                  className={s.secondary}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={v.secondaryEmail}
-                  error={shown('secondaryEmail')}
-                  onChange={(e) => set('secondaryEmail', e.target.value)}
-                  onBlur={() => touch('secondaryEmail')}
-                />
-                <TextField
-                  id="phone"
-                  label="Phone number"
-                  className={s.phone}
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={v.phone}
-                  error={shown('phone')}
-                  onChange={(e) => set('phone', e.target.value)}
-                  onBlur={() => {
-                    set('phone', formatPhone(v.phone));
-                    touch('phone');
-                  }}
-                />
+                {(wide ? ['fullName', 'phone', 'terpmail', 'secondaryEmail'] : ['fullName', 'terpmail', 'secondaryEmail', 'phone']).map((k) => fieldNodes[k])}
                 <Segmented
                   id="gender"
                   label="Gender"
@@ -311,7 +300,7 @@ export function BasicInfoForm({
                 <SelectField
                   id="race"
                   label="Race"
-                  options={RACES}
+                  options={withValue(RACES, v.race)}
                   value={v.race}
                   error={shown('race')}
                   onChange={(e) => set('race', e.target.value)}
@@ -320,7 +309,7 @@ export function BasicInfoForm({
                 <SelectField
                   id="hear"
                   label="How did you hear about this scholarship?"
-                  options={HEARD_FROM}
+                  options={withValue(HEARD_FROM, v.hear)}
                   value={v.hear}
                   error={shown('hear')}
                   onChange={(e) => set('hear', e.target.value)}
@@ -352,7 +341,7 @@ export function BasicInfoForm({
                   id="major"
                   label="Major"
                   placeholder="Choose your major"
-                  options={MAJORS}
+                  options={withValue(MAJORS, v.major)}
                   value={v.major}
                   error={shown('major')}
                   onChange={(e) => set('major', e.target.value)}
@@ -364,19 +353,7 @@ export function BasicInfoForm({
                   {saveError}
                 </p>
               ) : null}
-            </div>
-          </main>
-          <BottomBar
-            back={
-              <ButtonLink kind="s" icon="left" href="/">
-                Back
-              </ButtonLink>
-            }
-            primary={<Button type="submit">Continue</Button>}
-          />
-        </div>
-      </form>
-    </div>
+    </ApplyShell>
   );
 }
 
