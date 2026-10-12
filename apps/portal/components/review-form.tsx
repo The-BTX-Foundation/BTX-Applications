@@ -27,6 +27,7 @@ import { HELP_EMAIL } from '@btx/ui';
 import { ApplyShell } from './apply-shell';
 import { DEMO_ANSWERS } from './short-answers-form';
 import { FileName, Name } from './text';
+import { TerpmailRefusal } from './terpmail-refusal';
 import s from './review-form.module.css';
 
 // Database column -> the field id on the Basic info page and its label.
@@ -51,6 +52,7 @@ const ANSWER_FIELD: Record<string, { id: string; n: number }> = {
 type Failure =
   | { kind: 'connection' }
   | { kind: 'closed' }
+  | { kind: 'terpmail' }
   | { kind: 'missing'; items: SummaryItem[] };
 
 const DEMO = {
@@ -74,7 +76,7 @@ export function ReviewForm({
   const [stay, setStay] = useState(demo ? true : (application?.stay_in_touch ?? false));
   const [agreed, setAgreed] = useState(demo ? true : (application?.agreed_true ?? false));
   const [agreeError, setAgreeError] = useState(false);
-  const [failure, setFailure] = useState<Failure | null>(demo?.startsWith('failed') ? { kind: 'connection' } : null);
+  const [failure, setFailure] = useState<Failure | null>(demo?.startsWith('failed') ? { kind: 'connection' } : demo === 'terpmail' ? { kind: 'terpmail' } : null);
   const [open, setOpen] = useState<'answers' | 'docs' | null>(null);
   const [busy, setBusy] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -191,6 +193,8 @@ export function ReviewForm({
       setFailure({ kind: 'missing', items: [{ fieldId: 'docs', message: 'Documents: upload both your resume and your transcript.', href: STEP_PATHS[3] }] });
     } else if (r.kind === 'not_agreed') {
       setAgreeError(true);
+    } else if (r.kind === 'terpmail_required') {
+      setFailure({ kind: 'terpmail' });
     } else if (r.kind === 'cycle_closed') {
       setFailure({ kind: 'closed' });
     } else {
@@ -226,7 +230,9 @@ export function ReviewForm({
           Check your answers, then submit by {view.applyByLong}, {view.deadlineTime} Eastern.
         </span>
       </p>
-      {failure?.kind === 'connection' ? (
+      {failure?.kind === 'terpmail' ? (
+        <TerpmailRefusal className={s.fail} ref={alertRef} />
+      ) : failure?.kind === 'connection' ? (
         <div className={`es ${s.fail}`} role="alert" tabIndex={-1} ref={alertRef}>
           <p>
             <ErrorIcon />

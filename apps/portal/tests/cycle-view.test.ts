@@ -4,6 +4,7 @@ vi.mock('@btx/data/server', () => ({ createAnonClient: () => null }));
 vi.mock('@btx/data', () => ({ cycleVariant: () => 'open', fetchPublishedCycle: async () => ({}), getPublishedCycle: async () => null, getAuthMode: () => 'mock' }));
 
 const { toView, drawingProps, DECISION_TO_COME } = await import('@/lib/cycle');
+const { longDay } = await import('@/lib/format');
 
 // The Legacy cycle as entered on 2026-10-12: no decision date yet.
 const legacy = {
@@ -29,5 +30,11 @@ describe('cycle view without a decision date', () => {
     expect(v.amount).toBe('$2,500');
     expect(v.applyByLong).toContain('Nov 6');
     expect(v.deadlineTime).toBe('11:59 PM');
+  });
+});
+
+describe('book-by date', () => {
+  it('is the cycle\'s last interview day, as the booking screen and the book email print it', () => {
+    expect(longDay(toView(legacy).drawing?.interviewEnd)).toBe('Fri Nov 20');
   });
 });

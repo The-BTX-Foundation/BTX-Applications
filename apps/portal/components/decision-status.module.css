@@ -1,0 +1,602 @@
+/* The decision screens (drafts status-won, status-won-sent, status-not and their phone versions). Phone first;
+   laptop from 1024px: two columns. The phone is one column in reading order. */
+.page {
+  padding: 24px 20px 0;
+}
+.wn {
+  display: flex;
+  flex-direction: column;
+}
+.wl,
+.wr {
+  min-width: 0;
+}
+.label {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.h1 {
+  font-size: 40px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.h1n {
+  font-size: 36px;
+}
+.lead {
+  font-size: 17px;
+  line-height: 1.5;
+  margin-top: 12px;
+}
+.leadN {
+  font-size: 17px;
+}
+.sh {
+  margin-top: 28px;
+}
+.phoneOnly {
+  display: block;
+}
+.lapOnly,
+.lapFoot {
+  display: none;
+}
+
+/* next steps */
+.srs {
+  margin-top: 14px;
+  list-style: none;
+}
+.sr {
+  position: relative;
+  padding-left: 44px;
+  padding-bottom: 22px;
+}
+.sr:last-child {
+  padding-bottom: 0;
+}
+.joint {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  display: block;
+}
+.srLine {
+  position: absolute;
+  left: 11.25px;
+  top: 20px;
+  bottom: -4px;
+  width: 1.5px;
+  background: var(--ink);
+}
+.sr :global(.cdt) {
+  line-height: 22px;
+}
+.sr b {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sr p {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.sr :global(.btn) {
+  display: flex;
+  width: 100%;
+  margin-top: 14px;
+  height: 52px;
+}
+
+/* scholar page preview */
+.scHd {
+  margin-top: 36px;
+}
+.sc {
+  position: relative;
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  padding: 20px 16px 16px;
+}
+.scBar {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  height: 6px;
+  background: var(--gold);
+}
+.scU {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.scM {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+.scPh {
+  flex: none;
+  width: 96px;
+  height: 120px;
+  border: 1.5px dashed var(--ink);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.scPh :global(.i) {
+  width: 24px;
+  height: 24px;
+  color: var(--ink);
+}
+.scPhoto {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ink);
+}
+.scPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.scId {
+  min-width: 0;
+}
+.scK {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.scK svg {
+  flex: none;
+  display: block;
+  margin-top: 4px;
+}
+.scK :global(.cdt) {
+  white-space: normal;
+}
+.scN {
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 500;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.scD {
+  font-size: 15px;
+  line-height: 1.45;
+  margin-top: 4px;
+}
+.scS {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.scSt {
+  margin-top: 12px;
+  border: 1.5px dashed var(--line);
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.scStIn {
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  color: var(--ink);
+}
+.scNt {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.pkH {
+  margin-top: 32px;
+}
+.pk {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.pkR {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.pkR b {
+  font-weight: 600;
+}
+.pkR :global(.i) {
+  flex: none;
+}
+.foot {
+  margin-top: 20px;
+  padding-bottom: 32px;
+  font-size: 15px;
+}
+.footLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.questions {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* not picked */
+.fb {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.fb :global(.i) {
+  margin-top: 2px;
+  flex: none;
+}
+.shN {
+  margin-top: 28px;
+}
+.ops {
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--ink);
+}
+.op {
+  padding: 16px;
+  border-top: 1px solid var(--line);
+}
+.op:first-child {
+  border-top: 0;
+}
+.opT b {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.opT p {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+.opS {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 10px;
+}
+.opS:empty {
+  display: none;
+}
+.opOn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.opOn :global(.i) {
+  width: 18px;
+  height: 18px;
+}
+.opN {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.opLink {
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+.opX {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 16px;
+}
+.opX :global(.i) {
+  width: 16px;
+  height: 16px;
+}
+.op :global(.btn) {
+  display: flex;
+  width: 100%;
+  height: 48px;
+}
+.cnH {
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 500;
+  margin-top: 36px;
+}
+.cn {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.cnR {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.cnR > :global(.i),
+.cnR > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.cnR > div {
+  flex: 1;
+  min-width: 0;
+}
+.cnR b {
+  font-weight: 600;
+}
+.cnR p {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.cnR p a {
+  color: var(--ink);
+}
+.cnChange {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 15px;
+}
+.cnA span {
+  flex: 1;
+}
+.cnA b {
+  font-size: 15px;
+}
+.npFt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 16px;
+  padding-bottom: 28px;
+  font-size: 15px;
+}
+
+@media (min-width: 1024px) {
+  .page {
+    padding: 44px 48px 0;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .wn {
+    flex-direction: row;
+    gap: 80px;
+    align-items: flex-start;
+  }
+  .wl {
+    width: 744px;
+    flex: none;
+  }
+  .nl {
+    width: 800px;
+  }
+  .wr {
+    flex: 1;
+    padding-top: 6px;
+  }
+  .h1,
+  .h1n {
+    font-size: 64px;
+  }
+  .lead {
+    font-size: 20px;
+    margin-top: 14px;
+    max-width: 700px;
+  }
+  .leadN {
+    max-width: 720px;
+  }
+  .sh {
+    margin-top: 36px;
+  }
+  .phoneOnly {
+    display: none;
+  }
+  .lapOnly {
+    display: inline;
+  }
+  .lapFoot {
+    display: block;
+  }
+  .srs {
+    margin-top: 16px;
+  }
+  .sr {
+    padding-bottom: 24px;
+  }
+  .sr:last-child {
+    padding-bottom: 0;
+  }
+  .sr b {
+    font-size: 20px;
+  }
+  .sr p {
+    max-width: 600px;
+  }
+  .sr :global(.btn) {
+    display: inline-flex;
+    width: auto;
+    padding: 0 26px;
+  }
+  .scHd {
+    margin-top: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .scHd .lapOnly {
+    font-size: 15px;
+  }
+  .sc {
+    margin-top: 12px;
+    padding: 24px;
+  }
+  .scU {
+    font-size: 14px;
+  }
+  .scM {
+    gap: 24px;
+    margin-top: 16px;
+  }
+  .scPh {
+    width: 144px;
+    height: 168px;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .scPh :global(.i) {
+    width: 28px;
+    height: 28px;
+  }
+  .scId {
+    padding-top: 4px;
+  }
+  .scK {
+    align-items: center;
+  }
+  .scK svg {
+    margin-top: 0;
+  }
+  .scK :global(.cdt) {
+    white-space: nowrap;
+  }
+  .scN {
+    font-size: 28px;
+    margin-top: 8px;
+  }
+  .scD {
+    font-size: 16px;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+  .scS {
+    font-size: 15px;
+  }
+  .scSt {
+    margin-top: 16px;
+    padding: 14px 16px;
+  }
+  .scStIn {
+    padding: 0;
+  }
+  .pkH {
+    margin-top: 28px;
+  }
+  .pkR {
+    min-height: 48px;
+    padding: 0;
+  }
+  .lapFoot .foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 32px;
+    margin-top: 32px;
+    padding-bottom: 0;
+  }
+  .footLink,
+  .questions {
+    min-height: 0;
+  }
+
+  .fb {
+    margin-top: 16px;
+    max-width: 720px;
+  }
+  .shN {
+    margin-top: 32px;
+  }
+  .op {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    min-height: 96px;
+    padding: 16px 24px;
+  }
+  .opT {
+    flex: 1;
+    min-width: 0;
+  }
+  .opS {
+    flex: none;
+    width: 236px;
+    flex-direction: column;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 2px;
+    margin-top: 0;
+  }
+  .opLink,
+  .opX {
+    min-height: 0;
+  }
+  .op :global(.btn) {
+    display: inline-flex;
+    width: auto;
+    padding: 0 20px;
+  }
+  .nr .cnH {
+    margin-top: 0;
+  }
+  .cn {
+    margin-top: 12px;
+  }
+  .cnR {
+    padding: 10px 0;
+  }
+  .cnChange {
+    min-height: 0;
+  }
+  .npFt {
+    margin-top: 24px;
+    min-height: 0;
+    padding-bottom: 0;
+  }
+}

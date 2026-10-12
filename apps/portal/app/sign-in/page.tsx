@@ -2,7 +2,6 @@
 // `?demo=email|code|wrong|expired` draws one state with the draft's sample data, for design review.
 import type { Metadata } from 'next';
 import { SignInFlow, type DemoState } from '@/components/sign-in-flow';
-import { loadCodeLifetime } from '@/lib/cycle';
 import { safeNext as cleanNext } from '@/lib/safe-next';
 
 export const metadata: Metadata = { title: 'Sign in' };
@@ -11,8 +10,7 @@ const DEMOS: DemoState[] = ['email', 'code', 'wrong', 'expired'];
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ demo?: string; next?: string; error?: string; stress?: string }> }) {
   const { demo, next, error, stress } = await searchParams;
-  const { text, minutes } = await loadCodeLifetime();
   const safeNext = cleanNext(next);
   const state = DEMOS.find((d) => d === demo);
-  return <SignInFlow demo={state} next={safeNext} codeLifetime={text} lifetimeMinutes={minutes} linkError={error === 'link'} demoEmail={stress === '1' ? 'aokonkwowhitfield@terpmail.umd.edu' : undefined} />;
+  return <SignInFlow demo={state} next={safeNext} linkError={error === 'link'} demoEmail={stress === '1' ? 'aokonkwowhitfield@terpmail.umd.edu' : undefined} />;
 }

@@ -3,7 +3,7 @@
 import { DatesDrawing, HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { DECISION_TO_COME, type CycleView } from '@/lib/cycle';
 import { daysBetween, easternDate, longDay, shortDay } from '@/lib/format';
-import { LINKEDIN_URL } from '@/lib/config';
+import { LINKEDIN_URL, OFFERS_URL, PREPARE_GUIDE_URL } from '@/lib/config';
 import s from './status-view.module.css';
 
 // "Sat Sep 12, 4:52 PM" in Eastern time.
@@ -70,14 +70,18 @@ export function StatusView({
             <div className={s.c1}>
               <p className={s.label}>While you wait</p>
               <div className={s.pick}>
-                <a href="#" className={s.pickRow}>
-                  <Icon name="file" />
-                  <span className="lk">How to prepare for your interview</span>
-                </a>
-                <a href="#" className={s.pickRow}>
-                  <Icon name="people" />
-                  <span className="lk">What BTX offers students</span>
-                </a>
+                {PREPARE_GUIDE_URL ? (
+                  <a href={PREPARE_GUIDE_URL} className={s.pickRow}>
+                    <Icon name="file" />
+                    <span className="lk">How to prepare for your interview</span>
+                  </a>
+                ) : null}
+                {OFFERS_URL ? (
+                  <a href={OFFERS_URL} className={s.pickRow}>
+                    <Icon name="people" />
+                    <span className="lk">What BTX offers students</span>
+                  </a>
+                ) : null}
                 <div className={s.pickRow}>
                   <Icon name="check" />
                   <span>Certification program: we&apos;ll email you when it opens</span>
