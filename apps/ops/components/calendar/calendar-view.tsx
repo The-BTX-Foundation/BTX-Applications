@@ -1,10 +1,11 @@
 "use client";
 
 // The Calendar screen (Figma "Calendar", laptop and phone). Laptop: month grid with bars across days and chips inside a
-// day (three, then "+N more"), a side panel for the selected day, a legend and filters. Phone: a week strip with dots
-// and the agenda for three days from the selected day. Month is the only view drawn in Figma: Week and List do nothing
-// yet. MOCK today: "Add event" adds to this component's own state (resets on reload); in live mode it inserts into
-// `calendar_events` (title, kind, area, starts_at, all_day). NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
+// day (three, then "+N more"), a side panel listing everything on the selected day (owner's decision O4), a legend and
+// filters. Phone: a week strip with dots and the agenda for three days from the selected day. Month is the only view
+// drawn in Figma: the Week and List buttons are hidden (owner's decision O5). "Add event" adds to this component's own
+// state; in live mode it also inserts into `calendar_events` (title, kind, area, starts_at, all_day). Its new design waits
+// for the owner's sign-off, so it is unchanged here.
 import { useMemo, useState } from "react";
 import { getBrowserClient, hasSupabaseEnv } from "@btx/data";
 import { PageHeader } from "../page-header";
@@ -30,6 +31,7 @@ import {
   panelHeading,
   weekStart,
 } from "./dates";
+import { dayAgenda } from "@/lib/daily-calendar";
 import "./calendar.css";
 
 const KIND: Record<CalArea, string> = {
@@ -154,7 +156,8 @@ function Ev({
   );
 }
 
-// The side panel: the selected day's heading and its first timed item (what the Figma frame draws).
+// The side panel: the selected day's heading and everything on that day (owner's decision O4): timed items first, then
+// bars across the day, due dates, posts and all-day items.
 function SidePanel({
   day,
   today,
@@ -166,27 +169,25 @@ function SidePanel({
   items: CalItem[];
   names: Record<string, string>;
 }) {
-  const first = dayItems(items, day)
-    .filter((i) => i.start)
-    .sort((a, b) => minutes(a.start) - minutes(b.start))[0];
+  const list = dayAgenda(items, day, minutes);
   return (
     <aside className="ca-side" aria-label="Agenda">
       <div className="ca-sd">
         <h2>{panelHeading(day, today)}</h2>
-        {first ? (
-          <div className="ca-ag">
-            <b className="ca-ag-t">{first.start}</b>
+        {list.length === 0 ? <p className="ca-none">Nothing on this day.</p> : null}
+        {list.map((it) => (
+          <div key={it.id} className="ca-ag">
+            <b className="ca-ag-t">{whenLabel(it)}</b>
             <p>
-              <b>{first.title}</b>
+              <b>{it.title}</b>
               <span>
-                {first.people.map((id) => names[id] ?? id).join(", ")}
-                {first.video ? " · Video" : ""}
+                {[it.people.map((id) => names[id] ?? id).join(", ") || AREA_LABEL[it.area], it.video ? "Video" : ""]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
             </p>
           </div>
-        ) : (
-          <p className="ca-none">Nothing scheduled at a set time.</p>
-        )}
+        ))}
       </div>
       <a className="ca-sub2" href="#" onClick={(e) => e.preventDefault()}>
         Add the BTX calendar to Google Calendar
@@ -258,7 +259,7 @@ export function CalendarView({ data }: { data: CalendarData }) {
   const [month, setMonth] = useState(monthStart(today));
   const [sel, setSel] = useState(addDays(today, 1));
   const [wk, setWk] = useState(weekStart(today));
-  const [view, setView] = useState<"month" | "week" | "list">("month");
+  const [view, setView] = useState<"month">("month");
   const [who, setWho] = useState("");
 
   const all = useMemo(() => [...data.items, ...added], [data.items, added]);
@@ -292,7 +293,6 @@ export function CalendarView({ data }: { data: CalendarData }) {
     };
     setAdded((a) => [...a, item]);
     if (hasSupabaseEnv()) {
-      // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
       const w = getBrowserClient() as unknown as {
         from: (t: string) => {
           insert: (
@@ -391,7 +391,7 @@ export function CalendarView({ data }: { data: CalendarData }) {
 
       <div className="ca-bar o-lg">
         <div className="o-seg" role="group" aria-label="View">
-          {(["month", "week", "list"] as const).map((v) => (
+          {(["month"] as const).map((v) => (
             <button
               key={v}
               type="button"

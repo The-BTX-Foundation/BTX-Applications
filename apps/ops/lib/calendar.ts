@@ -1,9 +1,12 @@
-// The Calendar page's data. MOCK today (mock/calendar.ts). Live mode merges what the draft schema keeps in separate
-// tables into one list of CalItems: `calendar_events` (events entered in the app), interviews (`interview_pairings` /
-// `bookings`), task due dates (`tasks.due_on`), posts (`posts`) and the cycle's dates (`cycles`). Going live is a swap
-// inside loadCalendar; the page and components only see CalendarData.
+// The Calendar page's data. Mock mode returns the Figma sample (mock/calendar.ts). Live mode merges what the schema keeps
+// in separate tables into one list of CalItems: `calendar_events` (events entered in the app), interviews (`bookings` /
+// `interview_slots` / `interview_pairings`), task due dates (`tasks.due_on`), posts (`posts`), plan milestones and the
+// cycle's dates (`cycles`); the merging is pure code in lib/daily-calendar.ts. The page only sees CalendarData.
 import { hasSupabaseEnv } from '@btx/data';
-import { sessionClient } from './supabase-server';
+import { readRows, whoAmI } from './daily-db';
+import { safe } from './daily-load';
+import { cycleItems, eventItems, interviewItems, milestoneItems, postItems, taskItems } from './daily-calendar';
+import { easternDay } from './daily-tasks';
 import { MOCK_CALENDAR, MOCK_CALENDAR_STRESS } from '@/mock/calendar';
 import type { CalendarData } from '@/components/calendar/types';
 
@@ -23,34 +26,41 @@ export type CalendarEventRow = {
   owner_id: string | null;
 };
 
-// An Eastern-time calendar date ("2026-10-05") and clock time ("10:00 AM") from a timestamp.
-const ny = (ts: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...o }).format(new Date(ts));
-
 export async function loadCalendar(opts: { demo?: string } = {}): Promise<CalendarData> {
   const failed: CalendarData = { today: '', me: '', people: [], items: [], failed: true };
   if (opts.demo === 'error') return failed;
   if (!hasSupabaseEnv()) return { ...(opts.demo === 'stress' ? MOCK_CALENDAR_STRESS : MOCK_CALENDAR), failed: false };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
-    // The generated DB types do not know the draft tables yet, so the query builder is used untyped.
-    type Q = { select: (c: string) => Q & PromiseLike<{ data: unknown[] | null; error: unknown }>; order: (c: string) => PromiseLike<{ data: unknown[] | null; error: unknown }> };
-    const client = (await sessionClient()) as unknown as { from: (t: string) => Q };
-    const { data, error } = await client.from('calendar_events').select('id, title, kind, area, starts_at, ends_at, all_day, location, video_url, cycle_id, program_id, owner_id').order('starts_at');
-    if (error) throw error;
-    const events = ((data ?? []) as CalendarEventRow[]).map((e) => ({
-      id: e.id,
-      date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(e.starts_at)),
-      source: 'event' as const,
-      area: e.area ?? 'scholarships',
-      chip: e.all_day ? e.title : `${ny(e.starts_at, { hour: 'numeric', minute: '2-digit' }).replace(' PM', '').replace(' AM', '')} ${e.title}`,
-      title: e.title,
-      start: e.all_day ? null : ny(e.starts_at, { hour: 'numeric', minute: '2-digit' }),
-      people: e.owner_id ? [e.owner_id] : [],
-      video: Boolean(e.video_url),
-    }));
-    // TODO: merge interviews, task due dates, posts and the cycle's dates, the signed-in person's id (`me`) and the
-    // staff list (`staff_directory()`); until then those parts return the mock shape.
-    return { ...MOCK_CALENDAR, items: [...MOCK_CALENDAR.items.filter((i) => i.source !== 'event'), ...events], failed: false };
+    const who = await whoAmI();
+    if (!who) return failed;
+    const [events, tasks, assignees, posts, cycles, milestones, bookings, slots, pairings, apps, people] = await Promise.all([
+      readRows('calendar_events', 'id, title, kind, area, starts_at, ends_at, all_day, location, video_url, owner_id', { order: ['starts_at', true] }),
+      readRows('tasks', 'id, title, area, status, due_on, archived'),
+      readRows('task_assignees', 'task_id, user_id'),
+      safe(readRows('posts', 'id, title, post_on, owner_id')),
+      safe(readRows('cycles', 'id, status, opens_at, closes_at, interview_start, interview_end, decision_date')),
+      safe(readRows('plan_milestones', 'id, name, area, due_on, done, archived')),
+      safe(readRows('bookings', 'id, application_id, slot_id, status', { eq: { status: 'active' } })),
+      safe(readRows('interview_slots', 'id, starts_at')),
+      safe(readRows('interview_pairings', 'slot_id, interviewer_a, interviewer_b, video_url')),
+      safe(readRows('application_reviews', 'id, applicant_code')),
+      readRows('staff_profiles', 'user_id, display_name'),
+    ]);
+    const today = easternDay(new Date());
+    return {
+      today,
+      me: who.id,
+      people: people.map((p) => ({ id: String(p.user_id), name: String(p.display_name) })),
+      items: [
+        ...eventItems(events),
+        ...interviewItems(bookings, slots, pairings, apps),
+        ...taskItems(tasks, assignees, today),
+        ...postItems(posts),
+        ...cycleItems(cycles),
+        ...milestoneItems(milestones),
+      ],
+      failed: false,
+    };
   } catch {
     return failed;
   }

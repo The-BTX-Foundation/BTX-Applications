@@ -334,7 +334,7 @@
   }
   .ca-wd {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     height: 32px;
     flex: none;
     border-bottom: 1px solid var(--line);
@@ -354,7 +354,7 @@
   .ca-wk {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: 26px;
     grid-auto-rows: 22px;
     row-gap: 4px;
@@ -368,7 +368,7 @@
     position: absolute;
     inset: 0;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   .ca-cells span {
     border-right: 1px solid var(--line);
@@ -452,15 +452,17 @@
   }
   /* a chip with a gold dot is as wide as its words, even past its day */
   .ca-ev.dot {
-    overflow: visible;
+    overflow: hidden;
     width: max-content;
     min-width: calc(100% - 6px);
-    max-width: none;
+    /* real titles are long: past its day by a little, then cut with an ellipsis so it never covers the next chip */
+    max-width: calc(100% + 22px);
     justify-self: start;
     margin-right: 0;
   }
   .ca-ev.dot > span {
-    overflow: visible;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .ca-more {
     position: relative;

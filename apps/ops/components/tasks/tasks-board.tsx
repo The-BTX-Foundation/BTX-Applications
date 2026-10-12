@@ -4,8 +4,10 @@
 // Person and Area filters, the tasks grouped by due date, and on a laptop the selected task's details beside them.
 // Phone: the same list, a "+" instead of the search box, and the details open under the header when "Open" is tapped
 // (a guess: the design has no phone details frame). In mock mode actions change this page's state only (reset on reload);
-// in live mode the same handlers write through ./tasks-writes (NOT TESTED: needs the Ops Hub tables, draft schema).
+// in live mode the same handlers write through ./tasks-writes and undo the change on the page when the database says no.
+// A live approval is decided on the budget approval screen, so Approve and Decline open it.
 import { useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import './tasks.css';
 import { OIcon, type OpsIconName } from '../icons';
 import { PageHeader } from '../page-header';
@@ -325,6 +327,8 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
   const [doneOpen, setDoneOpen] = useState(false);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const seq = useRef(0);
+  const router = useRouter();
+  const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<string | null>(() => {
     const open = data.tasks.filter((t) => (startTab === 'mine' ? t.mine : t.team));
     return (open.find((t) => t.type === 'approval') ?? open[0])?.id ?? null;
@@ -332,7 +336,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
 
   const orig = useMemo(() => new Map(data.tasks.map((t) => [t.id, t])), [data.tasks]);
   const finished = tasks.filter((t) => t.status === 'done' || t.status === 'declined');
-  const added = tasks.filter((t) => t.id.startsWith('new'));
+  const added = tasks.filter((t) => !orig.has(t.id));
   // Counts move with what was done or added on this page.
   const counts = {
     mine: data.counts.mine - finished.filter((t) => t.mine).length + added.length,
@@ -356,15 +360,38 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
   const sel = tasks.find((t) => t.id === selected && (t.status === 'open' || t.status === 'in_progress')) ?? visible.find((t) => t.type === 'approval') ?? visible[0];
 
   const patch = (id: string, f: (t: TaskItem) => TaskItem) => setTasks((ts) => ts.map((t) => (t.id === id ? f(t) : t)));
+  // Marks done / declined. Live: undone again on the page if the database refuses.
   const finish = (id: string, status: 'done' | 'declined') => {
+    const before = tasks.find((t) => t.id === id)?.status ?? 'open';
     patch(id, (t) => ({ ...t, status }));
-    if (mode === 'live') void writeStatus(id, status);
+    setFailed(false);
+    if (mode === 'live') {
+      void writeStatus(id, status).then((ok) => {
+        if (!ok) {
+          patch(id, (t) => ({ ...t, status: before }));
+          setFailed(true);
+        } else router.refresh(); // the sidebar's gold counts
+      });
+    }
+  };
+  // An approval is decided on the budget approval screen (live); the mock just marks it.
+  const decide = (id: string, status: 'done' | 'declined') => {
+    if (mode === 'live') router.push('/money/budget/approval');
+    else finish(id, status);
   };
   const addComment = (id: string, body: string) => {
     const c: TaskComment = { id: `c${++seq.current}-${id}`, task_id: id, author_id: me, body, created_at: new Date().toISOString() };
     setComments((m) => ({ ...m, [id]: [...(m[id] ?? []), c] }));
     patch(id, (t) => ({ ...t, comment_count: t.comment_count + 1 }));
-    if (mode === 'live') void writeComment(id, body);
+    setFailed(false);
+    if (mode === 'live') {
+      void writeComment(id, body).then((ok) => {
+        if (ok) return;
+        setComments((m) => ({ ...m, [id]: (m[id] ?? []).filter((x) => x.id !== c.id) }));
+        patch(id, (t) => ({ ...t, comment_count: Math.max(0, t.comment_count - 1) }));
+        setFailed(true);
+      });
+    }
   };
   const addTask = () => {
     const title = draft.trim();
@@ -396,7 +423,19 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
     setSelected(id);
     setDraft('');
     setAdding(false);
-    if (mode === 'live') void writeTask(title, a.slug, me);
+    setFailed(false);
+    if (mode === 'live') {
+      // The new row takes the database id once saved (so comments and "done" write to the right task).
+      void writeTask(title, a.slug, me).then((real) => {
+        if (!real) {
+          setTasks((ts) => ts.filter((x) => x.id !== id));
+          setFailed(true);
+          return;
+        }
+        patch(id, (x) => ({ ...x, id: real }));
+        setSelected((cur) => (cur === id ? real : cur));
+      });
+    }
   };
   const open = (id: string) => {
     setSelected(id);
@@ -492,6 +531,12 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
         </form>
       ) : null}
 
+      {failed ? (
+        <p className="tk2-none" role="alert">
+          That didn&apos;t save. Try again.
+        </p>
+      ) : null}
+
       <div className={`tk2-body${phoneOpen ? ' open' : ''}`}>
         <section className="tk2-tab" aria-label="Tasks">
           <div className="tk2-th tk2-lg" aria-hidden="true">
@@ -540,8 +585,8 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
             t={sel}
             people={people}
             comments={sel ? (comments[sel.id] ?? []) : []}
-            onApprove={() => sel && finish(sel.id, 'done')}
-            onDecline={() => sel && finish(sel.id, 'declined')}
+            onApprove={() => sel && decide(sel.id, 'done')}
+            onDecline={() => sel && decide(sel.id, 'declined')}
             onDone={() => sel && finish(sel.id, 'done')}
             onComment={(b) => sel && addComment(sel.id, b)}
             onClose={() => setPhoneOpen(false)}

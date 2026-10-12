@@ -261,6 +261,9 @@
   min-width: 0;
   flex-wrap: wrap;
 }
+.tk2-done b {
+  white-space: nowrap;
+}
 .tk2-dn {
   color: var(--muted);
 }

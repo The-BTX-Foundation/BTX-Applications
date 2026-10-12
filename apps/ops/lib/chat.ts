@@ -1,6 +1,6 @@
 // The Board chat page's data. Types mirror the draft Ops Hub schema (chat_channels, chat_messages, chat_read_markers,
 // chat_pins, staff_profiles; see supabase/migrations/20261010120000_ops_hub.sql in the ops-schema worktree).
-// Mock mode (no Supabase env) returns the Figma sample (mock/chat.ts). Live mode reads the draft tables.
+// Mock mode (no Supabase env) returns the Figma sample (mock/chat.ts). Live mode reads the tables as the signed-in person.
 import { hasSupabaseEnv } from "@btx/data";
 import { sessionClient } from "./supabase-server";
 import { CHAT_MOCK, CHAT_STRESS } from "@/mock/chat";
@@ -74,7 +74,6 @@ export async function loadChat({
   if (demo === "error") return EMPTY;
   if (!hasSupabaseEnv()) return demo === "stress" ? CHAT_STRESS : CHAT_MOCK;
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const client = await sessionClient();
     const { data: auth } = await client.auth.getUser();
     const uid = auth.user?.id;
@@ -95,11 +94,27 @@ export async function loadChat({
       ]);
     for (const r of [profiles, channels, unread, markers, pins, areas])
       if (r.error) throw r.error;
-    const people: ChatPerson[] = (profiles.data ?? []).map((p) => ({
-      userId: String(p.user_id),
-      displayName: String(p.display_name),
-      initials: String(p.initials),
-    }));
+    // Chat is for admins and board members: reviewers have no channels, so they are not listed to message.
+    const roles = await (
+      db as unknown as {
+        rpc: (
+          fn: string,
+        ) => PromiseLike<{ data: Row[] | null; error: unknown }>;
+      }
+    ).rpc("staff_directory");
+    if (roles.error) throw roles.error;
+    const inChat = new Set(
+      (roles.data ?? [])
+        .filter((r) => r.role === "admin" || r.role === "board")
+        .map((r) => String(r.user_id)),
+    );
+    const people: ChatPerson[] = (profiles.data ?? [])
+      .filter((p) => inChat.has(String(p.user_id)))
+      .map((p) => ({
+        userId: String(p.user_id),
+        displayName: String(p.display_name),
+        initials: String(p.initials),
+      }));
     const me = people.find((p) => p.userId === uid);
     if (!me) return EMPTY;
     const unreadBy = new Map(
@@ -153,12 +168,17 @@ export async function loadChat({
     }
     const ids = out.map((c) => c.id).filter((x): x is string => Boolean(x));
     // The latest 200 messages across the visible channels, oldest first.
-    const msgs = await db
-      .from("chat_messages")
-      .select("id, channel_id, author_id, is_bot, body, task_id, created_at")
-      .in("channel_id", ids)
-      .order("created_at", { ascending: false })
-      .limit(200);
+    const msgs =
+      ids.length === 0
+        ? { data: [] as Row[], error: null }
+        : await db
+            .from("chat_messages")
+            .select(
+              "id, channel_id, author_id, is_bot, body, task_id, created_at",
+            )
+            .in("channel_id", ids)
+            .order("created_at", { ascending: false })
+            .limit(200);
     if (msgs.error) throw msgs.error;
     const messages: ChatMessageRow[] = (msgs.data ?? [])
       .map((m) => ({
