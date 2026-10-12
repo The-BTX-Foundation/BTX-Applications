@@ -11,8 +11,8 @@ describe('word count', () => {
     expect(countWords(' one  two\nthree\n\nfour ')).toBe(4);
   });
   it('knows the limit', () => {
-    expect(ANSWER_WORD_LIMIT).toBe(250);
-    expect(countWords(Array(251).fill('w').join(' '))).toBeGreaterThan(ANSWER_WORD_LIMIT);
+    expect(ANSWER_WORD_LIMIT).toBe(400);
+    expect(countWords(Array(401).fill('w').join(' '))).toBeGreaterThan(ANSWER_WORD_LIMIT);
   });
 });
 

@@ -6,4 +6,4 @@ export const SHORT_ANSWER_QUESTIONS = [
 ] as const;
 
 // Each answer's word limit (checked in the Portal; the database only caps characters).
-export const ANSWER_WORD_LIMIT = 250;
+export const ANSWER_WORD_LIMIT = 400;

@@ -11,13 +11,13 @@ columns exist, every save on step 3 fails and nobody can submit.
 ## Why
 
 Step 3 of the application was one optional essay, with the prompt set per cycle. It is now three required short-answer
-questions, up to 250 words each. The questions are the same every cycle, so they live in code
+questions, up to 400 words each. The questions are the same every cycle, so they live in code
 (`packages/data/src/questions.ts`, `SHORT_ANSWER_QUESTIONS`), where the Portal and later the Ops Hub both read them.
 
 ## What it changes
 
-- **`applications`**: three new columns, `answer_1`, `answer_2`, `answer_3` (text, at most 2,500 characters each). The
-  250-word limit is checked in the Portal; the database only caps characters.
+- **`applications`**: three new columns, `answer_1`, `answer_2`, `answer_3` (text, at most 4,000 characters each). The
+  400-word limit is checked in the Portal; the database only caps characters.
 - **Who can write them**: applicants get insert and update rights on the three columns. The existing access rules
   still limit them to their own draft.
 - **Publishing a cycle**: a cycle no longer needs an essay prompt to be published. It still needs the award name,
@@ -39,7 +39,7 @@ file. Otherwise applying it removes them and applications can be submitted with 
 ```sql
 -- 1. The three columns and their limits.
 select conname, pg_get_constraintdef(oid) from pg_constraint
-where conrelid = 'public.applications'::regclass and conname like 'applications_answer_%';   -- expect 3 rows, <= 2500
+where conrelid = 'public.applications'::regclass and conname like 'applications_answer_%';   -- expect 3 rows, <= 4000
 
 -- 2. The publish rule no longer mentions essay_prompt.
 select pg_get_constraintdef(oid) from pg_constraint where conname = 'cycles_published_needs_settings';

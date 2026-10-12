@@ -54,7 +54,7 @@ test('sign in, complete the five steps, submit and reach the status page', async
   const q2 = page.getByLabel(/class that pushed you/);
   const q3 = page.getByLabel(/problem do you want to work on/);
   await expect(q1).toBeFocused();
-  await q1.fill(Array(270).fill('word').join(' '));
+  await q1.fill(Array(420).fill('word').join(' '));
   await expect(page.getByText('Shorten this answer by 20 words to continue.')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page).toHaveURL(/\/apply\/short-answers/);

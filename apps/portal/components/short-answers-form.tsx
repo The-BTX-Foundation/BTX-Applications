@@ -1,7 +1,7 @@
 'use client';
 
 // Step 3: Short answers. Three required questions (SHORT_ANSWER_QUESTIONS in @btx/data), each with a live word count
-// against the 250-word limit. Continue shows an error under every blank or too-long answer and moves focus to the
+// against the 400-word limit. Continue shows an error under every blank or too-long answer and moves focus to the
 // first one; otherwise it saves and goes to Documents. Built in code first (2026-10-12) from the old essay step.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -147,7 +147,7 @@ export function ShortAnswersForm({
               }}
               className={msg ? `${s.box} ${s.boxErr}` : s.box}
               value={answers[i]}
-              maxLength={2500}
+              maxLength={4000}
               aria-invalid={msg ? true : undefined}
               aria-describedby={msg ? `${id}-err ${id}-count` : `${id}-count`}
               onChange={(e) => set(i, e.target.value)}

@@ -21,13 +21,13 @@
 begin;
 
 -- -----------------------------------------------------------------------------
--- a. Three short-answer columns (the 250-word limit is checked in the app)
+-- a. Three short-answer columns (the 400-word limit is checked in the app)
 -- -----------------------------------------------------------------------------
 
 alter table public.applications
-  add column answer_1 text constraint applications_answer_1_check check (char_length(answer_1) <= 2500),
-  add column answer_2 text constraint applications_answer_2_check check (char_length(answer_2) <= 2500),
-  add column answer_3 text constraint applications_answer_3_check check (char_length(answer_3) <= 2500);
+  add column answer_1 text constraint applications_answer_1_check check (char_length(answer_1) <= 4000),
+  add column answer_2 text constraint applications_answer_2_check check (char_length(answer_2) <= 4000),
+  add column answer_3 text constraint applications_answer_3_check check (char_length(answer_3) <= 4000);
 
 comment on column public.applications.answer_1 is
   'Step 3, question 1 of 3 (SHORT_ANSWER_QUESTIONS[0] in packages/data/src/questions.ts). Required to submit.';
