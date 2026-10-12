@@ -1,9 +1,9 @@
 -- =============================================================================
 -- Portal short answers (2026-10-12)
 --
--- DRAFT. NOT APPLIED. Apply only after Dominick approves it by naming the
--- production project (awiaebtqalcmfafvktwh, "BTX Student/Operations Hub").
--- Apply it BEFORE the Portal code that uses answer_1..answer_3 merges.
+-- APPLIED 2026-10-12 to the production project (awiaebtqalcmfafvktwh,
+-- "BTX Student/Operations Hub") with Dominick's approval, before the Portal code
+-- that uses answer_1..answer_3 merged (PR #6). History row: 20261012120000.
 -- Plain-English guide: supabase/migrations/README-portal-short-answers.md
 --
 -- What this does, in one transaction:
