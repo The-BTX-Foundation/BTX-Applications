@@ -66,7 +66,7 @@ export default async function ApplicationPage({ params }: Props) {
           {SHORT_ANSWER_QUESTIONS.map((q, i) => (
             <div key={q}>
               <p className="o-app-q">{q}</p>
-              <p className={app.shortAnswers[i] ? 'o-app-answer' : 'o-app-answer empty'}>{app.shortAnswers[i] || 'Not answered.'}</p>
+              <p className={app.shortAnswers[i] ? 'o-app-answer' : 'o-app-answer empty'}>{app.shortAnswers[i] || 'Not answered'}</p>
             </div>
           ))}
         </section>
