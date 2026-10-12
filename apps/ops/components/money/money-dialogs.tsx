@@ -1,7 +1,7 @@
 'use client';
 
 // The forms for "Log a gift" (Fundraising) and "Add a grant" (Grants): the same dialog look as the Figma "Log a
-// sponsorship" form. Saving goes through the page's state hook (mock) or lib/money-writes.ts (live, NOT TESTED).
+// sponsorship" form. Saving goes through the page state hook (mock) or lib/money-writes.ts (live).
 import { useState } from 'react';
 import { GIFT_SOURCES, parseCents, type GiftSource } from '@/lib/money-shared';
 import type { GiftInput, GrantInput } from '@/lib/money-writes';

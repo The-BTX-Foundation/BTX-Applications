@@ -3,7 +3,7 @@
 // Money > Grants (Figma laptop and phone): the getting-started checklist, then the pipeline by stage (Researching,
 // Submitted, ...; a stage with no grants is only a count in the line at the bottom). "Add a grant" shows only for admin and
 // board. Data: lib/grants.ts; an added grant in mock mode updates this page (lib/mock-store.ts); live mode writes with
-// lib/money-writes.ts (NOT TESTED).
+// lib/money-writes.ts.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { OIcon } from '@/components/icons';

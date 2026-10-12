@@ -1,7 +1,7 @@
 'use client';
 
 // The Money pages' write actions for LIVE mode. Mock mode never calls these (the pages change their own state through
-// lib/mock-store.ts). Every function here is NOT TESTED: needs the Ops Hub tables (draft schema, not applied). The
+// lib/mock-store.ts). Tested live against the local database as admin and as board member. The
 // generated types do not know the tables yet, so the browser client is used through a loose shape. The database rules
 // (admin and board only on every money table) are the real lock; the pages also hide the controls other roles cannot use.
 import { getBrowserClient } from '@btx/data';
@@ -11,6 +11,8 @@ type Result = { error: unknown; data?: { id?: string } | null };
 type Loose = {
   from: (t: string) => {
     update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => PromiseLike<Result> };
+    upsert: (v: Record<string, unknown>[], o: { onConflict: string }) => PromiseLike<Result>;
+    select: (c: string) => { ilike: (c: string, v: string) => { limit: (n: number) => PromiseLike<{ error: unknown; data: { id: string }[] | null }> } };
     insert: (v: Record<string, unknown>) => { select: (c: string) => { single: () => PromiseLike<Result> } } & PromiseLike<Result>;
   };
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<Result>;
@@ -73,9 +75,15 @@ export async function logGift(v: GiftInput): Promise<boolean> {
   let donorId: string | null = null;
   const name = v.donor.trim();
   if (name) {
-    const { data, error } = await db().from('donors').insert({ name }).select('id').single();
-    if (error || !data?.id) return false;
-    donorId = data.id;
+    // An existing donor with the same name (any capitals) is reused, so a repeat donor is one donor.
+    const found = await db().from('donors').select('id').ilike('name', name.replace(/[\\%_]/g, (c) => `\\${c}`)).limit(1);
+    if (found.error) return false;
+    if (found.data?.[0]) donorId = found.data[0].id;
+    else {
+      const { data, error } = await db().from('donors').insert({ name }).select('id').single();
+      if (error || !data?.id) return false;
+      donorId = data.id;
+    }
   }
   const { error } = (await db().from('gifts').insert({ donor_id: donorId, gift_on: v.gift_on, amount_cents: v.amount_cents, source: v.source, monthly: v.monthly })) as unknown as Result;
   return !error;
@@ -86,5 +94,14 @@ export type GrantInput = { name: string; funder: string; amount_cents: number | 
 // Adds a grant in the first stage (Researching).
 export async function addGrant(v: GrantInput): Promise<boolean> {
   const { error } = (await db().from('grants').insert({ name: v.name, funder: v.funder.trim() || null, amount_cents: v.amount_cents, amount_is_up_to: v.amount_is_up_to, stage: 'researching' })) as unknown as Result;
+  return !error;
+}
+
+// Sets the amounts of a quarter plan's lines. Board members can add and edit plan lines but not delete them (D3), so this
+// writes each line in place (insert or update on the plan + category key) and never deletes: a line that is no longer
+// wanted is set to $0.
+export async function savePlanLines(planId: string, lines: { category_id: string; amount_cents: number }[]): Promise<boolean> {
+  if (lines.length === 0) return true;
+  const { error } = await db().from('budget_quarter_plan_lines').upsert(lines.map((l) => ({ plan_id: planId, category_id: l.category_id, amount_cents: l.amount_cents })), { onConflict: 'plan_id,category_id' });
   return !error;
 }

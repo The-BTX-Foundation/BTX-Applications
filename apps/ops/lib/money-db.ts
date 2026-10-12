@@ -1,8 +1,10 @@
-// A small loose wrapper for reading the draft Ops Hub tables from the server (live mode only). The generated types do not
-// know these tables yet, so the client is used through a loose shape. NOT TESTED: needs the Ops Hub tables (draft schema,
-// not applied). Used by the Money and People loaders.
+// A small loose wrapper for reading the Ops Hub tables from the server (live mode only). The generated types do not
+// know these tables yet, so the client is used through a loose shape. Used by the Money and People loaders.
 import { sessionClient } from './supabase-server';
 import type { Who, WideChecklist, WideStep } from './money-shared';
+
+// An empty checklist: what a live page shows before anyone has made the checklist.
+export const emptyChecklist = (title: string): WideChecklist => ({ id: `empty-${title}`, title, steps: [] });
 
 export type Row = Record<string, unknown>;
 type Res = { data: Row[] | null; error: unknown };
@@ -37,8 +39,14 @@ const GROUPS: Record<string, string> = { bot: 'BTX', board: 'Board', all_board: 
 // The steps of the checklist with this title (checklists + their tasks + task_assignees), as the wide table draws them.
 // `current` is the first step that is not done. The step's small line is tasks.note.
 export async function checklistByTitle(title: string): Promise<WideChecklist | null> {
-  const lists = await read('checklists', 'id, title', { eq: { title }, limit: 1 });
+  return checklistWhere({ title }, title);
+}
+
+// The same, for the checklist matching these columns (for example { budget_plan_id }).
+export async function checklistWhere(eq: Record<string, unknown>, title?: string): Promise<WideChecklist | null> {
+  const lists = await read('checklists', 'id, title', { eq, limit: 1 });
   if (lists.length === 0) return null;
+  title = String(lists[0].title);
   const id = String(lists[0].id);
   const [tasks, assignees, people] = await Promise.all([
     read('tasks', 'id, title, note, due_on, status, assignee_group, position', { eq: { checklist_id: id, archived: false }, order: ['position', true] }),
@@ -53,5 +61,5 @@ export async function checklistByTitle(title: string): Promise<WideChecklist | n
   });
   const next = steps.find((s) => !s.done);
   if (next) next.current = true;
-  return { id, title, steps };
+  return { id, title: title ?? '', steps };
 }

@@ -1,8 +1,7 @@
 'use client';
 
 // The Budget page and the phone approval screen share one state, so approving on the phone shows as approved on Budget.
-// MOCK mode keeps it in lib/mock-store.ts. LIVE mode writes to the draft tables (lib/money-writes.ts, NOT TESTED: needs the
-// Ops Hub tables) and then asks the server for the page again, so the state below is always what the server sent.
+// MOCK mode keeps it in lib/mock-store.ts. LIVE mode writes to the Ops Hub tables (lib/money-writes.ts) and then asks the server for the page again, so the state below is always what the server sent.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMockState } from '@/lib/mock-store';
