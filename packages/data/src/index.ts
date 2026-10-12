@@ -8,5 +8,6 @@ export type { Application, Cycle, CycleVariant, EnsureResult, NotifyKind } from 
 export type { Database, Json, Row, Insert, Update } from './database.types';
 export { checkPdf, listFiles, MAX_PDF_BYTES, uploadDocument, viewUrl } from './files';
 export type { AppFile, DocKind, UploadHandle } from './files';
+export { ANSWER_WORD_LIMIT, SHORT_ANSWER_QUESTIONS } from './questions';
 export { submitApplication } from './submit';
 export type { SubmitResult } from './submit';
