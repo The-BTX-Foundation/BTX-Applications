@@ -30,9 +30,9 @@ questions, up to 400 words each. The questions are the same every cycle, so they
 
 ## Watch out: the unapplied Terpmail draft
 
-The draft `20261010090000_portal_terpmail_rule.sql` (branch `db/portal-terpmail`, not applied) also replaces
-`submit_application`. Before that draft is applied, update its function body to keep the three answer checks from this
-file. Otherwise applying it removes them and applications can be submitted with blank answers.
+The draft `20261012130000_portal_terpmail_rule.sql` (branch `db/portal-terpmail`, not applied; was `20261010090000`) also replaces
+`submit_application`. Its function body was updated on 2026-10-12 to keep the three answer checks from this file, and it
+was renamed so it sorts after this migration. Any later migration that replaces `submit_application` must keep them too.
 
 ## Check it worked (run in the SQL editor after applying)
 

@@ -1,6 +1,6 @@
 # Portal: Terpmail-only rule on the server
 
-File: `20261010090000_portal_terpmail_rule.sql`. Drafted 2026-10-10. **Not applied.** Apply only after Dominick
+File: `20261012130000_portal_terpmail_rule.sql` (drafted 2026-10-10 as `20261010090000`; renamed 2026-10-12 so it sorts after `20261012120000_portal_short_answers`, and its `submit_application` now keeps that migration's three short-answer checks). **Not applied.** Apply only after Dominick
 approves it by naming the production project **awiaebtqalcmfafvktwh**. One transaction; safe to run twice.
 
 ## Why

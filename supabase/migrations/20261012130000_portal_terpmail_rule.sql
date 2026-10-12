@@ -13,6 +13,8 @@
 --      ends with @terpmail.umd.edu or is on that list.
 --   c. The applications insert rule also requires it.
 --   d. submit_application() also requires it (error 'terpmail_required').
+--      It keeps the three short-answer checks from 20261012120000_portal_short_answers
+--      (renamed from 20261010090000 so it sorts after that migration).
 -- Storage uploads need no change: every applicant-documents upload rule
 -- already requires the caller to own a draft application, and drafts can now
 -- only be started by an allowed address.
@@ -73,8 +75,9 @@ create policy applications_insert_own on public.applications
         and now() < c.closes_at)
     and (select public.portal_email_allowed()));
 
--- d. submit_application, unchanged except for the address check right after
--- the ownership check. Errors (message text, for the app to map to screen copy):
+-- d. submit_application, the live version (20261012120000_portal_short_answers,
+-- with its three short-answer checks) plus the address check right after the
+-- ownership check. Errors (message text, for the app to map to screen copy):
 --   not_found, terpmail_required, cycle_closed, missing_answers:<columns>,
 --   missing_files, not_agreed
 create or replace function public.submit_application(p_application_id uuid)
@@ -111,7 +114,7 @@ begin
     raise exception 'cycle_closed' using errcode = 'P0001';
   end if;
 
-  -- Required answers (secondary email and essay are optional).
+  -- Required answers (secondary email is optional).
   if coalesce(btrim(v_app.full_name), '') = ''      then v_missing := v_missing || 'full_name'::text; end if;
   if coalesce(btrim(v_app.phone), '') = ''          then v_missing := v_missing || 'phone'::text; end if;
   if coalesce(btrim(v_app.gender), '') = ''         then v_missing := v_missing || 'gender'::text; end if;
@@ -120,6 +123,10 @@ begin
   if v_app.year_in_school is null                   then v_missing := v_missing || 'year_in_school'::text; end if;
   if v_app.credits_left is null                     then v_missing := v_missing || 'credits_left'::text; end if;
   if coalesce(btrim(v_app.major), '') = ''          then v_missing := v_missing || 'major'::text; end if;
+  -- Step 3: all three short answers are required.
+  if coalesce(btrim(v_app.answer_1), '') = ''       then v_missing := v_missing || 'answer_1'::text; end if;
+  if coalesce(btrim(v_app.answer_2), '') = ''       then v_missing := v_missing || 'answer_2'::text; end if;
+  if coalesce(btrim(v_app.answer_3), '') = ''       then v_missing := v_missing || 'answer_3'::text; end if;
   if cardinality(v_missing) > 0 then
     raise exception 'missing_answers:%', array_to_string(v_missing, ',') using errcode = 'P0001';
   end if;
