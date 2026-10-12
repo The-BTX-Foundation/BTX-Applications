@@ -1,15 +1,8 @@
-// Application step 3: Essay (optional).
-import type { Metadata } from 'next';
-import { EssayForm } from '@/components/essay-form';
-import { ApplyLoadError } from '@/components/load-error-pages';
-import { loadApply } from '@/lib/apply';
+// The old step 3 address (the essay, replaced by short answers on 2026-10-12): sends old links to the new step,
+// keeping ?demo= for review links.
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Essay' };
-
-export default async function EssayPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+export default async function EssayRedirect({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
-  const d = await loadApply('/apply/essay', demo);
-  if (d.failed) return <ApplyLoadError />;
-  if (d.mock) return <EssayForm application={null} files={[]} view={d.view} demo={demo} />;
-  return <EssayForm application={d.application} files={d.files} view={d.view} />;
+  redirect(demo ? `/apply/short-answers?demo=${encodeURIComponent(demo)}` : '/apply/short-answers');
 }

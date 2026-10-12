@@ -35,7 +35,7 @@ export function ScholarshipForm({
   const season = view.term?.split(' ')[0] ?? 'Fall';
   const saved = demo ? DEMO_SAVED[2] : auto.failed ? "Couldn't save yet" : auto.savedAt ? `Saved ${savedTime(auto.savedAt)}` : undefined;
 
-  // Continue: save both boxes and move to the essay (never backwards if she has been further).
+  // Continue: save both boxes and move to the short answers (never backwards if she has been further).
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const ok = await auto.flush({
@@ -43,7 +43,7 @@ export function ScholarshipForm({
       interest_mentoring: mentor,
       current_step: Math.max(application?.current_step ?? 1, 3),
     });
-    if (ok) router.push('/apply/essay');
+    if (ok) router.push('/apply/short-answers');
     else setError("We couldn't save your answers. Check your connection and try again.");
   }
 
