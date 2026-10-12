@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { SHORT_ANSWER_QUESTIONS } from '@btx/data';
 import { PageHeader } from '@/components/page-header';
 import { OIcon } from '@/components/icons';
 import { loadApplication } from '@/lib/application';
@@ -61,8 +62,13 @@ export default async function ApplicationPage({ params }: Props) {
           </ul>
         </section>
         <section className="o-card o-app-sec o-app-wide">
-          <h2 className="o-h2">Essay</h2>
-          <p className="o-app-essay">{app.essay || 'No essay submitted.'}</p>
+          <h2 className="o-h2">Short answers</h2>
+          {SHORT_ANSWER_QUESTIONS.map((q, i) => (
+            <div key={q}>
+              <p className="o-app-q">{q}</p>
+              <p className={app.shortAnswers[i] ? 'o-app-answer' : 'o-app-answer empty'}>{app.shortAnswers[i] || 'Not answered.'}</p>
+            </div>
+          ))}
         </section>
         {user.role === 'admin' ? (
           <section className="o-card o-app-sec o-app-wide">

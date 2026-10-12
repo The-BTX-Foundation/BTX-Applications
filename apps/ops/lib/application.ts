@@ -14,7 +14,8 @@ export type ApplicationDetail = {
   identity: { label: string; value: string }[];
   /** The answers, in the order the Portal asks them. */
   answers: { label: string; value: string }[];
-  essay: string;
+  /** The three short answers, in the order of SHORT_ANSWER_QUESTIONS; an empty string means not answered. */
+  shortAnswers: [string, string, string];
   files: { kind: 'resume' | 'transcript'; label: string; filename: string | null }[];
   mock: boolean;
 };
@@ -49,7 +50,11 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
         { label: 'Stay in touch', value: 'Yes' },
         { label: 'Confirmed the answers are true', value: 'Yes' },
       ],
-      essay: 'Sample essay text. In live mode this is the applicant’s own essay, exactly as submitted.',
+      shortAnswers: [
+        'I joined the UMD Engineers Without Borders chapter my sophomore year. Our team was stuck on a water filter design for a school abroad, so I offered to build a test rig in the machine shop. We ran three rounds of flow tests and cut the cost per unit by about a third. I now help train new members on the rig, and two of them are leading the next round.',
+        'Thermodynamics was the first class where rereading my notes stopped working. I got a 58 on the first exam. I started drawing the system before touching an equation, joined a study group that met twice a week, and worked old exams under a timer. I got an 81 on the second exam and finished with a B+.',
+        'I want to work on making older public buildings accessible without huge renovation costs. Over the summer I helped the campus facilities team survey door widths and ramp slopes in fourteen buildings. This semester I am taking a materials course and a CAD elective so I can design and test standard parts for these fixes.',
+      ],
       files: [
         { kind: 'resume', label: 'Resume', filename: 'resume.pdf' },
         { kind: 'transcript', label: 'Transcript', filename: 'transcript.pdf' },
@@ -85,7 +90,7 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
       { label: 'Stay in touch', value: yesNo(a.stay_in_touch) },
       { label: 'Confirmed the answers are true', value: yesNo(a.agreed_true) },
     ],
-    essay: a.essay ?? '',
+    shortAnswers: [a.answer_1 ?? '', a.answer_2 ?? '', a.answer_3 ?? ''],
     files: [
       { kind: 'resume', label: 'Resume', filename: fileOf('resume') },
       { kind: 'transcript', label: 'Transcript', filename: fileOf('transcript') },

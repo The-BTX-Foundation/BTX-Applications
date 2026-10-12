@@ -1697,12 +1697,20 @@ body {
   font-size: 14px;
   color: var(--muted);
 }
-.o-app-essay {
-  margin-top: 12px;
+.o-app-q {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.o-app-answer {
+  margin-top: 6px;
   font-size: 16px;
   line-height: 1.5;
   white-space: pre-wrap;
   max-width: 72ch;
+}
+.o-app-answer.empty {
+  color: var(--muted);
 }
 .o-app-note {
   margin-top: 4px;
