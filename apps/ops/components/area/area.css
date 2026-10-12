@@ -363,3 +363,43 @@ button.ar-ck:hover {
     padding-left: 264px;
   }
 }
+
+/* live composer: the same box as the drawn one, with a real input and send button */
+.ar-comp {
+  position: relative;
+  gap: 8px;
+}
+.ar-comp input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  padding: 0;
+  outline: none;
+}
+.ar-comp input::placeholder {
+  color: var(--muted);
+}
+.ar-comp:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.ar-comp .o-go {
+  flex: none;
+  border: 0;
+  cursor: pointer;
+}
+.ar-comp .o-go:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ar-comp-err {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 4px);
+  font-size: 13px;
+  color: var(--muted);
+}

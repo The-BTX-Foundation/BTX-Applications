@@ -6,14 +6,16 @@ import { sessionClient } from './supabase-server';
 
 export const loadStaff = async (): Promise<StaffMap> => staffMap(await read('staff_profiles', 'user_id, display_name, initials', { order: ['display_name', true] }));
 
-/** The area's chat thread (the last 40 messages). The composer stays off until chat sends from these pages. */
+/** The area's chat thread (the last 40 messages). channelId and canPost let the composer post (not for a reviewer). */
 export async function loadAreaChat(area: string, title: string, staff: StaffMap): Promise<AreaChat> {
   const channels = await read('chat_channels', 'id', { eq: { kind: 'area', area }, limit: 1 });
   const { data } = await (await sessionClient()).auth.getUser();
   const me = data.user?.id ?? '';
-  if (channels.length === 0) return { title, people: staff.size, messages: [] };
+  const role = data.user?.app_metadata?.role;
+  const canPost = channels.length > 0 && (role === 'admin' || role === 'board');
+  if (channels.length === 0) return { title, people: staff.size, messages: [], channelId: null, canPost: false };
   const rows = await read('chat_messages', 'id, author_id, is_bot, body, created_at', { eq: { channel_id: channels[0].id }, order: ['created_at', false], limit: 40 });
-  return mapChat(title, rows.reverse(), staff, me, new Date());
+  return { ...mapChat(title, rows.reverse(), staff, me, new Date()), channelId: String(channels[0].id), canPost };
 }
 
 export type LiveStep = { id: string; title: string; note: string | null; due_on: string | null; done: boolean; owner: Owner };

@@ -7,6 +7,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { OIcon } from './icons';
 import type { TodayData, TaskRow } from '@/mock/today';
+import type { VideoLinksData } from '@/lib/interviews';
+import { isVideoLinksTask } from '@/lib/area-map';
+import { VideoLinksPanel } from './interviews/video-links-panel';
 
 type Tab = 'mine' | 'team' | 'approvals';
 
@@ -21,7 +24,8 @@ function Comments({ n }: { n: number }) {
 }
 
 // One task row, in both layouts (the other layout's parts are hidden by CSS).
-function Row({ row }: { row: TaskRow }) {
+function Row({ row, onVideoLinks }: { row: TaskRow; onVideoLinks?: () => void }) {
+  const videoTask = Boolean(onVideoLinks) && isVideoLinksTask(row.title);
   // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button).
   const href = row.href ?? (row.approval ? '/money/budget/approval' : '/tasks');
   const titleParts = (
@@ -72,7 +76,11 @@ function Row({ row }: { row: TaskRow }) {
         </span>
         <span className="o-cmc o-lg">{row.comments ? <Comments n={row.comments} /> : null}</span>
         <span className="o-ra o-lg">
-          {row.action ? (
+          {row.action && videoTask ? (
+            <button type="button" className={`o-btn ${row.action.kind}`} onClick={onVideoLinks}>
+              {row.action.label}
+            </button>
+          ) : row.action ? (
             <Link href={href} className={`o-btn ${row.action.kind}`}>
               {row.action.label}
             </Link>
@@ -82,11 +90,17 @@ function Row({ row }: { row: TaskRow }) {
       </div>
       {row.phoneActions ? (
         <div className="o-act o-ph">
-          {row.phoneActions.map((a, n) => (
+          {row.phoneActions.map((a, n) =>
+            videoTask && n === 0 ? (
+              <button key={a.label + n} type="button" className={`o-btn ${a.kind}`} onClick={onVideoLinks}>
+                {a.label}
+              </button>
+            ) : (
             <Link key={a.label + n} href={n === 0 && a.kind === 'p' ? href : '/tasks'} className={`o-btn ${a.kind}`}>
               {a.label}
             </Link>
-          ))}
+            ),
+          )}
         </div>
       ) : null}
     </div>
@@ -94,8 +108,10 @@ function Row({ row }: { row: TaskRow }) {
 }
 
 // The panel.
-export function TasksCard({ data }: { data: TodayData }) {
+// videoLinks is set for admins only: it makes the "Send interview video links" task open the panel.
+export function TasksCard({ data, videoLinks }: { data: TodayData; videoLinks?: VideoLinksData }) {
   const [tab, setTab] = useState<Tab>('mine');
+  const [vlOpen, setVlOpen] = useState(false);
   const { counts, groups } = data;
   const source = tab !== 'mine' && data.teamGroups ? data.teamGroups : groups;
   const shown = source
@@ -136,10 +152,11 @@ export function TasksCard({ data }: { data: TodayData }) {
             {g.label} <b>{g.rows.length}</b>
           </p>
           {g.rows.map((r) => (
-            <Row key={r.id} row={r} />
+            <Row key={r.id} row={r} onVideoLinks={videoLinks ? () => setVlOpen(true) : undefined} />
           ))}
         </div>
       ))}
+      {videoLinks && vlOpen ? <VideoLinksPanel data={videoLinks} onClose={() => setVlOpen(false)} /> : null}
     </section>
   );
 }

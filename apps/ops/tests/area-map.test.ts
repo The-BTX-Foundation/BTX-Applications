@@ -68,3 +68,21 @@ describe('chat', () => {
     expect(chat.messages[2].time).toBe('8:40 AM');
   });
 });
+
+describe('postedMessage', () => {
+  it('draws a just-posted message as mine, today', async () => {
+    const { postedMessage } = await import('@/lib/area-map');
+    const m = postedMessage('m1', 'Hello team', '2026-10-12T15:30:00Z', '2026-10-12T15:31:00Z');
+    expect(m).toMatchObject({ id: 'm1', who: 'You', mine: true, bot: false, day: 'Today', text: 'Hello team' });
+    expect(m.time).toMatch(/11:30/);
+  });
+});
+
+describe('isVideoLinksTask', () => {
+  it('matches the video-links task only', async () => {
+    const { isVideoLinksTask } = await import('@/lib/area-map');
+    expect(isVideoLinksTask('Send interview video links')).toBe(true);
+    expect(isVideoLinksTask('[B] Send interview video links')).toBe(true);
+    expect(isVideoLinksTask('Give interview availability')).toBe(false);
+  });
+});

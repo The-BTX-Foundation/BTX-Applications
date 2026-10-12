@@ -7,6 +7,8 @@ import { TasksCard } from '@/components/tasks-card';
 import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';
 import { loadToday } from '@/lib/today';
+import { loadVideoLinks } from '@/lib/interviews';
+import { requireStaff } from '@/lib/user';
 
 // The page.
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
@@ -33,6 +35,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       </>
     );
   }
+  // The video-links panel is for admins only (the link list is empty for anyone else).
+  const user = await requireStaff();
+  const videoLinks = user.role === 'admin' ? await loadVideoLinks() : undefined;
   return (
     <>
       <div className="o-top o-hd">
@@ -78,8 +83,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </section>
 
-      {/* VIDEO-LINKS-PANEL: the "add the video links" panel (Figma 139:12686) goes here; another stream builds it. */}
-      <TasksCard data={TODAY_DATA} />
+      {/* The "Add the video links" panel (Figma 139:12686) opens from the "Send interview video links" task's button. */}
+      <TasksCard data={TODAY_DATA} videoLinks={videoLinks && !videoLinks.failed ? videoLinks : undefined} />
     </>
   );
 }

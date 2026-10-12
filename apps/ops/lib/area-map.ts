@@ -88,3 +88,13 @@ export function mapChat(title: string, rows: Row[], staff: StaffMap, meId: strin
   });
   return { title, people: staff.size, messages };
 }
+
+/** The message a person just posted, as the panel draws it (mine, today). */
+export function postedMessage(id: string, body: string, createdAt: string, now: string | Date): ChatMsg {
+  return { id, day: chatDay(createdAt, now), who: 'You', bot: false, mine: true, time: timeLabel(createdAt), text: body };
+}
+
+/** True for the Today task that opens the "Add the video links" panel (its action reads "Add links"). */
+export function isVideoLinksTask(title: string): boolean {
+  return /video links?/i.test(title);
+}

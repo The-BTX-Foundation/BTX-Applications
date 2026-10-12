@@ -1,12 +1,40 @@
-// An area's chat panel beside its page (Figma "aside.chat", e.g. "Programs chat"). MOCK: there is no chat table yet, so
-// the thread is the Figma sample and the composer does not send anything (it is disabled until chat exists). It reuses
-// the cycle page's .o-chat styles.
-import type { AreaChat } from '@/mock/area';
+'use client';
+
+// An area's chat panel beside its page (Figma "aside.chat", e.g. "Programs chat"). MOCK: the thread is the Figma sample
+// and the composer does not send anything. LIVE: the thread is the area's real channel and the composer posts to it
+// (the same write the Board chat uses); a reviewer sees the thread but the composer stays off. It reuses the cycle
+// page's .o-chat styles.
+import { useState } from 'react';
+import { postMessage } from '@/lib/chat-actions';
+import { postedMessage } from '@/lib/area-map';
+import type { AreaChat, ChatMsg } from '@/mock/area';
 import { OIcon } from '../icons';
 import './area.css';
 
 export function AreaChatPanel({ chat, composerLabel }: { chat: AreaChat; composerLabel: string }) {
-  const days = Array.from(new Set(chat.messages.map((m) => m.day)));
+  const [sent, setSent] = useState<ChatMsg[]>([]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const live = Boolean(chat.channelId);
+  const messages = [...chat.messages, ...sent];
+  const days = Array.from(new Set(messages.map((m) => m.day)));
+
+  async function send() {
+    const body = draft.trim();
+    if (!body || busy || !chat.channelId) return;
+    setBusy(true);
+    setError(false);
+    try {
+      const saved = await postMessage(chat.channelId, body);
+      setSent((s) => [...s, postedMessage(saved.id, body, saved.createdAt, new Date())]);
+      setDraft('');
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <aside className="o-chat ar-chat" aria-label={chat.title}>
       <div className="o-chat-h">
@@ -19,7 +47,7 @@ export function AreaChatPanel({ chat, composerLabel }: { chat: AreaChat; compose
             <p className="o-day">
               <span>{d}</span>
             </p>
-            {chat.messages
+            {messages
               .filter((m) => m.day === d)
               .map((m) => (
                 <div key={m.id} className={`o-msg${m.mine ? ' mine' : ''}`}>
@@ -35,12 +63,32 @@ export function AreaChatPanel({ chat, composerLabel }: { chat: AreaChat; compose
           </div>
         ))}
       </div>
-      <div className="o-comp" aria-disabled="true">
-        <span>{composerLabel}</span>
-        <span className="o-go">
-          <OIcon name="send" size={20} />
-        </span>
-      </div>
+      {live && chat.canPost ? (
+        <form
+          className="o-comp ar-comp"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <input type="text" placeholder={composerLabel} aria-label={composerLabel} value={draft} maxLength={4000} onChange={(e) => setDraft(e.target.value)} />
+          <button type="submit" className="o-go" aria-label="Send" disabled={busy || !draft.trim()}>
+            <OIcon name="send" size={20} />
+          </button>
+          {error ? (
+            <span className="ar-comp-err" role="alert">
+              Didn&apos;t send. Try again.
+            </span>
+          ) : null}
+        </form>
+      ) : (
+        <div className="o-comp" aria-disabled="true">
+          <span>{composerLabel}</span>
+          <span className="o-go">
+            <OIcon name="send" size={20} />
+          </span>
+        </div>
+      )}
     </aside>
   );
 }

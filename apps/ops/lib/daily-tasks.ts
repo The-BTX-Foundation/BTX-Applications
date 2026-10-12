@@ -1,5 +1,6 @@
 // Pure logic for the Tasks page, the Today page and the sidebar counts: row -> view model, due-date buckets, headline.
 // No server imports, so it is unit-tested (tests/daily-tasks.test.ts).
+import { isVideoLinksTask } from './area-map';
 import { dateOnlyLabel } from './format';
 import { daysBetween, decorate, type ApprovalDetail, type Bucket, type Counts, type Person, type TaskComment, type TaskItem, type TaskSeed, type TaskStatus } from './tasks-shared';
 import type { OverviewArea, TaskGroup, TaskRow, TodayData } from '@/mock/today';
@@ -189,6 +190,8 @@ export function todayRow(t: TaskItem): TaskRow {
   } else if (t.type === 'scoring') {
     action = { label: 'Score', kind: 's' };
     href = '/scholarships/scoring';
+  } else if (t.type === 'task' && isVideoLinksTask(t.title)) {
+    action = { label: 'Add links', kind: 'p' }; // Today's card opens the video-links panel for admins
   } else if (late) {
     action = { label: 'Open', kind: 'p' };
   }
