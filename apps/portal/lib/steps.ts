@@ -4,8 +4,8 @@ import type { Application, AppFile } from '@btx/data';
 import { ORDER, fieldError, fromApplication } from './basic-info';
 import { countWords } from './words';
 
-export const STEP_NAMES = ['Basic info', 'Scholarship and programs', 'Essay', 'Documents', 'Review and submit'] as const;
-export const STEP_PATHS = ['/apply/basic-info', '/apply/scholarship', '/apply/essay', '/apply/documents', '/apply/review'] as const;
+export const STEP_NAMES = ['Basic info', 'Scholarship and programs', 'Short answers', 'Documents', 'Review and submit'] as const;
+export const STEP_PATHS = ['/apply/basic-info', '/apply/scholarship', '/apply/short-answers', '/apply/documents', '/apply/review'] as const;
 
 // The route for a step number (1 to 5).
 export function stepPath(step: number): string {
@@ -18,17 +18,18 @@ export function stepsDone(app: Application | null, files: AppFile[]): boolean[] 
   const v = fromApplication(app);
   const basic = ORDER.every((k) => fieldError(k, v) === null);
   const kinds = new Set(files.map((f) => f.kind));
-  return [basic, app.current_step > 2, countWords(app.essay ?? '') > 0, kinds.has('resume') && kinds.has('transcript'), false];
+  const answered = [app.answer_1, app.answer_2, app.answer_3].every((t) => countWords(t ?? '') > 0);
+  return [basic, app.current_step > 2, answered, kinds.has('resume') && kinds.has('transcript'), false];
 }
 
-// The rail's step list for the page the student is on. Finished steps link back; the essay says "Optional" until written.
+// The rail's step list for the page the student is on. Finished steps link back; the others say "Not started".
 export function railSteps(app: Application | null, files: AppFile[], current: number, demoDone?: boolean[]): Step[] {
   const done = demoDone ?? stepsDone(app, files);
   return STEP_NAMES.map((name, i) => ({
     name,
     done: done[i],
     href: i + 1 !== current && done[i] ? STEP_PATHS[i] : undefined,
-    status: i + 1 === current ? 'In progress' : done[i] ? 'Done' : i === 2 ? 'Optional' : 'Not started',
+    status: i + 1 === current ? 'In progress' : done[i] ? 'Done' : 'Not started',
   }));
 }
 

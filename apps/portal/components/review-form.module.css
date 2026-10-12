@@ -86,6 +86,17 @@
   white-space: pre-wrap;
   color: var(--muted);
 }
+/* the short answers inside the panel: each question as a small bold line, then the answer */
+.qa {
+  overflow-wrap: anywhere;
+}
+.qa + .qa {
+  margin-top: 12px;
+}
+.q {
+  font-weight: 600;
+  color: var(--ink);
+}
 .group {
   margin-top: 24px;
 }

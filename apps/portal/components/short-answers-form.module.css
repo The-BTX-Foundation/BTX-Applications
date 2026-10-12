@@ -1,30 +1,23 @@
-/* Step 3 (draft step4.html / step4-phone.html). */
-.prompt {
+/* Step 3: three short answers, stacked. Built in code first (2026-10-12) from the old essay step's styles
+   (draft step4.html / step4-phone.html); the Figma frames are redrawn to match. */
+.block {
   margin-top: 20px;
 }
-.promptText {
+.block + .block {
+  margin-top: 32px;
+}
+.question {
+  display: block;
   font-size: 16px;
   line-height: 1.5;
   margin-top: 6px;
 }
-.placeholder {
-  font-size: 15px;
-  line-height: 1.45;
-  color: var(--muted);
-  margin-top: 4px;
-}
-.essay {
-  margin-top: 16px;
-}
-.essay label {
-  display: block;
-}
 .box {
   display: block;
   width: 100%;
-  min-height: 230px;
+  min-height: 160px;
   overflow: hidden;
-  margin-top: 8px;
+  margin-top: 12px;
   border: 1.5px solid var(--ink);
   border-radius: 2px;
   background: var(--bg);
@@ -34,6 +27,7 @@
   line-height: 1.6;
   color: var(--ink);
   resize: none;
+  overflow-wrap: anywhere;
 }
 .box:focus-visible {
   outline: 2px solid var(--gold);
@@ -46,14 +40,24 @@
 .count {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 16px;
   margin-top: 8px;
   font-size: 15px;
 }
 .count b {
   font-weight: 600;
+  white-space: nowrap;
 }
-.overMsg {
+.notice {
+  display: block;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.notice:empty {
+  display: none;
+}
+.errMsg {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -62,17 +66,14 @@
 }
 
 @media (min-width: 1024px) {
-  .prompt {
+  .block {
     margin-top: 28px;
   }
-  .promptText {
+  .block + .block {
+    margin-top: 40px;
+  }
+  .question {
     font-size: 18px;
     line-height: 1.55;
-  }
-  .essay {
-    margin-top: 24px;
-  }
-  .box {
-    min-height: 300px;
   }
 }
