@@ -168,7 +168,9 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
   }, [rows, tab, query, who, sort]);
 
   const attention = shown.filter((r) => r.scoring.group === 'attention');
-  const done = shown.filter((r) => r.scoring.group === 'scored');
+  const scoreOf = (r: ApplicantRow) => Number(r.scoring.score.line1) || 0;
+  // Scored rows: best combined score first (as the frame lists them), unless another order was picked.
+  const done = shown.filter((r) => r.scoring.group === 'scored').sort((a, b) => (sort === 'attention' ? scoreOf(b) - scoreOf(a) : 0));
   const picked = rows.find((r) => r.code === pick) ?? shown[0];
   // The interviewer filter: initials -> full name, once each.
   const people = Array.from(new Map(rows.flatMap((r) => r.scoring.interviewers.map((ini, i) => [ini, nameOf(r.scoring, i)] as const))).entries());

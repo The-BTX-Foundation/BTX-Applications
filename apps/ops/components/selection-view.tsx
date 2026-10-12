@@ -85,7 +85,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
   async function confirm() {
     if (!pending) return;
     const p = pending;
-    const award = p.kind === 'main' ? { name: data.legacy.name, cents: data.legacy.amount } : { name: data.extra.name, cents: data.extra.amountCents };
+    const award = p.kind === 'main' ? { name: data.legacy.awardName, cents: data.legacy.amount } : { name: data.extra.name, cents: data.extra.amountCents };
     const res = await recordAward({
       cycleId: data.cycleId,
       applicationId: p.id,
@@ -98,7 +98,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
     });
     setPending(null);
     if (res.ok && res.id) {
-      setRecorded((r) => [...r, { id: res.id as string, code: p.code, initials: p.initials, kind: p.kind, awardName: award.name, amountCents: award.cents }]);
+      setRecorded((r) => [...r, { id: res.id as string, code: p.code, initials: p.initials, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : award.name, amountCents: award.cents }]);
       setChoosing(false);
       setNote('');
     } else setNote(res.message);

@@ -70,7 +70,7 @@ export type SelectionData = {
   meetingDate: string;
   meetingVideo: string;
   /** The Legacy award step. */
-  legacy: { amount: number; amountLabel: string; name: string; candidates: Candidate[]; tie: boolean; tieScore: string };
+  legacy: { amount: number; amountLabel: string; name: string; /** The name saved on the award row (the cycle's award name, "Legacy Scholarship"). */ awardName: string; candidates: Candidate[]; tie: boolean; tieScore: string };
   extra: { name: string; amountLabel: string; amountCents: number; candidates: Candidate[] };
   callStep: string;
   recorded: Recorded[];
@@ -165,6 +165,7 @@ function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null
       amount: mainCents,
       amountLabel: dollars(mainCents),
       name: mainName,
+      awardName: live ? live.mainName : MAIN_AWARD.name,
       candidates: ranked.filter((r) => r.combined === ranked[0]?.combined).map(cand),
       tie: topTie,
       tieScore: ranked[0]?.combined ?? '',
@@ -204,7 +205,7 @@ function stress(): SelectionData {
     moreNote: 'A.O. and K.E. tie at 4.3',
     meetingDate: 'Thu Dec 31',
     meetingVideo: MEETING.videoUrl,
-    legacy: { amount: 200000, amountLabel: '$2,000', name: 'Legacy', candidates: [{ id: 'stress-1', code: 'APP-2026-00003', initials: 'J.T.' }, { id: 'stress-2', code: 'APP-2026-00120', initials: 'A-G.O.' }], tie: true, tieScore: '4.8' },
+    legacy: { amount: 200000, amountLabel: '$2,000', name: 'Legacy', awardName: 'Legacy', candidates: [{ id: 'stress-1', code: 'APP-2026-00003', initials: 'J.T.' }, { id: 'stress-2', code: 'APP-2026-00120', initials: 'A-G.O.' }], tie: true, tieScore: '4.8' },
     extra: { name: 'Empowerment', amountLabel: '$500', amountCents: 50000, candidates: [{ id: 'stress-5', code: 'APP-2026-00014', initials: 'R.S.' }, { id: 'stress-3', code: 'APP-2026-00002', initials: 'D.A.' }] },
     callStep: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour',
     recorded: [],

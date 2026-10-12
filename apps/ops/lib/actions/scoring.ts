@@ -3,7 +3,8 @@
 // Write actions for Scholarships > Scoring: save a draft, publish, save a private note.
 //
 // Mock mode: kept in memory for the life of the server process (so a reload in the same session shows the draft).
-// Live mode (NOT TESTED yet): the Ops Hub tables, as the signed-in person, so the database rules decide:
+// Live mode (tested live 2026-10-12 on the local stack as admin, board and reviewer: drafts, publish, a refused publish with
+// missing criteria, a refused score on someone else's interview, a refused edit after publish, private notes): the Ops Hub tables, as the signed-in person, so the database rules decide:
 //   - `scores` (application_id, scorer_id default auth.uid(), criteria jsonb, published): one row per (application,
 //     scorer), so a draft and a publish are both an upsert. Only an interviewer of the application may insert; only the
 //     scorer may change it, and only while it is a draft (D8: there is no un-publish in the app). The trigger

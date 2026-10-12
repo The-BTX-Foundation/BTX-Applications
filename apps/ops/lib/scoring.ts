@@ -89,7 +89,8 @@ function sheetFor(row: Pick<ApplicantRow, 'id' | 'code' | 'initials' | 'applied'
 const criteria = (names?: string[]): Criterion[] =>
   RUBRIC.map((c, i) => ({ key: c.key, name: names?.[i] ?? c.name, weight: c.weight, avg: CYCLE_AVERAGE[c.key].toFixed(1) }));
 
-const subLine = (n: number, due: string) => `${n} to score by ${due} · scores stay private until both interviewers publish`;
+// The due date is a mock schedule date; live mode has no scores-due setting yet, so it says no date.
+const subLine = (n: number, due: string) => `${n} to score${due ? ` by ${due}` : ''} · scores stay private until both interviewers publish`;
 
 // The stress frame's data (Figma "Scholarships > Scoring, stress"): 120 to score, long initials, title-case criteria
 // names, percent weights, a pick of 1 and a pick of 5. Shown with ?demo=stress.
@@ -138,7 +139,7 @@ export async function loadScoring(opts: { forceError?: boolean; stress?: boolean
     return { sub: subLine(sheets.filter((s) => !s.published).length, due), criteria: criteria(), weightStyle: 'points', sheets, queueTotal: sheets.filter((s) => !s.published).length, failed: false, source: 'mock' };
   }
   try {
-    return await live(due);
+    return await live();
   } catch {
     return { sub: '', criteria: [], weightStyle: 'points', sheets: [], queueTotal: 0, failed: true, source: 'live' };
   }
@@ -149,7 +150,7 @@ export async function loadScoring(opts: { forceError?: boolean; stress?: boolean
 // state are their own `scores` row; the private note is their `score_private_notes` row; the notes are the shared
 // `interview_summaries`. Whether the other interviewer published comes from score_progress() (admin and board; a
 // reviewer may not see it, so it reads as not yet).
-async function live(due: string): Promise<ScoringData> {
+async function live(): Promise<ScoringData> {
   const client = await db();
   const me = await whoAmI(client);
   if (!me) throw new Error('not staff');
@@ -211,7 +212,7 @@ async function live(due: string): Promise<ScoringData> {
     };
   });
   const open = sheets.filter((s) => !s.published).length;
-  return { sub: subLine(open, due), criteria: crit, weightStyle: 'points', sheets, queueTotal: open, failed: false, source: 'live' };
+  return { sub: subLine(open, ''), criteria: crit, weightStyle: 'points', sheets, queueTotal: open, failed: false, source: 'live' };
 }
 
 // The signed-in person's private notes (only the writer can read them).

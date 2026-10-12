@@ -45,7 +45,7 @@ function Scale({ crit, value, disabled, onPick, phone }: { crit: Criterion; valu
   );
 }
 
-export function ScoringView({ data }: { data: ScoringData }) {
+export function ScoringView({ data, initials }: { data: ScoringData; initials?: string }) {
   const first = data.sheets.find((s) => !s.published) ?? data.sheets[0];
   const [code, setCode] = useState(first?.code ?? '');
   const [picks, setPicks] = useState<Picks>(() => Object.fromEntries(data.sheets.map((s) => [s.code, s.picks])));
@@ -123,7 +123,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
 
   return (
     <div className="s-page s-score">
-      <PhoneBar title="Scoring" />
+      <PhoneBar title="Scoring" initials={initials} />
 
       <div className="o-lg">
         <PageHeader title="Scoring" sub={data.sub} />
@@ -257,7 +257,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
               <b>
                 {sheet.code} · {sheet.initials}
               </b>
-              <span>Fall 2026, Legacy cycle</span>
+              <span>{sheet.cycleLine.split('.')[0]}</span>
               <span>{sheet.phoneLine}</span>
             </div>
             <div className="s-prg">

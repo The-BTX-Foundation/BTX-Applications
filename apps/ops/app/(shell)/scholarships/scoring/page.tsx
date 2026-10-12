@@ -5,12 +5,13 @@ import { PageHeader } from '@/components/page-header';
 import { PhoneBar } from '@/components/sch-parts';
 import { ScoringView } from '@/components/scoring-view';
 import { loadScoring } from '@/lib/scoring';
+import { requireStaff } from '@/lib/user';
 
 export const metadata: Metadata = { title: 'Scoring' };
 
 export default async function ScoringPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
-  const data = await loadScoring({ forceError: demo === 'error', stress: demo === 'stress' });
+  const [data, user] = await Promise.all([loadScoring({ forceError: demo === 'error', stress: demo === 'stress' }), requireStaff()]);
   if (data.failed) {
     return (
       <>
@@ -22,5 +23,5 @@ export default async function ScoringPage({ searchParams }: { searchParams: Prom
       </>
     );
   }
-  return <ScoringView data={data} />;
+  return <ScoringView data={data} initials={user.mock ? undefined : user.initials} />;
 }

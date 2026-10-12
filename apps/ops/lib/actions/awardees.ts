@@ -4,13 +4,13 @@
 //
 // Mock mode: kept in memory (mock/awardees.ts, awardeeStore) for the life of the server process.
 // Live mode, as the signed-in person (admin and board may write award steps; the database rules decide):
-//   - setStepDone (NOT TESTED yet): ticking steps 1, 2, 3 or 5 sets `award_steps` done_at and done_by for
+//   - setStepDone (tested live 2026-10-12 on the local stack: tick and untick as admin and board, refused for a reviewer): ticking steps 1, 2, 3 or 5 sets `award_steps` done_at and done_by for
 //     (award_id, step); unticking clears them.
-//   - Funds sent (NOT TESTED yet): ticking step 4 calls mark_award_funds_sent(p_award_id, p_paid_on), which ticks the
+//   - Funds sent (tested live 2026-10-12 on the local stack: logged once, then already_paid): ticking step 4 calls mark_award_funds_sent(p_award_id, p_paid_on), which ticks the
 //     step, sets paid_on and logs the amount under that year's Scholarships budget category in one step (errors:
 //     already_paid, no_amount, no_scholarship_category:<year>). Unticking step 4 is not offered (nothing reverses the
 //     logged spending).
-//   - sendReminder (NOT TESTED yet): records `award_steps.reminder_sent_at`. Nothing is emailed yet (email is another
+//   - sendReminder (tested live 2026-10-12 on the local stack): records `award_steps.reminder_sent_at`. Nothing is emailed yet (email is another
 //     stream's work), so only the date is recorded.
 import { hasSupabaseEnv } from '@btx/data';
 import { fundsErrorMessage } from '../sch-logic';

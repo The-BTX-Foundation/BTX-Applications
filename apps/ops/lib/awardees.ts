@@ -78,8 +78,8 @@ function rowFor(a: MockAward, now: string): AwardeeRow {
   const since = letter ? daysBetween(letter, now) : 0;
   const cells: Cells = {
     letter: letter ? ['Sent', dayLabel(letter).split(' ').slice(1).join(' ')] : ['Not sent', ''],
-    accepted: accepted ? ['Accepted', dayLabel(accepted).split(' ').slice(1).join(' ')] : ['Waiting', since >= 14 ? `Since ${dayLabel(letter ?? now).split(' ').slice(1).join(' ')}` : `${since} days`],
-    waiting: !accepted,
+    accepted: accepted ? ['Accepted', dayLabel(accepted).split(' ').slice(1).join(' ')] : !letter ? ['Not yet', ''] : ['Waiting', since >= 14 ? `Since ${dayLabel(letter ?? now).split(' ').slice(1).join(' ')}` : `${since} days`],
+    waiting: !accepted && Boolean(letter),
     payment: a.paid_on ? ['Paid', dateOnlyLabel(a.paid_on).split(' ').slice(1).join(' ')] : a.payment_due_on ? ['Scheduled', dateOnlyLabel(a.payment_due_on).split(' ').slice(1).join(' ')] : ['Not yet', ''],
     paymentBold: true,
   };

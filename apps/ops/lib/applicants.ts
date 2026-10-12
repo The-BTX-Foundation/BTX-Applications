@@ -57,6 +57,9 @@ export type ApplicantsResult = {
   showNames: boolean;
 };
 
+// "Fall 2026" -> "Fall 2026 cycle" (a term that already ends in "cycle" stays as it is).
+const withCycle = (term: string) => (/cycle$/i.test(term) ? term : `${term} cycle`);
+
 // Builds the rows for mock mode (no Supabase env): the 18 sample applicants from the Figma frames.
 function mockRows(): ApplicantRow[] {
   return MOCK_APPLICANTS.map((a) => ({
@@ -148,7 +151,7 @@ export async function loadApplicants(opts: { forceError?: boolean } = {}): Promi
         phone: id?.phone ?? undefined,
       };
     });
-    return { cycleLabel: `${cycle.term} cycle`, rows, failed: false, source: 'live', cycleSub: `${cycle.term} · ${shortAwardName(cycle.award_name ?? 'Scholarship')} cycle`, canExport: me.role === 'admin', showNames: me.role === 'admin' };
+    return { cycleLabel: withCycle(cycle.term), rows, failed: false, source: 'live', cycleSub: `${cycle.term} · ${shortAwardName(cycle.award_name ?? 'Scholarship')} cycle`.replace(/ cycle · /i, ' · '), canExport: me.role === 'admin', showNames: me.role === 'admin' };
   } catch {
     return { cycleLabel: '', rows: [], failed: true, source: 'live', cycleSub: '', canExport: false, showNames: false };
   }

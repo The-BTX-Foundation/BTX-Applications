@@ -150,7 +150,7 @@ export function standing(i: StandingInput): Scoring {
   const waiting = i.pair.filter((p) => !pubIds.has(p.id));
   const pubs = 2 - waiting.length;
   const label = waiting.length === 1 ? `Waiting on ${waiting[0].name}` : 'Waiting on scores';
-  return make('attention', { kind: 'waiting', label }, { kind: 'none', line1: `${pubs} of 2 published` }, steps('scoring', i, `${pubs} of 2 published`), 'Open application');
+  return make('attention', { kind: 'waiting', label }, { kind: 'none', line1: `${pubs} of 2` }, steps('scoring', i, `${pubs} of 2 published`), 'Open application');
 }
 
 // ---- the ranking (Selection) -----------------------------------------------------------------------------------

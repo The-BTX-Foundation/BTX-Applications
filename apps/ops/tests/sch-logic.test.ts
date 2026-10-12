@@ -110,7 +110,7 @@ describe('standing', () => {
     const b = { id: 'b', name: 'Bo Kim', initials: 'BK' };
     const s = standing({ ...base, pair: [a, b], progress: [{ scorerId: 'a', published: true }] });
     expect(s.stage).toEqual({ kind: 'waiting', label: 'Waiting on Bo Kim' });
-    expect(s.score).toEqual({ kind: 'none', line1: '1 of 2 published' });
+    expect(s.score).toEqual({ kind: 'none', line1: '1 of 2' });
     // A reviewer may not see progress at all.
     expect(standing({ ...base, pair: [a, b], progress: null }).stage.label).toBe('Waiting on scores');
   });

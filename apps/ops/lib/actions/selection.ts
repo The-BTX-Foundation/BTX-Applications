@@ -5,12 +5,14 @@
 //
 // Mock mode: kept in memory (mock/selection.ts, selectionStore) for the life of the server process.
 // Live mode, as the signed-in person (admin and board may write awards; the database rules decide):
-//   - recordAward (NOT TESTED yet) inserts a `scholarship_awards` row (cycle_id, application_id, award_name,
+//   - recordAward (tested live 2026-10-12 on the local stack: main and extra, a second main refused, a second award
+//     for the same applicant refused) inserts a `scholarship_awards` row (cycle_id, application_id, award_name,
 //     amount_cents, kind 'main' | 'extra', decision_note); the trigger award_steps_create() then makes its five
 //     awardee steps. decided_by defaults to auth.uid(). One award per application (unique application_id), and one main
 //     award per cycle (checked here: the table has no rule for it).
-//   - undoAward (NOT TESTED yet) deletes that row (its award_steps go with it), only until the award letter is ticked.
-//   - releaseDecisions (NOT TESTED yet) sets cycles.decisions_released_at (admins only, main award first, idempotent;
+//   - undoAward (tested live 2026-10-12 on the local stack: undone, and refused after the letter step is ticked) deletes that row (its award_steps go with it), only until the award letter is ticked.
+//   - releaseDecisions (tested live 2026-10-12 on the local stack on a separate draft cycle: refused for board, refused
+//     before the main award, stamped once, repeat answers with the same time) sets cycles.decisions_released_at (admins only, main award first, idempotent;
 //     the rule is lib/release.ts). There is no button for it yet (design pending).
 //   - "No extra award" has no table or column, and "Send the agenda" is hidden until email is set up (O8): live mode
 //     answers that they are not connected instead of guessing.
