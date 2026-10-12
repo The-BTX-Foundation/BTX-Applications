@@ -1,0 +1,48 @@
+/* "Add the video links" dialog (Figma "Today: add the video links"). */
+.iv-vl {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+.iv-vl-r b {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+  overflow-wrap: anywhere;
+}
+.iv-vl-r span {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--mute, #555);
+}
+.iv-vl-r input {
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-top: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  background: var(--surface);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+.iv-vl-r input.bad {
+  border-color: var(--late, #b3261e);
+}
+.iv-vl-n {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.iv-vl-e {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--late, #b3261e);
+}
