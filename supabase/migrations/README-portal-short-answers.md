@@ -1,6 +1,7 @@
 # Portal short answers: what the database change does
 
-File: `20261012120000_portal_short_answers.sql`. Drafted 2026-10-12. **Not applied.**
+File: `20261012120000_portal_short_answers.sql`. Drafted and **applied 2026-10-12** (Dominick's go), before PR #6 merged.
+Every table's row count was the same before and after, and the security advisor showed no new findings.
 
 It runs against the production Supabase project **awiaebtqalcmfafvktwh** ("BTX Student/Operations Hub"). It is applied
 only after Dominick approves it by naming that project. It runs as one transaction: if any step fails, nothing changes.
