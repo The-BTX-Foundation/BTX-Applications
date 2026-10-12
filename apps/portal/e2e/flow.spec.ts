@@ -45,13 +45,22 @@ test('sign in, complete the five steps, submit and reach the status page', async
   await page.getByRole('checkbox', { name: /Certification program/ }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // step 3: over the limit blocks Continue, a short essay passes
-  await expect(page).toHaveURL(/\/apply\/essay/);
-  await page.getByLabel('Your essay').fill(Array(520).fill('word').join(' '));
-  await expect(page.getByText('Shorten your essay by 20 words')).toBeVisible();
+  // step 3: all three answers are required, over the limit blocks Continue, three short answers pass
+  await expect(page).toHaveURL(/\/apply\/short-answers/);
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page).toHaveURL(/\/apply\/essay/);
-  await page.getByLabel('Your essay').fill('A short essay about a ramp.');
+  await expect(page.getByText('Answer this question to continue.')).toHaveCount(3);
+  await expect(page).toHaveURL(/\/apply\/short-answers/);
+  const q1 = page.getByLabel(/community you're part of/);
+  const q2 = page.getByLabel(/class that pushed you/);
+  const q3 = page.getByLabel(/problem do you want to work on/);
+  await expect(q1).toBeFocused();
+  await q1.fill(Array(420).fill('word').join(' '));
+  await expect(page.getByText('Shorten this answer by 20 words to continue.')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(/\/apply\/short-answers/);
+  await q1.fill('I rebuilt the ramp at my church with my uncle.');
+  await q2.fill('Thermodynamics. I started drawing the system first.');
+  await q3.fill('Accessible public buildings. I survey one a month.');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // step 4: both documents are required
@@ -74,6 +83,41 @@ test('sign in, complete the five steps, submit and reach the status page', async
 
   await expect(page).toHaveURL(/\/status/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Application submitted.');
+});
+
+// Step 3 blocks pasting and dropping text (students type their own answers); typing still works and clears the notice.
+test('pasting into a short-answer box is turned off', async ({ page }) => {
+  await page.goto('/apply/short-answers');
+  await expect(page.getByText('Pasting is turned off, so type them here.')).toBeVisible();
+  const box = page.locator('#answer-1');
+  await box.focus();
+  // a real paste event with text on the clipboard: cancelled, the box stays empty, the notice shows
+  const pasted = await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'Text written somewhere else.');
+    const el = document.getElementById('answer-1')!;
+    return el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  expect(pasted).toBe(false);
+  await expect(box).toHaveValue('');
+  await expect(page.locator('#answer-1-notice')).toHaveText('Pasting is turned off. Type your answer here.');
+  await expect(box).toHaveAttribute('aria-describedby', /answer-1-notice/);
+  await expect(box).toHaveAttribute('writingsuggestions', 'false');
+  await expect(box).toHaveAttribute('data-gramm', 'false');
+  // a paste that arrives as an input event is cancelled too
+  const viaInput = await page.evaluate(() =>
+    document.getElementById('answer-1')!.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertFromPaste', data: 'x', bubbles: true, cancelable: true })),
+  );
+  expect(viaInput).toBe(false);
+  // plain typing is not blocked
+  const typed = await page.evaluate(() =>
+    document.getElementById('answer-1')!.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'x', bubbles: true, cancelable: true })),
+  );
+  expect(typed).toBe(true);
+  await box.pressSequentially('I typed this myself');
+  await expect(box).toHaveValue('I typed this myself');
+  await expect(page.locator('#answer-1-notice')).toHaveText('');
+  await expect(page.getByText('4 of 400 words')).toBeVisible();
 });
 
 test('the landing shows the before-open and closed variants and the email-me confirmation', async ({ page }) => {

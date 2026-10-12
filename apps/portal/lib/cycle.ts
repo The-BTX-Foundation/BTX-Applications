@@ -21,9 +21,6 @@ export type CycleView = {
   /** "Oct" style month for the closed landing, or "[month]". */
   nextMonth: string;
   requirements: string[];
-  /** The essay prompt and how the essay is used, or null when not set. */
-  essayPrompt: string | null;
-  essayUse: string | null;
   /** "30 minutes", or "[time]" */
   codeLifetime: string;
   /** The photo-and-story due date ("Fri Nov 6"), or "[date]". */
@@ -61,8 +58,6 @@ const MOCK: CycleView = {
   eventDate: '[Event date]',
   eventOn: true,
   requirements: [],
-  essayPrompt: null,
-  essayUse: null,
   codeLifetime: PLACEHOLDER.time,
   drawing: {
     opens: '2026-08-17',
@@ -92,8 +87,6 @@ export function toView(c: Cycle): CycleView {
     paymentNote: c.payment_note?.trim() || "[How it's paid]",
     eventDate: c.event_enabled && c.event_at ? longDay(easternDate(c.event_at)) : '[Event date]',
     eventOn: c.event_enabled,
-    essayPrompt: c.essay_prompt,
-    essayUse: c.essay_use,
     requirements: Array.isArray(c.requirements) ? c.requirements.filter((r): r is string => typeof r === 'string') : [],
     codeLifetime: c.code_lifetime_minutes ? `${c.code_lifetime_minutes} minutes` : PLACEHOLDER.time,
     drawing: complete

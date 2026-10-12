@@ -6,7 +6,7 @@ const axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8'
 const pages = [
   '/', '/?preview=soon', '/?preview=closed', '/?preview=error',
   '/sign-in?demo=email', '/sign-in?demo=code', '/sign-in?demo=wrong', '/sign-in?demo=expired',
-  '/apply/basic-info?demo=1', '/apply/basic-info?demo=stress', '/apply/scholarship?demo=1', '/apply/essay?demo=1',
+  '/apply/basic-info?demo=1', '/apply/basic-info?demo=stress', '/apply/scholarship?demo=1', '/apply/short-answers?demo=1', '/apply/short-answers?demo=stress',
   '/apply/documents?demo=empty', '/apply/documents?demo=uploading', '/apply/documents?demo=failed',
   '/apply/review?demo=1', '/apply/review?demo=failed', '/status',
   '/apply/review?demo=terpmail', '/apply/start?demo=terpmail',

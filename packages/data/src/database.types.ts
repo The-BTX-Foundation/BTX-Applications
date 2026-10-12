@@ -57,6 +57,9 @@ export type Database = {
       applications: {
         Row: {
           agreed_true: boolean;
+          answer_1: string | null;
+          answer_2: string | null;
+          answer_3: string | null;
           applicant_code: string | null;
           created_at: string;
           credits_left: number | null;
@@ -83,6 +86,9 @@ export type Database = {
         };
         Insert: {
           agreed_true?: boolean;
+          answer_1?: string | null;
+          answer_2?: string | null;
+          answer_3?: string | null;
           applicant_code?: string | null;
           created_at?: string;
           credits_left?: number | null;
@@ -109,6 +115,9 @@ export type Database = {
         };
         Update: {
           agreed_true?: boolean;
+          answer_1?: string | null;
+          answer_2?: string | null;
+          answer_3?: string | null;
           applicant_code?: string | null;
           created_at?: string;
           credits_left?: number | null;
