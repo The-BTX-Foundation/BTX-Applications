@@ -17,13 +17,19 @@ export type ConfirmationInput = {
   award: string;
   /** Formatted dates for "what happens next"; any may be a [placeholder]. */
   interviewWeeks: string;
-  decisionDate: string;
+  /** "Fri Oct 23", or null while the cycle has no decision date. */
+  decisionDate: string | null;
   /** Absolute link to the status page, like https://apply.example.org/status. */
   statusUrl: string;
   helpEmail: string;
 };
 
 // Escapes text for HTML.
+// "Decision by Fri Oct 23, by email." or, without a date yet, "Decision by email after the interviews."
+function decisionLine(date: string | null): string {
+  return date ? `Decision by ${date}, by email. You hear back either way.` : 'Decision by email after the interviews. You hear back either way.';
+}
+
 export function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -44,7 +50,7 @@ export function confirmationText(i: ConfirmationInput): string {
     '',
     "What's next",
     `- Virtual interviews, ${i.interviewWeeks}. We'll email you to schedule yours.`,
-    `- Decision by ${i.decisionDate}, by email. You hear back either way.`,
+    `- ${decisionLine(i.decisionDate)}`,
     '',
     `See your application status: ${i.statusUrl}`,
     '',
@@ -83,7 +89,7 @@ ${row('Submitted', `${i.submittedLabel} Eastern`)}
 <tr><td style="padding:28px 32px 0">
 <p style="margin:0;font:600 16px/1.4 ${font};color:${ink}">What&rsquo;s next</p>
 <p style="margin:8px 0 0;font:16px/1.5 ${font};color:${ink}">Virtual interviews, ${esc(i.interviewWeeks)}. We&rsquo;ll email you to schedule yours.</p>
-<p style="margin:8px 0 0;font:16px/1.5 ${font};color:${ink}">Decision by ${esc(i.decisionDate)}, by email. You hear back either way.</p>
+<p style="margin:8px 0 0;font:16px/1.5 ${font};color:${ink}">${esc(decisionLine(i.decisionDate))}</p>
 </td></tr>
 <tr><td style="padding:28px 32px 0">
 <a href="${esc(i.statusUrl)}" style="display:inline-block;background:#c99b31;color:${ink};font:600 16px/1 ${font};padding:17px 26px;border-radius:2px;text-decoration:none">See your application status</a>
