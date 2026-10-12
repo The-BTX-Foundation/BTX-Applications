@@ -1,5 +1,5 @@
-// Scholarships > Applicants: the submitted applications of the published cycle (real rows; scores and pairing are
-// mock). In mock mode ?demo=error draws the "didn't load" state for design review.
+// Scholarships > Applicants: the submitted applications of the published cycle (live: blind for board members and
+// reviewers, names for admins). In mock mode ?demo=error draws the "didn't load" state for design review.
 import type { Metadata } from 'next';
 import { ApplicantsBoard } from '@/components/applicants-board';
 import { LoadError } from '@/components/load-error';
@@ -20,5 +20,5 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
       </>
     );
   }
-  return <ApplicantsBoard cycleLabel={data.cycleLabel} rows={data.rows} />;
+  return <ApplicantsBoard cycleLabel={data.cycleLabel} rows={data.rows} cycleSub={data.cycleSub} canExport={data.canExport} showNames={data.showNames} />;
 }

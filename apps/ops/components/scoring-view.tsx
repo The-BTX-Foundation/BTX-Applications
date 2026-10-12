@@ -5,7 +5,8 @@
 // Publish needs all six and asks first. Saving goes through lib/actions/scoring.ts (in memory in mock mode).
 import { useEffect, useRef, useState } from 'react';
 import type { Criterion, ScoringData, Sheet } from '@/lib/scoring';
-import { PICK_LABELS, weighted } from '@/mock/scores';
+import { PICK_LABELS } from '@/mock/scores';
+import { weightedScore } from '@/lib/sch-logic';
 import { publishScore, saveDraft, savePrivateNote } from '@/lib/actions/scoring';
 import { PageHeader } from './page-header';
 import { Dialog, PhoneBar, ScoreRing, VideoMark } from './sch-parts';
@@ -18,6 +19,8 @@ const count = (p: Record<string, number>) => Object.keys(p).length;
 // "20 points, cycle average 3.8" (laptop) or "20 points · cycle avg 3.8" (phone); the stress frame prints "20%".
 function weightLine(c: Criterion, style: ScoringData['weightStyle'], phone: boolean): string {
   const w = style === 'percent' ? `${c.weight}%` : `${c.weight} points`;
+  // No published scores yet in this cycle: no average to show.
+  if (!c.avg) return w;
   return phone ? `${w} · cycle avg ${c.avg}` : `${w}, cycle average ${c.avg}`;
 }
 
@@ -42,7 +45,7 @@ function Scale({ crit, value, disabled, onPick, phone }: { crit: Criterion; valu
   );
 }
 
-export function ScoringView({ data }: { data: ScoringData }) {
+export function ScoringView({ data, initials }: { data: ScoringData; initials?: string }) {
   const first = data.sheets.find((s) => !s.published) ?? data.sheets[0];
   const [code, setCode] = useState(first?.code ?? '');
   const [picks, setPicks] = useState<Picks>(() => Object.fromEntries(data.sheets.map((s) => [s.code, s.picks])));
@@ -70,6 +73,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
   const n = count(mine);
   const left = data.criteria.length - n;
   const current = data.criteria.find((c) => !mine[c.key])?.key;
+  const weighted = (p: Record<string, number>) => weightedScore(data.criteria, p);
   const wScore = weighted(mine);
 
   // The queue rows: still to score first, then those you published.
@@ -81,7 +85,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
     if (JSON.stringify(picksNow) === JSON.stringify(s.picks) && (published[s.code] ?? false) === s.published) return s.queueLine;
     const k = count(picksNow);
     if (published[s.code]) return `${(weighted(picksNow) ?? 0).toFixed(1)}, waiting on ${s.otherName}`;
-    return k > 0 ? `Draft, ${k} of 6` : 'Not started';
+    return k > 0 ? `Draft, ${k} of ${data.criteria.length}` : 'Not started';
   };
 
   // A pick: save the draft right after (a short pause so a quick run of taps is one save).
@@ -111,14 +115,15 @@ export function ScoringView({ data }: { data: ScoringData }) {
   }
 
   async function saveNote(text: string) {
-    await savePrivateNote(sheet!.applicationId, text);
+    const res = await savePrivateNote(sheet!.applicationId, text);
+    if (!res.ok) setError(res.message);
   }
 
   const status = isPub ? 'Published. Locked.' : saved[sheet.code] ? `Draft saved ${saved[sheet.code]}` : 'Not saved yet';
 
   return (
     <div className="s-page s-score">
-      <PhoneBar title="Scoring" />
+      <PhoneBar title="Scoring" initials={initials} />
 
       <div className="o-lg">
         <PageHeader title="Scoring" sub={data.sub} />
@@ -252,7 +257,7 @@ export function ScoringView({ data }: { data: ScoringData }) {
               <b>
                 {sheet.code} · {sheet.initials}
               </b>
-              <span>Fall 2026, Legacy cycle</span>
+              <span>{sheet.cycleLine.split('.')[0]}</span>
               <span>{sheet.phoneLine}</span>
             </div>
             <div className="s-prg">

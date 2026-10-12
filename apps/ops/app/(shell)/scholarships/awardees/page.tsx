@@ -1,5 +1,4 @@
-// Scholarships > Awardees: who won and the five follow-up steps (awards and steps are mock until the Ops Hub tables
-// exist). ?demo=error draws the "didn't load" state and ?demo=stress the stress frame's data, in mock mode only.
+// Scholarships > Awardees: who won and the five follow-up steps (live: lib/awardees.ts; mock mode: mock/awardees.ts). ?demo=error draws the "didn't load" state and ?demo=stress the stress frame's data, in mock mode only.
 import type { Metadata } from 'next';
 import { AwardeesView } from '@/components/awardees-view';
 import { LoadError } from '@/components/load-error';

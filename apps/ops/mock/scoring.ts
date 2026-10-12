@@ -22,6 +22,8 @@ export type Scoring = {
   group: 'attention' | 'scored';
   /** Interviewer initials in order ("DM", "CG"). */
   interviewers: string[];
+  /** The interviewers' full names in the same order (live mode; mock mode looks them up in BOARD_NAMES). */
+  names?: string[];
   score: ScoreCell;
   stage: Stage;
   /** The interview summary text, or null when there is none yet. */

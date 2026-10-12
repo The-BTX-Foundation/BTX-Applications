@@ -1,11 +1,11 @@
 // Scholarships > Scoring: the signed-in scorer's queue, the rubric, their picks and the interview notes.
-// REAL in live mode: which applicants have a finished interview (`applications`, `bookings`, `interview_slots`, through the
-// Applicants loader). MOCK (mock/scores.ts, mock/staff.ts): the rubric, scores, notes and the other interviewer. When the
-// Ops Hub tables exist, replace sheetFixture() with reads of `rubric_criteria`, `scores`, `interview_summaries` and
-// `score_private_notes`; the page does not change.
+// LIVE: `rubric_criteria`, `scores`, `score_private_notes`, `interview_summaries`, the pairings and the blind view
+// `application_reviews` (see live() below). MOCK mode (no Supabase env): mock/scores.ts and mock/staff.ts.
 import { hasSupabaseEnv } from '@btx/data';
-import { dateOnlyLabel } from './format';
+import { dateOnlyLabel, dayLabel, timeLabel } from './format';
 import { loadApplicants, type ApplicantRow } from './applicants';
+import { shortAwardName, weightedScore } from './sch-logic';
+import { blindRows, db, interviewsFor, publishedCycle, rubricFor, scoreProgress, staffNames, summariesFor, visibleScores, whoAmI, type Interview } from './sch-live';
 import { MOCK_SCHEDULE } from '@/mock/cycle';
 import { CYCLE_AVERAGE, QUEUE_CODES, RUBRIC, sheetFixture, weighted, type Quote } from '@/mock/scores';
 import { staffById } from '@/mock/staff';
@@ -49,13 +49,11 @@ export type ScoringData = {
   source: 'live' | 'mock';
 };
 
-const picked = (p: Record<string, number>) => RUBRIC.filter((c) => p[c.key]).length;
-
-function queueLine(picks: Record<string, number>, published: boolean, score: string | null, otherName: string, otherPublished: boolean): string {
-  const n = picked(picks);
+function queueLine(picks: Record<string, number>, published: boolean, score: string | null, otherName: string, otherPublished: boolean, total = 6): string {
+  const n = Object.keys(picks).length;
   const first = otherName.split(' ')[0];
-  if (published) return `${score ?? ''}, waiting on ${otherName}`;
-  if (n > 0) return `Draft, ${n} of 6`;
+  if (published) return otherPublished ? `${score ?? ''}, both published` : `${score ?? ''}, waiting on ${otherName}`;
+  if (n > 0) return `Draft, ${n} of ${total}`;
   return otherPublished ? `Not started, ${first} published` : 'Not started';
 }
 
@@ -91,7 +89,8 @@ function sheetFor(row: Pick<ApplicantRow, 'id' | 'code' | 'initials' | 'applied'
 const criteria = (names?: string[]): Criterion[] =>
   RUBRIC.map((c, i) => ({ key: c.key, name: names?.[i] ?? c.name, weight: c.weight, avg: CYCLE_AVERAGE[c.key].toFixed(1) }));
 
-const subLine = (n: number, due: string) => `${n} to score by ${due} · scores stay private until both interviewers publish`;
+// The due date is a mock schedule date; live mode has no scores-due setting yet, so it says no date.
+const subLine = (n: number, due: string) => `${n} to score${due ? ` by ${due}` : ''} · scores stay private until both interviewers publish`;
 
 // The stress frame's data (Figma "Scholarships > Scoring, stress"): 120 to score, long initials, title-case criteria
 // names, percent weights, a pick of 1 and a pick of 5. Shown with ?demo=stress.
@@ -139,11 +138,87 @@ export async function loadScoring(opts: { forceError?: boolean; stress?: boolean
     const sheets = rows.map(sheetFor);
     return { sub: subLine(sheets.filter((s) => !s.published).length, due), criteria: criteria(), weightStyle: 'points', sheets, queueTotal: sheets.filter((s) => !s.published).length, failed: false, source: 'mock' };
   }
-  // Live mode: the applicants whose interview is done are the queue. Which of them the signed-in person interviews needs
-  // `interview_pairings`, which does not exist yet, so every finished interview is listed.
-  const list = await loadApplicants();
-  if (list.failed) return { sub: '', criteria: [], weightStyle: 'points', sheets: [], queueTotal: 0, failed: true, source: 'live' };
-  const rows = list.rows.filter((r) => r.interviewDay && !r.upcoming);
-  const sheets = rows.map(sheetFor);
-  return { sub: subLine(sheets.filter((s) => !s.published).length, due), criteria: criteria(), weightStyle: 'points', sheets, queueTotal: sheets.filter((s) => !s.published).length, failed: false, source: 'live' };
+  try {
+    return await live();
+  } catch {
+    return { sub: '', criteria: [], weightStyle: 'points', sheets: [], queueTotal: 0, failed: true, source: 'live' };
+  }
+}
+
+// Live mode: the queue is every application the signed-in person interviews (they are one of the pair on its active
+// booking) whose interview has started. The rubric is the cycle's `rubric_criteria`; the picks, draft and published
+// state are their own `scores` row; the private note is their `score_private_notes` row; the notes are the shared
+// `interview_summaries`. Whether the other interviewer published comes from score_progress() (admin and board; a
+// reviewer may not see it, so it reads as not yet).
+async function live(): Promise<ScoringData> {
+  const client = await db();
+  const me = await whoAmI(client);
+  if (!me) throw new Error('not staff');
+  const cycle = await publishedCycle(client);
+  if (!cycle) return { sub: 'No open cycle', criteria: [], weightStyle: 'points', sheets: [], queueTotal: 0, failed: false, source: 'live' };
+  const [rubric, apps] = await Promise.all([rubricFor(client, cycle.id), blindRows(client, cycle.id)]);
+  const ids = apps.map((a) => a.id);
+  const [interviews, staff, scores, progress] = await Promise.all([
+    interviewsFor(client, ids),
+    staffNames(client),
+    visibleScores(client, ids),
+    scoreProgress(client, me, cycle.id),
+  ]);
+  const now = new Date();
+  const mineApps = apps
+    .map((a) => ({ a, iv: interviews.get(a.id) }))
+    .filter((x) => x.iv && (x.iv.a === me.id || x.iv.b === me.id) && new Date(x.iv.startsAt) <= now)
+    .sort((x, y) => (x.iv as Interview).startsAt.localeCompare((y.iv as Interview).startsAt));
+  const queueIds = mineApps.map((x) => x.a.id);
+  const [summaries, notes] = await Promise.all([summariesFor(client, queueIds), privateNotes(client, me.id, queueIds)]);
+
+  // The cycle average per criterion: over every published score the reader can see (released ones and their own).
+  const pub = scores.filter((s) => s.published);
+  const crit: Criterion[] = rubric.map((c) => {
+    const vals = pub.map((s) => s.criteria?.[c.key]).filter((v): v is number => typeof v === 'number');
+    return { key: c.key, name: c.name, weight: c.weight, avg: vals.length ? (vals.reduce((n, v) => n + v, 0) / vals.length).toFixed(1) : '' };
+  });
+  const total = crit.length;
+  const short = shortAwardName(cycle.award_name ?? 'Scholarship');
+
+  const sheets: Sheet[] = mineApps.map(({ a, iv }) => {
+    const v = iv as Interview;
+    const otherId = v.a === me.id ? v.b : v.a;
+    const otherName = (otherId && staff.get(otherId)?.display_name) || 'the other interviewer';
+    const own = scores.find((s) => s.application_id === a.id && s.scorer_id === me.id);
+    const otherPublished = Boolean(progress?.some((p) => p.application_id === a.id && p.scorer_id === otherId && p.published));
+    const picks = own?.criteria ?? {};
+    const w = weightedScore(crit, picks);
+    const score = w === null ? null : w.toFixed(1);
+    const published = own?.published ?? false;
+    const sm = summaries.get(a.id);
+    const len = sm?.duration_minutes ? `, ${sm.duration_minutes} min` : '';
+    return {
+      applicationId: a.id,
+      code: a.applicant_code ?? '—',
+      initials: a.initials ?? '—',
+      cycleLine: `${cycle.term}, ${short} cycle. Applied ${dayLabel(a.submitted_at)}. Video interview ${dayLabel(v.startsAt)}${len}.`,
+      phoneLine: `Interview ${dayLabel(v.startsAt)}${len}`,
+      picks,
+      published,
+      score,
+      draftSavedAt: own && !published ? timeLabel(own.updated_at) : null,
+      otherName,
+      otherPublished,
+      summary: sm?.summary ?? null,
+      quotes: (sm?.quotes ?? []).filter((q) => q.text).map((q) => ({ criterion: q.criterion ?? '', at: q.at ?? '', text: q.text ?? '' })),
+      privateNote: notes.get(a.id) ?? '',
+      queueLine: queueLine(picks, published, score, otherName, otherPublished, total),
+    };
+  });
+  const open = sheets.filter((s) => !s.published).length;
+  return { sub: subLine(open, ''), criteria: crit, weightStyle: 'points', sheets, queueTotal: open, failed: false, source: 'live' };
+}
+
+// The signed-in person's private notes (only the writer can read them).
+async function privateNotes(client: Awaited<ReturnType<typeof db>>, meId: string, ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await client.from('score_private_notes').select('application_id, note').eq('user_id', meId).in('application_id', ids);
+  if (error) throw error;
+  return new Map(((data ?? []) as { application_id: string; note: string }[]).map((n) => [n.application_id, n.note]));
 }

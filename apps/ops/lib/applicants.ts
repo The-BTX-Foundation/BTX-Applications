@@ -1,10 +1,24 @@
 // The Applicants list as the page uses it: one flat row per submitted application, plus the extra detail the Figma
-// frames show. REAL columns come from `applications`, `bookings` and `interview_slots`. Fields the schema does not have
-// yet (scores, who interviews, the stage a review is at, the interview summary, the pairing) come from the MOCK module
-// mock/scoring.ts, looked up by applicant code, so they can be swapped for real tables when the Ops Hub tables exist.
+// frames show. LIVE: the blind view `application_reviews`, `bookings`, `interview_slots`, `interview_pairings`,
+// `staff_profiles`, `interview_summaries`, `scores`, score_progress() and, for admins only, `applications` (names and
+// contact details). MOCK mode (no Supabase env) uses mock/applicants.ts and mock/scoring.ts.
 import { hasSupabaseEnv } from '@btx/data';
-import { dayLabel, dottedInitials, timeLabel } from './format';
-import { sessionClient } from './supabase-server';
+import { dateOnlyLabel, dayLabel, timeLabel } from './format';
+import { shortAwardName, standing, type PairPerson } from './sch-logic';
+import {
+  blindRows,
+  db,
+  identityFor,
+  interviewsFor,
+  publishedCycle,
+  rubricFor,
+  scoreProgress,
+  selectionMeeting,
+  staffNames,
+  summariesFor,
+  visibleScores,
+  whoAmI,
+} from './sch-live';
 import { MOCK_APPLICANTS, MOCK_CYCLE_LABEL, MOCK_NOW } from '@/mock/applicants';
 import { scoringFor, type Scoring } from '@/mock/scoring';
 
@@ -23,6 +37,10 @@ export type ApplicantRow = {
   scoring: Scoring;
   /** Only mock rows have a made-up id; it tells the page not to ask storage for files. */
   mock: boolean;
+  /** Admins only (blind review): the applicant's name, Terpmail and phone. */
+  fullName?: string;
+  email?: string;
+  phone?: string;
 };
 
 export type ApplicantsResult = {
@@ -31,7 +49,16 @@ export type ApplicantsResult = {
   /** True when the data could not be loaded (shows the "didn't load" card). */
   failed: boolean;
   source: 'live' | 'mock';
+  /** The detail panel's line under the code ("Fall 2026 · Legacy cycle"). */
+  cycleSub: string;
+  /** Export is for admins only (O1). */
+  canExport: boolean;
+  /** Admins see names and contact details in the detail panel; everyone else sees a code and initials. */
+  showNames: boolean;
 };
+
+// "Fall 2026" -> "Fall 2026 cycle" (a term that already ends in "cycle" stays as it is).
+const withCycle = (term: string) => (/cycle$/i.test(term) ? term : `${term} cycle`);
 
 // Builds the rows for mock mode (no Supabase env): the 18 sample applicants from the Figma frames.
 function mockRows(): ApplicantRow[] {
@@ -49,62 +76,83 @@ function mockRows(): ApplicantRow[] {
   }));
 }
 
-// Loads the submitted applications of the published cycle. Row-level security does the gating: a staff account may read
-// submitted applications (applications_select_staff), bookings (bookings_select_staff) and interview slots; anyone else
-// gets no rows. A failed query returns failed: true instead of throwing.
+// Loads the submitted applications of the published cycle, as the signed-in person. Every role reads the blind view
+// `application_reviews` (code and initials); an admin also gets names and contact details from `applications`. Where
+// each application stands comes from the interview pairings, the reader's own score, everyone's progress (admin and
+// board only, without values) and the score summary (both scores, once both interviewers publish). A failed query
+// returns failed: true instead of throwing.
 export async function loadApplicants(opts: { forceError?: boolean } = {}): Promise<ApplicantsResult> {
   if (!hasSupabaseEnv()) {
-    return { cycleLabel: MOCK_CYCLE_LABEL, rows: opts.forceError ? [] : mockRows(), failed: Boolean(opts.forceError), source: 'mock' };
+    return { cycleLabel: MOCK_CYCLE_LABEL, rows: opts.forceError ? [] : mockRows(), failed: Boolean(opts.forceError), source: 'mock', cycleSub: 'Fall 2026 · Legacy cycle', canExport: true, showNames: false };
   }
   try {
-    const client = await sessionClient();
-    // The published cycle (staff can also see drafts, so ask for published explicitly).
-    const cycle = await client.from('cycles').select('id, term').eq('status', 'published').order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (cycle.error) throw cycle.error;
-    if (!cycle.data) return { cycleLabel: 'No open cycle', rows: [], failed: false, source: 'live' };
+    const client = await db();
+    const me = await whoAmI(client);
+    if (!me) throw new Error('not staff');
+    const cycle = await publishedCycle(client);
+    if (!cycle) return { cycleLabel: 'No open cycle', rows: [], failed: false, source: 'live', cycleSub: '', canExport: me.role === 'admin', showNames: me.role === 'admin' };
 
-    const apps = await client
-      .from('applications')
-      .select('id, applicant_code, full_name, submitted_at')
-      .eq('cycle_id', cycle.data.id)
-      .eq('status', 'submitted')
-      .order('submitted_at', { ascending: true });
-    if (apps.error) throw apps.error;
+    const apps = await blindRows(client, cycle.id);
+    const ids = apps.map((a) => a.id);
+    const [interviews, staff, summaries, scores, progress, identity, meeting] = await Promise.all([
+      interviewsFor(client, ids),
+      staffNames(client),
+      summariesFor(client, ids),
+      visibleScores(client, ids),
+      scoreProgress(client, me, cycle.id),
+      identityFor(client, me, ids),
+      selectionMeeting(client, cycle.id),
+    ]);
+    const rubric = await rubricFor(client, cycle.id);
+    const now = new Date();
+    const person = (id: string | null): PairPerson | null => {
+      if (!id) return null;
+      const s = staff.get(id);
+      return { id, name: s?.display_name ?? 'Interviewer', initials: s?.initials ?? '?' };
+    };
 
-    // Interview times: each application's active booking and its slot.
-    const ids = (apps.data ?? []).map((a) => a.id);
-    const times = new Map<string, string>();
-    if (ids.length > 0) {
-      const bookings = await client
-        .from('bookings')
-        .select('application_id, interview_slots(starts_at)')
-        .eq('status', 'active')
-        .in('application_id', ids);
-      if (bookings.error) throw bookings.error;
-      for (const b of bookings.data ?? []) {
-        const slot = Array.isArray(b.interview_slots) ? b.interview_slots[0] : b.interview_slots;
-        if (slot?.starts_at) times.set(b.application_id, slot.starts_at);
-      }
-    }
-
-    const rows: ApplicantRow[] = (apps.data ?? []).map((a) => {
+    const rows: ApplicantRow[] = apps.map((a) => {
       const code = a.applicant_code ?? '—';
-      const at = times.get(a.id);
+      const iv = interviews.get(a.id);
+      const at = iv?.startsAt ?? null;
+      const pair = [person(iv?.a ?? null), person(iv?.b ?? null)].filter((p): p is PairPerson => Boolean(p));
+      const own = scores.find((s) => s.application_id === a.id && s.scorer_id === me.id) ?? null;
+      const pubs = scores.filter((s) => s.application_id === a.id && s.published && s.weighted_score !== null);
+      // Other people's scores are visible only once both interviewers published, so two visible = released.
+      const released = pubs.length >= 2 ? { combined: Math.round((pubs.reduce((n, s) => n + (s.weighted_score as number), 0) / pubs.length) * 100) / 100 } : null;
+      const sm = summaries.get(a.id);
+      const id = identity.get(a.id);
+      const minutes = sm?.duration_minutes ? `${sm.duration_minutes} min, ` : '';
       return {
         id: a.id,
         code,
-        initials: dottedInitials(a.full_name),
+        initials: a.initials ?? '—',
         applied: dayLabel(a.submitted_at),
         interviewDay: at ? dayLabel(at) : '',
         interviewTime: at ? timeLabel(at) : '',
-        interviewLine: at ? `${dayLabel(at)}, 24 min, video` : '',
-        upcoming: at ? new Date(at) > new Date() : false,
-        scoring: scoringFor(code, { interviewAt: at }),
+        interviewLine: at ? `${dayLabel(at)}, ${minutes}video` : '',
+        upcoming: at ? new Date(at) > now : false,
+        scoring: standing({
+          now,
+          interviewAt: at,
+          pair,
+          meId: me.id,
+          mine: own ? { criteriaCount: own.criteria_count, published: own.published, weighted: own.weighted_score } : null,
+          progress: progress ? progress.filter((p) => p.application_id === a.id).map((p) => ({ scorerId: p.scorer_id, published: p.published })) : null,
+          released,
+          interviewSummary: sm?.summary ?? null,
+          criteriaTotal: rubric.length || 6,
+          selectionLabel: meeting ? dayLabel(meeting.starts_at) : '',
+          awardLabel: cycle.decision_date ? dateOnlyLabel(cycle.decision_date) : '',
+        }),
         mock: false,
+        fullName: id?.full_name ?? undefined,
+        email: id?.terpmail ?? undefined,
+        phone: id?.phone ?? undefined,
       };
     });
-    return { cycleLabel: `${cycle.data.term} cycle`, rows, failed: false, source: 'live' };
+    return { cycleLabel: withCycle(cycle.term), rows, failed: false, source: 'live', cycleSub: `${cycle.term} · ${shortAwardName(cycle.award_name ?? 'Scholarship')} cycle`.replace(/ cycle · /i, ' · '), canExport: me.role === 'admin', showNames: me.role === 'admin' };
   } catch {
-    return { cycleLabel: '', rows: [], failed: true, source: 'live' };
+    return { cycleLabel: '', rows: [], failed: true, source: 'live', cycleSub: '', canExport: false, showNames: false };
   }
 }

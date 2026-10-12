@@ -2,8 +2,9 @@
 
 // The Applicants screen (Figma "Scholarships > Applicants", laptop and phone): tabs and filters, the list, and on a
 // laptop the detail panel for the selected applicant. Reviews are blind: rows show a code and initials, never a name.
-// REAL: the list rows (code, initials, applied, interview). MOCK (mock/scoring.ts): scores, interviewers, stages and the
-// interview summary. Clicking a row on a laptop selects it; on a phone it opens the full application.
+// Live mode: every row, score and stage is real (lib/applicants.ts); an admin also sees the name and contact details in
+// the detail panel, and only an admin may export. Mock mode: mock/applicants.ts and mock/scoring.ts. Clicking a row on a
+// laptop selects it; on a phone it opens the full application.
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ApplicantRow } from '@/lib/applicants';
@@ -63,17 +64,20 @@ function StageCell({ row }: { row: ApplicantRow }) {
   return <span className="o-state">{st.label}</span>;
 }
 
+// An interviewer's full name: the live row carries it, mock mode looks the initials up.
+const nameOf = (sc: ApplicantRow['scoring'], i: number) => sc.names?.[i] ?? BOARD_NAMES[sc.interviewers[i]] ?? sc.interviewers[i];
+
 // The detail panel for one applicant.
-function Detail({ row }: { row: ApplicantRow }) {
+function Detail({ row, cycleLabel, showNames }: { row: ApplicantRow; cycleLabel: string; showNames: boolean }) {
   const sc = row.scoring;
-  const names = sc.interviewers.map((i) => BOARD_NAMES[i] ?? i).join(', ');
+  const names = sc.interviewers.map((_, i) => nameOf(sc, i)).join(', ');
   return (
     <aside className="o-dt" aria-label="Applicant details">
       <div className="o-dt-h">
         <span className="o-dt-av">{plainInitials(row.initials) === '—' ? '—' : row.initials}</span>
         <div>
           <h2>{row.code}</h2>
-          <p>Fall 2026 · Legacy cycle</p>
+          <p>{cycleLabel}</p>
         </div>
       </div>
       <dl className="o-dt-m">
@@ -83,6 +87,16 @@ function Detail({ row }: { row: ApplicantRow }) {
         <dd>{row.interviewLine || 'Not booked'}</dd>
         <dt>Interviewers</dt>
         <dd>{names || 'Not paired yet'}</dd>
+        {showNames && row.fullName ? (
+          <>
+            <dt>Name</dt>
+            <dd>{row.fullName}</dd>
+            <dt>Terpmail</dt>
+            <dd>{row.email || 'Not answered'}</dd>
+            <dt>Phone</dt>
+            <dd>{row.phone || 'Not answered'}</dd>
+          </>
+        ) : null}
       </dl>
       <div className="o-dt-pr">
         <h3>Where this application is</h3>
@@ -121,7 +135,7 @@ function Detail({ row }: { row: ApplicantRow }) {
 }
 
 // The whole screen.
-export function ApplicantsBoard({ cycleLabel, rows }: { cycleLabel: string; rows: ApplicantRow[] }) {
+export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNames }: { cycleLabel: string; cycleSub: string; rows: ApplicantRow[]; canExport: boolean; showNames: boolean }) {
   const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
   const [who, setWho] = useState('');
@@ -154,9 +168,12 @@ export function ApplicantsBoard({ cycleLabel, rows }: { cycleLabel: string; rows
   }, [rows, tab, query, who, sort]);
 
   const attention = shown.filter((r) => r.scoring.group === 'attention');
-  const done = shown.filter((r) => r.scoring.group === 'scored');
+  const scoreOf = (r: ApplicantRow) => Number(r.scoring.score.line1) || 0;
+  // Scored rows: best combined score first (as the frame lists them), unless another order was picked.
+  const done = shown.filter((r) => r.scoring.group === 'scored').sort((a, b) => (sort === 'attention' ? scoreOf(b) - scoreOf(a) : 0));
   const picked = rows.find((r) => r.code === pick) ?? shown[0];
-  const people = Array.from(new Set(rows.flatMap((r) => r.scoring.interviewers)));
+  // The interviewer filter: initials -> full name, once each.
+  const people = Array.from(new Map(rows.flatMap((r) => r.scoring.interviewers.map((ini, i) => [ini, nameOf(r.scoring, i)] as const))).entries());
   const tabs: { id: Tab; lg: string; ph: string }[] = [
     { id: 'all', lg: 'All', ph: 'All' },
     { id: 'needs', lg: 'Needs a score', ph: 'Needs score' },
@@ -164,12 +181,14 @@ export function ApplicantsBoard({ cycleLabel, rows }: { cycleLabel: string; rows
     { id: 'scored', lg: 'Scored', ph: 'Scored' },
   ];
 
-  // Downloads the rows now on screen as a CSV (code, initials, applied, interview, stage), for the staff who need a copy.
+  // Downloads the rows now on screen as a CSV (admins only, O1): code, initials, applied, interview, stage, and the
+  // name and contact details an admin may see.
   function exportCsv() {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = [['Code', 'Initials', 'Applied', 'Interview', 'Stage'].join(',')];
+    const lines = [['Code', 'Initials', 'Applied', 'Interview', 'Stage', ...(showNames ? ['Name', 'Terpmail', 'Phone'] : [])].join(',')];
     for (const r of shown) {
-      lines.push([r.code, r.initials, r.applied, r.interviewDay ? `${r.interviewDay} ${r.interviewTime}`.trim() : '', r.scoring.stage.label].map(esc).join(','));
+      const who = showNames ? [r.fullName ?? '', r.email ?? '', r.phone ?? ''] : [];
+      lines.push([r.code, r.initials, r.applied, r.interviewDay ? `${r.interviewDay} ${r.interviewTime}`.trim() : '', r.scoring.stage.label, ...who].map(esc).join(','));
     }
     const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     const a = document.createElement('a');
@@ -248,10 +267,12 @@ export function ApplicantsBoard({ cycleLabel, rows }: { cycleLabel: string; rows
           <OIcon name="search" size={20} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code or initials" aria-label="Search code or initials" />
         </label>
-        <button type="button" className="o-btn s lg o-lg" onClick={exportCsv}>
-          <OIcon name="upload" size={16} />
-          Export
-        </button>
+        {canExport ? (
+          <button type="button" className="o-btn s lg o-lg" onClick={exportCsv}>
+            <OIcon name="upload" size={16} />
+            Export
+          </button>
+        ) : null}
         <button type="button" className="o-sq o-ph" aria-label="Search code or initials" aria-expanded={searching} onClick={() => setSearching((v) => !v)}>
           <OIcon name="search" size={22} />
         </button>
@@ -279,9 +300,9 @@ export function ApplicantsBoard({ cycleLabel, rows }: { cycleLabel: string; rows
           <span>Interviewer</span>
           <select value={who} onChange={(e) => setWho(e.target.value)}>
             <option value="">Everyone</option>
-            {people.map((p) => (
-              <option key={p} value={p}>
-                {BOARD_NAMES[p] ?? p}
+            {people.map(([ini, name]) => (
+              <option key={ini} value={ini}>
+                {name}
               </option>
             ))}
           </select>
@@ -332,7 +353,7 @@ export function ApplicantsBoard({ cycleLabel, rows }: { cycleLabel: string; rows
             ) : null}
           </div>
         </section>
-        {picked ? <Detail row={picked} /> : null}
+        {picked ? <Detail row={picked} cycleLabel={cycleSub} showNames={showNames} /> : null}
       </div>
     </>
   );

@@ -1,11 +1,11 @@
 // Scholarships > Awardees: who won, where each follow-up stands, and the five awardee steps.
-// REAL in live mode: nothing the draft schema does not own; the table reads `scholarship_awards` and `award_steps`.
-// MOCK (mock/awardees.ts): everything, in mock mode. Going live = replace build()'s input with reads of
-// `scholarship_awards` joined to `applications` (code, full_name, terpmail) and `award_steps`; the page does not change.
+// LIVE: the published cycle's `scholarship_awards` (main and extra) with their `award_steps`, the code and initials from
+// the blind view `application_reviews`, and past awards (kind 'past'). Names and email come from `applications` for
+// admins only (D2); board members see the code and initials. MOCK (mock/awardees.ts): everything, in mock mode.
 import { hasSupabaseEnv } from '@btx/data';
 import { dateOnlyLabel, dayLabel } from './format';
-import { sessionClient } from './supabase-server';
-import { ANNOUNCED_ON, AWARDEES_NOW, AWARDEES_TERM, awardeeStore, AWARDS, PAST, type MockAward, type MockPast } from '@/mock/awardees';
+import { blindRows, db, identityFor, publishedCycle, whoAmI } from './sch-live';
+import { ANNOUNCED_ON, AWARDEES_NOW, AWARDEES_TERM, awardeeStore, AWARDS, PAST, type MockAward, type MockPast, type MockStep } from '@/mock/awardees';
 
 export type Cells = {
   letter: [string, string];
@@ -73,13 +73,13 @@ function rowFor(a: MockAward, now: string): AwardeeRow {
   const ticked = store.done[a.id] ?? {};
   const steps = a.steps.map((s) => ({ ...s, done_at: s.done_at ?? ticked[s.step] ?? null, reminder_sent_at: store.reminders[`${a.id}`] && s.step === 2 && !s.reminder_sent_at ? store.reminders[a.id] : s.reminder_sent_at }));
   const firstOpen = steps.find((s) => !s.done_at)?.step ?? 0;
-  const letter = a.letter_sent_at ?? steps[0].done_at;
-  const accepted = a.accepted_at ?? steps[1].done_at;
+  const letter = a.letter_sent_at ?? steps[0]?.done_at ?? null;
+  const accepted = a.accepted_at ?? steps[1]?.done_at ?? null;
   const since = letter ? daysBetween(letter, now) : 0;
   const cells: Cells = {
     letter: letter ? ['Sent', dayLabel(letter).split(' ').slice(1).join(' ')] : ['Not sent', ''],
-    accepted: accepted ? ['Accepted', dayLabel(accepted).split(' ').slice(1).join(' ')] : ['Waiting', since >= 14 ? `Since ${dayLabel(letter ?? now).split(' ').slice(1).join(' ')}` : `${since} days`],
-    waiting: !accepted,
+    accepted: accepted ? ['Accepted', dayLabel(accepted).split(' ').slice(1).join(' ')] : !letter ? ['Not yet', ''] : ['Waiting', since >= 14 ? `Since ${dayLabel(letter ?? now).split(' ').slice(1).join(' ')}` : `${since} days`],
+    waiting: !accepted && Boolean(letter),
     payment: a.paid_on ? ['Paid', dateOnlyLabel(a.paid_on).split(' ').slice(1).join(' ')] : a.payment_due_on ? ['Scheduled', dateOnlyLabel(a.payment_due_on).split(' ').slice(1).join(' ')] : ['Not yet', ''],
     paymentBold: true,
   };
@@ -120,17 +120,17 @@ function totals(rows: AwardeeRow[], awards: { name: string; cents: number | null
   return { total, parts, known, unknown, rows };
 }
 
-function build(list: MockAward[], past: MockPast[], now: string, source: 'live' | 'mock'): AwardeesData {
+function build(list: MockAward[], past: MockPast[], now: string, source: 'live' | 'mock', term = AWARDEES_TERM, announcedOn: string | null = ANNOUNCED_ON): AwardeesData {
   const rows = list.map((a) => rowFor(a, now));
   const t = totals(rows, list.map((a) => ({ name: a.award_name, cents: a.amount_cents })));
-  const announced = dateOnlyLabel(ANNOUNCED_ON);
+  const announced = announcedOn ? `announced ${dateOnlyLabel(announcedOn)}` : 'not announced yet';
   const amounts = `${money(t.known)}${t.unknown ? ' and [amount]' : ''}`;
-  const terms = [AWARDEES_TERM, ...Array.from(new Set(past.map((p) => p.past_term)))];
+  const terms = [term, ...Array.from(new Set(past.map((p) => p.past_term)))];
   return {
-    term: AWARDEES_TERM,
+    term,
     terms,
-    sub: `${AWARDEES_TERM} · ${list.length} awards · ${amounts}, announced ${announced}`,
-    phoneSub: `Scholarships · ${list.length} awards · ${amounts}`,
+    sub: `${term} · ${list.length} award${list.length === 1 ? '' : 's'} · ${amounts}, ${announced}`,
+    phoneSub: `Scholarships · ${list.length} award${list.length === 1 ? '' : 's'} · ${amounts}`,
     awardees: rows,
     total: t.total,
     totalParts: t.parts,
@@ -189,15 +189,79 @@ export async function loadAwardees(opts: { forceError?: boolean; stress?: boolea
     if (opts.stress) return stress();
     return build(AWARDS, PAST, AWARDEES_NOW, 'mock');
   }
-  // Live mode: `scholarship_awards` does not exist until the Ops Hub tables are applied. Read it; if that fails, the page
-  // says "didn't load" instead of showing invented awardees.
   try {
-    const client = await sessionClient();
-    const loose = client as unknown as { from: (t: string) => { select: (c: string) => PromiseLike<{ data: unknown[] | null; error: unknown }> } };
-    const res = await loose.from('scholarship_awards').select('id, award_name');
-    if (res.error) throw res.error;
-    return build([], [], new Date().toISOString(), 'live');
+    return await live();
   } catch {
     return { ...build([], [], new Date().toISOString(), 'live'), failed: true };
   }
+}
+
+type AwardDb = {
+  id: string;
+  application_id: string | null;
+  award_name: string;
+  amount_cents: number | null;
+  kind: 'main' | 'extra' | 'past';
+  decision_note: string | null;
+  letter_sent_at: string | null;
+  accepted_at: string | null;
+  payment_due_on: string | null;
+  paid_on: string | null;
+  past_term: string | null;
+  awardee_label: string | null;
+  award_steps: MockStep[] | null;
+};
+
+// "2026-10-23" (Eastern) from a timestamp.
+const easternDate = (ts: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(ts));
+
+// Live mode (see the header). The awardees table reads as the signed-in person (admin and board).
+async function live(): Promise<AwardeesData> {
+  const client = await db();
+  const me = await whoAmI(client);
+  if (!me) throw new Error('not staff');
+  const cycle = await publishedCycle(client);
+  const now = new Date().toISOString();
+  const cols = 'id, application_id, award_name, amount_cents, kind, decision_note, letter_sent_at, accepted_at, payment_due_on, paid_on, past_term, awardee_label, award_steps(step, kind, due_on, done_at, note, reminder_sent_at)';
+  const [current, past] = await Promise.all([
+    cycle ? client.from('scholarship_awards').select(cols).eq('cycle_id', cycle.id).in('kind', ['main', 'extra']).order('decided_at') : Promise.resolve({ data: [], error: null }),
+    client.from('scholarship_awards').select('id, past_term, award_name, amount_cents, awardee_label, past_term_starts').eq('kind', 'past').order('past_term_starts', { ascending: false }),
+  ]);
+  if (current.error) throw current.error;
+  if (past.error) throw past.error;
+  const awards = (current.data ?? []) as AwardDb[];
+  const apps = cycle ? await blindRows(client, cycle.id) : [];
+  const byId = new Map(apps.map((a) => [a.id, a]));
+  const who = await identityFor(client, me, awards.map((a) => a.application_id).filter((x): x is string => Boolean(x)));
+  const list: MockAward[] = awards.map((a) => {
+    const app = a.application_id ? byId.get(a.application_id) : undefined;
+    const id = a.application_id ? who.get(a.application_id) : undefined;
+    const steps = [...(a.award_steps ?? [])].sort((x, y) => x.step - y.step);
+    return {
+      id: a.id,
+      code: app?.applicant_code ?? '—',
+      initials: app?.initials ?? '—',
+      fullName: id?.full_name ?? '',
+      email: id?.terpmail ?? '',
+      award_name: a.award_name,
+      amount_cents: a.amount_cents,
+      kind: a.kind === 'extra' ? 'extra' : 'main',
+      decision_note: a.decision_note,
+      letter_sent_at: a.letter_sent_at,
+      accepted_at: a.accepted_at,
+      payment_due_on: a.payment_due_on,
+      paid_on: a.paid_on,
+      steps,
+      comment: null,
+    };
+  });
+  const pastRows: MockPast[] = ((past.data ?? []) as { id: string; past_term: string; award_name: string; amount_cents: number | null; awardee_label: string | null }[]).map((p) => ({
+    id: p.id,
+    past_term: p.past_term,
+    award_name: p.award_name,
+    amount_cents: p.amount_cents ?? 0,
+    awardee_label: p.awardee_label ?? '',
+  }));
+  const announced = cycle?.decisions_released_at ? easternDate(cycle.decisions_released_at) : null;
+  return build(list, pastRows, now, 'live', cycle?.term ?? 'No open cycle', announced);
 }

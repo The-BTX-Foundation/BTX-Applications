@@ -3,17 +3,18 @@
 // Scholarships > Selection (Figma "Scholarships > Selection", laptop and phone): the ranking by combined score and the
 // meeting agenda with the award decisions. A row opens to show the interview summary, the six scores and the quotes.
 // "Record the award" asks first (Figma "confirm the Legacy award") and can be undone until the letter goes out.
-// Saving goes through lib/actions/selection.ts (in memory in mock mode).
+// Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until email is set up
+// (O8); the extra-award picker stays as built (design pending).
 import { useState } from 'react';
 import type { RankRow, Recorded, SelectionData } from '@/lib/selection';
-import { chooseNoExtra, recordAward, sendAgenda, undoAward } from '@/lib/actions/selection';
+import { chooseNoExtra, recordAward, undoAward } from '@/lib/actions/selection';
 import { OIcon } from './icons';
 import { PageHeader } from './page-header';
 import { Ring } from './ring';
 import { Dialog } from './sch-parts';
 import './scholarships.css';
 
-type Pending = { code: string; initials: string; kind: 'main' | 'extra' };
+type Pending = { id: string; code: string; initials: string; kind: 'main' | 'extra' };
 
 // One row of the ranking (laptop): rank, code, combined score, who scored what, the pill; opens to the details.
 function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle: () => void }) {
@@ -74,20 +75,20 @@ export function SelectionView({ data }: { data: SelectionData }) {
   const main = recorded.find((a) => a.kind === 'main');
   const extra = recorded.find((a) => a.kind === 'extra');
   const leg = data.legacy;
-  const top0 = leg.candidates[0] ?? { code: '', initials: 'nobody yet' };
+  const top0 = leg.candidates[0] ?? { id: '', code: '', initials: 'nobody yet' };
   const nameList = leg.candidates.map((c) => c.initials).join(' or ');
   const doneCount = (main ? 1 : 0) + (extra || noExtra ? 1 : 0);
-  const nowLabel = !main ? (leg.tie ? 'Vote on the Legacy award' : 'Record the Legacy award') : !(extra || noExtra) ? 'Open an extra award' : data.callStep;
+  const nowLabel = !main ? (leg.tie ? `Vote on the ${leg.name} award` : `Record the ${leg.name} award`) : !(extra || noExtra) ? 'Open an extra award' : data.callStep;
   const extraNames = data.extra.candidates.map((c) => c.initials).join(' or ');
   const allRows = [...data.rows, ...(showMore ? data.more : [])];
 
   async function confirm() {
     if (!pending) return;
     const p = pending;
-    const award = p.kind === 'main' ? { name: data.legacy.name, cents: data.legacy.amount } : { name: data.extra.name, cents: Number(data.extra.amountLabel.replace(/[^0-9]/g, '')) * 100 };
+    const award = p.kind === 'main' ? { name: data.legacy.awardName, cents: data.legacy.amount } : { name: data.extra.name, cents: data.extra.amountCents };
     const res = await recordAward({
       cycleId: data.cycleId,
-      applicationId: p.code,
+      applicationId: p.id,
       code: p.code,
       initials: p.initials,
       kind: p.kind,
@@ -97,7 +98,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
     });
     setPending(null);
     if (res.ok && res.id) {
-      setRecorded((r) => [...r, { id: res.id as string, code: p.code, initials: p.initials, kind: p.kind, awardName: award.name, amountCents: award.cents }]);
+      setRecorded((r) => [...r, { id: res.id as string, code: p.code, initials: p.initials, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : award.name, amountCents: award.cents }]);
       setChoosing(false);
       setNote('');
     } else setNote(res.message);
@@ -115,22 +116,18 @@ export function SelectionView({ data }: { data: SelectionData }) {
     else setNote(res.message);
   }
 
-  async function send() {
-    const res = await sendAgenda();
-    setNote(res.message);
-  }
-
   const dollar = (cents: number) => `$${(cents / 100).toLocaleString('en-US')}`;
 
   // The action buttons for the Legacy step.
-  const legacyButtons = leg.tie ? (
+  // Nobody has both scores in yet: nothing to record.
+  const legacyButtons = leg.candidates.length === 0 ? null : leg.tie ? (
     leg.candidates.map((c) => (
-      <button type="button" key={c.code} className="s-sb" onClick={() => setPending({ code: c.code, initials: c.initials, kind: 'main' })}>
+      <button type="button" key={c.code} className="s-sb" onClick={() => setPending({ id: c.id, code: c.code, initials: c.initials, kind: 'main' })}>
         Record {c.initials}
       </button>
     ))
   ) : (
-    <button type="button" className="s-sb" onClick={() => setPending({ code: top0.code, initials: top0.initials, kind: 'main' })}>
+    <button type="button" className="s-sb" onClick={() => setPending({ id: top0.id, code: top0.code, initials: top0.initials, kind: 'main' })}>
       Record the award
     </button>
   );
@@ -138,7 +135,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
   const extraButtons = choosing ? (
     <>
       {data.extra.candidates.map((c) => (
-        <button type="button" key={c.code} className="s-sb" onClick={() => setPending({ code: c.code, initials: c.initials, kind: 'extra' })}>
+        <button type="button" key={c.code} className="s-sb" onClick={() => setPending({ id: c.id, code: c.code, initials: c.initials, kind: 'extra' })}>
           Record {c.initials}
         </button>
       ))}
@@ -160,12 +157,11 @@ export function SelectionView({ data }: { data: SelectionData }) {
   return (
     <div className="s-page s-sel">
       <PageHeader title="Selection" sub={<><span className="o-lg">{data.sub}</span><span className="o-ph">{data.phoneSub}</span></>} actionsClass="o-lg">
-        <a className="o-btn s lg" href={data.meetingVideo} target="_blank" rel="noreferrer">
-          Join the call
-        </a>
-        <button type="button" className="o-btn p lg" onClick={send}>
-          Send the agenda
-        </button>
+        {data.meetingVideo ? (
+          <a className="o-btn s lg" href={data.meetingVideo} target="_blank" rel="noreferrer">
+            Join the call
+          </a>
+        ) : null}
       </PageHeader>
 
       <div className="s-sbody">
@@ -242,7 +238,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
                   <b>
                     {r.code} · {r.initials}
                   </b>
-                  <span>{r.chip ? r.chip.text.replace('Legacy, top score', 'Legacy, top score') : r.parts}</span>
+                  <span>{r.chip ? r.chip.text : r.parts}</span>
                 </span>
                 <strong>{r.combined}</strong>
               </div>
@@ -291,7 +287,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
                   </>
                 ) : (
                   <>
-                    <b>{leg.tie ? `Vote on the Legacy award: ${nameList.replace(' or ', ' or ')}` : `Record the Legacy award: ${top0.initials}`}</b>
+                    <b>{leg.tie ? `Vote on the ${leg.name} award: ${nameList}` : `Record the ${leg.name} award: ${top0.initials}`}</b>
                     <span>{leg.tie ? `Tie at ${leg.tieScore}, goes to a vote` : 'Top score, no tie'}</span>
                     <div className="s-acts">{legacyButtons}</div>
                   </>
@@ -353,14 +349,13 @@ export function SelectionView({ data }: { data: SelectionData }) {
                 </span>
               </span>
             </div>
-            <div className="b">
-              <a className="o-btn p xl s-pb j" href={data.meetingVideo} target="_blank" rel="noreferrer">
-                Join the call
-              </a>
-              <button type="button" className="o-btn s xl s-pb" onClick={send}>
-                Send the agenda
-              </button>
-            </div>
+            {data.meetingVideo ? (
+              <div className="b">
+                <a className="o-btn p xl s-pb j" href={data.meetingVideo} target="_blank" rel="noreferrer">
+                  Join the call
+                </a>
+              </div>
+            ) : null}
           </section>
         </div>
       </div>

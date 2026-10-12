@@ -1,6 +1,6 @@
-// The full application: every answer the applicant gave and the two PDFs (resume, transcript). Reviews are blind, so
-// the page is headed by the code and initials; the identity fields (name, emails, phone, gender, race) appear only for
-// an admin. The PDFs open through /file/<kind>, which makes a short-lived signed link to the private storage bucket.
+// The full application: the answers and the two PDFs (resume, transcript). Reviews are blind (D2), so the page is headed
+// by the code and initials; board members and reviewers get the blind answers only, and the identity fields (name,
+// emails, phone, gender, race) and the admin-only answers appear only for an admin. The PDFs open through /file/<kind>, which makes a short-lived signed link to the private storage bucket.
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -21,11 +21,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // The page.
 export default async function ApplicationPage({ params }: Props) {
   const { code } = await params;
-  const [app, user] = await Promise.all([loadApplication(decodeURIComponent(code)), requireStaff()]);
+  const user = await requireStaff();
+  const app = await loadApplication(decodeURIComponent(code), user.role);
   if (!app) notFound();
   return (
     <>
-      <PageHeader title={app.code} sub={`${app.initials} · Fall 2026 · submitted ${app.submitted}`}>
+      <PageHeader title={app.code} sub={`${app.initials} · ${app.term} · submitted ${app.submitted}`}>
         <Link href="/scholarships/applicants" className="o-btn s lg">
           Back to applicants
         </Link>
@@ -70,7 +71,7 @@ export default async function ApplicationPage({ params }: Props) {
             </div>
           ))}
         </section>
-        {user.role === 'admin' ? (
+        {user.role === 'admin' && app.identity.length > 0 ? (
           <section className="o-card o-app-sec o-app-wide">
             <h2 className="o-h2">Identity (admins only)</h2>
             <p className="o-app-note">Reviewers see only the code and initials.</p>

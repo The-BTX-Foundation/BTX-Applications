@@ -1,5 +1,4 @@
-// Scholarships > Selection: the ranking and the meeting agenda (scores, awards and the meeting are mock until the Ops Hub
-// tables exist). ?demo=error draws the "didn't load" state and ?demo=stress the stress frame's data, in mock mode only.
+// Scholarships > Selection: the ranking and the meeting agenda (live: lib/selection.ts; mock mode: mock/selection.ts). ?demo=error draws the "didn't load" state and ?demo=stress the stress frame's data, in mock mode only.
 import type { Metadata } from 'next';
 import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';

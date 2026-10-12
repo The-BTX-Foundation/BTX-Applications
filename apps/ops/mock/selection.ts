@@ -57,12 +57,12 @@ export const CALL_STEP = 'Who calls the winners';
 
 export type RecordedAward = { id: string; code: string; initials: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; note: string };
 
-type Store = { awards: RecordedAward[]; noExtra: boolean; agendaSent: boolean };
+type Store = { awards: RecordedAward[]; noExtra: boolean; agendaSent: boolean; releasedAt: string | null };
 const g = globalThis as unknown as { __btxSelection?: Store };
 
 /** The in-memory record of what was decided in this server process (mock mode only). */
 export function selectionStore(): Store {
-  g.__btxSelection ??= { awards: [], noExtra: false, agendaSent: false };
+  g.__btxSelection ??= { awards: [], noExtra: false, agendaSent: false, releasedAt: null };
   return g.__btxSelection;
 }
 

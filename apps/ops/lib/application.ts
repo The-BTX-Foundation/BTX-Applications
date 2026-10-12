@@ -1,16 +1,20 @@
-// One submitted application with every answer, for the full-application page. REAL in live mode (the `applications` and
-// `application_files` tables, read as the signed-in person: staff may read submitted applications and their files). In
-// mock mode it is a made-up applicant so the page can be seen without a database.
+// One submitted application, for the full-application page. Live mode, read as the signed-in person (blind review, D2):
+// board members and reviewers get the blind view `application_reviews` (code, initials, year, credits, major, interests,
+// the three short answers) and the files; an admin also gets the name, contact details, demographics and the rest from
+// `applications`. In mock mode it is a made-up applicant so the page can be seen without a database.
 import { hasSupabaseEnv } from '@btx/data';
 import { MOCK_APPLICANTS } from '@/mock/applicants';
-import { sessionClient } from './supabase-server';
-import { dayLabel, dottedInitials } from './format';
+import type { StaffRole } from './role';
+import { blindByCode, db } from './sch-live';
+import { dayLabel } from './format';
 
 export type ApplicationDetail = {
   code: string;
   initials: string;
   submitted: string;
-  /** Identity fields: shown to admins only (reviews are blind). */
+  /** The cycle's term ("Fall 2026"). */
+  term: string;
+  /** Identity fields: admins only (reviews are blind); empty for everyone else. */
   identity: { label: string; value: string }[];
   /** The answers, in the order the Portal asks them. */
   answers: { label: string; value: string }[];
@@ -24,7 +28,7 @@ const yesNo = (v: boolean | null | undefined) => (v ? 'Yes' : 'No');
 const text = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? 'Not answered' : String(v));
 
 // Loads the application with this code, or null if there is none (or this account may not read it).
-export async function loadApplication(code: string): Promise<ApplicationDetail | null> {
+export async function loadApplication(code: string, role: StaffRole): Promise<ApplicationDetail | null> {
   if (!hasSupabaseEnv()) {
     const m = MOCK_APPLICANTS.find((a) => a.code === code);
     if (!m) return null;
@@ -32,6 +36,7 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
       code,
       initials: m.initials,
       submitted: dayLabel(m.appliedAt),
+      term: 'Fall 2026',
       identity: [
         { label: 'Name', value: 'Sample Applicant' },
         { label: 'Terpmail', value: 'sample@terpmail.umd.edu' },
@@ -62,16 +67,48 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
       mock: true,
     };
   }
-  const client = await sessionClient();
-  // RLS (applications_select_staff): only submitted applications are visible to staff, and only to staff.
-  const { data: a } = await client.from('applications').select('*').eq('applicant_code', code).eq('status', 'submitted').maybeSingle();
-  if (!a) return null;
-  const { data: files } = await client.from('application_files').select('kind, filename').eq('application_id', a.id);
-  const fileOf = (k: 'resume' | 'transcript') => files?.find((f) => f.kind === k)?.filename ?? null;
-  return {
+  const client = await db();
+  // Blind review (D2): every staff role reads the blind view; only an admin reads the applications table itself.
+  const blind = await blindByCode(client, code);
+  if (!blind) return null;
+  const { data: cyc } = await client.from('cycles').select('term').eq('id', blind.cycle_id).maybeSingle();
+  // application_files_select_staff: staff read the file rows of submitted applications (is_submitted_application()).
+  const { data: files } = await client.from('application_files').select('kind, filename').eq('application_id', blind.id);
+  const fileOf = (k: 'resume' | 'transcript') => (files as { kind: string; filename: string }[] | null)?.find((f) => f.kind === k)?.filename ?? null;
+  const shared = {
     code,
-    initials: dottedInitials(a.full_name),
-    submitted: dayLabel(a.submitted_at),
+    initials: blind.initials ?? '—',
+    submitted: dayLabel(blind.submitted_at),
+    term: (cyc as { term: string } | null)?.term ?? '',
+    shortAnswers: [blind.answer_1 ?? '', blind.answer_2 ?? '', blind.answer_3 ?? ''] as [string, string, string],
+    files: [
+      { kind: 'resume' as const, label: 'Resume', filename: fileOf('resume') },
+      { kind: 'transcript' as const, label: 'Transcript', filename: fileOf('transcript') },
+    ],
+    mock: false,
+  };
+  if (role !== 'admin') {
+    return {
+      ...shared,
+      identity: [],
+      answers: [
+        { label: 'Year in school', value: text(blind.year_in_school) },
+        { label: 'Major', value: text(blind.major) },
+        { label: 'Credits left', value: text(blind.credits_left) },
+        { label: 'Interested in certification', value: yesNo(blind.interest_certification) },
+        { label: 'Interested in mentoring', value: yesNo(blind.interest_mentoring) },
+      ],
+    };
+  }
+  // Admins only (applications_select_admin).
+  const { data: a, error } = await client
+    .from('applications')
+    .select('full_name, terpmail, secondary_email, phone, gender, race, heard_from, year_in_school, major, credits_left, interest_certification, interest_mentoring, stay_in_touch, agreed_true')
+    .eq('id', blind.id)
+    .maybeSingle();
+  if (error || !a) return null;
+  return {
+    ...shared,
     identity: [
       { label: 'Name', value: text(a.full_name) },
       { label: 'Terpmail', value: text(a.terpmail) },
@@ -90,11 +127,5 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
       { label: 'Stay in touch', value: yesNo(a.stay_in_touch) },
       { label: 'Confirmed the answers are true', value: yesNo(a.agreed_true) },
     ],
-    shortAnswers: [a.answer_1 ?? '', a.answer_2 ?? '', a.answer_3 ?? ''],
-    files: [
-      { kind: 'resume', label: 'Resume', filename: fileOf('resume') },
-      { kind: 'transcript', label: 'Transcript', filename: fileOf('transcript') },
-    ],
-    mock: false,
   };
 }
