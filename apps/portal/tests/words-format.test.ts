@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ESSAY_WORD_LIMIT, countWords } from '@/lib/words';
+import { ANSWER_WORD_LIMIT } from '@btx/data';
+import { countWords } from '@/lib/words';
 import { daysBetween, easternDate, easternTime, formatMoney, longDay, savedTime, shortDay } from '@/lib/format';
 
 describe('word count', () => {
@@ -10,8 +11,8 @@ describe('word count', () => {
     expect(countWords(' one  two\nthree\n\nfour ')).toBe(4);
   });
   it('knows the limit', () => {
-    expect(ESSAY_WORD_LIMIT).toBe(500);
-    expect(countWords(Array(501).fill('w').join(' '))).toBeGreaterThan(ESSAY_WORD_LIMIT);
+    expect(ANSWER_WORD_LIMIT).toBe(250);
+    expect(countWords(Array(251).fill('w').join(' '))).toBeGreaterThan(ANSWER_WORD_LIMIT);
   });
 });
 

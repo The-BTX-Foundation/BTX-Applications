@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Checkbox, ErrorIcon, ErrorSummary, Icon, type SummaryItem } from '@btx/ui';
 import {
+  SHORT_ANSWER_QUESTIONS,
   getAuthMode,
   getBrowserClient,
   submitApplication,
@@ -24,6 +25,7 @@ import { useAutosave } from '@/lib/use-autosave';
 import { countWords } from '@/lib/words';
 import { HELP_EMAIL } from '@btx/ui';
 import { ApplyShell } from './apply-shell';
+import { DEMO_ANSWERS } from './short-answers-form';
 import { FileName, Name } from './text';
 import s from './review-form.module.css';
 
@@ -39,6 +41,13 @@ const COLUMN_FIELD: Record<string, { id: string; label: string }> = {
   major: { id: 'major', label: LABELS.major },
 };
 
+// Database column -> the short-answer box on step 3 (answer_1 is question 1).
+const ANSWER_FIELD: Record<string, { id: string; n: number }> = {
+  answer_1: { id: 'answer-1', n: 1 },
+  answer_2: { id: 'answer-2', n: 2 },
+  answer_3: { id: 'answer-3', n: 3 },
+};
+
 type Failure =
   | { kind: 'connection' }
   | { kind: 'closed' }
@@ -46,7 +55,6 @@ type Failure =
 
 const DEMO = {
   basic: 'Ebony Coleman, (301) 555-0148. Junior, Mechanical Engineering, 48 credits left.',
-  words: 412,
   files: ['Coleman_Resume.pdf', 'Coleman_Unofficial_Transcript.pdf'],
 };
 
@@ -67,7 +75,7 @@ export function ReviewForm({
   const [agreed, setAgreed] = useState(demo ? true : (application?.agreed_true ?? false));
   const [agreeError, setAgreeError] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(demo?.startsWith('failed') ? { kind: 'connection' } : null);
-  const [open, setOpen] = useState<'essay' | 'docs' | null>(null);
+  const [open, setOpen] = useState<'answers' | 'docs' | null>(null);
   const [busy, setBusy] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
   const auto = useAutosave(application?.id ?? null, application && application.updated_at !== application.created_at ? application.updated_at : null);
@@ -76,7 +84,8 @@ export function ReviewForm({
   const done = demo ? [true, true, true, true, false] : stepsDone(application, files);
   const a = application;
   const stress = Boolean(demo?.includes('stress'));
-  const words = stress ? countWords(STRESS.essay) : demo ? DEMO.words : countWords(a?.essay ?? '');
+  const answers: readonly string[] = stress ? STRESS.answers : demo ? DEMO_ANSWERS : [a?.answer_1 ?? '', a?.answer_2 ?? '', a?.answer_3 ?? ''];
+  const answered = answers.filter((t) => countWords(t) > 0).length;
   const name = view.awardName ?? '[award name]';
   const programs = [a?.interest_certification ? 'the certification program' : '', a?.interest_mentoring ? 'mentoring' : ''].filter(Boolean);
   const rows = [
@@ -104,7 +113,12 @@ export function ReviewForm({
       title: 'Scholarship and programs',
       text: demo ? `${name}, plus the certification program` : `${name}${programs.length ? `, plus ${programs.join(' and ')}` : ''}`,
     },
-    { step: 3, title: 'Essay', text: words ? `${words} words` : 'No essay (optional)', view: words > 0 ? ('essay' as const) : undefined },
+    {
+      step: 3,
+      title: 'Short answers',
+      text: answered === SHORT_ANSWER_QUESTIONS.length ? `All ${answered} answered` : `${answered} of ${SHORT_ANSWER_QUESTIONS.length} answered`,
+      view: answered > 0 ? ('answers' as const) : undefined,
+    },
     {
       step: 4,
       title: 'Documents',
@@ -159,11 +173,19 @@ export function ReviewForm({
     if (r.kind === 'missing_answers') {
       setFailure({
         kind: 'missing',
-        items: r.columns.map((c) => ({
-          fieldId: COLUMN_FIELD[c]?.id ?? c,
-          message: `${COLUMN_FIELD[c]?.label ?? c}: fill this in on Basic info.`,
-          href: `${STEP_PATHS[0]}#${COLUMN_FIELD[c]?.id ?? c}`,
-        })),
+        items: r.columns.map((c) =>
+          ANSWER_FIELD[c]
+            ? {
+                fieldId: ANSWER_FIELD[c].id,
+                message: `Short answers: answer question ${ANSWER_FIELD[c].n}.`,
+                href: `${STEP_PATHS[2]}#${ANSWER_FIELD[c].id}`,
+              }
+            : {
+                fieldId: COLUMN_FIELD[c]?.id ?? c,
+                message: `${COLUMN_FIELD[c]?.label ?? c}: fill this in on Basic info.`,
+                href: `${STEP_PATHS[0]}#${COLUMN_FIELD[c]?.id ?? c}`,
+              },
+        ),
       });
     } else if (r.kind === 'missing_files') {
       setFailure({ kind: 'missing', items: [{ fieldId: 'docs', message: 'Documents: upload both your resume and your transcript.', href: STEP_PATHS[3] }] });
@@ -259,7 +281,16 @@ export function ReviewForm({
                 Edit
               </a>
             </span>
-            {open === 'essay' && r.view === 'essay' ? <p className={s.panel}>{a?.essay ?? 'Your essay appears here.'}</p> : null}
+            {open === 'answers' && r.view === 'answers' ? (
+              <div className={s.panel}>
+                {SHORT_ANSWER_QUESTIONS.map((q, i) => (
+                  <div className={s.qa} key={q}>
+                    <p className={s.q}>{q}</p>
+                    <p>{answers[i].trim() ? answers[i] : 'Not answered yet.'}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {open === 'docs' && r.view === 'docs' ? (
               <p className={s.panel}>
                 {files.map((f) => (

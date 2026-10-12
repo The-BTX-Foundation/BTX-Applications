@@ -45,13 +45,22 @@ test('sign in, complete the five steps, submit and reach the status page', async
   await page.getByRole('checkbox', { name: /Certification program/ }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // step 3: over the limit blocks Continue, a short essay passes
-  await expect(page).toHaveURL(/\/apply\/essay/);
-  await page.getByLabel('Your essay').fill(Array(520).fill('word').join(' '));
-  await expect(page.getByText('Shorten your essay by 20 words')).toBeVisible();
+  // step 3: all three answers are required, over the limit blocks Continue, three short answers pass
+  await expect(page).toHaveURL(/\/apply\/short-answers/);
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page).toHaveURL(/\/apply\/essay/);
-  await page.getByLabel('Your essay').fill('A short essay about a ramp.');
+  await expect(page.getByText('Answer this question to continue.')).toHaveCount(3);
+  await expect(page).toHaveURL(/\/apply\/short-answers/);
+  const q1 = page.getByLabel(/community you're part of/);
+  const q2 = page.getByLabel(/class that pushed you/);
+  const q3 = page.getByLabel(/problem do you want to work on/);
+  await expect(q1).toBeFocused();
+  await q1.fill(Array(270).fill('word').join(' '));
+  await expect(page.getByText('Shorten this answer by 20 words to continue.')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(/\/apply\/short-answers/);
+  await q1.fill('I rebuilt the ramp at my church with my uncle.');
+  await q2.fill('Thermodynamics. I started drawing the system first.');
+  await q3.fill('Accessible public buildings. I survey one a month.');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // step 4: both documents are required
