@@ -32,7 +32,10 @@ export type CycleView = {
     apply: string;
     interviewStart: string;
     interviewEnd: string;
+    /** Where the decision sits on the drawing. When the cycle has no decision date yet, two weeks after the interviews. */
     decision: string;
+    /** False when the cycle has no decision date yet: the label reads "Date to come" instead of a date. */
+    decisionKnown: boolean;
     today: string;
   };
 };
@@ -59,6 +62,7 @@ const MOCK: CycleView = {
     interviewStart: '2026-09-15',
     interviewEnd: '2026-10-09',
     decision: '2026-10-23',
+    decisionKnown: true,
     today: '2026-09-12',
   },
 };
@@ -67,7 +71,8 @@ const MOCK: CycleView = {
 export function toView(c: Cycle): CycleView {
   const opens = c.opens_at ? easternDate(c.opens_at) : null;
   const apply = c.closes_at ? easternDate(c.closes_at) : null;
-  const complete = opens && apply && c.interview_start && c.interview_end && c.decision_date;
+  // The decision date may come later than the other dates; the drawing still shows, with "Date to come".
+  const complete = opens && apply && c.interview_start && c.interview_end;
   return {
     id: c.id,
     term: c.term,
@@ -87,7 +92,8 @@ export function toView(c: Cycle): CycleView {
           apply,
           interviewStart: c.interview_start!,
           interviewEnd: c.interview_end!,
-          decision: c.decision_date!,
+          decision: c.decision_date ?? addDays(c.interview_end!, 14),
+          decisionKnown: Boolean(c.decision_date),
           today: easternDate(new Date()),
         }
       : null,
@@ -134,7 +140,7 @@ export function drawingProps(view: CycleView, mode: 'open' | 'before') {
       opens: shortDay(d.opens),
       apply: shortDay(d.apply),
       interview: `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}`,
-      decision: shortDay(d.decision),
+      decision: d.decisionKnown ? shortDay(d.decision) : DECISION_TO_COME,
     },
     applyLabel: `Apply by ${shortDay(d.apply)}`,
   };
@@ -146,6 +152,16 @@ export async function loadCodeLifetime(): Promise<{ text: string; minutes: numbe
   const cycle = await getPublishedCycle(createAnonClient());
   const minutes = cycle?.code_lifetime_minutes ?? null;
   return { text: minutes ? `${minutes} minutes` : PLACEHOLDER.time, minutes: minutes ?? 60 };
+}
+
+/** The decision label while the cycle has no decision date. */
+export const DECISION_TO_COME = 'Date to come';
+
+// "2026-11-20" plus 14 days -> "2026-12-04" (calendar days, no time zone involved).
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 // The example cycle used by the mock mode.
