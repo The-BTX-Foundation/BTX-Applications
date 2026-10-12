@@ -68,7 +68,8 @@ export function ShortAnswersForm({
 
   // The message under answer i, or null when it is fine.
   function problem(i: number): string | null {
-    if (words[i] > ANSWER_WORD_LIMIT) return `Shorten this answer by ${words[i] - ANSWER_WORD_LIMIT} words to continue.`;
+    const over = words[i] - ANSWER_WORD_LIMIT;
+    if (over > 0) return `Shorten this answer by ${over} ${over === 1 ? 'word' : 'words'} to continue.`;
     if (submitted && words[i] === 0) return 'Answer this question to continue.';
     return null;
   }
