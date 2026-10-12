@@ -1,7 +1,7 @@
 // The page after submitting (drafts status-wait.html and status-wait-phone.html): "Application submitted.", the
 // submit time, the dates drawing from the cycle, things to do while waiting, and the Follow BTX card.
 import { DatesDrawing, HELP_EMAIL, Icon, TopBar } from '@btx/ui';
-import type { CycleView } from '@/lib/cycle';
+import { DECISION_TO_COME, type CycleView } from '@/lib/cycle';
 import { daysBetween, easternDate, longDay, shortDay } from '@/lib/format';
 import { LINKEDIN_URL } from '@/lib/config';
 import s from './status-view.module.css';
@@ -47,7 +47,7 @@ export function StatusView({
           decision: daysBetween(start, d.decision),
           today: Math.max(0, daysBetween(start, today)),
         },
-        dates: { opens: '', apply: '', interview: `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}`, decision: shortDay(d.decision) },
+        dates: { opens: '', apply: '', interview: `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}`, decision: d.decisionKnown ? shortDay(d.decision) : DECISION_TO_COME },
       }
     : { mode: 'submitted' as const, dates: { opens: '', apply: '', interview: '[date]', decision: '[date]' } };
   const interviewDay = d ? longDay(d.interviewStart) : '[date]';

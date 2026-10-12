@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     term: view.term ?? '',
     award: view.awardName ?? 'scholarship',
     interviewWeeks: d ? `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}` : '[dates]',
-    decisionDate: d ? longDay(d.decision) : '[date]',
+    decisionDate: d && d.decisionKnown ? longDay(d.decision) : null,
     statusUrl: `${origin}/status`,
     helpEmail: HELP_EMAIL,
   };

@@ -27,6 +27,12 @@ describe('confirmation email', () => {
     expect(html).toContain('Fri Oct 23');
     expect(confirmationText(input)).toContain('https://apply.example.org/status');
   });
+  it('says decision by email after the interviews when the cycle has no decision date yet', () => {
+    const none = { ...input, decisionDate: null };
+    expect(confirmationHtml(none)).toContain('Decision by email after the interviews.');
+    expect(confirmationText(none)).toContain('Decision by email after the interviews.');
+    expect(confirmationHtml(none)).not.toContain('[date]');
+  });
   it('escapes anything a student typed', () => {
     const html = confirmationHtml({ ...input, firstName: '<script>alert(1)</script>' });
     expect(html).not.toContain('<script>alert');
