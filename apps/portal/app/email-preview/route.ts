@@ -2,11 +2,10 @@
 // design review. `?email=` picks one: confirmation (default), book, won, not-picked. Nothing here sends anything.
 import { NextResponse } from 'next/server';
 import { getAuthMode } from '@btx/data';
-import { confirmationHtml } from '@/lib/email/confirmation';
 import { MOCK_VIEW } from '@/lib/cycle';
 import { longDay } from '@/lib/format';
 import { STRESS } from '@/lib/stress';
-import { bookHtml, notPickedHtml, wonHtml } from '@/lib/email/journey';
+import { bookHtml, confirmationHtml, notPickedHtml, wonHtml } from '@btx/emails';
 
 export async function GET(request: Request) {
   if (getAuthMode() !== 'mock') return new NextResponse('Not found', { status: 404 });

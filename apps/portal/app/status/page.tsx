@@ -12,7 +12,7 @@ import { journeyLinks } from '@/lib/journey-demo';
 import { pickState } from '@/lib/journey';
 import { loadJourney } from '@/lib/journey-data';
 import { easternDate } from '@/lib/format';
-import { emailConfigured } from '@/lib/email/send';
+import { emailConfigured } from '@btx/emails';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
@@ -39,7 +39,7 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
         code={d.code}
         submittedAt={d.submittedAt}
         today={easternDate(d.now)}
-        copySent={d.mock ? true : emailConfigured()}
+        copySent={d.mock ? true : emailConfigured(process.env.PORTAL_EMAIL_FROM)}
       />
     );
   }

@@ -11,7 +11,7 @@ const onVercel = process.env.VERCEL === '1';
 const nextConfig: NextConfig = {
   // Stop `next dev` from writing an AGENTS.md into the app folder.
   agentRules: false,
-  transpilePackages: ['@btx/ui', '@btx/data'],
+  transpilePackages: ['@btx/ui', '@btx/data', '@btx/emails'],
   env: onVercel
     ? {
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL,

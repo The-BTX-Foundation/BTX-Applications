@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirmationHtml, confirmationSubject, confirmationText, esc, type ConfirmationInput } from '@/lib/email/confirmation';
+import { bookHtml, bookSubject, bookText, confirmationHtml, confirmationSubject, confirmationText, esc, notPickedHtml, notPickedText, wonHtml, wonSubject, wonText, type ConfirmationInput } from '@btx/emails';
 
 const input: ConfirmationInput = {
   firstName: 'Ebony',
@@ -40,7 +40,6 @@ describe('confirmation email', () => {
   });
 });
 
-import { bookHtml, bookSubject, bookText, notPickedHtml, notPickedText, wonHtml, wonSubject, wonText } from '@/lib/email/journey';
 
 const base = { firstName: 'Ebony', to: 'ecoleman@terpmail.umd.edu', code: 'APP-2026-00016', term: 'Fall 2026', award: 'Legacy Scholarship', origin: 'https://apply.example.org', helpEmail: 'info@thebtxfoundation.org' };
 
