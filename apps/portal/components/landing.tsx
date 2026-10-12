@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { BottomBar, ButtonLink, DatesDrawing, Icon, TopBar } from '@btx/ui';
 import type { CycleVariant } from '@btx/data';
 import { drawingProps, type CycleView } from '@/lib/cycle';
-import { LINKEDIN_URL } from '@/lib/config';
+import { LINKEDIN_URL, OFFERS_URL } from '@/lib/config';
 import { PLACEHOLDER } from '@/lib/format';
 import { NotifyForm } from './notify-form';
 import s from './landing.module.css';
@@ -45,12 +45,14 @@ function WhileYouWait() {
     <div className={`${s.block} ${s.wait}`}>
       <p className={s.waitHead}>While you wait</p>
       <ul className={s.waitList}>
-        <li>
-          <a href="#">
-            <span className="lk">What BTX offers students</span>
-            <ExtIcon />
-          </a>
-        </li>
+        {OFFERS_URL ? (
+          <li>
+            <a href={OFFERS_URL}>
+              <span className="lk">What BTX offers students</span>
+              <ExtIcon />
+            </a>
+          </li>
+        ) : null}
         <li>
           <a href="#">
             <span className="lk">The certification program</span>

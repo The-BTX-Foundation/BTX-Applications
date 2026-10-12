@@ -3,6 +3,8 @@
 import { NextResponse } from 'next/server';
 import { getAuthMode } from '@btx/data';
 import { confirmationHtml } from '@/lib/email/confirmation';
+import { MOCK_VIEW } from '@/lib/cycle';
+import { longDay } from '@/lib/format';
 import { STRESS } from '@/lib/stress';
 import { bookHtml, notPickedHtml, wonHtml } from '@/lib/email/journey';
 
@@ -20,7 +22,7 @@ export async function GET(request: Request) {
     helpEmail: 'info@thebtxfoundation.org',
   };
   let html: string;
-  if (which === 'book') html = bookHtml({ ...base, origin, bookBy: '[date]' });
+  if (which === 'book') html = bookHtml({ ...base, origin, bookBy: longDay(MOCK_VIEW.drawing?.interviewEnd) });
   else if (which === 'won') html = wonHtml({ ...base, origin, amount: '[amount]', photoDue: '[date]' });
   else if (which === 'not-picked') html = notPickedHtml({ ...base, origin });
   else {

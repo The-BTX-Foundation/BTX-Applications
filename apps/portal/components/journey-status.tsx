@@ -3,6 +3,7 @@
 // switched to a new time, interview soon, interview day, and the interview-done screen.
 import Link from 'next/link';
 import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
+import { PREPARE_GUIDE_URL } from '@/lib/config';
 import { easternDate, longDay } from '@/lib/format';
 import { buildIcs, icsHref } from '@/lib/ics';
 import { countdown, dayLabel, describeFreeTimes, range, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
@@ -183,17 +184,18 @@ export function JourneyStatus(p: JourneyStatusProps) {
     </>
   ) : null;
 
-  const prep = (
+  // No link yet means no section: the heading would have nothing under it
+  const prep = PREPARE_GUIDE_URL ? (
     <div className={j.prep}>
       <p className={s.label}>Before your interview</p>
       <div className={s.pick}>
-        <a href="#" className={s.pickRow}>
+        <a href={PREPARE_GUIDE_URL} className={s.pickRow}>
           <Icon name="file" />
           <span className="lk">How to prepare for your interview</span>
         </a>
       </div>
     </div>
-  );
+  ) : null;
   const foot = (
     <div className={`${s.foot} ${j.ft}`}>
       <span className={s.questions}>

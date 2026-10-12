@@ -61,3 +61,26 @@ describe('which refusal it was', () => {
     expect(refusalIsTerpmail('tester@example.com', ['tester@example.com'])).toBe(false);
   });
 });
+
+describe('+tag entries in the allow-list', () => {
+  const allow = ['+apply'];
+  it('allows any address whose local part ends with the tag, in any case', () => {
+    expect(terpmailError('jane+apply@gmail.com', allow)).toBeNull();
+    expect(terpmailError('Jane.Doe+Apply@outlook.com', allow)).toBeNull();
+  });
+  it('needs the tag at the end of the part before the @', () => {
+    expect(terpmailError('jane+apply2@x.com', allow)).not.toBeNull();
+    expect(terpmailError('jane+apply+x@x.com', allow)).not.toBeNull();
+    expect(terpmailError('jane@apply+x.com', allow)).not.toBeNull();
+    expect(terpmailError('jane@x.com', allow)).not.toBeNull();
+  });
+  it('keeps exact addresses working next to tags', () => {
+    expect(terpmailError('tester@example.com', ['+apply', 'tester@example.com'])).toBeNull();
+  });
+  it('a lone "+" allows nothing, and an empty list allows only Terpmail', () => {
+    expect(terpmailError('jane+@x.com', ['+'])).not.toBeNull();
+    expect(terpmailError('jane+apply@gmail.com', [])).not.toBeNull();
+    expect(terpmailError('jane@terpmail.umd.edu', [])).toBeNull();
+    expect(terpmailError('jane+apply@terpmail.umd.edu', allow)).toBeNull();
+  });
+});

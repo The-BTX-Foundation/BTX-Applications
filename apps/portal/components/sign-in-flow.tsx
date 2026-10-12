@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button, CodeBoxes, CODE_LENGTH, ErrorIcon, TextField, TopBar } from '@btx/ui';
 import { getAuthMode, requestSignInCode, verifySignInCode } from '@btx/data';
 import { OPS_HUB_URL } from '@/lib/config';
+import { CODE_LIFETIME_MINUTES } from '@/lib/config';
 import { terpmailError } from '@/lib/terpmail';
 import s from './sign-in-flow.module.css';
 
@@ -24,18 +25,12 @@ const DEMO_EMAIL = 'ecoleman@terpmail.umd.edu';
 export function SignInFlow({
   demo,
   next,
-  codeLifetime,
-  lifetimeMinutes,
   linkError,
   demoEmail,
 }: {
   demo?: DemoState;
   /** Where to go after signing in (set by the proxy when it sends a signed-out visitor here). */
   next?: string;
-  /** How long a code works, for the expired screen: "30 minutes" or "[time]". */
-  codeLifetime: string;
-  /** The same in minutes, to tell an expired code from a wrong one (Supabase reports both the same way). */
-  lifetimeMinutes: number;
   /** She followed an email link that had expired or was already used. */
   linkError?: boolean;
   /** Review mode: the address shown on the code screens (the stress frames use a very long one). */
@@ -119,7 +114,7 @@ export function SignInFlow({
       return;
     }
     // "invalid-or-expired" is one error from Supabase: call it expired only when the code is older than its lifetime
-    const old = Date.now() - sentAt.current > lifetimeMinutes * 60_000;
+    const old = Date.now() - sentAt.current > CODE_LIFETIME_MINUTES * 60_000;
     setProblem(r.reason === 'invalid-or-expired' && (getAuthMode() === 'mock' || old) ? 'expired' : 'wrong');
     codeRef.current?.querySelector('input')?.focus();
   }
@@ -236,7 +231,7 @@ export function SignInFlow({
                       Send a new code
                     </button>
                   ) : problem === 'expired' ? (
-                    <span className="mu">Codes work for {codeLifetime}.</span>
+                    <span className="mu">Codes work for {CODE_LIFETIME_MINUTES} minutes.</span>
                   ) : seconds > 0 ? (
                     <span className="mu">Resend code in {seconds} seconds</span>
                   ) : (

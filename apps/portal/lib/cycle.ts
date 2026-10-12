@@ -3,7 +3,7 @@
 // them in). In mock mode (no Supabase env) the view is the Fall 2026 example from the drafts, and `?preview=` picks
 // which landing to draw. In live mode the view comes from the published cycle row.
 import { createAnonClient } from '@btx/data/server';
-import { cycleVariant, fetchPublishedCycle, getPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
+import { cycleVariant, fetchPublishedCycle, getAuthMode, type Cycle, type CycleVariant } from '@btx/data';
 import { PLACEHOLDER, daysBetween, easternDate, easternTime, formatMoney, longDay, shortDay } from './format';
 
 export type CycleView = {
@@ -21,8 +21,6 @@ export type CycleView = {
   /** "Oct" style month for the closed landing, or "[month]". */
   nextMonth: string;
   requirements: string[];
-  /** "30 minutes", or "[time]" */
-  codeLifetime: string;
   /** The photo-and-story due date ("Fri Nov 6"), or "[date]". */
   photoDue: string;
   /** How the award is paid (the cycle's payment note), or "[How it's paid]". */
@@ -61,7 +59,6 @@ const MOCK: CycleView = {
   eventDate: '[Event date]',
   eventOn: true,
   requirements: [],
-  codeLifetime: PLACEHOLDER.time,
   drawing: {
     opens: '2026-08-17',
     apply: '2026-09-14',
@@ -93,7 +90,6 @@ export function toView(c: Cycle): CycleView {
     eventDate: c.event_enabled && c.event_at ? longDay(easternDate(c.event_at)) : '[Event date]',
     eventOn: c.event_enabled,
     requirements: Array.isArray(c.requirements) ? c.requirements.filter((r): r is string => typeof r === 'string') : [],
-    codeLifetime: c.code_lifetime_minutes ? `${c.code_lifetime_minutes} minutes` : PLACEHOLDER.time,
     drawing: complete
       ? {
           opens,
@@ -152,14 +148,6 @@ export function drawingProps(view: CycleView, mode: 'open' | 'before') {
     },
     applyLabel: `Apply by ${shortDay(d.apply)}`,
   };
-}
-
-// How long a sign-in code works, as text for the expired screen and in minutes (60 when the cycle does not say).
-export async function loadCodeLifetime(): Promise<{ text: string; minutes: number }> {
-  if (getAuthMode() === 'mock') return { text: PLACEHOLDER.time, minutes: 60 };
-  const cycle = await getPublishedCycle(createAnonClient());
-  const minutes = cycle?.code_lifetime_minutes ?? null;
-  return { text: minutes ? `${minutes} minutes` : PLACEHOLDER.time, minutes: minutes ?? 60 };
 }
 
 /** The decision label while the cycle has no decision date. */

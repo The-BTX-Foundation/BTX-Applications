@@ -161,3 +161,31 @@ test.describe('phone width', () => {
     });
   }
 });
+
+// The two guide pages do not exist yet, so no link to them shows (mock mode has no guide addresses configured).
+for (const demo of ['', 'before-booking', 'sent', 'booked', 'switched']) {
+  test(`no placeholder guide links on /status${demo ? `?demo=${demo}` : ''}`, async ({ page }) => {
+    await page.goto(demo ? `/status?demo=${demo}` : '/status');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByText('How to prepare for your interview')).toHaveCount(0);
+    await expect(page.getByText('What BTX offers students')).toHaveCount(0);
+    await expect(page.getByText('Before your interview')).toHaveCount(0);
+    await expect(page.locator('a[href="#"]')).toHaveCount(0);
+  });
+}
+
+test('the waiting screen keeps its While you wait section for the certification line', async ({ page }) => {
+  await page.goto('/status');
+  await expect(page.getByText('While you wait')).toBeVisible();
+  await expect(page.getByText(/Certification program/)).toBeVisible();
+});
+
+test('the booking screen says to pick a time by the last interview day', async ({ page }) => {
+  await page.goto('/status?demo=before-booking');
+  await expect(page.getByText('Pick a time by Fri Oct 9.')).toBeVisible();
+});
+
+test('the sign-in screen says codes work for 10 minutes', async ({ page }) => {
+  await page.goto('/sign-in?demo=expired');
+  await expect(page.getByText('Codes work for 10 minutes.')).toBeVisible();
+});
