@@ -17,7 +17,8 @@
     "build:ops": "npm run build -w @btx/ops",
     "start:ops": "npm run start -w @btx/ops",
     "lint:ops": "npm run lint -w @btx/ops",
-    "typecheck:ops": "npm run typecheck -w @btx/ops"
+    "typecheck:ops": "npm run typecheck -w @btx/ops",
+    "test:ops": "npm run test -w @btx/ops"
   },
   "engines": {
     "node": ">=22.18.0",

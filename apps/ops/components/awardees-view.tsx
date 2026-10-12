@@ -137,7 +137,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                 <h2>
                   {sel.code} · {sel.initials}
                 </h2>
-                <p className="n">{sel.fullName}</p>
+                {sel.fullName ? <p className="n">{sel.fullName}</p> : null}
               </div>
               <div className="s-agc">
                 <ScoreRing n={sel.done} of={5} size={44} />
@@ -169,9 +169,11 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                 <button type="button" className="o-btn p xl" onClick={() => void remind(sel)}>
                   Send another reminder
                 </button>
-                <a className="o-btn s xl" href={`mailto:${sel.email}`}>
-                  Call or email
-                </a>
+                {sel.email ? (
+                  <a className="o-btn s xl" href={`mailto:${sel.email}`}>
+                    Call or email
+                  </a>
+                ) : null}
               </div>
               {sel.comment ? (
                 <div className="s-cmt">
@@ -227,9 +229,11 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                   <button type="button" className="o-btn p xl s-pw" onClick={() => void remind(sel)}>
                     Send another reminder
                   </button>
-                  <a className="o-btn s xl s-pw" href={`mailto:${sel.email}`}>
-                    Call or email
-                  </a>
+                  {sel.email ? (
+                    <a className="o-btn s xl s-pw" href={`mailto:${sel.email}`}>
+                      Call or email
+                    </a>
+                  ) : null}
                 </div>
               </section>
             ) : null}

@@ -3,24 +3,18 @@
 // Write actions for Scholarships > Scoring: save a draft, publish, save a private note.
 //
 // Mock mode: kept in memory for the life of the server process (so a reload in the same session shows the draft).
-// NOT TESTED, NEEDS THE OPS HUB TABLES: live mode calls the draft schema's tables exactly as defined in
-// supabase/migrations/20261010120000_ops_hub.sql (branch db/ops-schema):
-//   - `scores` (application_id, scorer_id default auth.uid(), criteria jsonb, published): the trigger scores_check()
-//     fills criteria_count, weighted_score and published_at, and refuses a publish unless all six criteria are picked.
-//     One row per (application_id, scorer_id), so a draft is an upsert and a publish is an update.
-//   - `score_private_notes` (application_id, user_id default auth.uid(), note): upsert on (application_id, user_id).
+// Live mode (NOT TESTED yet): the Ops Hub tables, as the signed-in person, so the database rules decide:
+//   - `scores` (application_id, scorer_id default auth.uid(), criteria jsonb, published): one row per (application,
+//     scorer), so a draft and a publish are both an upsert. Only an interviewer of the application may insert; only the
+//     scorer may change it, and only while it is a draft (D8: there is no un-publish in the app). The trigger
+//     scores_check() fills criteria_count, weighted_score and published_at and refuses a publish until every criterion
+//     is picked.
+//   - `score_private_notes` (application_id, user_id default auth.uid(), note): upsert; only the writer reads it.
 import { hasSupabaseEnv } from '@btx/data';
-import { sessionClient } from '../supabase-server';
+import { scoreErrorMessage } from '../sch-logic';
+import { db } from '../sch-live';
 
 type Result = { ok: boolean; message: string; savedAt?: string };
-type Err = { message: string } | null;
-// The generated types do not know the draft tables yet, so the calls below use this loose shape.
-type Loose = {
-  from: (t: string) => {
-    upsert: (v: object, o?: { onConflict: string }) => PromiseLike<{ error: Err }>;
-    update: (v: object) => { eq: (c: string, v: string) => { eq: (c: string, v: string) => PromiseLike<{ error: Err }> } };
-  };
-};
 
 const MEMORY = {
   drafts: new Map<string, Record<string, number>>(),
@@ -30,6 +24,17 @@ const MEMORY = {
 
 const nowLabel = () => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }).format(new Date());
 
+// Only whole picks 1 to 5 go to the database.
+function clean(picks: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(Object.entries(picks).filter(([k, v]) => /^[a-z_]{2,40}$/.test(k) && Number.isInteger(v) && v >= 1 && v <= 5));
+}
+
+// Writes the scorer's own row (insert the first time, update after). `published: true` publishes it.
+async function upsertScore(applicationId: string, picks: Record<string, number>, published: boolean) {
+  const client = await db();
+  return client.from('scores').upsert({ application_id: applicationId, criteria: clean(picks), published }, { onConflict: 'application_id,scorer_id' });
+}
+
 // Saves the picks so far as a draft.
 export async function saveDraft(applicationId: string, picks: Record<string, number>): Promise<Result> {
   if (!hasSupabaseEnv()) {
@@ -37,25 +42,20 @@ export async function saveDraft(applicationId: string, picks: Record<string, num
     MEMORY.drafts.set(applicationId, picks);
     return { ok: true, message: 'Draft saved.', savedAt: nowLabel() };
   }
-  const client = (await sessionClient()) as unknown as Loose;
-  const { error } = await client.from('scores').upsert({ application_id: applicationId, criteria: picks }, { onConflict: 'application_id,scorer_id' });
-  return error ? { ok: false, message: error.message } : { ok: true, message: 'Draft saved.', savedAt: nowLabel() };
+  const { error } = await upsertScore(applicationId, picks, false);
+  return error ? { ok: false, message: scoreErrorMessage(error) } : { ok: true, message: 'Draft saved.', savedAt: nowLabel() };
 }
 
-// Publishes the score (all six criteria picked). Locks it.
+// Publishes the score (every criterion picked: the database checks). Locks it.
 export async function publishScore(applicationId: string, picks: Record<string, number>): Promise<Result> {
-  if (Object.keys(picks).length < 6) return { ok: false, message: 'Publishing needs all six.' };
   if (!hasSupabaseEnv()) {
+    if (Object.keys(picks).length < 6) return { ok: false, message: 'Publishing needs all six.' };
     MEMORY.drafts.set(applicationId, picks);
     MEMORY.published.add(applicationId);
     return { ok: true, message: 'Published.' };
   }
-  const client = (await sessionClient()) as unknown as Loose;
-  const saved = await client.from('scores').upsert({ application_id: applicationId, criteria: picks }, { onConflict: 'application_id,scorer_id' });
-  if (saved.error) return { ok: false, message: saved.error.message };
-  const who = (await (await sessionClient()).auth.getUser()).data.user?.id ?? '';
-  const done = await client.from('scores').update({ published: true }).eq('application_id', applicationId).eq('scorer_id', who);
-  return done.error ? { ok: false, message: done.error.message } : { ok: true, message: 'Published.' };
+  const { error } = await upsertScore(applicationId, picks, true);
+  return error ? { ok: false, message: scoreErrorMessage(error) } : { ok: true, message: 'Published.' };
 }
 
 // Saves the private note (only its writer ever sees it).
@@ -64,7 +64,7 @@ export async function savePrivateNote(applicationId: string, note: string): Prom
     MEMORY.notes.set(applicationId, note);
     return { ok: true, message: 'Saved.' };
   }
-  const client = (await sessionClient()) as unknown as Loose;
-  const { error } = await client.from('score_private_notes').upsert({ application_id: applicationId, note }, { onConflict: 'application_id,user_id' });
-  return error ? { ok: false, message: error.message } : { ok: true, message: 'Saved.' };
+  const client = await db();
+  const { error } = await client.from('score_private_notes').upsert({ application_id: applicationId, note: note.slice(0, 10000) }, { onConflict: 'application_id,user_id' });
+  return error ? { ok: false, message: "That note didn't save. Try again." } : { ok: true, message: 'Saved.' };
 }

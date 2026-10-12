@@ -1,5 +1,4 @@
-// Scholarships > Scoring: the signed-in scorer's queue and scorecard (finished interviews are real, scores and notes are
-// mock). ?demo=error draws the "didn't load" state and ?demo=stress the stress frame's data, in mock mode only.
+// Scholarships > Scoring: the signed-in scorer's queue and scorecard (live: lib/scoring.ts; mock mode: mock/scores.ts). ?demo=error draws the "didn't load" state and ?demo=stress the stress frame's data, in mock mode only.
 import type { Metadata } from 'next';
 import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';
