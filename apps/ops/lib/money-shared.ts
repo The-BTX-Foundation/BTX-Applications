@@ -120,7 +120,8 @@ export type BudgetData = {
   plan: PlanState;
   steps: BudgetStep[];
   comments: { count: number; list: Comment[] };
-  chat: { name: string; initials: string; time: string; body: string };
+  /** The newest Money chat message; null = none yet. */
+  chat: { name: string; initials: string; time: string; body: string } | null;
 };
 
 

@@ -23,7 +23,7 @@ export function WideChecklistPanel({ list, only, now }: { list: WideChecklist; o
       {only === 'ph' ? null : (
       <section className="o-card mn-panel mn-wide o-lg" aria-labelledby={`wc-${list.id}`}>
         <div className="mn-q4h">
-          <Ring frac={done / list.steps.length} label={`${done}/${list.steps.length}`} color="gold" size={44} />
+          <Ring frac={list.steps.length ? done / list.steps.length : 0} label={`${done}/${list.steps.length}`} color="gold" size={44} />
           <div>
             <h2 id={`wc-${list.id}`}>{list.title}</h2>
             <p>{checklistLine(list)}</p>
@@ -57,7 +57,7 @@ export function WideChecklistPanel({ list, only, now }: { list: WideChecklist; o
       {only === 'lg' ? null : (
       <section className="o-card mn-wcard o-ph" aria-label={list.title}>
         <button type="button" className="mn-wcard-h" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          <Ring frac={done / list.steps.length} label={`${done}/${list.steps.length}`} color="gold" size={32} />
+          <Ring frac={list.steps.length ? done / list.steps.length : 0} label={`${done}/${list.steps.length}`} color="gold" size={32} />
           <span className="mn-wcard-t">
             <b>{list.title.replace(' with grants', '')}</b>
             <span>

@@ -1,7 +1,6 @@
 // Admin > People and roles: the data. staff_profiles gives names and titles; the role and last sign-in come from
 // staff_directory() (the role is read from app_metadata there; it is not a column).
-// MOCK (mock/money.ts): everything in mock mode, including ?demo=stress. LIVE: the two reads are written but NOT TESTED:
-// needs the Ops Hub tables (draft schema, not applied).
+// MOCK (mock/money.ts): everything in mock mode, including ?demo=stress. LIVE: reads the Ops Hub tables.
 import { hasSupabaseEnv } from '@btx/data';
 import { PEOPLE_MOCK, PEOPLE_STRESS } from '@/mock/money';
 import { MOCK_NOW } from '@/mock/applicants';
@@ -17,7 +16,6 @@ export async function loadPeople({ demo, me }: { demo?: string; me: string }): P
   if (demo === 'error') return FAILED;
   if (!hasSupabaseEnv()) return { failed: false, mode: 'mock', me: 'dm', people: demo === 'stress' ? PEOPLE_STRESS : PEOPLE_MOCK, now: MOCK_NOW };
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const client = (await sessionClient()) as unknown as {
       rpc: (fn: string) => PromiseLike<{ data: { user_id: string; role: string; last_sign_in_at: string | null }[] | null; error: unknown }>;
     };

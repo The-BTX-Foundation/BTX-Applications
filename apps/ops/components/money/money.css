@@ -1473,7 +1473,8 @@
   }
   .mn-prow {
     display: grid;
-    grid-template-columns: 178px 120px 242px minmax(0, 1fr);
+    grid-template-columns: 200px 140px 200px minmax(0, 1fr);
+    column-gap: 12px;
     align-items: center;
     padding: 0 20px;
   }
@@ -1497,9 +1498,8 @@
   .mn-pn b {
     font-size: 17px;
     font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 21px;
+    overflow-wrap: anywhere;
   }
   .mn-pr {
     display: flex;

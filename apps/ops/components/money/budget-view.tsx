@@ -70,11 +70,14 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
     </>
   );
 
-  const sub = approved
+  const noPlan = plan.status === 'draft';
+  const sub = noPlan
+    ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · No Q4 plan to approve yet`
+    : approved
     ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan is approved`
     : declined
       ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan went back to ${plan.submitter}`
-      : `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan waits for your approval, due ${dateOnlyLabel(plan.due_on)}`;
+      : `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan waits for your approval${plan.due_on ? `, due ${dateOnlyLabel(plan.due_on)}` : ''}`;
 
   return (
     <>
@@ -131,7 +134,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
       </section>
 
       <Link href={approvalHref} className="o-card mn-q4card o-ph" aria-label="Q4 budget">
-        <Ring frac={doneN / steps.length} label={`${doneN}/${steps.length}`} color="gold" size={32} />
+        <Ring frac={steps.length ? doneN / steps.length : 0} label={`${doneN}/${steps.length}`} color="gold" size={32} />
         <span className="mn-q4card-t">
           <b>Q4 budget</b>
           <span>
@@ -244,7 +247,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
         <div className="mn-rc o-lg">
           <section className="o-card mn-panel mn-q4" aria-labelledby="mn-q4-h">
             <div className="mn-q4h">
-              <Ring frac={doneN / steps.length} label={`${doneN}/${steps.length}`} color="gold" size={44} />
+              <Ring frac={steps.length ? doneN / steps.length : 0} label={`${doneN}/${steps.length}`} color="gold" size={44} />
               <div>
                 <h2 id="mn-q4-h">Q4 budget</h2>
                 <p>{checkLine}</p>
@@ -344,6 +347,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
               </Link>
             </div>
             <div className="mn-chat-b">
+              {data.chat ? (
               <div className="mn-msg">
                 <span className="mn-av big">{data.chat.initials}</span>
                 <div>
@@ -353,6 +357,9 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
                   <p className="mn-bub">{data.chat.body}</p>
                 </div>
               </div>
+              ) : (
+                <p className="mn-bub">No messages yet.</p>
+              )}
             </div>
           </section>
         </div>

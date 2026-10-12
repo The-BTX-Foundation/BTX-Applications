@@ -2,7 +2,7 @@
 
 // Money > Fundraising (Figma laptop and phone): the five numbers, recent gifts, where the money came from, and the
 // Year-end giving checklist. "Log a gift" shows only for admin and board. Data: lib/fundraising.ts; a logged gift in mock
-// mode updates this page's numbers (lib/mock-store.ts); live mode writes with lib/money-writes.ts (NOT TESTED).
+// mode updates this page's numbers (lib/mock-store.ts); live mode writes with lib/money-writes.ts.
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -59,6 +59,8 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
   }
 
   const toGo = Math.max(0, goal - s.raised_cents);
+  // The laptop table's Source column is narrow, so it uses the short names.
+  const shortName = (k: string | null) => ({ individual: 'Individual', corporate: 'Corporate', event: 'Event', grant: 'Grant' })[k as string] ?? '[source]';
   const sourceName = (k: string | null) => GIFT_SOURCES.find((x) => x.key === k)?.label ?? '[source]';
 
   return (
@@ -155,7 +157,7 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
             <div key={g.id} className="mn-tr mn-grow">
               <span className="o-lg">{g.gift_on ? dateOnlyLabel(g.gift_on) : '[date]'}</span>
               <span className="o-lg">{g.donor || '[donor]'}</span>
-              <span className="o-lg">{g.source ? sourceName(g.source) : '[source]'}</span>
+              <span className="o-lg">{g.source ? shortName(g.source) : '[source]'}</span>
               <b className="r o-lg">{g.amount_cents != null ? usd(g.amount_cents) : '[amount]'}</b>
               <span className="mn-gph o-ph">
                 <b>{g.donor || '[donor]'}</b>
