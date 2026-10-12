@@ -102,7 +102,7 @@ export function DatesDrawing(props: DatesProps) {
             ) : (
               <li style={{ left: x0 - (phone ? 10 : 12), textAlign: 'left' }}>
                 <span className="cdt">{dates.opens}</span>
-                <span className="clb">Opens</span>
+                <span className="clb">{before ? 'Opens' : 'Open'}</span>
               </li>
             )}
             {phone || sub ? null : (
