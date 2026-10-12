@@ -23,6 +23,8 @@ describe('cycle view without a decision date', () => {
     const p = drawingProps(v, 'open');
     expect(p.dates.decision).toBe(DECISION_TO_COME);
     expect(p.dates.interview).toBe('Nov 10 to Nov 20');
+    expect(p.dates.opens).toBe('Now');
+    expect(drawingProps(v, 'before').dates.opens).toBe('Oct 12');
     expect(p.applyLabel).toBe('Apply by Nov 6');
   });
   it('shows the amount and closes Nov 6 at 11:59 PM Eastern (standard time)', () => {

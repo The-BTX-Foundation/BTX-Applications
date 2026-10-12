@@ -141,7 +141,8 @@ export function drawingProps(view: CycleView, mode: 'open' | 'before') {
     },
     todayLabel: left <= 0 ? 'Today: last day' : left === 1 ? 'Today: 1 day left' : `Today: ${left} days left`,
     dates: {
-      opens: shortDay(d.opens),
+      // While applications are open the first stop reads "Now / Open", not the day they opened.
+      opens: mode === 'open' ? 'Now' : shortDay(d.opens),
       apply: shortDay(d.apply),
       interview: `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}`,
       decision: d.decisionKnown ? shortDay(d.decision) : DECISION_TO_COME,
