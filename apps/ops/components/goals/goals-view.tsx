@@ -1,10 +1,11 @@
 'use client';
 
 // The Goals screen (Figma "Goals", laptop and phone): year switch, four goal cards, scholars funded by award cycle, and
-// (laptop) the Year over year table where past years are typed in once. MOCK today: the year switch only has 2026 data,
-// "Edit goals" has no frame so it does nothing yet, and a saved figure lives in this component's state (resets on reload).
-// In live mode "Save" will upsert `year_figures` (year, metric, value, entered_by).
+// (laptop) the Year over year table where past years are typed in once. The year switch only has the current year's data;
+// "Edit goals" is hidden (owner's decision O5). Mock mode keeps a saved figure in this component's state (resets on reload);
+// live mode upserts `year_figures` (year, metric, value; money in cents) and puts the box back if the database says no.
 import { useState } from 'react';
+import { getBrowserClient, hasSupabaseEnv } from '@btx/data';
 import { PageHeader } from '../page-header';
 import type { GoalCard, GoalStatus, GoalsData } from '@/mock/goals';
 import './goals.css';
@@ -19,7 +20,6 @@ const STATUS_LABEL: Record<GoalStatus, string> = {
   not_started: 'Not started',
 };
 
-const YEARS = [2024, 2025, 2026];
 
 function Card({ g }: { g: GoalCard }) {
   return (
@@ -81,10 +81,21 @@ function YoyCell({ metric, saved, open, onOpen, onSave }: { metric: Metric; save
   );
 }
 
+// Saves one past-year figure (money as cents). Returns false when the database refuses.
+async function saveFigure(year: number, metric: Metric, value: number): Promise<boolean> {
+  const db = getBrowserClient() as unknown as {
+    from: (t: string) => { upsert: (r: Record<string, unknown>, o: { onConflict: string }) => PromiseLike<{ error: unknown }> };
+  };
+  const { error } = await db.from('year_figures').upsert({ year, metric, value: metric === 'money_raised_cents' ? Math.round(value * 100) : value }, { onConflict: 'year,metric' });
+  return !error;
+}
+
 export function GoalsView({ data }: { data: GoalsData }) {
   const [year, setYear] = useState(data.year);
-  // MOCK: in-memory only. NOT TESTED in live mode: needs the Ops Hub tables (draft schema, not applied).
+  const YEARS = [data.year - 2, data.year - 1, data.year];
+  // Figures saved on this page (dollars for money); mock mode keeps only these.
   const [saved, setSaved] = useState<Record<string, number>>({});
+  const [saveFailed, setSaveFailed] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>('money_raised_cents:2025');
   const max = Math.max(1, ...data.cycles.map((c) => c.count ?? 0));
   return (
@@ -97,9 +108,6 @@ export function GoalsView({ data }: { data: GoalsData }) {
             </button>
           ))}
         </div>
-        <button type="button" className="o-btn s lg gl-edit-goals">
-          Edit goals
-        </button>
       </PageHeader>
 
       {year === data.year ? (
@@ -136,7 +144,7 @@ export function GoalsView({ data }: { data: GoalsData }) {
           <section className="gl-panel gl-yoy gl-d">
             <div className="gl-yph">
               <h2>Year over year</h2>
-              <p>Past years are entered once, by hand</p>
+              <p>{saveFailed ? "That didn't save. Try again." : 'Past years are entered once, by hand'}</p>
             </div>
             <div className="gl-yrow gl-yh">
               <span />
@@ -161,6 +169,15 @@ export function GoalsView({ data }: { data: GoalsData }) {
                         onSave={(n) => {
                           setSaved((s) => ({ ...s, [key]: n }));
                           setOpenKey(null);
+                          setSaveFailed(false);
+                          if (hasSupabaseEnv()) {
+                            void saveFigure(y, r.metric, n).then((ok) => {
+                              if (ok) return;
+                              setSaved((s) => Object.fromEntries(Object.entries(s).filter(([k]) => k !== key)));
+                              setOpenKey(key);
+                              setSaveFailed(true);
+                            });
+                          }
                         }}
                       />
                     </span>

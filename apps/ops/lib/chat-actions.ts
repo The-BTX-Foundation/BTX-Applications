@@ -1,7 +1,7 @@
 "use client";
 
 // The Board chat's writes, called from the page's client component. Mock mode (no Supabase env) does nothing here: the
-// component keeps the new message and the read marker in its own state. Live mode calls the draft tables and functions.
+// component keeps the new message and the read marker in its own state. Live mode calls the tables and functions.
 import { getBrowserClient, hasSupabaseEnv } from "@btx/data";
 
 export const chatIsLive = () => hasSupabaseEnv();
@@ -30,7 +30,6 @@ type Writer = {
 
 // Opens (or finds) the direct conversation with another board member and returns its channel id.
 export async function openDirect(otherUserId: string): Promise<string> {
-  // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
   const { data, error } = await (getBrowserClient() as unknown as Rpc).rpc(
     "open_direct_channel",
     { p_other: otherUserId },
@@ -44,7 +43,6 @@ export async function postMessage(
   channelId: string,
   body: string,
 ): Promise<{ id: string; createdAt: string }> {
-  // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
   const { data, error } = await (getBrowserClient() as unknown as Writer)
     .from("chat_messages")
     .insert({ channel_id: channelId, body })
@@ -57,7 +55,6 @@ export async function postMessage(
 // Marks channels read for the signed-in person (user_id defaults to auth.uid()).
 export async function markRead(channelIds: string[]): Promise<void> {
   if (channelIds.length === 0) return;
-  // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
   const now = new Date().toISOString();
   const { error } = await (getBrowserClient() as unknown as Writer)
     .from("chat_read_markers")

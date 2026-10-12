@@ -3,8 +3,9 @@
 // Board chat (Figma "Board chat" laptop and phone frames). Laptop: channel list, the thread, a "Pinned" panel. Phone: a
 // channel picker above the thread. "All areas" is every area channel together; each message carries its area tag there.
 // Sending works in mock mode (an in-memory append that marks the channel read). In live mode it calls the draft tables
-// (lib/chat-actions.ts, NOT TESTED).
+// (lib/chat-actions.ts).
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { OIcon, type OpsIconName } from "@/components/icons";
 import { timeLabel } from "@/lib/format";
@@ -94,6 +95,7 @@ type Item =
 
 export function ChatView({ data }: { data: ChatData }) {
   const live = chatIsLive();
+  const router = useRouter();
   const [channels, setChannels] = useState(data.channels);
   const [messages, setMessages] = useState(data.messages);
   const [sel, setSel] = useState<string>(ALL);
@@ -172,8 +174,7 @@ export function ChatView({ data }: { data: ChatData }) {
         c.id && ids.includes(c.id) ? { ...c, unread: null, lastReadAt: at } : c,
       ),
     );
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
-    if (live) void markRead(ids).catch(() => undefined);
+    if (live) void markRead(ids).then(() => router.refresh(), () => undefined); // refresh: the sidebar's unread count
   }
 
   function open(key: string) {
@@ -200,7 +201,6 @@ export function ChatView({ data }: { data: ChatData }) {
       let createdAt = new Date(nowMs()).toISOString();
       let msgId = `local-${messages.length + 1}`;
       if (live) {
-        // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
         if (!id && target.otherUserId) {
           id = await openDirect(target.otherUserId);
           const opened = { ...target, id };

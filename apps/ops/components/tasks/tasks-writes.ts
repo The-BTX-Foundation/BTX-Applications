@@ -1,14 +1,14 @@
 'use client';
 
 // The Tasks page's write actions for LIVE mode. Mock mode never calls these (the board changes its own state instead).
-// NOT TESTED: needs the Ops Hub tables (draft schema, not applied). The generated types do not know the tables yet, so the
-// browser client is used through a loose shape.
+// The generated types do not know the tables, so the browser client is used through a loose shape.
 import { getBrowserClient } from '@btx/data';
 
 type Result = { error: unknown; data?: { id?: string } | null };
 type Loose = {
   from: (t: string) => {
     update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => Promise<Result> };
+    delete: () => { eq: (c: string, v: string) => Promise<Result> };
     insert: (v: Record<string, unknown>) => { select: (c: string) => { single: () => Promise<Result> } } & Promise<Result>;
   };
 };
@@ -35,5 +35,10 @@ export async function writeTask(title: string, area: string, me: string): Promis
   const { data, error } = await db().from('tasks').insert({ title, area, type: 'task' }).select('id').single();
   if (error || !data?.id) return null;
   const { error: e2 } = await db().from('task_assignees').insert({ task_id: data.id, user_id: me }) as unknown as Result;
-  return e2 ? null : data.id;
+  if (e2) {
+    // No owner row: take the half-made task back out rather than leave it ownerless.
+    await db().from('tasks').delete().eq('id', data.id);
+    return null;
+  }
+  return data.id;
 }

@@ -2,7 +2,7 @@
 
 // The Tasks panel on Today (Figma "section.tk: Tasks"): Mine / Team / Approvals tabs, then tasks grouped by when they
 // are due. Laptop draws a table (task, area, due, comments, one action); phone draws a list with buttons under the row.
-// MOCK data (mock/today.ts): Team shows the same list and Approvals only the approval rows until the task tables exist.
+// Mine and Team come from the tasks tables (lib/today.ts); mock mode shows the same list on both tabs. Approvals are the approval rows.
 import { useState } from 'react';
 import Link from 'next/link';
 import { OIcon } from './icons';
@@ -23,7 +23,7 @@ function Comments({ n }: { n: number }) {
 // One task row, in both layouts (the other layout's parts are hidden by CSS).
 function Row({ row }: { row: TaskRow }) {
   // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button).
-  const href = row.approval ? '/money/budget/approval' : '/tasks';
+  const href = row.href ?? (row.approval ? '/money/budget/approval' : '/tasks');
   const titleParts = (
     <>
           <b>
@@ -82,8 +82,8 @@ function Row({ row }: { row: TaskRow }) {
       </div>
       {row.phoneActions ? (
         <div className="o-act o-ph">
-          {row.phoneActions.map((a) => (
-            <Link key={a.label} href="/tasks" className={`o-btn ${a.kind}`}>
+          {row.phoneActions.map((a, n) => (
+            <Link key={a.label + n} href={n === 0 && a.kind === 'p' ? href : '/tasks'} className={`o-btn ${a.kind}`}>
               {a.label}
             </Link>
           ))}
@@ -97,7 +97,8 @@ function Row({ row }: { row: TaskRow }) {
 export function TasksCard({ data }: { data: TodayData }) {
   const [tab, setTab] = useState<Tab>('mine');
   const { counts, groups } = data;
-  const shown = groups
+  const source = tab !== 'mine' && data.teamGroups ? data.teamGroups : groups;
+  const shown = source
     .map((g) => ({ ...g, rows: tab === 'approvals' ? g.rows.filter((r) => r.approval) : g.rows }))
     .filter((g) => g.rows.length > 0);
   const tabs: { id: Tab; label: string; n: number }[] = [

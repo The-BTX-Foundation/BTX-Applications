@@ -42,6 +42,8 @@ export type TaskRow = {
   phoneLate?: boolean;
   phoneActions?: { label: string; kind: 'p' | 's' }[];
   approval?: boolean;
+  /** Where the row's button goes when it is not /tasks (live data only). */
+  href?: string;
 };
 
 export type TaskGroup = { label: string; rows: TaskRow[] };
@@ -52,6 +54,8 @@ export type TodayData = {
   counts: { mine: number; team: number; approvals: number };
   areas: OverviewArea[];
   groups: TaskGroup[];
+  /** Live data only: the Team tab's rows (the mock shows the same rows on both tabs). */
+  teamGroups?: TaskGroup[];
 };
 
 export const TODAY: TodayData = {
