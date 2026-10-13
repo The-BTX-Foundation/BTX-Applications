@@ -5,15 +5,15 @@
 // read as the signed-in person, so it only counts scores both interviewers published), with the code and name from
 // `applications` (D2: board members see names), each interviewer's score and picks from `scores`, the notes from
 // `interview_summaries`, the meeting from `calendar_events` (kind selection_meeting), the main award's name and amount
-// from `cycles`, and the awards recorded so far from `scholarship_awards`. The extra award's name and amount have no
-// column yet (design pending), so they stay mock/selection.ts's EXTRA_AWARD.
+// from `cycles`, and the awards recorded so far from `scholarship_awards`
+// (any number of extra awards, each with its own name and amount).
 // MOCK (mock/selection.ts): everything, in mock mode.
 import { hasSupabaseEnv } from '@btx/data';
 import { dayLabel, timeLabel } from './format';
 import { combinedLabels, shortAwardName, sortRanking } from './sch-logic';
 import { applicationRows, db, interviewsFor, publishedCycle, rubricFor, selectionMeeting, staffNames, summariesFor, visibleScores, whoAmI } from './sch-live';
 import { sheetFixture, RUBRIC } from '@/mock/scores';
-import { CALL_STEP, dollars, EXTRA_AWARD, MAIN_AWARD, MEETING, RANKING, selectionStore, type RankedRow } from '@/mock/selection';
+import { CALL_STEP, dollars, MAIN_AWARD, MEETING, RANKING, selectionStore, type RankedRow } from '@/mock/selection';
 
 export type RankRow = {
   rank: number;
@@ -56,7 +56,6 @@ type Settings = {
   /** Submitted applicants without both scores yet (they can still be chosen). */
   unscored: Candidate[];
   recorded: Recorded[];
-  noExtra: boolean;
   releasedAt: string | null;
 };
 
@@ -73,15 +72,14 @@ export type SelectionData = {
   meetingVideo: string;
   /** The main award step. */
   legacy: { amount: number; amountLabel: string; name: string; /** The name saved on the award row (the cycle's award name, "Legacy Scholarship"). */ awardName: string };
-  extra: { name: string; amountLabel: string; amountCents: number };
   /** Every submitted applicant the board may choose for an award, in ranking order, then the ones not scored yet. */
   candidates: Candidate[];
   callStep: string;
+  /** Every award recorded so far: the main one and any number of extras. */
   recorded: Recorded[];
-  noExtra: boolean;
   agendaSent: boolean;
   cycleId: string | null;
-  /** When decisions were released to applicants (cycles.decisions_released_at), or null. No UI yet (design pending). */
+  /** When decisions were released to applicants (cycles.decisions_released_at), or null. Extra awards can be added until then. */
   releasedAt: string | null;
   failed: boolean;
   source: 'live' | 'mock';
@@ -147,11 +145,9 @@ function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null
       name: mainName,
       awardName: live ? live.mainName : MAIN_AWARD.name,
     },
-    extra: { name: EXTRA_AWARD.name, amountLabel: dollars(EXTRA_AWARD.amountCents), amountCents: EXTRA_AWARD.amountCents },
     candidates: [...ranked.map(cand), ...(live?.unscored ?? [])],
     callStep: CALL_STEP,
     recorded: live ? live.recorded : st.awards.map(({ id, code, name, kind, awardName, amountCents }) => ({ id, code, name, kind, awardName, amountCents })),
-    noExtra: live ? live.noExtra : st.noExtra,
     agendaSent: live ? false : st.agendaSent,
     cycleId,
     releasedAt: live ? live.releasedAt : st.releasedAt,
@@ -185,7 +181,7 @@ function stress(): SelectionData {
     meetingDate: 'Thu Dec 31',
     meetingVideo: MEETING.videoUrl,
     legacy: { amount: 200000, amountLabel: '$2,000', name: 'Legacy', awardName: 'Legacy' },
-    extra: { name: 'Empowerment', amountLabel: '$500', amountCents: 50000 },
+    // Everyone submitted; the page leaves out those who already have an award.
     candidates: [
       { id: 'stress-1', code: 'APP-2026-00003', name: 'Jalen Thomas', combined: '4.8' },
       { id: 'stress-2', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', combined: '4.8' },
@@ -193,8 +189,12 @@ function stress(): SelectionData {
       { id: 'stress-4', code: 'APP-2026-00009', name: 'Maya King', combined: '4.4' },
     ],
     callStep: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour',
-    recorded: [],
-    noExtra: false,
+    // Three extra awards, one with a 60-character name, to check wrapping.
+    recorded: [
+      { id: 'stress-award-1', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', kind: 'extra', awardName: 'Empowerment Award', amountCents: 50000 },
+      { id: 'stress-award-2', code: 'APP-2026-00002', name: 'Daniel Asante', kind: 'extra', awardName: 'Community Leadership and Service Above Self Recognition Award', amountCents: 150000 },
+      { id: 'stress-award-3', code: 'APP-2026-00009', name: 'Maya King', kind: 'extra', awardName: 'Persistence Award', amountCents: 25000 },
+    ],
     agendaSent: false,
     cycleId: null,
     releasedAt: null,
@@ -225,7 +225,7 @@ async function live(): Promise<SelectionData> {
   const me = await whoAmI(client);
   if (!me) throw new Error('not staff');
   const cycle = await publishedCycle(client);
-  if (!cycle) return build([], 'live', null, { term: 'No open cycle', mainName: 'Scholarship', mainCents: 0, meetingDate: '', meetingTime: '', meetingVideo: '', submitted: 0, unscored: [], recorded: [], noExtra: false, releasedAt: null });
+  if (!cycle) return build([], 'live', null, { term: 'No open cycle', mainName: 'Scholarship', mainCents: 0, meetingDate: '', meetingTime: '', meetingVideo: '', submitted: 0, unscored: [], recorded: [], releasedAt: null });
   const apps = await applicationRows(client, cycle.id);
   const nameOf = (a: { full_name: string | null; applicant_code: string | null } | undefined) => a?.full_name?.trim() || a?.applicant_code || '—';
   const ids = apps.map((a) => a.id);
@@ -280,7 +280,8 @@ async function live(): Promise<SelectionData> {
     code: byId.get(a.application_id)?.applicant_code ?? '—',
     name: nameOf(byId.get(a.application_id)),
     kind: a.kind,
-    awardName: shortAwardName(a.award_name),
+    // An extra award keeps the name the board gave it; the main award is shortened ("Legacy Scholarship" -> "Legacy").
+    awardName: a.kind === 'main' ? shortAwardName(a.award_name) : a.award_name,
     amountCents: a.amount_cents ?? 0,
   }));
   return build(ranked, 'live', cycle.id, {
@@ -293,7 +294,6 @@ async function live(): Promise<SelectionData> {
     submitted: apps.length,
     unscored,
     recorded,
-    noExtra: false,
     releasedAt: cycle.decisions_released_at,
   });
 }
