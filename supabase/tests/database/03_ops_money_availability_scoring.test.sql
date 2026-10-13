@@ -1,4 +1,4 @@
--- Ops Hub: money deletes (D3), availability blocks (D4), scoring under blind
+-- Ops Hub: money deletes (D3), availability ranges, scoring under blind
 -- review, storage buckets. Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -127,26 +127,35 @@ select throws_ok($$ insert into public.staff_profiles (user_id, display_name, in
   values (tests.uid('ada@terpmail.umd.edu'), 'X', 'X') $$,
   '42501', null, 'role reviewer cannot add a staff profile (D6)');
 
--- ---- availability: Morning / Afternoon / Evening per day (D4) ------------------
+-- ---- availability: free time ranges per day (20261013090300) --------------------
 reset role; select tests.login('board@t.test'); set local role authenticated;
-select lives_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
-  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 3, 'morning'),
-  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 3, 'evening') $$,
-  'a board member gives availability per day and block, before any slot exists');
-select throws_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
-  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 4, 'night') $$,
-  '23514', null, 'only morning, afternoon or evening');
-select throws_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
-  ('11111111-1111-1111-1111-111111111111', tests.uid('board2@t.test'), current_date + 4, 'morning') $$,
+select lives_ok($$ insert into public.board_free_ranges (cycle_id, user_id, day, start_min, end_min) values
+  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 3, 540, 720),
+  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 3, 1020, 1260) $$,
+  'a board member gives free time ranges per day, before any slot exists');
+select throws_ok($$ insert into public.board_free_ranges (cycle_id, user_id, day, start_min, end_min) values
+  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 4, 545, 600) $$,
+  '23514', null, 'only whole half hours');
+select throws_ok($$ insert into public.board_free_ranges (cycle_id, user_id, day, start_min, end_min) values
+  ('11111111-1111-1111-1111-111111111111', tests.uid('board@t.test'), current_date + 4, 600, 600) $$,
+  '23514', null, 'a range ends after it starts');
+select throws_ok($$ insert into public.board_free_ranges (cycle_id, user_id, day, start_min, end_min) values
+  ('11111111-1111-1111-1111-111111111111', tests.uid('board2@t.test'), current_date + 4, 540, 600) $$,
   '42501', null, 'a board member cannot give someone else''s availability');
 reset role; select tests.login('stale@t.test'); set local role authenticated;
-select throws_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
-  ('11111111-1111-1111-1111-111111111111', tests.uid('stale@t.test'), current_date + 4, 'morning') $$,
+select throws_ok($$ insert into public.board_free_ranges (cycle_id, user_id, day, start_min, end_min) values
+  ('11111111-1111-1111-1111-111111111111', tests.uid('stale@t.test'), current_date + 4, 540, 600) $$,
   '42501', null, 'role reviewer cannot give availability (D6)');
 reset role; select tests.login('admin@t.test'); set local role authenticated;
-select lives_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
-  ('11111111-1111-1111-1111-111111111111', tests.uid('board2@t.test'), current_date + 4, 'afternoon') $$,
+select lives_ok($$ insert into public.board_free_ranges (cycle_id, user_id, day, start_min, end_min) values
+  ('11111111-1111-1111-1111-111111111111', tests.uid('board2@t.test'), current_date + 4, 720, 1020) $$,
   'an admin enters availability for a board member');
+select is(to_regclass('public.board_availability'), null::regclass, 'the old Morning / Afternoon / Evening table is gone');
+
+-- The pairs below are set by hand, so the ranges go before anything is booked
+-- (a booking would otherwise pair people automatically).
+reset role;
+delete from public.board_free_ranges;
 
 -- ---- scoring works for board members (the score check reads the application as them, D2)
 reset role;

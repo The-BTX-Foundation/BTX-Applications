@@ -2,11 +2,15 @@
 //   LIVE_DB=1 npx vitest run tests/pairing-db.live.test.ts
 // It creates its own "a2-*@btx.test" accounts, applications, slots and bookings in the current published cycle and
 // removes them again at the end. It reads the local keys from apps/ops/.env.local and refuses to run on any other URL.
+// Needs the local seed (supabase/seed/local-board-test.sql) for a published cycle with interview dates.
+// Since the interview flow (20261013090300), availability is stored as free ranges and a booking pairs two people by
+// itself; "Re-run pairing" pairs what could not be paired at booking time.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { addInterviewSlots, currentCycle, readAvailability, readInterviews, removeInterviewSlot, runPairing, saveMyAvailability, setVideoLinks, swapInterviewer, type Db } from '@/lib/pairing-db';
+import { addInterviewSlots, currentCycle, planPairing, readAvailability, readInterviews, removeInterviewSlot, runPairing, saveMyAvailability, setVideoLinks, swapInterviewer, type Db } from '@/lib/pairing-db';
+import { easternToUtc } from '@/lib/pairing-slots';
 
 const live = process.env.LIVE_DB === '1';
 const env = (() => {
@@ -26,6 +30,7 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
   const slotIds: string[] = [];
   const appIds: string[] = [];
   const day = (n: number) => new Date(Date.parse(`${window.start}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+  const et = (n: number, hhmm: string) => easternToUtc(day(n), hhmm) as string;
 
   async function user(key: string, role: string, name: string | null) {
     const email = `a2-${key}@btx.test`;
@@ -71,16 +76,18 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
     await user('rev', 'volunteer', 'A2 Not Staff');
     await user('app1', 'applicant', null);
     await user('app2', 'applicant', null);
+    await user('app3', 'applicant', null);
   }, 60_000);
 
   afterAll(async () => {
     if (!live) return;
-    await svc.from('board_availability').delete().in('user_id', Object.values(ids));
+    await svc.from('board_free_ranges').delete().in('user_id', Object.values(ids));
+    await svc.from('board_interview_prefs').delete().in('user_id', Object.values(ids));
     await svc.from('interview_slots').delete().in('id', slotIds); // pairings go with the slot
     // bookings use ON DELETE RESTRICT on the slot, so they are removed first
   });
 
-  it('a board member saves only their own availability, inside the interview dates', async () => {
+  it('a board member saves only their own availability, inside the interview dates (stored as ranges)', async () => {
     const r = await saveMyAvailability(clients.b1, [{ day: day(1), block: 'morning' }, { day: day(1), block: 'evening' }]);
     expect(r).toMatchObject({ ok: true, saved: 2 });
     // replace: drops the evening, adds the afternoon
@@ -92,6 +99,9 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
     const all = await readAvailability(clients.admin, cy);
     expect(new Set(all.everyone.map((a) => a.userId))).toEqual(new Set([ids.b1, ids.b2, ids.b3]));
     expect(all.days).toContain(day(1));
+    // Morning + afternoon on one day is one range, 9:00 to 17:00.
+    const rows = await svc.from('board_free_ranges').select('day, start_min, end_min').eq('user_id', ids.b1).eq('cycle_id', cycleId);
+    expect(rows.data).toEqual([{ day: day(1), start_min: 540, end_min: 1020 }]);
   });
 
   it('rejects availability outside the window, a bad block, and non-board accounts', async () => {
@@ -103,23 +113,39 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
 
   let slotA = '';
   let slotB = '';
-  it('re-runs pairing as admin only, pairs two different free people, and never moves a set pair', async () => {
-    // 2026 interview days are in the future of the local clock; 06:40 and 07:10 ET are mornings
-    slotA = await book('app1', 'APP-2026-A2001', `${day(1)}T10:40:00.000Z`);
-    slotB = await book('app2', 'APP-2026-A2002', `${day(1)}T11:10:00.000Z`);
-    expect(await runPairing(clients.b1)).toMatchObject({ ok: false });
-    const r = await runPairing(clients.admin, new Date(Date.parse(`${window.start}T00:00:00Z`) - 86_400_000));
-    expect(r).toMatchObject({ ok: true });
+  let slotC = '';
+  const before = () => new Date(Date.parse(`${window.start}T00:00:00Z`) - 86_400_000);
+  it('pairs two different free people when a student books, spreading the load', async () => {
+    slotA = await book('app1', 'APP-2026-A2001', et(1, '09:00'));
+    slotB = await book('app2', 'APP-2026-A2002', et(1, '09:30'));
     const cy = (await currentCycle(clients.admin))!;
     const { pairs } = await readInterviews(clients.admin, cy.id);
     const a = pairs.get(slotA)!;
     const b = pairs.get(slotB)!;
     expect(a).toBeTruthy();
+    expect(b).toBeTruthy();
     expect(a.a).not.toBe(a.b);
     expect(new Set([a.a, a.b, b.a, b.b]).size).toBeGreaterThanOrEqual(3); // fewest interviews: load is spread
-    const again = await runPairing(clients.admin, new Date(Date.parse(`${window.start}T00:00:00Z`) - 86_400_000));
+  });
+
+  it('re-runs pairing as admin only, for interviews nobody could take at booking time, and never moves a set pair', async () => {
+    // Nobody is free on day 2 yet, so this booking stays unpaired.
+    slotC = await book('app3', 'APP-2026-A2003', et(2, '09:00'));
+    const cy = (await currentCycle(clients.admin))!;
+    expect((await readInterviews(clients.admin, cy.id)).pairs.has(slotC)).toBe(false);
+    for (const k of ['b2', 'b3']) expect(await saveMyAvailability(clients[k], [{ day: day(1), block: 'morning' }, { day: day(2), block: 'morning' }])).toMatchObject({ ok: true });
+    expect(await runPairing(clients.b1)).toMatchObject({ ok: false });
+    expect(await planPairing(clients.b1)).toMatchObject({ ok: false });
+    const plan = await planPairing(clients.admin, before());
+    expect(plan).toMatchObject({ ok: true });
+    const r = await runPairing(clients.admin, before());
+    expect(r).toMatchObject({ ok: true, paired: 1, uncovered: 0 });
+    const { pairs } = await readInterviews(clients.admin, cy.id);
+    expect(new Set([pairs.get(slotC)!.a, pairs.get(slotC)!.b])).toEqual(new Set([ids.b2, ids.b3]));
+    const keepA = pairs.get(slotA)!;
+    const again = await runPairing(clients.admin, before());
     expect(again).toMatchObject({ ok: true, paired: 0 });
-    expect((await readInterviews(clients.admin, cy.id)).pairs.get(slotA)).toMatchObject({ a: a.a, b: a.b });
+    expect((await readInterviews(clients.admin, cy.id)).pairs.get(slotA)).toMatchObject({ a: keepA.a, b: keepA.b });
   });
 
   it('lets an admin swap one interviewer, and refuses bad swaps and non-admins', async () => {
@@ -130,6 +156,8 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
     expect(await swapInterviewer(clients.admin, slotA, cur.a, cur.b)).toMatchObject({ ok: false });
     expect(await swapInterviewer(clients.admin, slotA, ids.app1, outsider)).toMatchObject({ ok: false });
     expect(await swapInterviewer(clients.admin, slotA, cur.a, ids.app1)).toMatchObject({ ok: false });
+    // The admin gave no availability, so they cannot take it.
+    expect(await swapInterviewer(clients.admin, slotA, cur.a, ids.admin)).toMatchObject({ ok: false });
     expect(await swapInterviewer(clients.admin, slotA, cur.a, outsider)).toEqual({ ok: true });
     const after = (await readInterviews(clients.admin, cy.id)).pairs.get(slotA)!;
     expect(new Set([after.a, after.b])).toEqual(new Set([cur.b, outsider]));

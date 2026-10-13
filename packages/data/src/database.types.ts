@@ -276,13 +276,15 @@ export type Database = {
         Relationships: [];
       };
       interview_slots: {
-        Row: { capacity: number; created_at: string; cycle_id: string; ends_at: string; id: string; starts_at: string };
+        // opened_at: 20261013090300_interview_flow.sql (null = proposed, not offered to students yet)
+        Row: { capacity: number; created_at: string; cycle_id: string; ends_at: string; id: string; opened_at: string | null; starts_at: string };
         Insert: {
           capacity?: number;
           created_at?: string;
           cycle_id: string;
           ends_at: string;
           id?: string;
+          opened_at?: string | null;
           starts_at: string;
         };
         Update: {
@@ -291,6 +293,7 @@ export type Database = {
           cycle_id?: string;
           ends_at?: string;
           id?: string;
+          opened_at?: string | null;
           starts_at?: string;
         };
         Relationships: [
@@ -310,9 +313,19 @@ export type Database = {
         Relationships: [];
       };
       interview_free_times: {
-        Row: { application_id: string; created_at: string; days: string[]; note: string | null; updated_at: string; windows: string[] };
-        Insert: { application_id: string; days: string[]; note?: string | null; windows: string[] };
-        Update: { days?: string[]; note?: string | null; windows?: string[] };
+        // ranges and said, and days / windows becoming optional: 20261013090300_interview_flow.sql
+        Row: {
+          application_id: string;
+          created_at: string;
+          days: string[] | null;
+          note: string | null;
+          ranges: Json;
+          said: string | null;
+          updated_at: string;
+          windows: string[] | null;
+        };
+        Insert: { application_id: string; days?: string[] | null; note?: string | null; ranges?: Json; said?: string | null; windows?: string[] | null };
+        Update: { days?: string[] | null; note?: string | null; ranges?: Json; said?: string | null; windows?: string[] | null };
         Relationships: [
           {
             foreignKeyName: 'interview_free_times_application_id_fkey';
