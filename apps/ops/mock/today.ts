@@ -135,8 +135,8 @@ export const TODAY: TodayData = {
       rows: [
         {
           id: 't2',
-          title: 'Give interview availability, Oct 5-9',
-          phoneTitle: 'Give interview availability',
+          title: 'Give your interview availability by Mon Oct 5',
+          phoneTitle: 'Give your interview availability',
           lead: 'icon',
           typeIcon: 'calendar',
           typeLabel: 'Request',
@@ -147,6 +147,7 @@ export const TODAY: TodayData = {
           action: { label: 'Add times', kind: 's' },
           phoneSub: 'Scholarships · request',
           phoneDue: 'Tomorrow',
+          href: '/scholarships/interviews/availability',
         },
         {
           id: 't3',
@@ -289,8 +290,8 @@ export const TODAY_STRESS: TodayData = {
       rows: [
         {
           id: 's2',
-          title: 'Give interview availability, Oct 5-9',
-          phoneTitle: 'Give interview availability',
+          title: 'Give your interview availability by Mon Oct 5',
+          phoneTitle: 'Give your interview availability',
           lead: 'icon',
           typeIcon: 'calendar',
           typeLabel: 'Request',
@@ -301,6 +302,7 @@ export const TODAY_STRESS: TodayData = {
           action: { label: 'Add times', kind: 's' },
           phoneSub: 'Scholarships · request',
           phoneDue: 'Tomorrow',
+          href: '/scholarships/interviews/availability',
         },
         {
           id: 's3',
