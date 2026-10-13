@@ -1,15 +1,17 @@
 // Calendar invites for the interview emails: one VCALENDAR with one VEVENT, so "Add to calendar" and Accept work in
 // Google Calendar, Outlook and Apple Calendar. Pure functions that return strings.
 //
-// METHOD:REQUEST creates or updates the event; METHOD:CANCEL removes it. The UID is stable per slot
-// (slot-<slotId>@thebtxfoundation.org), so a later invite for the same slot updates the same calendar entry. SEQUENCE
+// METHOD:REQUEST creates or updates the event; METHOD:CANCEL removes it. The UID is stable per interview
+// (interview-<applicationId>@thebtxfoundation.org, NOT per slot), so when a student switches times a later REQUEST moves
+// the same calendar entry instead of adding a second one. SEQUENCE
 // must go up on every change: it defaults to the time of the send in whole seconds, which only ever grows.
 // Lines end in CRLF, are folded at 75 octets and have commas, semicolons, backslashes and newlines escaped (RFC 5545).
 
 export type IcsAttendee = { email: string; name?: string };
 
 export type InterviewIcsInput = {
-  slotId: string;
+  /** The application the interview belongs to: one calendar entry per interview, whatever slot it is in. */
+  applicationId: string;
   method: 'REQUEST' | 'CANCEL';
   /** ISO start and end; written in UTC. */
   startsAt: string;
@@ -70,7 +72,7 @@ export function buildInterviewIcs(i: InterviewIcsInput): string {
     'CALSCALE:GREGORIAN',
     `METHOD:${i.method}`,
     'BEGIN:VEVENT',
-    `UID:slot-${i.slotId}@thebtxfoundation.org`,
+    `UID:interview-${i.applicationId}@thebtxfoundation.org`,
     `SEQUENCE:${i.sequence ?? Math.floor(now.getTime() / 1000)}`,
     `DTSTAMP:${stamp(now)}`,
     `DTSTART:${stamp(i.startsAt)}`,

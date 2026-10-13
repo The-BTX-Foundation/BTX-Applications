@@ -253,6 +253,8 @@ export type BookedInput = Who & {
   others: string[];
   /** Student only: where she changes her time. */
   changeUrl?: string;
+  /** Student only: she switched from another time ("Your interview moved to ..."). */
+  moved?: boolean;
   term: string;
   award: string;
   origin: string;
@@ -261,7 +263,7 @@ export type BookedInput = Who & {
 export function bookedEmail(i: BookedInput): Rendered {
   const student = i.audience === 'student';
   const when = easternWhen(i.startsAt);
-  const subject = student ? `Your interview is booked: ${when}` : `Interview booked: ${when}, ${i.applicantName}`;
+  const subject = student ? (i.moved ? `Your interview moved to ${when}` : `Your interview is booked: ${when}`) : `Interview booked: ${when}, ${i.applicantName}`;
   const lead = student
     ? `Hi ${firstOf(i.firstName)}. ${i.others.length ? `${joinNames(i.others)} will interview you.` : 'We will email you who will interview you.'}`
     : `Hi ${firstOf(i.firstName)}. ${i.others.length ? `You and ${joinNames(i.others)} interview` : 'You interview'} ${i.applicantName} (${i.code}).`;
@@ -269,22 +271,22 @@ export function bookedEmail(i: BookedInput): Rendered {
     origin: i.origin,
     title: subject,
     preheader: `${when}, by video. A calendar invite is attached.`,
-    heading: student ? 'Your interview is booked.' : 'An interview is booked.',
+    heading: student ? (i.moved ? 'Your interview moved.' : 'Your interview is booked.') : 'An interview is booked.',
     body: facts(`${when} · ${lengthLabel(i.startsAt, i.endsAt)} · Video call`) + p(esc(lead), 14) + (i.videoUrl ? link(i.videoUrl) : p(esc(VIDEO_LATER), 12)),
     button: student && i.changeUrl ? { label: 'Change your time', href: i.changeUrl } : undefined,
-    extra: small('A calendar invite is attached. Questions? Reply to this email.', 20),
+    extra: small('A calendar invite is attached' + (student && i.moved ? ', and it moves the one already on your calendar' : '') + '. Questions? Reply to this email.', 20),
     signoff: 'The BTX Foundation',
     footer: student ? studentFooter(i) : interviewerFooter(i),
   });
   const text = [
-    student ? 'Your interview is booked.' : 'An interview is booked.',
+    student ? (i.moved ? 'Your interview moved.' : 'Your interview is booked.') : 'An interview is booked.',
     '',
     `${when} · ${lengthLabel(i.startsAt, i.endsAt)} · Video call`,
     lead,
     i.videoUrl ?? VIDEO_LATER,
     ...(student && i.changeUrl ? ['', `Change your time: ${i.changeUrl}`] : []),
     '',
-    'A calendar invite is attached. Questions? Reply to this email.',
+    `A calendar invite is attached${student && i.moved ? ', and it moves the one already on your calendar' : ''}. Questions? Reply to this email.`,
     '',
     'The BTX Foundation',
     '',

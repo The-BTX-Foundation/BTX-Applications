@@ -25,7 +25,7 @@ export const changeTimeUrl = (portalUrl: string) => `${portalUrl.replace(/\/+$/,
 
 function calendar(row: InterviewRow, method: 'REQUEST' | 'CANCEL', who: { email: string; name: string }, c: PlanContext) {
   const ics = buildInterviewIcs({
-    slotId: row.slotId,
+    applicationId: row.applicationId,
     method,
     startsAt: row.startsAt,
     endsAt: row.endsAt,
@@ -45,10 +45,10 @@ const planned = (kind: MailClaim['kind'], row: InterviewRow, email: string, r: R
 const base = (row: InterviewRow, c: PlanContext) => ({ term: c.term, award: c.award, origin: c.portalUrl.replace(/\/+$/, ''), startsAt: row.startsAt, endsAt: row.endsAt, videoUrl: row.videoUrl, code: row.code, applicantName: row.applicantName });
 
 /** "Your interview is booked" to the student and to each interviewer, with the calendar invite. */
-export function planBooked(row: InterviewRow, c: PlanContext): Planned[] {
+export function planBooked(row: InterviewRow, c: PlanContext, opts: { moved?: boolean } = {}): Planned[] {
   const out: Planned[] = [];
   const names = row.interviewers.map((p) => p.name);
-  const sm = bookedEmail({ ...base(row, c), audience: 'student', firstName: first(row.applicantName), others: names, changeUrl: changeTimeUrl(c.portalUrl) });
+  const sm = bookedEmail({ ...base(row, c), audience: 'student', moved: opts.moved, firstName: first(row.applicantName), others: names, changeUrl: changeTimeUrl(c.portalUrl) });
   out.push(planned('booked', row, row.applicantEmail, sm, row.applicantEmail.toLowerCase(), calendar(row, 'REQUEST', { email: row.applicantEmail, name: row.applicantName }, c)));
   for (const p of row.interviewers) {
     if (!p.email) continue;
@@ -59,10 +59,14 @@ export function planBooked(row: InterviewRow, c: PlanContext): Planned[] {
   return out;
 }
 
-/** "This interview moved" with a CANCEL invite, to the interviewers of the slot she left. */
-export function planCancel(oldRow: InterviewRow, c: PlanContext): Planned[] {
+/**
+ * "This interview moved" with a CANCEL invite (same UID as the new invite), to the interviewers of the slot she left.
+ * Anyone who is also on the new pair (`newRow`) is left out: they get the new REQUEST, which updates their event.
+ */
+export function planCancel(oldRow: InterviewRow, c: PlanContext, newRow?: InterviewRow): Planned[] {
+  const staying = new Set((newRow?.interviewers ?? []).map((p) => p.userId));
   return oldRow.interviewers
-    .filter((p) => p.email)
+    .filter((p) => p.email && !staying.has(p.userId))
     .map((p) => {
       const m = cancelEmail({ term: c.term, award: c.award, origin: c.portalUrl.replace(/\/+$/, ''), firstName: first(p.name), applicantName: oldRow.applicantName, code: oldRow.code, startsAt: oldRow.startsAt });
       return planned('cancel', oldRow, p.email!, m, p.email!.toLowerCase(), calendar(oldRow, 'CANCEL', { email: p.email!, name: p.name }, c));

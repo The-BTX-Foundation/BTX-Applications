@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildInterviewIcs, foldLine, icsAttachment, icsEscape } from '@btx/emails';
 
 const input = {
-  slotId: 'abc-123',
+  applicationId: 'app-123',
   method: 'REQUEST' as const,
   startsAt: '2026-11-12T00:00:00Z',
   endsAt: '2026-11-12T00:30:00Z',
@@ -24,7 +24,7 @@ describe('buildInterviewIcs', () => {
     expect(lines).toContain('METHOD:REQUEST');
   });
   it('has the stable UID, UTC times, summary, organizer and attendee', () => {
-    expect(lines).toContain('UID:slot-abc-123@thebtxfoundation.org');
+    expect(lines).toContain('UID:interview-app-123@thebtxfoundation.org');
     expect(lines).toContain('DTSTART:20261112T000000Z');
     expect(lines).toContain('DTEND:20261112T003000Z');
     expect(lines).toContain('SUMMARY:BTX scholarship interview');

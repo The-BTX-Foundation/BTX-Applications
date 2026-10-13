@@ -56,9 +56,26 @@ describe('bookAndNotify', () => {
     expect(s.book).toHaveBeenCalledWith('new', 'a note');
     const cancels = s.send.mock.calls.map((c) => c[0]).filter((m) => m.subject.startsWith('Interview cancelled'));
     expect(cancels.map((m) => m.to).sort()).toEqual(['o1@btx.org', 'o2@btx.org']);
-    expect(Buffer.from(cancels[0].attachments![0].content, 'base64').toString()).toContain('UID:slot-old@thebtxfoundation.org');
+    expect(Buffer.from(cancels[0].attachments![0].content, 'base64').toString()).toContain('UID:interview-a1@thebtxfoundation.org');
     expect(Buffer.from(cancels[0].attachments![0].content, 'base64').toString()).toContain('METHOD:CANCEL');
     expect(s.send).toHaveBeenCalledTimes(5);
+    const student = s.send.mock.calls.map((c) => c[0]).find((m) => m.to === 'ada@terpmail.umd.edu')!;
+    expect(student.subject).toBe('Your interview moved to Wed Nov 11, 7:00 PM');
+    const ics = Buffer.from(student.attachments![0].content, 'base64').toString();
+    expect(ics).toContain('METHOD:REQUEST');
+    expect(ics).toContain('UID:interview-a1@thebtxfoundation.org');
+  });
+
+  it('a switch where one interviewer is on both pairs: no cancel for them, only the new invite', async () => {
+    const old = slot('old', '2026-11-13T00:00:00Z', [person('u1', 'Kelsey Davis', 'k@btx.org'), person('u3', 'Old One', 'o1@btx.org')]);
+    const s = setup({ ok: true, result: 'switched' }, 'old', [old, slot('new', '2026-11-12T00:00:00Z')]);
+    await bookAndNotify('new', undefined, s.d);
+    const mails = s.send.mock.calls.map((c) => c[0]);
+    expect(mails.filter((m) => m.subject.startsWith('Interview cancelled')).map((m) => m.to)).toEqual(['o1@btx.org']);
+    const k = mails.filter((m) => m.to === 'k@btx.org');
+    expect(k).toHaveLength(1);
+    expect(k[0].subject).toContain('Interview booked');
+    expect(Buffer.from(k[0].attachments![0].content, 'base64').toString()).toContain('METHOD:REQUEST');
   });
 
   it('sends nothing for unchanged, taken or an error', async () => {

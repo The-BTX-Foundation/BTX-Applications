@@ -97,6 +97,12 @@ describe('booked, video link, rebalance, cancel', () => {
     expect(r.html).toContain('A One and B Two will interview you.');
     expect(r.html).toContain('A calendar invite is attached');
   });
+  it('booked: a student who switched sees "moved"', () => {
+    const r = bookedEmail({ ...base, audience: 'student', moved: true, firstName: 'Ada', videoUrl: null, others: [] });
+    expect(r.subject).toBe('Your interview moved to Wed Nov 11, 7:00 PM');
+    expect(r.html).toContain('Your interview moved.');
+    expect(r.text).toContain('moves the one already on your calendar');
+  });
   it('booked: an interviewer sees the applicant and the other interviewer', () => {
     const r = bookedEmail({ ...base, audience: 'interviewer', firstName: 'Kelsey', videoUrl: null, others: ['Tomi Falodun'] });
     expect(r.html).toContain('You and Tomi Falodun interview Ada Okafor');

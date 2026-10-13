@@ -5,7 +5,9 @@
 //   BEFORE  read the slot she holds now and who interviews it (the old pairing goes when she leaves the slot);
 //   AFTER   read the new slot's pairing (the database pairs two interviewers when the booking is written) and send
 //           "Your interview is booked" with a calendar invite to her and both interviewers; and, if she moved, a
-//           cancellation with a CANCEL invite to the OLD slot's interviewers.
+//           her booked email says "moved" and its REQUEST (same UID, one calendar entry per interview) moves her
+//           existing event; the OLD slot's interviewers who are not on the new pair get a CANCEL; those on both pairs get
+//           only the new REQUEST, so their event updates.
 // Emails never undo or fail a booking: any problem sending is logged and the booking result is returned as it was.
 // 'unchanged' (the same time again, maybe a new note) and 'taken' send nothing. Each email goes out once (email_log).
 import { deliverOnce, planBooked, planCancel, sendMail, type InterviewRow, type MailLog, type Mail, type Planned, type SendResult } from '@btx/emails';
@@ -48,7 +50,7 @@ export async function bookAndNotify(slotId: string, note: string | undefined, d:
       if (!after) return;
       const info = await d.cycleInfo(after.cycleId);
       const ctx = { ...info, portalUrl: d.portalUrl, now: new Date() };
-      const plans: Planned[] = [...planBooked(after, ctx), ...(result.result === 'switched' && before ? planCancel(before, ctx) : [])];
+      const plans: Planned[] = [...planBooked(after, ctx, { moved: result.result === 'switched' }), ...(result.result === 'switched' && before ? planCancel(before, ctx, after) : [])];
       for (const { claim, mail } of plans) {
         const r = await deliverOnce(d.log, claim, mail, d.from, d.send ?? sendMail);
         if (r === 'sent') await wait(d.pauseMs ?? 550);

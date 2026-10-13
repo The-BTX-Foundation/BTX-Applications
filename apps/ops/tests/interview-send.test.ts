@@ -79,7 +79,7 @@ describe('sendPrepEmails', () => {
     expect(mails[0].html).toContain('https://ops.example.org/scholarships/scoring');
     expect(mails[0].html).toContain('Q1');
     expect(mails[0].attachments?.[0].filename).toBe('btx-interview.ics');
-    expect(Buffer.from(mails[0].attachments![0].content, 'base64').toString()).toContain('UID:slot-s1@thebtxfoundation.org');
+    expect(Buffer.from(mails[0].attachments![0].content, 'base64').toString()).toContain('UID:interview-a1@thebtxfoundation.org');
     expect([...rows.values()].map((x) => x.kind)).toEqual(['prep', 'prep']);
   });
 
@@ -167,6 +167,10 @@ describe('sendRebalanceEmails', () => {
     const removed = mails.find((m) => m.to === 'old@btx.org')!;
     expect(removed.subject).toContain("You're no longer interviewing Ada Okafor");
     expect(Buffer.from(removed.attachments![0].content, 'base64').toString()).toContain('METHOD:CANCEL');
+    expect(Buffer.from(removed.attachments![0].content, 'base64').toString()).toContain('UID:interview-a1@thebtxfoundation.org');
+    const added = Buffer.from(mails.find((m) => m.to === 'tfalodun@btx.org')!.attachments![0].content, 'base64').toString();
+    expect(added).toContain('METHOD:REQUEST');
+    expect(added).toContain('UID:interview-a1@thebtxfoundation.org');
     expect(await sendRebalanceEmails('c1', moves, deps(data, log, send))).toMatchObject({ sent: 0, skipped: 2 });
   });
   it('is admin only', async () => {
