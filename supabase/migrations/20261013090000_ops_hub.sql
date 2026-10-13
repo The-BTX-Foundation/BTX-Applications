@@ -2111,8 +2111,10 @@ begin
       'chat_read_markers', 'chat_pins',
       -- Ops Hub views (this file)
       'application_score_summary', 'budget_category_totals', 'chat_unread_counts',
-      -- Portal journey (20261013090100) and the email log (20261013090200), when this file is re-run after them
-      'interview_free_times', 'award_stories', 'email_log');
+      -- Portal journey (20261013090100), the email log (20261013090200) and the interview flow
+      -- (20261013090300), when this file is re-run after them
+      'interview_free_times', 'award_stories', 'email_log',
+      'board_free_ranges', 'board_interview_prefs', 'board_conflicts', 'interview_questions', 'ai_usage');
   if v_bad is not null then
     raise exception 'unexpected objects in public: %', v_bad;
   end if;

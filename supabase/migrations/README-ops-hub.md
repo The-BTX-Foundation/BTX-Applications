@@ -24,7 +24,8 @@ read rules on submitted applications, their files and the `applicant-documents` 
   donors, gifts, grants and sponsorships (a sponsorship's delete also deletes its spending). Board members still read,
   add and edit them.
 - **D4 Availability is Morning / Afternoon / Evening per day,** given before interview times exist:
-  `board_availability` is now (cycle, person, day, block), not (slot, person).
+  `board_availability` is now (cycle, person, day, block), not (slot, person). *Replaced 2026-10-13 by free time
+  ranges: see "Interview flow" at the end.*
 - **D5 No votes table.** The board discusses and decides; the ranking by combined score is information only, and an
   admin can record the main or an extra award for any submitted applicant. How it was decided (for example a vote)
   can go in the award's `decision_note`. Still enforced: one main award per cycle, one award per applicant.
@@ -95,7 +96,7 @@ from the app's own database calls.
 | `newsletter_issues` | An issue: title, send date, intro, owner, status | admin + board | Newsletter |
 | `newsletter_sections` | An issue's sections (they are its checklist): owner, status, "waits for" date | admin + board | Newsletter, email preview |
 | `rubric_criteria` | A cycle's scoring criteria and weights | All staff read; admins write | Scoring |
-| `board_availability` | Morning / Afternoon / Evening blocks per day a board member is free, per cycle (D4) | admin + board read; you add and remove your own; admins anyone's | Interviews "Your availability", Today "Add times" |
+| `board_availability` | Morning / Afternoon / Evening blocks per day a board member is free, per cycle (D4). **Dropped by the interview flow file below** and replaced by `board_free_ranges`. | admin + board read; you add and remove your own; admins anyone's | Interviews "Your availability", Today "Add times" |
 | `interview_pairings` | The two interviewers for a slot, and the video link | admin + board read; **admins only** write | Interviews, "Re-run pairing", "Add the video links" |
 | `interview_summaries` | Shared interview summary, quotes, length | admin + board read; admins and that application's two interviewers write | Scoring "Interview notes", Applicants, Selection |
 | `scores` | One score per interviewer per application: picks per criterion (jsonb), weighted score, published | See "Scores" below | Scoring, Applicants, Selection |
@@ -275,3 +276,77 @@ Roll back the journey file first (it reads the Ops Hub tables). Then, in one tra
    `mark_award_funds_sent`, `is_submitted_application`). Leave `is_staff()` as this file
    redefines it (admin or board, D6). The program plan stays safe in `legacy` either way. Any data entered in the
 Ops Hub after applying would be lost, so back it up first.
+
+---
+
+# Interview flow (`20261013090300_interview_flow.sql`)
+
+Drafted 2026-10-13. **Not applied.** Applied right after this file, the journey file and the email log, in the same
+approval (none of the four is in production yet). One transaction, safe to run twice, ends with a check that rolls
+everything back if a rule is broken.
+
+**Owner's decisions (2026-10-12/13):** one staff role, board member (`admin` = with admin rights, `board` = without).
+The new interview flow replaces the Morning / Afternoon / Evening blocks with free time ranges.
+
+## What it changes
+
+| Change | What it is | Who can do what |
+|---|---|---|
+| `board_free_ranges` (new) | A board member's free time on a day of the interview window, Eastern time, in minutes from midnight in half hours (9:00 = 540, end of day = 1440) | Staff read all; you add, change and remove your own; admins anyone's |
+| `board_availability` (dropped) | The old blocks. It only ever existed in the unapplied Ops Hub file, so nothing is lost | |
+| `board_interview_prefs` (new) | Per person and cycle: "Most N interviews" (blank = no limit, else 1 to 50), what they typed, when they pressed Send | Staff read all (admins see who has sent and each limit); you write your own; admins anyone's |
+| `board_conflicts` (new) | "Students I know": names a board member types so they are kept off those interviews | **Only the writer** reads, adds or removes them. Admins cannot read them either |
+| `interview_slots.opened_at` (new column) | Blank = a proposed time still under review; students never see it. Existing times are set as opened | Admins (the slot rules are unchanged) |
+| `interview_questions` (new) | A cycle's interview questions, grouped by rubric criterion (blank = "To close", not scored). A criterion must be one of the cycle's rubric keys | Staff read; admins add, edit, remove and reorder |
+| `interview_free_times.ranges`, `.said` (new columns) | The student's "None of these times work" answer as ranges per day (`[{"day":"2026-10-15","start":"18:00","end":"20:00"}]`) and what she typed. `days` and `windows` become optional; a row needs ranges or both of them | The Portal rules are unchanged |
+| `ai_usage` (new) | How often each person used an AI feature on an Eastern day | Nobody but the service role; `ai_take()` writes it |
+
+## Functions
+
+- `open_interview_slots(cycle)`: now lists **opened** times only. Otherwise unchanged.
+- `switch_booking(slot, note)`: refuses a time that is not opened (`slot_not_found`, as if it did not exist).
+  Otherwise unchanged.
+- `interview_candidates(slot, application)` returns `(user_id, interviews_so_far, free_minutes_left, display_name)`:
+  the admin and board accounts who are free for the whole slot (one range covering it on its Eastern date), under
+  their limit, not someone who listed this student, and not in another interview at an overlapping time. Ordered the
+  way pairing picks: fewest interviews so far, then fewer free minutes left, then name A to Z.
+  *Interviews so far* counts their pairs in the cycle (this slot's own left out). *Free minutes left* is their free
+  minutes in the cycle from this slot's start on, minus 30 for each pair they hold from that point (never below 0):
+  the person with less room later goes first. Admins, the service role and the bookings trigger only.
+- `pick_interviewers(slot, application)`: the first two candidates (fewer when not enough).
+- Trigger `bookings_auto_pair` on `bookings`: when a booking becomes active and its slot has no pair, the two picked
+  people are paired (`paired_by` blank = automatic). With fewer than two, nothing is written and the Ops Hub shows
+  "needs two interviewers". When a booking is released and nobody else holds the slot, the slot's pair is removed.
+  It works the same for a student booking through `switch_booking()` and a server-side write.
+- `conflicted_board_members(application)`: the board members who listed this applicant (same full name, or same first
+  and last word, ignoring case, extra spaces and accents). Returns ids only, never names. Server side only.
+- `normalize_person_name(text)`: the name tidy-up it uses. The file installs the `unaccent` extension when the server
+  offers it; without it, accents are simply not ignored.
+- `starter_questions()` and `seed_starter_questions(cycle)`: the 12 starter questions. The second is admin only, adds
+  them to a cycle that has none (skipping criteria the rubric lacks) and returns how many it added; it refuses a cycle
+  with no rubric (`rubric_missing`). The file itself adds them to every existing cycle that has a rubric.
+- `ai_take(kind, daily_limit)`: signed-in users only. Counts one use of `kind` for the caller today (Eastern) and
+  returns true, or returns false without counting once the limit is reached.
+
+## Check it worked
+
+```sql
+select to_regclass('public.board_availability');                         -- null
+select count(*) from public.interview_slots where opened_at is null;      -- 0 right after applying
+select c.id, count(q.id) from public.cycles c
+  join public.rubric_criteria r on r.cycle_id = c.id
+  left join public.interview_questions q on q.cycle_id = c.id group by c.id;   -- 12 each
+```
+
+The pgTAP tests in `supabase/tests/database/04_interview_flow.test.sql` cover the rules, the candidates, the trigger
+and `ai_take`.
+
+## How to roll back
+
+In one transaction: drop the trigger `bookings_auto_pair` and the functions `bookings_auto_pair`,
+`pick_interviewers`, `interview_candidates`, `conflicted_board_members`, `normalize_person_name`,
+`seed_starter_questions`, `starter_questions` and `ai_take`; put back `open_interview_slots` and `switch_booking` from
+`20261013090100_portal_journey.sql`; drop the tables `board_free_ranges`, `board_interview_prefs`, `board_conflicts`,
+`interview_questions` and `ai_usage`; drop `interview_slots.opened_at`, `interview_free_times.ranges` and `.said`
+(first delete any rows that have no `days` and `windows`, then set those two back to not null). The old blocks table
+comes back only by re-running the Ops Hub file's `board_availability` section.

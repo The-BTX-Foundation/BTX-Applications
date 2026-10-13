@@ -82,11 +82,11 @@ select throws_ok($$ insert into public.interview_slots (cycle_id, starts_at, end
   '42501', null, 'a board member cannot create interview slots');
 
 reset role; select tests.login('admin@t.test'); set local role authenticated;
-select lives_ok($$ insert into public.interview_slots (id, cycle_id, starts_at, ends_at) values
-  ('51000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', now() + interval '3 days', now() + interval '3 days 30 minutes'),
-  ('51000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', now() + interval '3 days 1 hour', now() + interval '3 days 90 minutes'),
-  ('51000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', now() + interval '4 days', now() + interval '4 days 30 minutes') $$,
-  'an admin creates interview slots');
+select lives_ok($$ insert into public.interview_slots (id, cycle_id, starts_at, ends_at, opened_at) values
+  ('51000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', now() + interval '3 days', now() + interval '3 days 30 minutes', now()),
+  ('51000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', now() + interval '3 days 1 hour', now() + interval '3 days 90 minutes', now()),
+  ('51000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', now() + interval '4 days', now() + interval '4 days 30 minutes', now()) $$,
+  'an admin creates interview slots (opened to students)');
 
 -- ---- open_interview_slots and booking ----------------------------------------
 reset role; select tests.login('ada@terpmail.umd.edu'); set local role authenticated;

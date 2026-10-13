@@ -6,6 +6,7 @@
 --       opens now, closes in 2 days, interviews day 3 to day 5, decision day 7
 --   * the six scoring criteria the Ops Hub expects for that cycle
 --     (apps/ops/mock/scores.ts RUBRIC: 20, 20, 20, 20, 10, 10)
+--   * the 12 starter interview questions for that cycle
 --   * three sign-in accounts with their roles in app_metadata:
 --       admin@btx.test (admin), board@btx.test (board), applicant@btx.test (applicant)
 --     All three share the local test password below (TEST_PASSWORD). Email
@@ -107,5 +108,12 @@ insert into public.rubric_criteria (cycle_id, key, name, weight, position) value
   ('c7000000-0000-4000-8000-000000000001', 'communication', 'Communication skills',            10, 5),
   ('c7000000-0000-4000-8000-000000000001', 'passion',       'Passion and motivation',          10, 6)
 on conflict (cycle_id, key) do nothing;
+
+-- ---- interview questions: the 12 starters (20261013090300_interview_flow.sql) ---
+insert into public.interview_questions (cycle_id, criterion_key, position, text)
+select 'c7000000-0000-4000-8000-000000000001', s.criterion_key, s.position, s.text
+from public.starter_questions() s
+where not exists (select 1 from public.interview_questions q
+                  where q.cycle_id = 'c7000000-0000-4000-8000-000000000001');
 
 commit;
