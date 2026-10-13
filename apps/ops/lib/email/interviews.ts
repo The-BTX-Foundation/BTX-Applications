@@ -5,6 +5,7 @@
 //   sendReminderEmails(now)          cron: the morning before, the student's reminder
 //   sendRebalanceEmails(cycleId, moves)   admin: after "Rebalance", tells the interviewer added and the one removed
 //   sendVideoLinkEmails(cycleId, slotIds) admin: after video links are saved, tells the student and both interviewers
+//   sendAvailabilityReminders(cycleId)    admin: "Remind the others", nudges the board members who have not sent their availability
 //
 // "Tomorrow" is the next calendar day in Eastern time (America/New_York), whatever the server's own zone, so it holds
 // across the daylight-saving changes. The cron functions have no signed-in person: the cron route checks CRON_SECRET.
@@ -19,6 +20,7 @@
 import {
   deliverOnce,
   easternDate,
+  planAvailabilityReminders,
   planPrep,
   planRebalance,
   planReminder,
@@ -42,7 +44,7 @@ import { defaultIsAdmin } from './send';
 const DEFAULT_PORTAL_URL = 'https://apply.thebtxfoundation.org';
 
 export type InterviewMailResult =
-  | { ok: true; kind: 'prep' | 'reminder' | 'rebalance' | 'video-link'; sent: number; skipped: number; failed: number; notConfigured: boolean; at: string }
+  | { ok: true; kind: 'prep' | 'reminder' | 'rebalance' | 'video-link' | 'availability-reminder'; sent: number; skipped: number; failed: number; notConfigured: boolean; at: string; /** availability-reminder only: the full names of who got one. */ names?: string[] }
   | { ok: false; reason: 'not-admin' | 'no-service-key' | 'no-ops-url' };
 
 /** What the senders read. The default reads the real database with the service role; tests pass their own. */
@@ -52,12 +54,18 @@ export interface InterviewMailData {
   questions(cycleId: string): Promise<QuestionGroup[]>;
   /** A staff member's sign-in address, or null. */
   userEmail(userId: string): Promise<string | null>;
+  /** Board members (staff with role admin or board and a profile): name, sign-in address and when they sent their availability for the cycle. */
+  boardMembers(cycleId: string): Promise<{ userId: string; name: string; email: string | null; sentAt: string | null }[]>;
+  /** When applications close (an instant), or null. */
+  cycleCloses(cycleId: string): Promise<string | null>;
 }
 
 export type InterviewDeps = {
   data?: InterviewMailData;
   log?: MailLog;
   isAdmin?: () => Promise<boolean>;
+  /** The signed-in person's user id (skipped by the availability reminder). */
+  callerId?: () => Promise<string | null>;
   send?: (mail: Mail, from: string | undefined) => Promise<SendResult>;
   now?: () => Date;
   /** Milliseconds between real sends (Resend allows about two a second). */
@@ -77,9 +85,28 @@ async function defaultServices(): Promise<{ data: InterviewMailData; log: MailLo
       cycleInfo: (id) => readCycleInfo(db, id),
       questions: (id) => readQuestionGroups(db, id),
       userEmail: async (id) => (await db.auth.admin.getUserById(id)).data?.user?.email ?? null,
+      boardMembers: async (cycleId) => {
+        const [profiles, prefs, users] = await Promise.all([
+          db.from('staff_profiles').select('user_id, display_name'),
+          db.from('board_interview_prefs').select('user_id, availability_sent_at').eq('cycle_id', cycleId),
+          db.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+        ]);
+        if (profiles.error || prefs.error || users.error) throw new Error('board members');
+        const sent = new Map((prefs.data ?? []).map((p: { user_id: string; availability_sent_at: string | null }) => [p.user_id, p.availability_sent_at]));
+        const auth = new Map(users.data.users.map((u) => [u.id, u]));
+        return (profiles.data ?? [])
+          .filter((p: { user_id: string }) => ['admin', 'board'].includes(String(auth.get(p.user_id)?.app_metadata?.role)))
+          .map((p: { user_id: string; display_name: string }) => ({ userId: p.user_id, name: p.display_name, email: auth.get(p.user_id)?.email ?? null, sentAt: sent.get(p.user_id) ?? null }));
+      },
+      cycleCloses: async (id) => ((await db.from('cycles').select('closes_at').eq('id', id).maybeSingle()).data?.closes_at as string | null | undefined) ?? null,
     },
     log: supabaseMailLog(db),
   };
+}
+
+async function defaultCallerId(): Promise<string | null> {
+  const { sessionClient } = await import('../supabase-server');
+  return (await (await sessionClient()).auth.getUser()).data.user?.id ?? null;
 }
 
 const wait = (ms: number) => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
@@ -94,6 +121,7 @@ async function setup(d: InterviewDeps, opts: { admin: boolean; needsOpsUrl?: boo
     ok: true as const,
     data: d.data ?? services.data,
     log: d.log ?? services.log,
+    callerId: d.callerId ?? defaultCallerId,
     send: d.send ?? sendMail,
     now: d.now ?? (() => new Date()),
     pauseMs: d.pauseMs ?? 550,
@@ -104,12 +132,14 @@ async function setup(d: InterviewDeps, opts: { admin: boolean; needsOpsUrl?: boo
 }
 type Ready = Extract<Awaited<ReturnType<typeof setup>>, { ok: true }>;
 
-async function run(s: Ready, plans: Planned[]) {
+// `sentTo`, when given, collects the address of each email that went.
+async function run(s: Ready, plans: Planned[], sentTo?: string[]) {
   const t = { sent: 0, skipped: 0, failed: 0, notConfigured: false };
   for (const { claim, mail } of plans) {
     const r = await deliverOnce(s.log, claim, mail, s.from, s.send);
     if (r === 'sent') {
       t.sent += 1;
+      sentTo?.push(claim.to_address);
       await wait(s.pauseMs);
     } else if (r === 'skipped') t.skipped += 1;
     else if (r === 'failed') t.failed += 1;
@@ -194,4 +224,21 @@ export async function sendVideoLinkEmails(cycleId: string, slotIds: string[], de
   const info = await s.data.cycleInfo(cycleId);
   const t = await run(s, rows.flatMap((r) => planVideoLink(r, ctxFor(s, info))));
   return { ok: true, kind: 'video-link', ...t, at: s.now().toISOString() };
+}
+
+// Admin only. "Remind the others": the board members who have not sent their availability for the cycle each get one
+// "Give your interview availability" email, never the caller. At most one a day per person (the log key carries the
+// Eastern date), so pressing the button again the same day sends nothing and a later day sends again.
+export async function sendAvailabilityReminders(cycleId: string, deps: InterviewDeps = {}): Promise<InterviewMailResult> {
+  const s = await setup(deps, { admin: true, needsOpsUrl: true });
+  if (!s.ok) return s;
+  const me = await s.callerId();
+  const waiting = (await s.data.boardMembers(cycleId)).filter((m) => !m.sentAt && m.userId !== me && m.email);
+  const info = await s.data.cycleInfo(cycleId);
+  const closes = await s.data.cycleCloses(cycleId);
+  const people = waiting.map((m) => ({ name: m.name, email: m.email! }));
+  const sentTo: string[] = [];
+  const t = await run(s, planAvailabilityReminders(cycleId, people, closes, ctxFor(s, info)), sentTo);
+  const got = new Set(sentTo);
+  return { ok: true, kind: 'availability-reminder', ...t, names: people.filter((p) => got.has(p.email)).map((p) => p.name), at: s.now().toISOString() };
 }

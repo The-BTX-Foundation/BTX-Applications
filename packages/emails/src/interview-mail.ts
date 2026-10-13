@@ -4,7 +4,7 @@
 import type { MailClaim } from './deliver';
 import { buildInterviewIcs, icsAttachment } from './ics';
 import type { InterviewRow } from './interview-data';
-import { bookedEmail, cancelEmail, inviteDescription, prepEmail, rebalanceEmail, reminderEmail, videoLinkEmail, type QuestionGroup, type Rendered } from './interviews';
+import { availabilityReminderEmail, bookedEmail, cancelEmail, easternDate, inviteDescription, prepEmail, rebalanceEmail, reminderEmail, videoLinkEmail, type QuestionGroup, type Rendered } from './interviews';
 import type { Mail } from './send';
 
 export type Planned = { claim: MailClaim; mail: Mail };
@@ -121,4 +121,19 @@ export function planRebalance(row: InterviewRow, move: { from: { name: string; e
     out.push(planned('rebalance', row, move.from.email, m, `${move.from.email.toLowerCase()}|removed`, calendar(row, 'CANCEL', { email: move.from.email, name: move.from.name }, c)));
   }
   return out;
+}
+
+/**
+ * "Give your interview availability" to each board member who has not sent it. No application or slot; the recipient key
+ * is "<email>|<Eastern date of now>", so a person gets at most one a day and a later day sends again.
+ */
+export function planAvailabilityReminders(cycleId: string, people: { name: string; email: string }[], closesAt: string | null, c: PlanContext): Planned[] {
+  const day = easternDate(c.now ?? new Date());
+  return people.map((p) => {
+    const r = availabilityReminderEmail({ term: c.term, award: c.award, origin: c.portalUrl.replace(/\/+$/, ''), firstName: first(p.name), closesAt, availabilityUrl: `${(c.opsUrl ?? '').replace(/\/+$/, '')}/scholarships/interviews/availability` });
+    return {
+      claim: { kind: 'availability-reminder' as const, cycle_id: cycleId, application_id: null, slot_id: null, recipient: `${p.email.toLowerCase()}|${day}`, to_address: p.email },
+      mail: { to: p.email, subject: r.subject, html: r.html, text: r.text },
+    };
+  });
 }

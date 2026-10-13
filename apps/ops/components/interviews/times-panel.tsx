@@ -132,7 +132,7 @@ export function TimesPanel({ data, isAdmin, mock, onNote }: { data: TimesData; i
   }
 
   async function remind() {
-    onNote((await remindBoard()).message);
+    onNote((await remindBoard(data.cycleId)).message);
   }
 
   // The first day with a time suggests the next half hour; otherwise 6:00 PM.

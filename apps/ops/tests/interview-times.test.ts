@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { affected, barScale, dayLine, evenNote, groupByDay, limitNote, moveLine, overNote, proposedHeadline, rebalanceConfirm, shortName, targetLine, waitingLine, type FairPerson, type TimeChip } from '@/lib/interview-times';
+import { affected, barScale, dayLine, evenNote, groupByDay, limitNote, moveLine, namesLine, overNote, remindMessage, proposedHeadline, rebalanceConfirm, shortName, targetLine, waitingLine, type FairPerson, type TimeChip } from '@/lib/interview-times';
 
 // Nov 2026 is Eastern standard time (UTC-5): 6:00 PM ET = 23:00Z.
 const chip = (id: string, startsAt: string, booked = false): TimeChip => ({ slotId: id, startsAt, time: '', freeCount: 3, opened: false, booked, bookedBy: booked ? 'Sade Price' : null });
@@ -81,5 +81,38 @@ describe('moves', () => {
     expect(affected(moves)).toEqual(['Kelsey Davis', 'Darien Strachan', 'Chariah Ghee', 'Tomi Falodun']);
     expect(rebalanceConfirm(moves)).toBe('Moves 3 interviews. Nothing within 48 hours moves. The 4 people affected get an email.');
     expect(rebalanceConfirm([])).toMatch(/^Nothing needs to move/);
+  });
+});
+
+describe('namesLine', () => {
+  it('lists up to three names, then a count', () => {
+    expect(namesLine(['A'])).toBe('A');
+    expect(namesLine(['A', 'B'])).toBe('A and B');
+    expect(namesLine(['A', 'B', 'C'])).toBe('A, B and C');
+    expect(namesLine(['A', 'B', 'C', 'D'])).toBe('A, B, C and 1 other');
+    expect(namesLine(['A', 'B', 'C', 'D', 'E'])).toBe('A, B, C and 2 others');
+  });
+});
+
+describe('remindMessage', () => {
+  const ok = { ok: true as const, sent: 0, skipped: 0, failed: 0, notConfigured: false };
+  it('names who was emailed', () => {
+    expect(remindMessage({ ...ok, sent: 2, names: ['Marcus Davis', 'Darien Strachan'] })).toEqual({ ok: true, message: 'Emailed Marcus Davis and Darien Strachan.' });
+  });
+  it('says email is not set up', () => {
+    const msg = "Email isn't set up here, so no emails went out. Ask them in Board chat.";
+    expect(remindMessage({ ...ok, notConfigured: true })).toEqual({ ok: true, message: msg });
+    expect(remindMessage({ ok: false, reason: 'no-service-key' }).message).toBe(msg);
+    expect(remindMessage({ ok: false, reason: 'no-ops-url' }).message).toBe(msg);
+  });
+  it('says they were already reminded today', () => {
+    expect(remindMessage({ ...ok, skipped: 2 })).toEqual({ ok: true, message: 'They were already reminded today.' });
+  });
+  it('counts the ones that did not go', () => {
+    expect(remindMessage({ ...ok, failed: 2 })).toEqual({ ok: false, message: "2 didn't go. Try again." });
+    expect(remindMessage({ ...ok, sent: 1, failed: 1, names: ['A'] }).message).toBe("Emailed A. 1 didn't go. Try again.");
+  });
+  it('refuses a non-admin', () => {
+    expect(remindMessage({ ok: false, reason: 'not-admin' }).ok).toBe(false);
   });
 });

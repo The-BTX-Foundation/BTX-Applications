@@ -61,6 +61,29 @@ export function waitingLine(names: string[]): string {
   return `Still waiting on ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 }
 
+/** "Kelsey Davis, Tomi Falodun, Marcus Davis and 2 others": up to three names, then a count. */
+export function namesLine(names: string[]): string {
+  if (names.length <= 3) return joinNames(names);
+  const rest = names.length - 3;
+  return `${names.slice(0, 3).join(', ')} and ${rest} ${rest === 1 ? 'other' : 'others'}`;
+}
+
+/** What "Remind the others" says, from what the sender returned (see lib/email/interviews.ts sendAvailabilityReminders). */
+export type RemindOutcome =
+  | { ok: true; sent: number; skipped: number; failed: number; notConfigured: boolean; names?: string[] }
+  | { ok: false; reason: 'not-admin' | 'no-service-key' | 'no-ops-url' };
+
+export function remindMessage(r: RemindOutcome): { ok: boolean; message: string } {
+  const noEmail = { ok: true, message: "Email isn't set up here, so no emails went out. Ask them in Board chat." };
+  if (!r.ok) return r.reason === 'not-admin' ? { ok: false, message: 'Only board members with admin rights can send reminders.' } : noEmail;
+  if (r.notConfigured) return noEmail;
+  const failed = r.failed > 0 ? `${r.failed} didn't go. Try again.` : '';
+  if (r.sent > 0) return { ok: true, message: [`Emailed ${namesLine(r.names ?? [])}.`, failed].filter(Boolean).join(' ') };
+  if (r.failed > 0) return { ok: false, message: failed };
+  if (r.skipped > 0) return { ok: true, message: 'They were already reminded today.' };
+  return { ok: true, message: 'Nobody else is waiting on a reminder.' };
+}
+
 /** The bold line over the proposed times. */
 export function proposedHeadline(times: number, applicants: number, lowCount: number): string {
   const head = `${times} ${times === 1 ? 'time' : 'times'} proposed for ${applicants} ${applicants === 1 ? 'applicant' : 'applicants'}.`;

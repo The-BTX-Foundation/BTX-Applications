@@ -15,7 +15,7 @@ import { dateOnlyLabel, dayLabel, shortDate, timeLabel } from './format';
 import { easternYmd, groupByDay, type FairPerson, type MoveView, type TimeChip, type TimeDay, whenLine } from './interview-times';
 import { sessionClient } from './supabase-server';
 import { MOCK_APPLICANTS, MOCK_NOW } from '@/mock/applicants';
-import { FLOW_BOOKED, FLOW_CYCLE, FLOW_FAIR, FLOW_NOW, FLOW_PEOPLE, MOCK_BOOKED_TIMES, mockChips } from '@/mock/interview-flow';
+import { FLOW_BOOKED, FLOW_CYCLE, FLOW_FAIR, FLOW_NOW, FLOW_PEOPLE, FLOW_WAITING_IDS, MOCK_BOOKED_TIMES, mockChips } from '@/mock/interview-flow';
 import { pairingFor } from '@/mock/interviews';
 import { staffById, type StaffProfile } from '@/mock/staff';
 
@@ -245,7 +245,7 @@ function mockFlow(demo: string | undefined, me: string | null): InterviewsData {
   const waiting = demo === 'waiting';
   const sent = demo === 'sent';
   const chips: TimeChip[] = waiting ? [] : mockChips(sent, sent ? MOCK_BOOKED_TIMES : {});
-  const people: BoardPerson[] = FLOW_PEOPLE.map((p) => ({ ...p, sent: waiting ? !['mock-staff-md', 'mock-staff-ds'].includes(p.userId) : true }));
+  const people: BoardPerson[] = FLOW_PEOPLE.map((p) => ({ ...p, sent: waiting ? !FLOW_WAITING_IDS.includes(p.userId) : true }));
   const booked = chips.filter((c) => c.booked).length;
   const times: TimesData | null = fairStage
     ? null

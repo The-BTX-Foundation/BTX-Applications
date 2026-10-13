@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InterviewRow, Mail, MailClaim, MailLog, SendResult } from '@btx/emails';
-import { sendPrepEmails, sendRebalanceEmails, sendReminderEmails, sendVideoLinkEmails, tomorrowEastern, type InterviewDeps, type InterviewMailData } from '@/lib/email/interviews';
+import { sendAvailabilityReminders, sendPrepEmails, sendRebalanceEmails, sendReminderEmails, sendVideoLinkEmails, tomorrowEastern, type InterviewDeps, type InterviewMailData } from '@/lib/email/interviews';
 
 type Send = (mail: Mail, from?: string) => Promise<SendResult>;
 
@@ -29,7 +29,7 @@ const row = (over: Partial<InterviewRow> = {}): InterviewRow => ({
   applicantName: 'Ada Okafor', applicantEmail: 'ada@terpmail.umd.edu', code: 'APP-2026-00015', answers: ['One', 'Two', 'Three'], interviewers: [kelsey, tomi], ...over,
 });
 
-function fakeData(rows: InterviewRow[]) {
+function fakeData(rows: InterviewRow[], board: Awaited<ReturnType<InterviewMailData['boardMembers']>> = [], closes: string | null = null) {
   const asked: unknown[] = [];
   const data: InterviewMailData = {
     interviews: async (q) => {
@@ -40,6 +40,8 @@ function fakeData(rows: InterviewRow[]) {
     cycleInfo: async () => ({ term: 'Fall 2026', award: 'Legacy Scholarship' }),
     questions: async () => [{ title: 'Community', questions: ['Q1'] }, { title: 'To close', questions: ['Q2'] }],
     userEmail: async (id) => (id === 'u9' ? 'old@btx.org' : null),
+    boardMembers: async () => board,
+    cycleCloses: async () => closes,
   };
   return { data, asked };
 }
@@ -199,5 +201,72 @@ describe('sendVideoLinkEmails', () => {
     const { log } = fakeLog();
     expect(await sendVideoLinkEmails('c1', ['s1'], deps(data, log))).toMatchObject({ sent: 0 });
     expect(await sendVideoLinkEmails('c1', ['s1'], deps(data, log, okSend(), { isAdmin: async () => false }))).toEqual({ ok: false, reason: 'not-admin' });
+  });
+});
+
+describe('sendAvailabilityReminders', () => {
+  const member = (userId: string, name: string, sentAt: string | null = null, email: string | null = `${name.split(' ')[0].toLowerCase()}@btx.org`) => ({ userId, name, email, sentAt });
+  const board = [member('u0', 'Dania Morris'), member('u1', 'Kelsey Davis', '2026-11-02T15:00:00Z'), member('u2', 'Marcus Davis'), member('u3', 'Darien Strachan'), member('u4', 'No Address', null, null)];
+  const closes = '2026-11-06T04:59:00Z'; // 11:59 PM Eastern on Thu Nov 5
+  const as = (callerId: string, extra: InterviewDeps = {}) => ({ callerId: async () => callerId, now: () => new Date('2026-11-04T15:00:00Z'), ...extra });
+
+  it('emails the board members with no availability sent, skipping the caller and anyone with no address', async () => {
+    const { data } = fakeData([], board, closes);
+    const { log, rows } = fakeLog();
+    const send = okSend();
+    const r = await sendAvailabilityReminders('c1', deps(data, log, send, as('u0')));
+    expect(r).toMatchObject({ ok: true, kind: 'availability-reminder', sent: 2, skipped: 0, failed: 0, notConfigured: false, names: ['Marcus Davis', 'Darien Strachan'] });
+    const mails = send.mock.calls.map((c) => c[0]);
+    expect(mails.map((m) => m.to)).toEqual(['marcus@btx.org', 'darien@btx.org']); // not Dania (caller), Kelsey (sent) or the one with no address
+    expect(mails[0].subject).toBe('Give your interview availability by Thu Nov 5');
+    expect(mails[0].html).toContain('Hi Marcus.');
+    expect(mails[0].html).toContain('https://ops.example.org/scholarships/interviews/availability');
+    expect(mails[0].html).toContain('Give your availability');
+    expect([...rows.values()].map((x) => [x.kind, x.application_id, x.slot_id, x.recipient])).toEqual([
+      ['availability-reminder', null, null, 'marcus@btx.org|2026-11-04'],
+      ['availability-reminder', null, null, 'darien@btx.org|2026-11-04'],
+    ]);
+  });
+
+  it('sends nothing more the same Eastern day, and sends again the next day', async () => {
+    const { data } = fakeData([], board, closes);
+    const { log } = fakeLog();
+    const send = okSend();
+    await sendAvailabilityReminders('c1', deps(data, log, send, as('u0')));
+    // 11:30 PM Eastern the same day (04:30Z the next UTC day)
+    const late = await sendAvailabilityReminders('c1', deps(data, log, send, as('u0', { now: () => new Date('2026-11-05T04:30:00Z') })));
+    expect(late).toMatchObject({ sent: 0, skipped: 2, names: [] });
+    expect(send).toHaveBeenCalledTimes(2);
+    const next = await sendAvailabilityReminders('c1', deps(data, log, send, as('u0', { now: () => new Date('2026-11-05T15:00:00Z') })));
+    expect(next).toMatchObject({ sent: 2, skipped: 0 });
+    expect(send).toHaveBeenCalledTimes(4);
+  });
+
+  it('gives a failed email back so the next press tries it again, and reports it', async () => {
+    const { data } = fakeData([], board, closes);
+    const { log } = fakeLog();
+    const send = vi.fn<Send>().mockResolvedValueOnce({ sent: true, id: 'r1' }).mockResolvedValueOnce({ sent: false, reason: 'network' });
+    const r = await sendAvailabilityReminders('c1', deps(data, log, send, as('u0')));
+    expect(r).toMatchObject({ sent: 1, failed: 1, names: ['Marcus Davis'] });
+    const again = await sendAvailabilityReminders('c1', deps(data, log, okSend(), as('u0')));
+    expect(again).toMatchObject({ sent: 1, skipped: 1, names: ['Darien Strachan'] });
+  });
+
+  it('says not configured when there is no email service, and is admin only', async () => {
+    const { data } = fakeData([], board, closes);
+    const { log, rows } = fakeLog();
+    const none = vi.fn<Send>(async () => ({ sent: false, reason: 'not-configured' }));
+    expect(await sendAvailabilityReminders('c1', deps(data, log, none, as('u0')))).toMatchObject({ sent: 0, notConfigured: true });
+    expect(rows.size).toBe(0);
+    expect(await sendAvailabilityReminders('c1', deps(data, log, okSend(), as('u0', { isAdmin: async () => false })))).toEqual({ ok: false, reason: 'not-admin' });
+    expect(await sendAvailabilityReminders('c1', deps(data, log, okSend(), as('u0', { opsUrl: '' })))).toEqual({ ok: false, reason: 'no-ops-url' });
+  });
+
+  it('has no date in the subject when the cycle has no close date', async () => {
+    const { data } = fakeData([], board, null);
+    const { log } = fakeLog();
+    const send = okSend();
+    await sendAvailabilityReminders('c1', deps(data, log, send, as('u0')));
+    expect(send.mock.calls[0][0].subject).toBe('Give your interview availability');
   });
 });

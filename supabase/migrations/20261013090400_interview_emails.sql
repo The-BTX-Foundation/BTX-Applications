@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Interview emails (2026-10-13). The email log learns the interview-flow kinds:
--- 'booked', 'reminder', 'prep', 'video-link', 'rebalance' and 'cancel'. These are
+-- 'booked', 'reminder', 'prep', 'video-link', 'rebalance', 'cancel' and 'availability-reminder'. These are
 -- sent per slot and per person, so the log now also records the slot and the
 -- recipient, and the "never twice" rule for them is once per (kind, application,
 -- slot, recipient). The old kinds keep their rule: once per application.
@@ -9,11 +9,12 @@
 
 begin;
 
--- The check on kind: the old five plus the six new ones.
+-- The check on kind: the old five plus the seven new ones. 'availability-reminder' is the board's "send your interview availability"
+-- nudge: no application or slot, and its recipient key is "<email>|<Eastern date>", so a board member gets at most one a day.
 alter table public.email_log drop constraint if exists email_log_kind_check;
 alter table public.email_log add constraint email_log_kind_check
   check (kind in ('confirmation', 'book', 'won', 'not-picked', 'staff-invite',
-                  'booked', 'reminder', 'prep', 'video-link', 'rebalance', 'cancel'));
+                  'booked', 'reminder', 'prep', 'video-link', 'rebalance', 'cancel', 'availability-reminder'));
 
 alter table public.email_log add column if not exists slot_id uuid references public.interview_slots (id) on delete set null;
 alter table public.email_log add column if not exists recipient text;
@@ -28,9 +29,10 @@ create unique index email_log_once_per_application
 
 -- The new rule. coalesce makes a missing application, slot or recipient count as one value, so a null cannot slip
 -- past the index.
-create unique index if not exists email_log_once_per_slot_recipient
+drop index if exists public.email_log_once_per_slot_recipient;
+create unique index email_log_once_per_slot_recipient
   on public.email_log (kind, coalesce(application_id, '00000000-0000-0000-0000-000000000000'::uuid),
                        coalesce(slot_id, '00000000-0000-0000-0000-000000000000'::uuid), coalesce(lower(recipient), ''))
-  where kind in ('booked', 'reminder', 'prep', 'video-link', 'rebalance', 'cancel');
+  where kind in ('booked', 'reminder', 'prep', 'video-link', 'rebalance', 'cancel', 'availability-reminder');
 
 commit;

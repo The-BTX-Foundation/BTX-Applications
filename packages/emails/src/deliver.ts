@@ -4,7 +4,7 @@
 // set up, the reservation is given back so a later run can try again.
 import { sendMail, type Mail, type SendResult } from './send';
 
-export type InterviewMailKind = 'booked' | 'reminder' | 'prep' | 'video-link' | 'rebalance' | 'cancel';
+export type InterviewMailKind = 'booked' | 'reminder' | 'prep' | 'video-link' | 'rebalance' | 'cancel' | 'availability-reminder';
 
 export type MailClaim = {
   kind: InterviewMailKind;
