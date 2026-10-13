@@ -38,7 +38,7 @@ describe('readFreeTimes', () => {
     const client = fake(textReply({ ranges: [{ day: '2026-11-10', start: '18:00', end: '22:00' }], couldNotRead: ['maybe Friday?'] }));
     const out = await readFreeTimes({ ...base, text: 'Tuesday after 6' }, { client });
     expect(out).toEqual({ ok: true, ranges: [{ day: '2026-11-10', start: '18:00', end: '22:00' }], unread: ['maybe Friday?'] });
-    expect(client.calls[0]).toMatchObject({ model: 'claude-haiku-5-5', max_tokens: 1024 });
+    expect(client.calls[0]).toMatchObject({ model: 'claude-haiku-5-5', max_tokens: 4096 });
     expect(client.calls[0]).not.toHaveProperty('thinking');
   });
 

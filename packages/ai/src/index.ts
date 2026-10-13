@@ -51,7 +51,8 @@ export async function readFreeTimes(
 
     const params = {
       model: MODEL,
-      max_tokens: 1024,
+      // Room for low-effort thinking plus a full window of ranges (about 40 tokens each); a cut-off reply is a failure.
+      max_tokens: 4096,
       system: buildSystemPrompt({ ...input, dayStart, dayEnd }),
       messages: [{ role: 'user', content: buildUserMessage(text) }],
       // Haiku 5.5 thinks by default and thinking counts toward max_tokens; low effort keeps this short job cheap and fast.
