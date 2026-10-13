@@ -4,6 +4,7 @@ import { hasSupabaseEnv } from '@btx/data';
 import { readRows, whoAmI } from './daily-db';
 import { loadLiveTasks, safe } from './daily-load';
 import { buildToday, ringProgress, type AreaFacts } from './daily-tasks';
+import { availabilityRow, insertRow } from './availability-today';
 import { TODAY, TODAY_STRESS, type TodayData } from '@/mock/today';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -23,7 +24,7 @@ export async function loadToday({ demo }: { demo?: string } = {}): Promise<Today
     const monthEnd = new Date(Date.UTC(year, Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
     const [cycles, reviews, summary, funds, gifts, goals, programs, calls, posts] = await Promise.all([
-      safe(readRows('cycles', 'id, status, interview_end, created_at', { order: ['created_at', false] })),
+      safe(readRows('cycles', 'id, status, interview_start, interview_end, closes_at, created_at', { order: ['created_at', false] })),
       safe(readRows('applications', 'id, cycle_id', { eq: { status: 'submitted' } })),
       safe(readRows('application_score_summary', 'application_id, published_count')),
       safe(readRows('funds_snapshots', 'amount_cents, as_of', { order: ['as_of', false], limit: 1 })),
@@ -66,7 +67,18 @@ export async function loadToday({ demo }: { demo?: string } = {}): Promise<Today
       postsDone: posts.filter((p) => p.status === 'posted').length,
       nextPost: nextPost ? dayShort(String(nextPost.post_on)) : null,
     };
-    return { ...buildToday({ today, first, mine, team: live.tasks, facts }), failed: false };
+    const built = buildToday({ today, first, mine, team: live.tasks, facts });
+    // "Give your interview availability by ...": for a board member who has not sent it yet (a failed read adds nothing).
+    const sent = cycle ? await readRows('board_interview_prefs', 'availability_sent_at', { eq: { cycle_id: String(cycle.id), user_id: who.id } }).catch(() => null) : null;
+    const item = cycle && sent
+      ? availabilityRow({
+          cycle: { id: String(cycle.id), closesAt: (cycle.closes_at as string | null) ?? null, interviewStart: (cycle.interview_start as string | null) ?? null, interviewEnd: (cycle.interview_end as string | null) ?? null },
+          sentAt: sent[0] ? ((sent[0].availability_sent_at as string | null) ?? null) : null,
+          today,
+        })
+      : null;
+    if (!item) return { ...built, failed: false };
+    return { ...built, counts: { ...built.counts, mine: built.counts.mine + 1 }, groups: insertRow(built.groups, item, today), failed: false };
   } catch {
     return { failed: true };
   }
