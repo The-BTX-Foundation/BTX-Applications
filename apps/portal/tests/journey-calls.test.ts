@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  fetchFreeTimes, fetchMyDecision, fetchMyInterview, fetchOpenSlots, fetchStory, parseDecision, parseInterview, photoPath, photoUrl, saveFreeTimes, saveStory, uploadAwardPhoto,
+  fetchFreeRanges, fetchFreeTimes, fetchMyDecision, fetchMyInterview, fetchOpenSlots, fetchStory, parseDecision, parseInterview, photoPath, photoUrl, saveFreeRanges, saveFreeTimes, saveStory, uploadAwardPhoto,
 } from '../../../packages/data/src/journey';
 import { bookSlot } from '../../../packages/data/src/booking';
 import type { BtxClient } from '../../../packages/data/src/client';
@@ -103,6 +103,36 @@ describe('free times', () => {
     await saveFreeTimes(client, 'app1', { days: ['Sat'], windows: ['afternoon'], note: '' });
     expect((log[0].payload as { note: unknown }).note).toBeNull();
     expect(await saveFreeTimes(tableClient(null, { code: '42501' }).client, 'app1', { days: ['Sat'], windows: ['afternoon'], note: '' })).toEqual({ ok: false });
+  });
+});
+
+describe('free times as ranges', () => {
+  const ranges = [{ day: '2026-10-15', start: '18:00', end: '20:00' }];
+  it('upserts the ranges and what she typed', async () => {
+    const { client, log } = tableClient(null);
+    expect(await saveFreeRanges(client, 'app1', { ranges, said: '  after labs ' })).toEqual({ ok: true });
+    expect(log[0]).toEqual({
+      table: 'interview_free_times',
+      op: 'upsert',
+      payload: { application_id: 'app1', ranges, said: 'after labs' },
+      opts: { onConflict: 'application_id' },
+    });
+  });
+  it('needs at least one range and reports a refusal', async () => {
+    const { client, log } = tableClient(null);
+    expect(await saveFreeRanges(client, 'app1', { ranges: [], said: 'any time' })).toEqual({ ok: false });
+    expect(log).toEqual([]);
+    expect(await saveFreeRanges(tableClient(null, { code: '42501' }).client, 'app1', { ranges, said: '' })).toEqual({ ok: false });
+  });
+  it('reads her ranges, and an old days-only answer as none', async () => {
+    const { client, log } = tableClient({ ranges, said: null });
+    expect(await fetchFreeRanges(client, 'app1')).toEqual({ failed: false, row: { ranges, said: '' } });
+    expect(log[0]).toEqual({ table: 'interview_free_times', op: 'select ranges, said where application_id=app1' });
+    expect(await fetchFreeRanges(tableClient({ ranges: [], said: null }).client, 'app1')).toEqual({ failed: false, row: null });
+  });
+  it('reads a ranges-only answer through the old reader without breaking', async () => {
+    const { client } = tableClient({ days: null, windows: null, note: null });
+    expect(await fetchFreeTimes(client, 'app1')).toEqual({ failed: false, row: { days: [], windows: [], note: '' } });
   });
 });
 

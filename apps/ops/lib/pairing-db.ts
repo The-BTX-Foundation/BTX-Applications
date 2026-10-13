@@ -3,10 +3,16 @@
 // other people's availability can only be written by an admin, whatever this code says. The checks here give a clear
 // message instead of a raw database error.
 //
-// Tables (migration 20261013090000_ops_hub.sql): interview_slots, bookings, interview_pairings, board_availability,
-// staff_profiles, plus staff_directory() and `applications` (code and name: staff see names, D2).
+// Tables (migrations 20261013090000_ops_hub.sql and 20261013090300_interview_flow.sql): interview_slots, bookings,
+// interview_pairings, board_free_ranges (the old Morning / Afternoon / Evening picks are stored as ranges),
+// board_interview_prefs, staff_profiles, plus staff_directory(), interview_candidates() and `applications` (code and
+// name: staff see names, D2).
+//
+// Since the interview flow, a booking pairs two people by itself (the bookings trigger). "Re-run pairing" here only
+// pairs booked interviews that still have nobody, using the same rules (interview_candidates()).
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { BLOCKS, pairInterviews, type AvailabilityRow, type Block, type PairingPerson } from './pairing';
+import { blocksToRanges, rangesToBlocks, windowDays as rangeWindowDays, type MinuteRange } from './free-ranges';
+import { BLOCKS, type AvailabilityRow, type Block } from './pairing';
 import { checkNewSlots, isVideoUrl, type NewSlotInput } from './pairing-slots';
 
 export type Db = SupabaseClient;
@@ -80,11 +86,39 @@ export async function readInterviews(client: Db, cycleId: string): Promise<{ boo
 // ---- availability (D4) ---------------------------------------------------------------------------------------------
 
 /** Every day of the interview window, "2026-10-15" ... (at most 31). */
-export function windowDays(start: string | null, end: string | null): string[] {
-  if (!start || !end || end < start) return [];
-  const out: string[] = [];
-  for (let t = Date.parse(`${start}T00:00:00Z`); out.length < 31 && new Date(t).toISOString().slice(0, 10) <= end; t += 86_400_000) out.push(new Date(t).toISOString().slice(0, 10));
-  return out;
+export const windowDays = rangeWindowDays;
+
+/** A person's free ranges for a cycle, in minutes (board_free_ranges). */
+export async function readRanges(client: Db, cycleId: string, userId?: string): Promise<(MinuteRange & { userId: string })[]> {
+  let q = client.from('board_free_ranges').select('user_id, day, start_min, end_min').eq('cycle_id', cycleId);
+  if (userId) q = q.eq('user_id', userId);
+  const r = await q;
+  if (r.error) throw r.error;
+  return (r.data ?? []).map((x: { user_id: string; day: string; start_min: number; end_min: number }) => ({ userId: x.user_id, day: x.day, startMin: x.start_min, endMin: x.end_min }));
+}
+
+// Replaces someone's free ranges for a cycle with `ranges` (already cleaned): removes the rows that are not wanted,
+// then adds the new ones. The database lets a person write only their own rows (admins anyone's).
+export async function replaceRanges(client: Db, cycleId: string, userId: string, ranges: MinuteRange[]): Promise<boolean> {
+  let have: (MinuteRange & { userId: string })[];
+  try {
+    have = await readRanges(client, cycleId, userId);
+  } catch {
+    return false;
+  }
+  const key = (r: MinuteRange) => `${r.day}|${r.startMin}|${r.endMin}`;
+  const want = new Map(ranges.map((r) => [key(r), r]));
+  const haveKeys = new Set(have.map(key));
+  for (const h of have.filter((x) => !want.has(key(x)))) {
+    const d = await client.from('board_free_ranges').delete().eq('cycle_id', cycleId).eq('user_id', userId).eq('day', h.day).eq('start_min', h.startMin);
+    if (d.error) return false;
+  }
+  const add = [...want.values()].filter((r) => !haveKeys.has(key(r))).map((r) => ({ cycle_id: cycleId, user_id: userId, day: r.day, start_min: r.startMin, end_min: r.endMin }));
+  if (add.length > 0) {
+    const i = await client.from('board_free_ranges').insert(add);
+    if (i.error) return false;
+  }
+  return true;
 }
 
 export type AvailabilityData = {
@@ -97,16 +131,20 @@ export type AvailabilityData = {
   everyone: AvailabilityRow[];
 };
 
-/** Own picks and everyone's picks for the cycle. Board accounts and admins read all rows. */
+/** Own picks and everyone's picks for the cycle, as the blocks each person's free ranges fully cover. */
 export async function readAvailability(client: Db, cycle: CycleInfo): Promise<AvailabilityData> {
   const me = await sessionRole(client);
-  const r = await client.from('board_availability').select('user_id, day, block').eq('cycle_id', cycle.id);
-  if (r.error) throw r.error;
-  const everyone: AvailabilityRow[] = (r.data ?? []).map((x: { user_id: string; day: string; block: Block }) => ({ userId: x.user_id, day: x.day, block: x.block }));
+  const rows = await readRanges(client, cycle.id);
+  const byUser = new Map<string, MinuteRange[]>();
+  for (const r of rows) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r]);
+  const everyone: AvailabilityRow[] = [];
+  for (const [userId, list] of byUser) for (const b of rangesToBlocks(list)) everyone.push({ userId, day: b.day, block: b.block });
   return { cycleId: cycle.id, days: windowDays(cycle.interviewStart, cycle.interviewEnd), mine: everyone.filter((x) => x.userId === me.id), everyone };
 }
 
 // Replaces the signed-in person's own availability for the cycle with `picks` (only days inside the interview window).
+// The picks are saved as free ranges (Morning 9-12, Afternoon 12-5, Evening 5-9); the new availability screen uses
+// lib/interview-flow-db.ts instead.
 export async function saveMyAvailability(client: Db, picks: { day: string; block: string }[]): Promise<Result<{ saved: number }>> {
   const me = await sessionRole(client);
   if (!me.id || (me.role !== 'board' && me.role !== 'admin')) return { ok: false, message: 'Only board members can give interview availability.' };
@@ -119,20 +157,7 @@ export async function saveMyAvailability(client: Db, picks: { day: string; block
     if (!days.includes(p.day) || !(BLOCKS as readonly string[]).includes(p.block)) return { ok: false, message: 'Pick a part of the day inside the interview dates.' };
     want.set(`${p.day}|${p.block}`, { userId: me.id, day: p.day, block: p.block as Block });
   }
-  const have = await client.from('board_availability').select('day, block').eq('cycle_id', cycle.id).eq('user_id', me.id);
-  if (have.error) return { ok: false, message: SAVE_FAILED };
-  const haveKeys = new Set((have.data ?? []).map((h: { day: string; block: string }) => `${h.day}|${h.block}`));
-  const drop = [...haveKeys].filter((k) => !want.has(k));
-  const add = [...want.entries()].filter(([k]) => !haveKeys.has(k)).map(([, v]) => ({ cycle_id: cycle.id, user_id: me.id, day: v.day, block: v.block }));
-  for (const k of drop) {
-    const [day, block] = k.split('|');
-    const d = await client.from('board_availability').delete().eq('cycle_id', cycle.id).eq('user_id', me.id).eq('day', day).eq('block', block);
-    if (d.error) return { ok: false, message: SAVE_FAILED };
-  }
-  if (add.length > 0) {
-    const i = await client.from('board_availability').insert(add);
-    if (i.error) return { ok: false, message: SAVE_FAILED };
-  }
+  if (!(await replaceRanges(client, cycle.id, me.id, blocksToRanges([...want.values()])))) return { ok: false, message: SAVE_FAILED };
   return { ok: true, saved: want.size };
 }
 
@@ -147,28 +172,62 @@ export type PairingPlan = {
   uncovered: string[];
 };
 
+/** One row of interview_candidates(): someone who may take an interview, with the two numbers pairing orders by. */
+export type Candidate = { userId: string; interviewsSoFar: number; freeMinutesLeft: number; name: string };
+
+/** Who may take an interview (admins only; the database checks): free then, under their limit, not busy, not someone who knows the student. */
+export async function readCandidates(client: Db, slotId: string, applicationId: string | null): Promise<Candidate[]> {
+  const r = await client.rpc('interview_candidates', { p_slot_id: slotId, p_application_id: applicationId });
+  if (r.error) throw r.error;
+  return ((r.data ?? []) as { user_id: string; interviews_so_far: number; free_minutes_left: number; display_name: string }[]).map((c) => ({
+    userId: c.user_id,
+    interviewsSoFar: c.interviews_so_far,
+    freeMinutesLeft: c.free_minutes_left,
+    name: c.display_name,
+  }));
+}
+
+/** Each person's "Most N interviews" for a cycle (missing = no limit). */
+export async function readLimits(client: Db, cycleId: string): Promise<Map<string, number>> {
+  const r = await client.from('board_interview_prefs').select('user_id, max_interviews').eq('cycle_id', cycleId);
+  if (r.error) throw r.error;
+  const out = new Map<string, number>();
+  for (const p of r.data ?? []) if (p.max_interviews !== null) out.set(p.user_id, p.max_interviews);
+  return out;
+}
+
 // Works out who would be paired to each booked, future interview that has no pair yet. Nothing already paired moves.
+// Admins only (the candidate list is). For each interview, in time order, it takes the database's candidates and
+// counts the pairs this run has already planned: fewest interviews so far, then fewer free minutes left, then name.
 export async function planPairing(client: Db, now = new Date()): Promise<Result<{ plan: PairingPlan; cycleId: string }>> {
+  const me = await sessionRole(client);
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can re-run pairing.' };
   const cycle = await currentCycle(client);
   if (!cycle) return { ok: false, message: 'There is no open cycle.' };
-  const [{ booked, pairs }, staff, avail] = await Promise.all([readInterviews(client, cycle.id), readStaff(client), readAvailability(client, cycle)]);
+  const [{ booked, pairs }, limits] = await Promise.all([readInterviews(client, cycle.id), readLimits(client, cycle.id)]);
   const todo = booked.filter((b) => !pairs.has(b.slotId) && Date.parse(b.startsAt) > now.getTime());
-  const people: PairingPerson[] = staff.filter((s) => s.role === 'board' || s.role === 'admin').map((s) => ({ userId: s.userId, name: s.name }));
-  const counts: Record<string, number> = {};
+  const planned = new Map<string, number>();
   const busy: { userId: string; startsAt: string; endsAt: string }[] = [];
-  const times = new Map(booked.map((b) => [b.slotId, b]));
-  for (const p of pairs.values()) {
-    counts[p.a] = (counts[p.a] ?? 0) + 1;
-    counts[p.b] = (counts[p.b] ?? 0) + 1;
-    const t = times.get(p.slotId);
-    if (t) for (const u of [p.a, p.b]) busy.push({ userId: u, startsAt: t.startsAt, endsAt: t.endsAt });
+  const assignments: PairingPlan['assignments'] = [];
+  const uncovered: string[] = [];
+  for (const b of todo) {
+    const extra = (u: string) => planned.get(u) ?? 0;
+    const cands = (await readCandidates(client, b.slotId, b.applicationId))
+      .filter((c) => !busy.some((x) => x.userId === c.userId && x.startsAt < b.endsAt && b.startsAt < x.endsAt))
+      .filter((c) => !limits.has(c.userId) || c.interviewsSoFar + extra(c.userId) < (limits.get(c.userId) as number))
+      .sort((x, y) => x.interviewsSoFar + extra(x.userId) - (y.interviewsSoFar + extra(y.userId)) || x.freeMinutesLeft - y.freeMinutesLeft || x.name.localeCompare(y.name) || x.userId.localeCompare(y.userId));
+    if (cands.length < 2) {
+      uncovered.push(b.slotId);
+      continue;
+    }
+    const [a, c] = cands;
+    assignments.push({ slotId: b.slotId, a: a.userId, b: c.userId });
+    for (const u of [a.userId, c.userId]) {
+      planned.set(u, extra(u) + 1);
+      busy.push({ userId: u, startsAt: b.startsAt, endsAt: b.endsAt });
+    }
   }
-  const res = pairInterviews({ slots: todo.map((b) => ({ id: b.slotId, startsAt: b.startsAt, endsAt: b.endsAt })), people, availability: avail.everyone, counts, busy });
-  return {
-    ok: true,
-    cycleId: cycle.id,
-    plan: { unpairedCount: todo.length, assignments: res.assignments.map((a) => ({ slotId: a.slotId, a: a.interviewerA, b: a.interviewerB })), uncovered: res.unpaired.map((u) => u.slotId) },
-  };
+  return { ok: true, cycleId: cycle.id, plan: { unpairedCount: todo.length, assignments, uncovered } };
 }
 
 /** Admin only: pairs every booked, future interview that has no pair yet. Pairs already set are never changed. */
@@ -186,7 +245,8 @@ export async function runPairing(client: Db, now = new Date()): Promise<Result<{
   return { ok: true, paired: rows.length, uncovered: planned.plan.uncovered.length };
 }
 
-/** Admin only: replaces one interviewer on a paired interview by hand (no availability check: the admin decides). */
+/** Admin only: replaces one interviewer on a paired interview by hand. The new person must be someone the database
+ * says may take it (free then, under their limit, not busy, not someone who knows the student). */
 export async function swapInterviewer(client: Db, slotId: string, fromUserId: string, toUserId: string): Promise<Result> {
   const me = await sessionRole(client);
   if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can change interviewers.' };
@@ -198,6 +258,16 @@ export async function swapInterviewer(client: Db, slotId: string, fromUserId: st
   if (toUserId === a || toUserId === b) return { ok: false, message: 'That person is already interviewing.' };
   const staff = await readStaff(client);
   if (!staff.some((s) => s.userId === toUserId && (s.role === 'board' || s.role === 'admin'))) return { ok: false, message: 'Pick a board member.' };
+  const bk = await client.from('bookings').select('application_id').eq('slot_id', slotId).eq('status', 'active').maybeSingle();
+  if (bk.error) return { ok: false, message: SAVE_FAILED };
+  let cands: Candidate[];
+  try {
+    cands = await readCandidates(client, slotId, bk.data?.application_id ?? null);
+  } catch {
+    return { ok: false, message: SAVE_FAILED };
+  }
+  // The reason stays vague on purpose: it may be a private "student I know".
+  if (!cands.some((c) => c.userId === toUserId)) return { ok: false, message: "That person can't take this interview. Pick someone who is free then." };
   const upd = await client
     .from('interview_pairings')
     .update(fromUserId === a ? { interviewer_a: toUserId } : { interviewer_b: toUserId })
@@ -227,7 +297,8 @@ export async function setVideoLinks(client: Db, links: { slotId: string; url: st
 
 // ---- interview times (admin) ---------------------------------------------------------------------------------------
 
-/** Admin only: adds 30-minute slots inside the cycle's interview window. Nothing is added if any entry is wrong. */
+/** Admin only: adds 30-minute slots inside the cycle's interview window, open to students at once. Nothing is added if
+ * any entry is wrong. (The review flow adds proposed times with lib/interview-flow-db.ts addTime instead.) */
 export async function addInterviewSlots(client: Db, entries: NewSlotInput[], now = new Date()): Promise<Result<{ added: number }>> {
   const me = await sessionRole(client);
   if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can add interview times.' };
@@ -238,7 +309,9 @@ export async function addInterviewSlots(client: Db, entries: NewSlotInput[], now
   const existing = (ex.data ?? []).map((s: { starts_at: string; ends_at: string }) => ({ startsAt: s.starts_at, endsAt: s.ends_at }));
   const check = checkNewSlots({ entries, windowStart: cycle.interviewStart, windowEnd: cycle.interviewEnd, existing, now });
   if (check.errors.length > 0) return { ok: false, message: check.errors[0] };
-  const ins = await client.from('interview_slots').insert(check.rows.map((r) => ({ cycle_id: cycle.id, starts_at: r.startsAt, ends_at: r.endsAt })));
+  // These times are offered to students right away (opened_at), as before the review step existed.
+  const openedAt = new Date().toISOString();
+  const ins = await client.from('interview_slots').insert(check.rows.map((r) => ({ cycle_id: cycle.id, starts_at: r.startsAt, ends_at: r.endsAt, opened_at: openedAt })));
   if (ins.error) return { ok: false, message: SAVE_FAILED };
   return { ok: true, added: check.rows.length };
 }

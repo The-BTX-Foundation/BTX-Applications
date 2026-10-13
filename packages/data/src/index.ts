@@ -14,7 +14,7 @@ export type { SubmitResult } from './submit';
 export { bookSlot } from './booking';
 export type { BookResult } from './booking';
 export {
-  fetchFreeTimes, fetchMyDecision, fetchMyInterview, fetchOpenSlots, fetchStory, MAX_PHOTO_BYTES, parseDecision, parseInterview, photoPath,
-  photoUrl, saveFreeTimes, saveStory, uploadAwardPhoto,
+  fetchFreeRanges, fetchFreeTimes, fetchMyDecision, fetchMyInterview, fetchOpenSlots, fetchStory, MAX_PHOTO_BYTES, parseDecision, parseInterview, photoPath,
+  photoUrl, saveFreeRanges, saveFreeTimes, saveStory, uploadAwardPhoto,
 } from './journey';
-export type { FreeTimesRow, MyDecision, MyInterview, OpenSlot, StoryRow } from './journey';
+export type { FreeRange, FreeRangesRow, FreeTimesRow, MyDecision, MyInterview, OpenSlot, StoryRow } from './journey';

@@ -81,7 +81,7 @@ export type FreeTimesRow = { days: string[]; windows: string[]; note: string };
 export async function fetchFreeTimes(client: BtxClient, applicationId: string): Promise<{ failed: boolean; row: FreeTimesRow | null }> {
   const { data, error } = await client.from('interview_free_times').select('days, windows, note').eq('application_id', applicationId).maybeSingle();
   if (error) return { failed: true, row: null };
-  return { failed: false, row: data ? { days: data.days, windows: data.windows, note: data.note ?? '' } : null };
+  return { failed: false, row: data ? { days: data.days ?? [], windows: data.windows ?? [], note: data.note ?? '' } : null };
 }
 
 /** Saves (adds or changes) her answer. days are Mon..Sun, windows are morning, afternoon or evening. */
@@ -90,6 +90,33 @@ export async function saveFreeTimes(client: BtxClient, applicationId: string, v:
   const { error } = await client
     .from('interview_free_times')
     .upsert({ application_id: applicationId, days: v.days, windows: v.windows, note: note || null }, { onConflict: 'application_id' });
+  return { ok: !error };
+}
+
+// Her answer as time ranges (20261013090300_interview_flow.sql): each range is an Eastern day and a start and end,
+// "2026-10-15", "18:00", "20:00". `said` is what she typed. Saved in the same row as the days-and-windows answer.
+export type FreeRange = { day: string; start: string; end: string };
+export type FreeRangesRow = { ranges: FreeRange[]; said: string };
+
+const isRange = (v: unknown): v is FreeRange =>
+  !!v && typeof v === 'object' && ['day', 'start', 'end'].every((k) => typeof (v as Record<string, unknown>)[k] === 'string');
+
+/** Her saved ranges and words, or null when she has not sent ranges. */
+export async function fetchFreeRanges(client: BtxClient, applicationId: string): Promise<{ failed: boolean; row: FreeRangesRow | null }> {
+  const { data, error } = await client.from('interview_free_times').select('ranges, said').eq('application_id', applicationId).maybeSingle();
+  if (error) return { failed: true, row: null };
+  const ranges = Array.isArray(data?.ranges) ? (data.ranges as unknown[]).filter(isRange) : [];
+  return { failed: false, row: data && ranges.length > 0 ? { ranges, said: data.said ?? '' } : null };
+}
+
+/** Saves (adds or changes) her answer as ranges, with what she typed. At least one range is needed. */
+export async function saveFreeRanges(client: BtxClient, applicationId: string, v: FreeRangesRow): Promise<{ ok: boolean }> {
+  const ranges = v.ranges.filter(isRange).map((r) => ({ day: r.day, start: r.start, end: r.end }));
+  if (ranges.length === 0) return { ok: false };
+  const said = v.said.trim();
+  const { error } = await client
+    .from('interview_free_times')
+    .upsert({ application_id: applicationId, ranges, said: said || null }, { onConflict: 'application_id' });
   return { ok: !error };
 }
 
