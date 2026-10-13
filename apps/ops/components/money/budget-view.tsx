@@ -1,18 +1,18 @@
 'use client';
 
 // Money > Budget (Figma "Money > Budget" laptop and phone): funds on hand, the 2026 budget by category, recent spending, the
-// Q4 budget checklist with its approval, and the Money chat. The approval buttons and "Log spending" show only for roles the
-// database lets write money (admin and board). Data: lib/budget.ts (mock or live); writes: use-budget.ts.
+// Q4 budget checklist with its approval, and the Money chat. Data: lib/budget.ts (mock or live).
+// Every action that writes (log or edit spending, update funds on hand, approve, decline or undo the quarter plan) is
+// "Coming soon" for now (owner, 2026-10-12): a disabled control with a small label (./soon.tsx).
 import { useState } from 'react';
 import Link from 'next/link';
 import { OIcon } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
 import { Ring } from '@/components/ring';
 import { dateOnlyLabel, timeLabel } from '@/lib/format';
-import { canUseMoney, pct, totals, usd, type BudgetData, type BudgetStep, type SpendRow } from '@/lib/money-shared';
-import type { StaffRole } from '@/lib/role';
+import { pct, totals, usd, type BudgetData, type BudgetStep } from '@/lib/money-shared';
 import { Bar, PeriodChip, Tick } from './ui';
-import { FundsDialog, SpendDialog } from './budget-dialogs';
+import { SoonButtons, SoonHeaderAction, SoonLink } from './soon';
 import { useBudget } from './use-budget';
 
 // "$3,410 Over by $410" vs "$860 of $1,200": what a category has spent against its budget.
@@ -43,13 +43,9 @@ export function DeclineForm({ to, onSend, onCancel, busy }: { to: string; onSend
   );
 }
 
-export function BudgetView({ data, demo, role, userName }: { data: BudgetData; demo?: string; role: StaffRole; userName: string }) {
+export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) {
   const b = useBudget(data, demo);
   const { state: s } = b;
-  const [spend, setSpend] = useState<{ row?: SpendRow } | null>(null);
-  const [funds, setFunds] = useState(false);
-  const [declining, setDeclining] = useState(false);
-  const can = canUseMoney(role);
   const t = totals(s.categories);
   const plan = data.plan;
   const approved = s.status === 'approved';
@@ -94,17 +90,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
         <span className="o-lg">
           <PeriodChip year={data.year} />
         </span>
-        {can ? (
-          <>
-            <button type="button" className="o-btn s lg o-lg" onClick={() => setSpend({})}>
-              <OIcon name="plus" size={16} />
-              Log spending
-            </button>
-            <button type="button" className="o-sq o-ph" aria-label="Log spending" onClick={() => setSpend({})}>
-              <OIcon name="plus" size={22} />
-            </button>
-          </>
-        ) : null}
+        <SoonHeaderAction label="Log spending" />
       </PageHeader>
       <div className="o-ph mn-chiprow">
         <PeriodChip year={data.year} phone />
@@ -121,15 +107,9 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
         <p className="mn-funds-v">{usd(s.funds.cents)}</p>
         <p className="mn-funds-n">
           Updated {dateOnlyLabel(s.funds.as_of)} by {s.funds.by}
-          {can ? (
-            <>
-              <span className="o-ph"> · </span>
-              <br className="o-lg" />
-              <button type="button" className="mn-link" onClick={() => setFunds(true)}>
-                Update
-              </button>
-            </>
-          ) : null}
+          <span className="o-ph"> · </span>
+          <br className="o-lg" />
+          <SoonLink label="Update" />
         </p>
       </section>
 
@@ -211,7 +191,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
           <section className="o-card mn-panel mn-recent" aria-labelledby="mn-rec-h">
             <div className="mn-ph">
               <h2 id="mn-rec-h">Recent spending</h2>
-              <span className="o-lg">Last 5 · {can ? 'click a row to edit' : ''}</span>
+              <span className="o-lg">Last 5</span>
               <Link href="/money/budget" className="mn-seeall">
                 See all
               </Link>
@@ -231,11 +211,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
                   <b className="r">{r.amount_cents != null ? usd(r.amount_cents) : '[amount]'}</b>
                 </>
               );
-              return can ? (
-                <button key={r.id} type="button" className="mn-tr mn-recrow" onClick={() => setSpend({ row: r })}>
-                  {cells}
-                </button>
-              ) : (
+              return (
                 <div key={r.id} className="mn-tr mn-recrow">
                   {cells}
                 </div>
@@ -272,37 +248,12 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
                       {declined ? (
                         <>
                           <p className="mn-qs-d">{s.decline_note}</p>
-                          {can ? (
-                            <div className="mn-qa">
-                              <button type="button" className="o-btn s mn-b36" disabled={b.busy} onClick={() => void b.reopen()}>
-                                Undo
-                              </button>
-                            </div>
-                          ) : null}
+                          <SoonButtons secondary="Undo" small />
                         </>
                       ) : (
                         <>
                           <p className="mn-qs-d">{planLine}</p>
-                          {can && declining ? (
-                            <DeclineForm
-                              to={plan.submitter}
-                              busy={b.busy}
-                              onCancel={() => setDeclining(false)}
-                              onSend={(note) => {
-                                void b.decline(note);
-                                setDeclining(false);
-                              }}
-                            />
-                          ) : can ? (
-                            <div className="mn-qa">
-                              <button type="button" className="o-btn p mn-b36" disabled={b.busy} onClick={() => void b.approve()}>
-                                {approveLabel}
-                              </button>
-                              <button type="button" className="o-btn s mn-b36" disabled={b.busy} onClick={() => setDeclining(true)}>
-                                Decline
-                              </button>
-                            </div>
-                          ) : null}
+                          <SoonButtons primary={approveLabel} secondary="Decline" small />
                         </>
                       )}
                     </div>
@@ -320,14 +271,8 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
                       {x.kind === 'approval' ? (
                         <>
                           Approved by {s.decided_at && data.plan.decided_by && data.plan.decided_by !== data.me ? 'someone else' : 'you'}, {timeLabel(s.decided_at ?? new Date().toISOString())}
-                          {can ? (
-                            <>
-                              {' · '}
-                              <button type="button" className="mn-link" onClick={() => void b.reopen()}>
-                                Undo
-                              </button>
-                            </>
-                          ) : null}
+                          {' · '}
+                          <SoonLink label="Undo" />
                         </>
                       ) : (
                         meta
@@ -365,27 +310,6 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
         </div>
       </div>
 
-      {spend ? (
-        <SpendDialog
-          row={spend.row}
-          categories={s.categories}
-          onClose={() => setSpend(null)}
-          onSave={async (v) => {
-            const ok = await b.saveSpending(spend.row?.id, v);
-            if (ok) setSpend(null);
-          }}
-        />
-      ) : null}
-      {funds ? (
-        <FundsDialog
-          current={s.funds.cents}
-          onClose={() => setFunds(false)}
-          onSave={async (cents) => {
-            const ok = await b.saveFunds(cents, userName);
-            if (ok) setFunds(false);
-          }}
-        />
-      ) : null}
     </>
   );
 }

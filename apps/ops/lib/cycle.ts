@@ -1,6 +1,5 @@
 // The cycle overview as the page uses it. Live mode reads the published cycle row (`cycles`), the number of submitted
-// applications through the blind `application_reviews` view (admins, board members and reviewers can all read it; only
-// admins may read the `applications` table), and the cycle's checklists and tasks. The three schedule dates the table
+// `applications` (admins and board members read them, D2), and the cycle's checklists and tasks. The three schedule dates the table
 // has no column for (scores due, selection meeting, funds sent) read "Not set". In mock mode every field comes from the
 // Figma sample (mock/cycle.ts). The logic is in cycle-core.ts (pure, tested).
 import { hasSupabaseEnv } from '@btx/data';
@@ -48,10 +47,8 @@ export async function loadCycle(opts: { forceError?: boolean } = {}): Promise<Cy
       .maybeSingle();
     if (error) throw error;
     if (!c) return { title: 'No open cycle', sub: 'Nothing is published yet', phases: [], nowLabel: '', phoneSub: 'Nothing is published yet', nowLine: '', nextLine: '', failed: false, checklist: { done: 0, total: 0, groups: [] } };
-    // Blind review: board members and reviewers cannot read `applications`; the `application_reviews` view lists the
-    // submitted ones for every staff role, so the count works for all of them.
-    const reviews = client as unknown as { from: (t: string) => { select: (c: string, o: { count: 'exact'; head: true }) => { eq: (c: string, v: unknown) => PromiseLike<{ count: number | null; error: unknown }> } } };
-    const { count, error: e2 } = await reviews.from('application_reviews').select('id', { count: 'exact', head: true }).eq('cycle_id', c.id);
+    // The submitted applications of this cycle (applications_select_staff: admins and board members, D2).
+    const { count, error: e2 } = await client.from('applications').select('id', { count: 'exact', head: true }).eq('cycle_id', c.id).eq('status', 'submitted');
     if (e2) throw e2;
     const today = easternIso(new Date().toISOString());
     const lists = await read('checklists', 'id, title', { eq: { cycle_id: c.id }, order: ['position', true] });

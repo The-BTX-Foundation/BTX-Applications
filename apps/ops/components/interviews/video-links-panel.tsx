@@ -49,7 +49,7 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
           {data.rows.map((r) => (
             <label className="iv-vl-r" key={r.slotId}>
               <b>
-                {r.when} · {r.code} {r.initials}
+                {r.when} · {r.applicant} · {r.code}
               </b>
               <span>{r.names}</span>
               <input

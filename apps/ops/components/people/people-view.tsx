@@ -1,11 +1,12 @@
 'use client';
 
 // Admin > People and roles (Figma laptop and phone): the staff, each person's title, role and last sign-in, and what each
-// role can do. Only an admin sees "Change role" and "Invite a person", and nobody gets "Change role" on their own row; the
+// role can do. Only an admin sees "Change role", and nobody gets "Change role" on their own row; the
 // server action and the database check the same rules again. Changing a role asks first ("Make Kelsey Davis an Admin?"),
 // then shows "Kelsey Davis is now an Admin · Undo".
 // MOCK mode keeps the roles in lib/mock-store.ts. LIVE mode calls the server action in lib/people-actions.ts, which writes
-// app_metadata with the service key.
+// app_metadata with the service key. There is no invite control (owner, 2026-10-12): accounts are set up server side
+// through inviteStaff() in lib/people-actions.ts.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hasSupabaseEnv } from '@btx/data';
@@ -19,12 +20,11 @@ import { changeRoleAction } from '@/lib/people-actions';
 import type { PeopleData, PersonRow } from '@/lib/money-shared';
 import type { StaffRole } from '@/lib/role';
 
-const NAME: Record<StaffRole, string> = { admin: 'Admin', board: 'Board', reviewer: 'Reviewer' };
-const WITH_ARTICLE: Record<StaffRole, string> = { admin: 'an Admin', board: 'a Board member', reviewer: 'a Reviewer' };
-const BUTTON: Record<StaffRole, string> = { admin: 'Make Admin', board: 'Make Board member', reviewer: 'Make Reviewer' };
+const NAME: Record<StaffRole, string> = { admin: 'Admin', board: 'Board' };
+const WITH_ARTICLE: Record<StaffRole, string> = { admin: 'an Admin', board: 'a Board member' };
+const BUTTON: Record<StaffRole, string> = { admin: 'Make Admin', board: 'Make Board member' };
 
-// The role a "Change role" click offers. The Figma shows Board -> Admin; the others are a guess (see the report):
-// an admin goes down to Board, a reviewer goes up to Board.
+// The role a "Change role" click offers: there are only two, so Board -> Admin (as in the Figma) and Admin -> Board.
 function offered(role: StaffRole): StaffRole {
   return role === 'board' ? 'admin' : 'board';
 }
@@ -32,7 +32,7 @@ function offered(role: StaffRole): StaffRole {
 // What the dialog explains.
 function explain(p: PersonRow, to: StaffRole): string {
   const first = p.display_name.split(' ')[0];
-  const today = p.role === 'board' ? 'Board' : p.role === 'admin' ? 'an Admin' : 'a Reviewer';
+  const today = p.role === 'board' ? 'Board' : 'an Admin';
   if (to === 'admin') return `${p.display_name} is ${today} today. As an Admin, ${first} can also change other people’s roles.`;
   return `${p.display_name} is ${today} today. As a Board member, ${first} can do everything except change people’s roles.`;
 }
@@ -103,20 +103,7 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
             <span className="o-ph">{`Admin · ${people.length} people`}</span>
           </>
         }
-        actionsClass="mn-acts"
-      >
-        {isAdmin ? (
-          <>
-            <button type="button" className="o-btn s lg o-lg" onClick={() => setToast({ text: 'Inviting people is not available yet.' })}>
-              <OIcon name="plus" size={16} />
-              Invite a person
-            </button>
-            <button type="button" className="o-sq o-ph" aria-label="Invite a person" onClick={() => setToast({ text: 'Inviting people is not available yet.' })}>
-              <OIcon name="plus" size={22} />
-            </button>
-          </>
-        ) : null}
-      </PageHeader>
+      />
 
       {error ? (
         <p className="mn-error" role="alert">

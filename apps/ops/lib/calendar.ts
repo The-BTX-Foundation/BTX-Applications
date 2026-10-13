@@ -43,7 +43,7 @@ export async function loadCalendar(opts: { demo?: string } = {}): Promise<Calend
       safe(readRows('bookings', 'id, application_id, slot_id, status', { eq: { status: 'active' } })),
       safe(readRows('interview_slots', 'id, starts_at')),
       safe(readRows('interview_pairings', 'slot_id, interviewer_a, interviewer_b, video_url')),
-      safe(readRows('application_reviews', 'id, applicant_code')),
+      safe(readRows('applications', 'id, applicant_code, full_name', { eq: { status: 'submitted' } })),
       readRows('staff_profiles', 'user_id, display_name'),
     ]);
     const today = easternDay(new Date());

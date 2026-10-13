@@ -21,8 +21,8 @@ function LaptopRow({ r }: { r: UpcomingInterview }) {
         <span className="t">{r.time}</span>
       </span>
       <span className="s-ivc">
-        <b>{r.code}</b>
-        <span>{r.initials}</span>
+        <b>{r.applicant}</b>
+        <span>{r.code}</span>
       </span>
       <span className="s-ivp">
         {r.pair.length === 0 ? (
@@ -74,7 +74,7 @@ function PhoneCard({ r }: { r: UpcomingInterview }) {
       </span>
       <span className="s-ivt-p">
         <b>
-          {r.time} · {r.initials}
+          {r.time} · {r.applicant}
         </b>
         <span>{r.code}</span>
         <span className="s-ivn-p">

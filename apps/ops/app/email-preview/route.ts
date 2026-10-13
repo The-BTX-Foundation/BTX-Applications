@@ -1,5 +1,5 @@
 // A browser preview of the staff invite email with sample data. Mock mode only (never in a real deployment).
-// `?role=` picks admin (default), board or reviewer. Nothing here sends anything.
+// `?role=` picks admin (default) or board. Nothing here sends anything.
 import { NextResponse } from 'next/server';
 import { getAuthMode } from '@btx/data';
 import { staffInviteHtml } from '@btx/emails';

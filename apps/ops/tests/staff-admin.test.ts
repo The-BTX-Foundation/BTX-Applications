@@ -25,9 +25,15 @@ describe('createStaffUser', () => {
   });
   it('says so when the email already has an account, and writes no profile', async () => {
     const m = mockFetch([{ ok: false, status: 422, json: { error_code: 'email_exists' } }]);
-    const r = await createStaffUser(env(m.fetchImpl), { name: 'A B', email: 'a@b.co', role: 'reviewer' });
+    const r = await createStaffUser(env(m.fetchImpl), { name: 'A B', email: 'a@b.co', role: 'board' });
     expect(r).toEqual({ ok: false, reason: 'Someone with that email already has an account.' });
     expect(m.calls).toHaveLength(1);
+  });
+  it('refuses any role but admin or board, without calling the API (no reviewer role)', async () => {
+    const m = mockFetch([]);
+    const r = await createStaffUser(env(m.fetchImpl), { name: 'A B', email: 'a@b.co', role: 'reviewer' as never });
+    expect(r).toEqual({ ok: false, reason: 'A person can be an Admin or a Board member.' });
+    expect(m.calls).toHaveLength(0);
   });
   it('removes the new auth user when the profile row fails', async () => {
     const m = mockFetch([{ ok: true, json: { id: 'u2' } }, { ok: false, status: 400 }, { ok: true }]);
@@ -40,8 +46,13 @@ describe('createStaffUser', () => {
 describe('setUserRole', () => {
   it('puts the role into app_metadata', async () => {
     const m = mockFetch([{ ok: true }]);
-    expect(await setUserRole(env(m.fetchImpl), 'u9', 'reviewer')).toBe(true);
-    expect(m.calls[0]).toMatchObject({ url: 'http://x/auth/v1/admin/users/u9', method: 'PUT', body: { app_metadata: { role: 'reviewer' } } });
+    expect(await setUserRole(env(m.fetchImpl), 'u9', 'admin')).toBe(true);
+    expect(m.calls[0]).toMatchObject({ url: 'http://x/auth/v1/admin/users/u9', method: 'PUT', body: { app_metadata: { role: 'admin' } } });
+  });
+  it('refuses any role but admin or board (no reviewer role)', async () => {
+    const m = mockFetch([{ ok: true }]);
+    expect(await setUserRole(env(m.fetchImpl), 'u9', 'reviewer' as never)).toBe(false);
+    expect(m.calls).toHaveLength(0);
   });
   it('reports failure', async () => {
     expect(await setUserRole(env(mockFetch([{ ok: false }]).fetchImpl), 'u9', 'board')).toBe(false);

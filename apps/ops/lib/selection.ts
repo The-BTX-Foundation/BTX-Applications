@@ -1,7 +1,9 @@
 // Scholarships > Selection: the ranking by combined score, the award settings and the meeting agenda.
+// The ranking is information for the board: the board discusses and decides (owner, 2026-10-12), so nothing here says
+// the top score wins, and an award can be recorded for any submitted applicant.
 // LIVE: the ranking is every application of the published cycle with both scores published (`application_score_summary`,
-// read as the signed-in person, so it only counts scores both interviewers published), with the code and initials from
-// the blind view `application_reviews`, each interviewer's score and picks from `scores`, the notes from
+// read as the signed-in person, so it only counts scores both interviewers published), with the code and name from
+// `applications` (D2: board members see names), each interviewer's score and picks from `scores`, the notes from
 // `interview_summaries`, the meeting from `calendar_events` (kind selection_meeting), the main award's name and amount
 // from `cycles`, and the awards recorded so far from `scholarship_awards`. The extra award's name and amount have no
 // column yet (design pending), so they stay mock/selection.ts's EXTRA_AWARD.
@@ -9,7 +11,7 @@
 import { hasSupabaseEnv } from '@btx/data';
 import { dayLabel, timeLabel } from './format';
 import { combinedLabels, shortAwardName, sortRanking } from './sch-logic';
-import { blindRows, db, interviewsFor, publishedCycle, rubricFor, selectionMeeting, staffNames, summariesFor, visibleScores, whoAmI } from './sch-live';
+import { applicationRows, db, interviewsFor, publishedCycle, rubricFor, selectionMeeting, staffNames, summariesFor, visibleScores, whoAmI } from './sch-live';
 import { sheetFixture, RUBRIC } from '@/mock/scores';
 import { CALL_STEP, dollars, EXTRA_AWARD, MAIN_AWARD, MEETING, RANKING, selectionStore, type RankedRow } from '@/mock/selection';
 
@@ -18,14 +20,11 @@ export type RankRow = {
   /** The application's id (recording an award needs it); "mock-<code>" in mock mode. */
   applicationId: string;
   code: string;
-  initials: string;
+  /** The applicant's full name. */
+  name: string;
   combined: string;
   /** "Dania 4.9, Chariah 4.7". */
   parts: string;
-  /** The status pill, or null. */
-  chip: { text: string; kind: 'lead' | 'out' } | null;
-  /** "Tie, only matters for an extra award" style note shown where there is no pill. */
-  top: boolean;
   open?: boolean;
   detail: Detail;
 };
@@ -37,9 +36,10 @@ export type Detail = {
   quotes: string[];
 };
 
-export type Recorded = { id: string; code: string; initials: string; kind: 'main' | 'extra'; awardName: string; amountCents: number };
+export type Recorded = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number };
 
-export type Candidate = { id: string; code: string; initials: string };
+/** Someone the board may choose: any submitted applicant, ranked ones first. combined is '' when not scored yet. */
+export type Candidate = { id: string; code: string; name: string; combined: string };
 
 /** A ranked applicant; live rows also carry their application id and their real details. */
 type Ranked = RankedRow & { applicationId?: string; detail?: Detail };
@@ -53,6 +53,8 @@ type Settings = {
   meetingTime: string;
   meetingVideo: string;
   submitted: number;
+  /** Submitted applicants without both scores yet (they can still be chosen). */
+  unscored: Candidate[];
   recorded: Recorded[];
   noExtra: boolean;
   releasedAt: string | null;
@@ -69,9 +71,11 @@ export type SelectionData = {
   moreNote: string;
   meetingDate: string;
   meetingVideo: string;
-  /** The Legacy award step. */
-  legacy: { amount: number; amountLabel: string; name: string; /** The name saved on the award row (the cycle's award name, "Legacy Scholarship"). */ awardName: string; candidates: Candidate[]; tie: boolean; tieScore: string };
-  extra: { name: string; amountLabel: string; amountCents: number; candidates: Candidate[] };
+  /** The main award step. */
+  legacy: { amount: number; amountLabel: string; name: string; /** The name saved on the award row (the cycle's award name, "Legacy Scholarship"). */ awardName: string };
+  extra: { name: string; amountLabel: string; amountCents: number };
+  /** Every submitted applicant the board may choose for an award, in ranking order, then the ones not scored yet. */
+  candidates: Candidate[];
   callStep: string;
   recorded: Recorded[];
   noExtra: boolean;
@@ -98,42 +102,28 @@ function detailFor(r: RankedRow): Detail {
   };
 }
 
-// The pill beside a row: the winner, the extra-award candidates, or a tie at the top.
-function chips(ranked: RankedRow[], extraN: number, mainName = 'Legacy'): (RankRow['chip'])[] {
-  const topTie = ranked.length > 1 && ranked[0].combined === ranked[1].combined;
-  return ranked.map((r, i) => {
-    if (topTie && r.combined === ranked[0].combined) return { text: 'Tie, goes to a vote', kind: 'lead' as const };
-    if (i === 0) return { text: `${mainName}, top score`, kind: 'lead' as const };
-    const start = topTie ? 2 : 1;
-    if (i >= start && i < start + extraN) return { text: 'Discuss: extra award?', kind: 'out' as const };
-    return null;
-  });
-}
-
 const appId = (r: Ranked) => r.applicationId ?? `mock-${r.code}`;
-const cand = (r: Ranked): Candidate => ({ id: appId(r), code: r.code, initials: r.initials });
+const cand = (r: Ranked): Candidate => ({ id: appId(r), code: r.code, name: r.name, combined: r.combined });
 
 function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null, live?: Settings): SelectionData {
   const total = ranked.length;
-  const topTie = total > 1 && ranked[0].combined === ranked[1].combined;
-  const pills = chips(ranked, EXTRA_AWARD.candidates, live ? shortAwardName(live.mainName) : MAIN_AWARD.name);
+  // Equal combined scores share a rank number ("1, 1, 3").
+  const rankOf = (i: number) => ranked.findIndex((x) => x.combined === ranked[i].combined) + 1;
   const shown = 4;
-  const rows: RankRow[] = ranked.slice(0, shown).map((r, i) => ({
-    rank: topTie && i === 1 ? 1 : i + 1,
+  const row = (r: Ranked, i: number): RankRow => ({
+    rank: rankOf(i),
     applicationId: appId(r),
     code: r.code,
-    initials: r.initials,
+    name: r.name,
     combined: r.combined,
     parts: r.parts.map((p) => `${first(p.name)} ${p.score}`).join(', '),
-    chip: pills[i],
-    top: i === 0 || (topTie && i === 1),
     detail: r.detail ?? detailFor(r),
-  }));
+  });
+  const rows: RankRow[] = ranked.slice(0, shown).map((r, i) => row(r, i));
   // Ties further down are named in the "more" line (they only matter for an extra award).
   const rest = ranked.slice(shown);
   const tieAt = rest.length > 1 && rest[0].combined === rest[1].combined ? rest[0].combined : null;
   const st = selectionStore();
-  const extraCand = ranked.slice(topTie ? 2 : 1, (topTie ? 2 : 1) + EXTRA_AWARD.candidates);
   const mainName = live ? shortAwardName(live.mainName) : MAIN_AWARD.name;
   const mainCents = live ? live.mainCents : MAIN_AWARD.amountCents;
   const date = live ? live.meetingDate : MEETING.dateLabel;
@@ -146,19 +136,9 @@ function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null
     phoneSub: `Scholarships · ${scored} · ${meetPh}`,
     total,
     rows,
-    more: rest.map((r, i) => ({
-      rank: shown + i + 1,
-      applicationId: appId(r),
-      code: r.code,
-      initials: r.initials,
-      combined: r.combined,
-      parts: r.parts.map((p) => `${first(p.name)} ${p.score}`).join(', '),
-      chip: null,
-      top: false,
-      detail: r.detail ?? detailFor(r),
-    })),
+    more: rest.map((r, i) => row(r, shown + i)),
     moreCount: Math.max(0, total - shown),
-    moreNote: tieAt ? `${rest[0].initials} and ${rest[1].initials} tie at ${tieAt}` : '',
+    moreNote: tieAt ? `${rest[0].name} and ${rest[1].name} tie at ${tieAt}` : '',
     meetingDate: date || 'Not set',
     meetingVideo: live ? live.meetingVideo : MEETING.videoUrl,
     legacy: {
@@ -166,13 +146,11 @@ function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null
       amountLabel: dollars(mainCents),
       name: mainName,
       awardName: live ? live.mainName : MAIN_AWARD.name,
-      candidates: ranked.filter((r) => r.combined === ranked[0]?.combined).map(cand),
-      tie: topTie,
-      tieScore: ranked[0]?.combined ?? '',
     },
-    extra: { name: EXTRA_AWARD.name, amountLabel: dollars(EXTRA_AWARD.amountCents), amountCents: EXTRA_AWARD.amountCents, candidates: extraCand.map(cand) },
+    extra: { name: EXTRA_AWARD.name, amountLabel: dollars(EXTRA_AWARD.amountCents), amountCents: EXTRA_AWARD.amountCents },
+    candidates: [...ranked.map(cand), ...(live?.unscored ?? [])],
     callStep: CALL_STEP,
-    recorded: live ? live.recorded : st.awards.map(({ id, code, initials, kind, awardName, amountCents }) => ({ id, code, initials, kind, awardName, amountCents })),
+    recorded: live ? live.recorded : st.awards.map(({ id, code, name, kind, awardName, amountCents }) => ({ id, code, name, kind, awardName, amountCents })),
     noExtra: live ? live.noExtra : st.noExtra,
     agendaSent: live ? false : st.agendaSent,
     cycleId,
@@ -182,7 +160,8 @@ function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null
   };
 }
 
-// The stress frame (Figma "Scholarships > Selection, stress"): 120 applicants, a tie for first (J.T. and A-G.O. at 4.8).
+// The stress frame (Figma "Scholarships > Selection, stress"): 120 applicants, two sharing the best combined score (4.8),
+// and long names.
 function stress(): SelectionData {
   const d = (names: [string, string]): Detail => ({
     summary: 'The interview summary will show here once it is written.',
@@ -195,18 +174,24 @@ function stress(): SelectionData {
     phoneSub: 'Scholarships · all 120 scored · meeting Thu Dec 31, 9:30 PM, video',
     total: 120,
     rows: [
-      { rank: 1, applicationId: 'stress-1', code: 'APP-2026-00003', initials: 'J.T.', combined: '4.8', parts: 'Dania 4.9, Chariah 4.7', chip: { text: 'Tie, goes to a vote', kind: 'lead' }, top: true, detail: d(['Dania Morris', 'Chariah Ghee']) },
-      { rank: 1, applicationId: 'stress-2', code: 'APP-2026-00120', initials: 'A-G.O.', combined: '4.8', parts: 'Kelsey 4.9, Tomi 4.7', chip: { text: 'Tie, goes to a vote', kind: 'lead' }, top: true, open: true, detail: d(['Kelsey Davis', 'Tomi Falodun']) },
-      { rank: 3, applicationId: 'stress-3', code: 'APP-2026-00002', initials: 'D.A.', combined: '4.5', parts: 'Cillisha Knights 4.6, Darien Strachan 4.4', chip: { text: 'Discuss: extra award?', kind: 'out' }, top: false, detail: d(['Cillisha Knights', 'Darien Strachan']) },
-      { rank: 4, applicationId: 'stress-4', code: 'APP-2026-00009', initials: 'M.K.', combined: '4.4', parts: 'Tomi 4.5, Darien 4.3', chip: null, top: false, detail: d(['Tomi Falodun', 'Darien Strachan']) },
+      { rank: 1, applicationId: 'stress-1', code: 'APP-2026-00003', name: 'Jalen Thomas', combined: '4.8', parts: 'Dania 4.9, Chariah 4.7', detail: d(['Dania Morris', 'Chariah Ghee']) },
+      { rank: 1, applicationId: 'stress-2', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', combined: '4.8', parts: 'Kelsey 4.9, Tomi 4.7', open: true, detail: d(['Kelsey Davis', 'Tomi Falodun']) },
+      { rank: 3, applicationId: 'stress-3', code: 'APP-2026-00002', name: 'Daniel Asante', combined: '4.5', parts: 'Cillisha Knights 4.6, Darien Strachan 4.4', detail: d(['Cillisha Knights', 'Darien Strachan']) },
+      { rank: 4, applicationId: 'stress-4', code: 'APP-2026-00009', name: 'Maya King', combined: '4.4', parts: 'Tomi 4.5, Darien 4.3', detail: d(['Tomi Falodun', 'Darien Strachan']) },
     ],
     more: [],
     moreCount: 116,
-    moreNote: 'A.O. and K.E. tie at 4.3',
+    moreNote: 'Ada Okafor and Kofi Edwards tie at 4.3',
     meetingDate: 'Thu Dec 31',
     meetingVideo: MEETING.videoUrl,
-    legacy: { amount: 200000, amountLabel: '$2,000', name: 'Legacy', awardName: 'Legacy', candidates: [{ id: 'stress-1', code: 'APP-2026-00003', initials: 'J.T.' }, { id: 'stress-2', code: 'APP-2026-00120', initials: 'A-G.O.' }], tie: true, tieScore: '4.8' },
-    extra: { name: 'Empowerment', amountLabel: '$500', amountCents: 50000, candidates: [{ id: 'stress-5', code: 'APP-2026-00014', initials: 'R.S.' }, { id: 'stress-3', code: 'APP-2026-00002', initials: 'D.A.' }] },
+    legacy: { amount: 200000, amountLabel: '$2,000', name: 'Legacy', awardName: 'Legacy' },
+    extra: { name: 'Empowerment', amountLabel: '$500', amountCents: 50000 },
+    candidates: [
+      { id: 'stress-1', code: 'APP-2026-00003', name: 'Jalen Thomas', combined: '4.8' },
+      { id: 'stress-2', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', combined: '4.8' },
+      { id: 'stress-3', code: 'APP-2026-00002', name: 'Daniel Asante', combined: '4.5' },
+      { id: 'stress-4', code: 'APP-2026-00009', name: 'Maya King', combined: '4.4' },
+    ],
     callStep: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour',
     recorded: [],
     noExtra: false,
@@ -240,8 +225,9 @@ async function live(): Promise<SelectionData> {
   const me = await whoAmI(client);
   if (!me) throw new Error('not staff');
   const cycle = await publishedCycle(client);
-  if (!cycle) return build([], 'live', null, { term: 'No open cycle', mainName: 'Scholarship', mainCents: 0, meetingDate: '', meetingTime: '', meetingVideo: '', submitted: 0, recorded: [], noExtra: false, releasedAt: null });
-  const apps = await blindRows(client, cycle.id);
+  if (!cycle) return build([], 'live', null, { term: 'No open cycle', mainName: 'Scholarship', mainCents: 0, meetingDate: '', meetingTime: '', meetingVideo: '', submitted: 0, unscored: [], recorded: [], noExtra: false, releasedAt: null });
+  const apps = await applicationRows(client, cycle.id);
+  const nameOf = (a: { full_name: string | null; applicant_code: string | null } | undefined) => a?.full_name?.trim() || a?.applicant_code || '—';
   const ids = apps.map((a) => a.id);
   const byId = new Map(apps.map((a) => [a.id, a]));
   const [sum, scores, staff, interviews, summaries, rubric, meeting, awards] = await Promise.all([
@@ -263,7 +249,7 @@ async function live(): Promise<SelectionData> {
   const pre = sortRanking(
     scoredRows.map((r) => {
       const a = byId.get(r.application_id);
-      return { r, code: a?.applicant_code ?? '—', initials: a?.initials ?? '—', combined: Number(r.combined_score) };
+      return { r, code: a?.applicant_code ?? '—', initials: a?.initials ?? '—', name: nameOf(a), combined: Number(r.combined_score) };
     }),
   );
   const labels = combinedLabels(pre.map((p) => p.combined));
@@ -281,13 +267,18 @@ async function live(): Promise<SelectionData> {
       scores: rubric.map((c) => ({ criterion: c.name, a: of(order[0])?.criteria?.[c.key] ?? 0, b: of(order[1])?.criteria?.[c.key] ?? 0 })),
       quotes: (sm?.quotes ?? []).filter((q) => q.text).map((q) => `${q.text}${q.criterion ? ` · ${q.criterion}${q.at ? ` ${q.at}` : ''}` : ''}`),
     };
-    return { applicationId: p.r.application_id, code: p.code, initials: p.initials, combined: labels[i], parts, detail };
+    return { applicationId: p.r.application_id, code: p.code, initials: p.initials, name: p.name, combined: labels[i], parts, detail };
   });
+  const rankedIds = new Set(ranked.map((r) => r.applicationId));
+  const unscored: Candidate[] = apps
+    .filter((a) => !rankedIds.has(a.id))
+    .map((a) => ({ id: a.id, code: a.applicant_code ?? '—', name: nameOf(a), combined: '' }))
+    .sort((a, b) => a.code.localeCompare(b.code));
 
   const recorded: Recorded[] = ((awards.data ?? []) as AwardRow[]).map((a) => ({
     id: a.id,
     code: byId.get(a.application_id)?.applicant_code ?? '—',
-    initials: byId.get(a.application_id)?.initials ?? '—',
+    name: nameOf(byId.get(a.application_id)),
     kind: a.kind,
     awardName: shortAwardName(a.award_name),
     amountCents: a.amount_cents ?? 0,
@@ -300,6 +291,7 @@ async function live(): Promise<SelectionData> {
     meetingTime: meeting ? timeLabel(meeting.starts_at) : '',
     meetingVideo: meeting?.video_url ?? '',
     submitted: apps.length,
+    unscored,
     recorded,
     noExtra: false,
     releasedAt: cycle.decisions_released_at,

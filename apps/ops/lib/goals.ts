@@ -23,7 +23,7 @@ export async function loadGoals(opts: { demo?: string } = {}): Promise<GoalsResu
       safe(readRows('gifts', 'amount_cents', { gte: { gift_on: `${year}-01-01` }, lte: { gift_on: `${year}-12-31` } })),
       safe(readRows('budget_category_totals', 'budget_cents, spent_cents', { eq: { year } })),
       safe(readRows('tasks', 'checklist_id, status', { eq: { archived: false } })),
-      safe(readRows('application_reviews', 'id, cycle_id')),
+      safe(readRows('applications', 'id, cycle_id', { eq: { status: 'submitted' } })),
       safe(readRows('application_score_summary', 'application_id, published_count')),
     ]);
     const checklistSteps: GoalFacts['checklistSteps'] = {};

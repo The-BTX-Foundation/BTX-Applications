@@ -62,8 +62,8 @@ export type StandingInput = {
   meId: string;
   /** The signed-in person's own score on this application, if any. */
   mine: { criteriaCount: number; published: boolean; weighted: number | null } | null;
-  /** Everyone's progress without values (admin and board only); null when the reader may not see it. */
-  progress: { scorerId: string; published: boolean }[] | null;
+  /** Everyone's progress without values. */
+  progress: { scorerId: string; published: boolean }[];
   /** The visible score summary: two published scores and their combined score once both are in. */
   released: { combined: number } | null;
   interviewSummary: string | null;
@@ -117,7 +117,7 @@ export function standing(i: StandingInput): Scoring {
   if (i.pair.length < 2) return make('attention', { kind: 'none', label: 'Interviewers not paired' }, none, steps('scoring', i, 'Nobody is paired to score yet'), 'Open application');
 
   const mineIdx = i.pair.findIndex((p) => p.id === i.meId);
-  const pubIds = new Set((i.progress ?? []).filter((p) => p.published).map((p) => p.scorerId));
+  const pubIds = new Set(i.progress.filter((p) => p.published).map((p) => p.scorerId));
   if (mineIdx >= 0) {
     const other = i.pair[1 - mineIdx];
     const otherPub = pubIds.has(other.id);
@@ -145,8 +145,7 @@ export function standing(i: StandingInput): Scoring {
     return make('attention', { kind: 'needs-score', label: 'Needs your score' }, { kind: 'none', line1: 'Not started' }, steps('scoring', i, pubNote), 'Start scoring');
   }
 
-  // Someone else's interview: progress without values (admin and board only).
-  if (!i.progress) return make('attention', { kind: 'waiting', label: 'Waiting on scores' }, none, steps('scoring', i), 'Open application');
+  // Someone else's interview: progress without values.
   const waiting = i.pair.filter((p) => !pubIds.has(p.id));
   const pubs = 2 - waiting.length;
   const label = waiting.length === 1 ? `Waiting on ${waiting[0].name}` : 'Waiting on scores';

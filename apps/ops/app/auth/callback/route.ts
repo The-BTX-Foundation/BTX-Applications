@@ -1,7 +1,7 @@
 // The sign-in link in the email lands here. It handles both link styles Supabase uses:
 //   ?code=...                 (PKCE: exchangeCodeForSession)
 //   ?token_hash=...&type=...  (verifyOtp with the token hash)
-// then the session cookies are set, the account's role is checked (admin, board or reviewer only), and the person goes
+// then the session cookies are set, the account's role is checked (admin or board only), and the person goes
 // on to `next` (a same-site path; default is Today). A link that fails (expired or already used) goes back to the
 // sign-in screen with ?error=link; an account with no staff role is signed out through /auth/denied.
 import { NextResponse, type NextRequest } from 'next/server';

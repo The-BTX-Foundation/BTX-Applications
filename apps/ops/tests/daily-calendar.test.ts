@@ -14,15 +14,15 @@ describe('eventItems', () => {
 });
 
 describe('interviewItems', () => {
-  it('joins an active booking to its slot, pair and application code', () => {
+  it('joins an active booking to its slot, pair, applicant name and application code', () => {
     const items = interviewItems(
       [{ id: 'b1', application_id: 'a1', slot_id: 's1', status: 'active' }, { id: 'b2', application_id: 'a2', slot_id: 's1', status: 'released' }],
       [{ id: 's1', starts_at: '2026-10-15T14:00:00Z' }],
       [{ slot_id: 's1', interviewer_a: 'u1', interviewer_b: 'u2', video_url: null }],
-      [{ id: 'a1', applicant_code: 'APP-2026-00015' }],
+      [{ id: 'a1', applicant_code: 'APP-2026-00015', full_name: 'Sade Price' }],
     );
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ title: 'Interview APP-2026-00015', chip: '10:00 Interview', people: ['u1', 'u2'], video: false });
+    expect(items[0]).toMatchObject({ title: 'Interview Sade Price · APP-2026-00015', chip: '10:00 Interview', people: ['u1', 'u2'], video: false });
   });
 });
 

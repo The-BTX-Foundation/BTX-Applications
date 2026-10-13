@@ -1,9 +1,9 @@
 'use client';
 
 // The Applicants screen (Figma "Scholarships > Applicants", laptop and phone): tabs and filters, the list, and on a
-// laptop the detail panel for the selected applicant. Reviews are blind: rows show a code and initials, never a name.
-// Live mode: every row, score and stage is real (lib/applicants.ts); an admin also sees the name and contact details in
-// the detail panel, and only an admin may export. Mock mode: mock/applicants.ts and mock/scoring.ts. Clicking a row on a
+// laptop the detail panel for the selected applicant. No blind review (D2): every staff member sees each applicant's
+// name beside the code, and the name and contact details in the detail panel.
+// Live mode: every row, score and stage is real (lib/applicants.ts); only an admin may export. Mock mode: mock/applicants.ts and mock/scoring.ts. Clicking a row on a
 // laptop selects it; on a phone it opens the full application.
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -68,16 +68,18 @@ function StageCell({ row }: { row: ApplicantRow }) {
 const nameOf = (sc: ApplicantRow['scoring'], i: number) => sc.names?.[i] ?? BOARD_NAMES[sc.interviewers[i]] ?? sc.interviewers[i];
 
 // The detail panel for one applicant.
-function Detail({ row, cycleLabel, showNames }: { row: ApplicantRow; cycleLabel: string; showNames: boolean }) {
+function Detail({ row, cycleLabel }: { row: ApplicantRow; cycleLabel: string }) {
   const sc = row.scoring;
   const names = sc.interviewers.map((_, i) => nameOf(sc, i)).join(', ');
   return (
     <aside className="o-dt" aria-label="Applicant details">
       <div className="o-dt-h">
         <span className="o-dt-av">{plainInitials(row.initials) === '—' ? '—' : row.initials}</span>
-        <div>
-          <h2>{row.code}</h2>
-          <p>{cycleLabel}</p>
+        <div className="o-dt-hn">
+          <h2>{row.name}</h2>
+          <p>
+            {row.code} · {cycleLabel}
+          </p>
         </div>
       </div>
       <dl className="o-dt-m">
@@ -87,16 +89,14 @@ function Detail({ row, cycleLabel, showNames }: { row: ApplicantRow; cycleLabel:
         <dd>{row.interviewLine || 'Not booked'}</dd>
         <dt>Interviewers</dt>
         <dd>{names || 'Not paired yet'}</dd>
-        {showNames && row.fullName ? (
+        {row.mock ? null : (
           <>
-            <dt>Name</dt>
-            <dd>{row.fullName}</dd>
             <dt>Terpmail</dt>
             <dd>{row.email || 'Not answered'}</dd>
             <dt>Phone</dt>
             <dd>{row.phone || 'Not answered'}</dd>
           </>
-        ) : null}
+        )}
       </dl>
       <div className="o-dt-pr">
         <h3>Where this application is</h3>
@@ -135,7 +135,7 @@ function Detail({ row, cycleLabel, showNames }: { row: ApplicantRow; cycleLabel:
 }
 
 // The whole screen.
-export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNames }: { cycleLabel: string; cycleSub: string; rows: ApplicantRow[]; canExport: boolean; showNames: boolean }) {
+export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cycleLabel: string; cycleSub: string; rows: ApplicantRow[]; canExport: boolean }) {
   const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
   const [who, setWho] = useState('');
@@ -150,16 +150,16 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
     scored: rows.filter((r) => r.scoring.group === 'scored').length,
   };
 
-  // The rows after the tab, the search (code or initials) and the interviewer filter, in the chosen order.
+  // The rows after the tab, the search (name or code) and the interviewer filter, in the chosen order.
   const shown = useMemo(() => {
-    const q = query.trim().toLowerCase().replace(/\./g, '');
+    const q = query.trim().toLowerCase();
     let list = rows.filter((r) => {
       const k = r.scoring.stage.kind;
       if (tab === 'needs' && !(k === 'needs-score' || k === 'waiting')) return false;
       if (tab === 'interview' && k !== 'interview') return false;
       if (tab === 'scored' && r.scoring.group !== 'scored') return false;
       if (who && !r.scoring.interviewers.includes(who)) return false;
-      if (q && !r.code.toLowerCase().includes(q) && !plainInitials(r.initials).toLowerCase().includes(q)) return false;
+      if (q && !r.code.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)) return false;
       return true;
     });
     if (sort === 'code') list = [...list].sort((a, b) => a.code.localeCompare(b.code));
@@ -181,14 +181,12 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
     { id: 'scored', lg: 'Scored', ph: 'Scored' },
   ];
 
-  // Downloads the rows now on screen as a CSV (admins only, O1): code, initials, applied, interview, stage, and the
-  // name and contact details an admin may see.
+  // Downloads the rows now on screen as a CSV (admins only, O1): code, name, applied, interview, stage, Terpmail, phone.
   function exportCsv() {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = [['Code', 'Initials', 'Applied', 'Interview', 'Stage', ...(showNames ? ['Name', 'Terpmail', 'Phone'] : [])].join(',')];
+    const lines = [['Code', 'Name', 'Applied', 'Interview', 'Stage', 'Terpmail', 'Phone'].join(',')];
     for (const r of shown) {
-      const who = showNames ? [r.fullName ?? '', r.email ?? '', r.phone ?? ''] : [];
-      lines.push([r.code, r.initials, r.applied, r.interviewDay ? `${r.interviewDay} ${r.interviewTime}`.trim() : '', r.scoring.stage.label, ...who].map(esc).join(','));
+      lines.push([r.code, r.name, r.applied, r.interviewDay ? `${r.interviewDay} ${r.interviewTime}`.trim() : '', r.scoring.stage.label, r.email ?? '', r.phone ?? ''].map(esc).join(','));
     }
     const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     const a = document.createElement('a');
@@ -214,11 +212,14 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
       <Link href={`/scholarships/applicants/${r.code}`} className={`o-ar-row${picked?.code === r.code ? ' picked' : ''}`} onClick={(e) => onRow(e, r.code)}>
         <span className="o-ap-c o-lg">
           <span className="o-ap-av">{r.initials}</span>
-          <b>{r.code}</b>
+          <span className="o-ap-n">
+            <b>{r.name}</b>
+            <span>{r.code}</span>
+          </span>
         </span>
         <span className="o-ph o-ph-t">
           <b>
-            {r.code} · {r.initials}
+            {r.name} · {r.code}
           </b>
           <span>
             {st.label}
@@ -259,13 +260,13 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
     <>
       <PageHeader title="Applicants" actionsClass="o-ap-acts" sub={
           <>
-            <span className="o-lg">{`${cycleLabel} · ${rows.length} applicants · reviews are blind, so applicants show as a code and initials`}</span>
+            <span className="o-lg">{`${cycleLabel} · ${rows.length} applicants`}</span>
             <span className="o-ph">{`Scholarships · ${cycleLabel.replace(/ cycle$/, '')} · ${rows.length} applicants`}</span>
           </>
         }>
         <label className="o-search o-lg o-ap-search">
           <OIcon name="search" size={20} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code or initials" aria-label="Search code or initials" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or code" aria-label="Search name or code" />
         </label>
         {canExport ? (
           <button type="button" className="o-btn s lg o-lg" onClick={exportCsv}>
@@ -273,14 +274,14 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
             Export
           </button>
         ) : null}
-        <button type="button" className="o-sq o-ph" aria-label="Search code or initials" aria-expanded={searching} onClick={() => setSearching((v) => !v)}>
+        <button type="button" className="o-sq o-ph" aria-label="Search name or code" aria-expanded={searching} onClick={() => setSearching((v) => !v)}>
           <OIcon name="search" size={22} />
         </button>
       </PageHeader>
       {searching ? (
         <div className="o-ph o-search o-ap-q">
           <OIcon name="search" size={20} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code or initials" aria-label="Search code or initials" autoFocus />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or code" aria-label="Search name or code" autoFocus />
         </div>
       ) : null}
 
@@ -353,7 +354,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport, showNam
             ) : null}
           </div>
         </section>
-        {picked ? <Detail row={picked} cycleLabel={cycleSub} showNames={showNames} /> : null}
+        {picked ? <Detail row={picked} cycleLabel={cycleSub} /> : null}
       </div>
     </>
   );

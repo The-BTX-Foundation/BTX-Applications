@@ -1,7 +1,7 @@
 // Server-side staff administration through the Auth admin API and the project's service key. No Next.js imports, so the
 // functions can be unit tested with a mocked fetch. Callers (lib/people-actions.ts) check who is asking first.
 import { initialsOf } from './money-logic';
-import type { StaffRole } from './role';
+import { isStaffRole, type StaffRole } from './role';
 
 export type AdminEnv = { url: string; key: string; fetchImpl?: typeof fetch };
 export type InviteInput = { name: string; email: string; role: StaffRole };
@@ -10,8 +10,10 @@ export type InviteResult = { ok: true; row: StaffRow } | { ok: false; reason: st
 
 const headers = (key: string) => ({ apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' });
 
-// Sets a user's role (auth app_metadata, merged so other fields stay).
+// Sets a user's role (auth app_metadata, merged so other fields stay). Only admin or board: there are no other staff
+// roles (owner, 2026-10-12), so anything else is refused without calling the API.
 export async function setUserRole(env: AdminEnv, userId: string, role: StaffRole): Promise<boolean> {
+  if (!isStaffRole(role)) return false;
   const f = env.fetchImpl ?? fetch;
   const res = await f(`${env.url}/auth/v1/admin/users/${userId}`, { method: 'PUT', headers: headers(env.key), body: JSON.stringify({ app_metadata: { role } }), cache: 'no-store' });
   return res.ok;
@@ -20,6 +22,7 @@ export async function setUserRole(env: AdminEnv, userId: string, role: StaffRole
 // Creates a staff member: the auth user (email confirmed, role in app_metadata) and their staff_profiles row. When the
 // profile row fails the new auth user is removed again, so a retry starts clean. Returns the new profile row.
 export async function createStaffUser(env: AdminEnv, input: InviteInput): Promise<InviteResult> {
+  if (!isStaffRole(input.role)) return { ok: false, reason: 'A person can be an Admin or a Board member.' };
   const f = env.fetchImpl ?? fetch;
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();

@@ -181,6 +181,6 @@ export const PEOPLE_MOCK: PersonRow[] = [
 
 export const PEOPLE_STRESS: PersonRow[] = [
   ...PEOPLE_MOCK,
-  // The stress frame's invited reviewer: a long address that must be cut short, and no sign-in yet.
-  P('ao', 'adaeze.grace.okonkwo@example.org', 'AO', 'Invited', 'reviewer', null),
+  // The stress frame's invited board member: a long address that must be cut short, and no sign-in yet.
+  P('ao', 'adaeze.grace.okonkwo@example.org', 'AO', 'Invited', 'board', null),
 ];

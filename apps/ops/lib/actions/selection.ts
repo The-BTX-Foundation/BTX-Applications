@@ -8,8 +8,9 @@
 //   - recordAward (tested live 2026-10-12 on the local stack: main and extra, a second main refused, a second award
 //     for the same applicant refused) inserts a `scholarship_awards` row (cycle_id, application_id, award_name,
 //     amount_cents, kind 'main' | 'extra', decision_note); the trigger award_steps_create() then makes its five
-//     awardee steps. decided_by defaults to auth.uid(). One award per application (unique application_id), and one main
-//     award per cycle (checked here: the table has no rule for it).
+//     awardee steps. decided_by defaults to auth.uid(). Any submitted applicant can be chosen (the board decides; the
+//     ranking is information only). One award per application (unique application_id), and one main award per cycle
+//     (checked here: the table has no rule for it).
 //   - undoAward (tested live 2026-10-12 on the local stack: undone, and refused after the letter step is ticked) deletes that row (its award_steps go with it), only until the award letter is ticked.
 //   - releaseDecisions (tested live 2026-10-12 on the local stack on a separate draft cycle: refused for board, refused
 //     before the main award, stamped once, repeat answers with the same time) sets cycles.decisions_released_at (admins only, main award first, idempotent;
@@ -23,13 +24,13 @@ import { selectionStore } from '@/mock/selection';
 
 type Result = { ok: boolean; message: string; id?: string };
 
-export async function recordAward(input: { cycleId: string | null; applicationId: string; code: string; initials: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; note: string }): Promise<Result> {
+export async function recordAward(input: { cycleId: string | null; applicationId: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; note: string }): Promise<Result> {
   if (!hasSupabaseEnv()) {
     const st = selectionStore();
     if (st.awards.some((a) => a.code === input.code)) return { ok: false, message: 'That applicant already has an award.' };
     if (input.kind === 'main' && st.awards.some((a) => a.kind === 'main')) return { ok: false, message: 'The main award is already recorded.' };
     const id = `mock-award-${st.awards.length + 1}`;
-    st.awards.push({ id, code: input.code, initials: input.initials, kind: input.kind, awardName: input.awardName, amountCents: input.amountCents, note: input.note });
+    st.awards.push({ id, code: input.code, name: input.name, kind: input.kind, awardName: input.awardName, amountCents: input.amountCents, note: input.note });
     return { ok: true, message: 'Recorded.', id };
   }
   if (!input.cycleId) return { ok: false, message: 'There is no open cycle.' };

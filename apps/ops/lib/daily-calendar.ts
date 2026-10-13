@@ -40,11 +40,12 @@ export function eventItems(rows: Raw[]): CalItem[] {
   });
 }
 
-/** Booked interviews: an active booking on a slot, the pair, the application number. */
+/** Booked interviews: an active booking on a slot, the pair, the applicant's name and application number. */
 export function interviewItems(bookings: Raw[], slots: Raw[], pairings: Raw[], apps: Raw[]): CalItem[] {
   const slot = new Map(slots.map((s) => [str(s.id), s]));
   const pair = new Map(pairings.map((p) => [str(p.slot_id), p]));
-  const code = new Map(apps.map((a) => [str(a.id), str(a.applicant_code)]));
+  // "Ada Okafor · APP-2026-00015" (every staff member sees names, D2); the code alone when the name is blank.
+  const label = new Map(apps.map((a) => [str(a.id), [str(a.full_name).trim(), str(a.applicant_code)].filter(Boolean).join(' · ')]));
   const out: CalItem[] = [];
   for (const b of bookings) {
     if (b.status !== 'active') continue;
@@ -58,7 +59,7 @@ export function interviewItems(bookings: Raw[], slots: Raw[], pairings: Raw[], a
       source: 'interview',
       area: 'scholarships',
       chip: `${bare(start)} Interview`,
-      title: `Interview ${code.get(str(b.application_id)) ?? ''}`.trim(),
+      title: `Interview ${label.get(str(b.application_id)) ?? ''}`.trim(),
       start,
       people: p ? [str(p.interviewer_a), str(p.interviewer_b)] : [],
       video: Boolean(p?.video_url),

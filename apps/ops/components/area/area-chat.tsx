@@ -2,7 +2,7 @@
 
 // An area's chat panel beside its page (Figma "aside.chat", e.g. "Programs chat"). MOCK: the thread is the Figma sample
 // and the composer does not send anything. LIVE: the thread is the area's real channel and the composer posts to it
-// (the same write the Board chat uses); a reviewer sees the thread but the composer stays off. It reuses the cycle
+// (the same write the Board chat uses); when canPost is false the composer stays off. It reuses the cycle
 // page's .o-chat styles.
 import { useState } from 'react';
 import { postMessage } from '@/lib/chat-actions';

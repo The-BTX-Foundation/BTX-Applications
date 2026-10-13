@@ -1,10 +1,9 @@
 // Live-mode reads the four Scholarships pages share, made as the signed-in person (row-level security applies).
 //
-// Blind review (D2): board members and reviewers may not read `applications`; they read the view
-// `application_reviews` (code, initials, year, credits, major, interests, the three short answers, submit time). Every
-// page here reads that view, so each role sees exactly what the rule allows. Only an admin also reads names and contact
-// details from `applications` (identityFor()).
+// No blind review (D2 reversed, owner 2026-10-12): admins and board members read submitted applications in full,
+// names included, straight from `applications` (applications_select_staff). Nobody reads someone else's draft.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { dottedInitials } from './format';
 import { isStaffRole, type StaffRole } from './role';
 import { sessionClient } from './supabase-server';
 
@@ -45,11 +44,13 @@ export async function publishedCycle(client: SupabaseClient): Promise<LiveCycle 
   return (data as LiveCycle | null) ?? null;
 }
 
-export type BlindRow = {
+export type AppRow = {
   id: string;
   cycle_id: string;
   applicant_code: string | null;
-  initials: string | null;
+  full_name: string | null;
+  terpmail: string | null;
+  phone: string | null;
   year_in_school: string | null;
   credits_left: number | null;
   major: string | null;
@@ -59,35 +60,27 @@ export type BlindRow = {
   answer_2: string | null;
   answer_3: string | null;
   submitted_at: string;
+  /** Worked out from full_name ("Ada Okafor" -> "A.O."), for the round avatars. */
+  initials: string;
 };
 
-const BLIND_COLS =
-  'id, cycle_id, applicant_code, initials, year_in_school, credits_left, major, interest_certification, interest_mentoring, answer_1, answer_2, answer_3, submitted_at';
+const APP_COLS =
+  'id, cycle_id, applicant_code, full_name, terpmail, phone, year_in_school, credits_left, major, interest_certification, interest_mentoring, answer_1, answer_2, answer_3, submitted_at';
 
-/** The submitted applications of a cycle, blind (every staff role). */
-export async function blindRows(client: SupabaseClient, cycleId: string): Promise<BlindRow[]> {
-  const { data, error } = await client.from('application_reviews').select(BLIND_COLS).eq('cycle_id', cycleId).order('submitted_at', { ascending: true });
+const withInitials = (r: Omit<AppRow, 'initials'>): AppRow => ({ ...r, initials: dottedInitials(r.full_name) });
+
+/** The submitted applications of a cycle, in full (admin and board). */
+export async function applicationRows(client: SupabaseClient, cycleId: string): Promise<AppRow[]> {
+  const { data, error } = await client.from('applications').select(APP_COLS).eq('cycle_id', cycleId).eq('status', 'submitted').order('submitted_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as BlindRow[];
+  return ((data ?? []) as Omit<AppRow, 'initials'>[]).map(withInitials);
 }
 
-/** One submitted application by its code, blind (every staff role), or null. */
-export async function blindByCode(client: SupabaseClient, code: string): Promise<BlindRow | null> {
-  const { data, error } = await client.from('application_reviews').select(BLIND_COLS).eq('applicant_code', code).maybeSingle();
+/** One submitted application by its code, in full (admin and board), or null. */
+export async function applicationByCode(client: SupabaseClient, code: string): Promise<AppRow | null> {
+  const { data, error } = await client.from('applications').select(APP_COLS).eq('applicant_code', code).eq('status', 'submitted').maybeSingle();
   if (error) throw error;
-  return (data as BlindRow | null) ?? null;
-}
-
-export type Identity = { id: string; full_name: string | null; terpmail: string | null; phone: string | null };
-
-/** Names and contact details: admins only. Anyone else gets an empty map without asking. */
-export async function identityFor(client: SupabaseClient, me: Me, ids: string[]): Promise<Map<string, Identity>> {
-  const out = new Map<string, Identity>();
-  if (me.role !== 'admin' || ids.length === 0) return out;
-  const { data, error } = await client.from('applications').select('id, full_name, terpmail, phone').in('id', ids);
-  if (error) throw error;
-  for (const r of (data ?? []) as Identity[]) out.set(r.id, r);
-  return out;
+  return data ? withInitials(data as Omit<AppRow, 'initials'>) : null;
 }
 
 export type StaffName = { user_id: string; display_name: string; initials: string };
@@ -101,10 +94,7 @@ export async function staffNames(client: SupabaseClient): Promise<Map<string, St
 
 export type Interview = { applicationId: string; slotId: string; startsAt: string; a: string | null; b: string | null; videoUrl: string | null };
 
-/**
- * Each application's active booking, its slot time and its interviewer pair. A reviewer only sees the pairs they are in
- * (interview_pairings rule); the others show as not paired for them.
- */
+/** Each application's active booking, its slot time and its interviewer pair. */
 export async function interviewsFor(client: SupabaseClient, ids: string[]): Promise<Map<string, Interview>> {
   const out = new Map<string, Interview>();
   if (ids.length === 0) return out;
@@ -132,7 +122,7 @@ export async function interviewsFor(client: SupabaseClient, ids: string[]): Prom
 
 export type SummaryRow = { application_id: string; summary: string | null; quotes: { criterion?: string; at?: string; text?: string }[]; duration_minutes: number | null };
 
-/** The shared interview summaries the reader may see (admin and board all; a reviewer the ones they interview). */
+/** The shared interview summaries of the given applications. */
 export async function summariesFor(client: SupabaseClient, ids: string[]): Promise<Map<string, SummaryRow>> {
   if (ids.length === 0) return new Map();
   const { data, error } = await client.from('interview_summaries').select('application_id, summary, quotes, duration_minutes').in('application_id', ids);
@@ -152,9 +142,8 @@ export async function visibleScores(client: SupabaseClient, ids: string[]): Prom
 
 export type Progress = { application_id: string; scorer_id: string; criteria_count: number; published: boolean };
 
-/** Who has scored what, without values: admin and board only. Null for a reviewer (the function refuses them). */
-export async function scoreProgress(client: SupabaseClient, me: Me, cycleId: string): Promise<Progress[] | null> {
-  if (me.role === 'reviewer') return null;
+/** Who has scored what, without values (admin and board). */
+export async function scoreProgress(client: SupabaseClient, cycleId: string): Promise<Progress[]> {
   const { data, error } = await client.rpc('score_progress', { p_cycle_id: cycleId });
   if (error) throw error;
   return (data ?? []) as Progress[];

@@ -1,62 +1,27 @@
 'use client';
 
 // Money > Fundraising (Figma laptop and phone): the five numbers, recent gifts, where the money came from, and the
-// Year-end giving checklist. "Log a gift" shows only for admin and board. Data: lib/fundraising.ts; a logged gift in mock
-// mode updates this page's numbers (lib/mock-store.ts); live mode writes with lib/money-writes.ts.
-import { useState } from 'react';
+// Year-end giving checklist. Data: lib/fundraising.ts. "Log a gift" (and editing a gift) is "Coming soon" for now
+// (owner, 2026-10-12): a disabled control with a small label (./soon.tsx); lib/money-writes.ts keeps logGift for later.
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { OIcon } from '@/components/icons';
 import { MOCK_NOW } from '@/mock/applicants';
 import { PageHeader } from '@/components/page-header';
 import { dateOnlyLabel } from '@/lib/format';
 import { useMockState } from '@/lib/mock-store';
-import { canUseMoney, GIFT_SOURCES, pct, usd, type FundraisingData } from '@/lib/money-shared';
-import { logGift, type GiftInput } from '@/lib/money-writes';
-import type { StaffRole } from '@/lib/role';
-import { GiftDialog } from './money-dialogs';
+import { GIFT_SOURCES, pct, usd, type FundraisingData } from '@/lib/money-shared';
+import { SoonHeaderAction } from './soon';
 import { Bar, PeriodChip } from './ui';
 import { WideChecklistPanel } from './wide-checklist';
 
 type State = Pick<FundraisingData, 'raised_cents' | 'donors' | 'new_donors' | 'monthly_donors' | 'sources' | 'recent'>;
 
-export function FundraisingView({ data, demo, role }: { data: FundraisingData; demo?: string; role: StaffRole }) {
-  const router = useRouter();
+export function FundraisingView({ data, demo }: { data: FundraisingData; demo?: string }) {
   const live = data.mode === 'live';
   const initial: State = { raised_cents: data.raised_cents, donors: data.donors, new_donors: data.new_donors, monthly_donors: data.monthly_donors, sources: data.sources, recent: data.recent };
-  const [mock, setMock] = useMockState<State>(`fundraising:${demo ?? ''}`, initial);
+  const [mock] = useMockState<State>(`fundraising:${demo ?? ''}`, initial);
   const s = live ? initial : mock;
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const can = canUseMoney(role);
   const goal = data.goal_cents;
   const max = Math.max(1, ...s.sources.map((x) => x.cents));
-
-  // Saves a gift: live writes to the tables and reloads; mock updates this page's numbers.
-  async function save(v: GiftInput) {
-    if (live) {
-      const ok = await logGift(v);
-      if (!ok) {
-        setError("That didn't save. Try again.");
-        setOpen(false);
-        return;
-      }
-      setError(null);
-      router.refresh();
-    } else {
-      const named = v.donor.trim() !== '';
-      setMock((cur) => ({
-        ...cur,
-        raised_cents: cur.raised_cents + v.amount_cents,
-        donors: cur.donors + (named ? 1 : 0),
-        new_donors: cur.new_donors + (named ? 1 : 0),
-        monthly_donors: cur.monthly_donors + (v.monthly && named ? 1 : 0),
-        sources: cur.sources.map((x) => (x.key === v.source ? { ...x, cents: x.cents + v.amount_cents } : x)),
-        recent: [{ id: `new-${Date.now()}`, gift_on: v.gift_on, donor: v.donor.trim() || 'Anonymous', source: v.source, amount_cents: v.amount_cents }, ...cur.recent].slice(0, 5),
-      }));
-    }
-    setOpen(false);
-  }
 
   const toGo = Math.max(0, goal - s.raised_cents);
   // The laptop table's Source column is narrow, so it uses the short names.
@@ -78,26 +43,11 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         <span className="o-lg">
           <PeriodChip year={2026} />
         </span>
-        {can ? (
-          <>
-            <button type="button" className="o-btn s lg o-lg" onClick={() => setOpen(true)}>
-              <OIcon name="plus" size={16} />
-              Log a gift
-            </button>
-            <button type="button" className="o-sq o-ph" aria-label="Log a gift" onClick={() => setOpen(true)}>
-              <OIcon name="plus" size={22} />
-            </button>
-          </>
-        ) : null}
+        <SoonHeaderAction label="Log a gift" />
       </PageHeader>
       <div className="o-ph mn-chiprow">
         <PeriodChip year={2026} phone />
       </div>
-      {error ? (
-        <p className="mn-error" role="alert">
-          {error}
-        </p>
-      ) : null}
 
       <section className="mn-stats" aria-label="Fundraising numbers">
         <div className="o-card mn-stat">
@@ -142,7 +92,7 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         <section className="o-card mn-panel mn-gifts" aria-labelledby="mn-g-h">
           <div className="mn-ph">
             <h2 id="mn-g-h">Recent gifts</h2>
-            <span className="o-lg">Last 5{can ? ' · click a row to edit' : ''}</span>
+            <span className="o-lg">Last 5</span>
             <Link href="/money/fundraising" className="mn-seeall">
               See all
             </Link>
@@ -195,7 +145,6 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
 
       <WideChecklistPanel list={data.checklist} only="lg" />
 
-      {open ? <GiftDialog onClose={() => setOpen(false)} onSave={save} /> : null}
     </>
   );
 }

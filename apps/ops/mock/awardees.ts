@@ -2,7 +2,7 @@
 // (award_name, amount_cents, kind, decision_note, letter_sent_at, accepted_at, payment_due_on, paid_on, past_term,
 // awardee_label) and `award_steps` (step 1 to 5, due_on, done_at, note, reminder_sent_at). None of these tables exist yet
 // (draft on branch db/ops-schema). The sample is the Figma "Scholarships > Awardees, on Oct 26" frame (Fall 2026, two awards).
-// The full names are made up (the real name comes from `applications.full_name`); only initials are shown elsewhere.
+// The full names are made up (the real name comes from `applications.full_name`; board members and admins see it, D2).
 export type StepKind = 'letter_sent' | 'acceptance_back' | 'payment_details' | 'funds_sent' | 'thank_you_and_photo';
 
 export type MockStep = { step: 1 | 2 | 3 | 4 | 5; kind: StepKind; due_on: string | null; done_at: string | null; note: string | null; reminder_sent_at: string | null };
@@ -10,7 +10,7 @@ export type MockStep = { step: 1 | 2 | 3 | 4 | 5; kind: StepKind; due_on: string
 export type MockAward = {
   id: string;
   code: string;
-  initials: string;
+  /** The awardee's full name. */
   fullName: string;
   email: string;
   award_name: string;
@@ -49,13 +49,12 @@ export const AWARDS: MockAward[] = [
   {
     id: 'mock-award-jt',
     code: 'APP-2026-00003',
-    initials: 'J.T.',
-    fullName: 'Jordan Taylor',
-    email: 'jordan.taylor@example.org',
+    fullName: 'Jalen Thomas',
+    email: 'jalen.thomas@example.org',
     award_name: 'Legacy',
     amount_cents: 200000,
     kind: 'main',
-    decision_note: 'Top score, no tie',
+    decision_note: 'Decided by the board at the selection meeting',
     letter_sent_at: '2026-10-23T12:00:00-04:00',
     accepted_at: '2026-10-24T12:00:00-04:00',
     payment_due_on: '2026-11-06',
@@ -66,9 +65,8 @@ export const AWARDS: MockAward[] = [
   {
     id: 'mock-award-rs',
     code: 'APP-2026-00014',
-    initials: 'R.S.',
-    fullName: 'Riley Santos',
-    email: 'riley.santos@example.org',
+    fullName: 'Renee Simmons',
+    email: 'renee.simmons@example.org',
     award_name: 'Empowerment',
     amount_cents: 50000,
     kind: 'extra',
@@ -78,7 +76,7 @@ export const AWARDS: MockAward[] = [
     payment_due_on: null,
     paid_on: null,
     steps: steps([1], { 2: '2026-10-25T12:00:00-04:00' }, { 4: '2026-11-06' }),
-    comment: { by: 'Kelsey Davis', byInitials: 'KD', text: 'R.S. was close to the top. Glad we opened the Empowerment award.' },
+    comment: { by: 'Kelsey Davis', byInitials: 'KD', text: 'Glad we opened the Empowerment award for Renee.' },
   },
 ];
 

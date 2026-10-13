@@ -1,20 +1,16 @@
 'use client';
 
 // Money > Grants (Figma laptop and phone): the getting-started checklist, then the pipeline by stage (Researching,
-// Submitted, ...; a stage with no grants is only a count in the line at the bottom). "Add a grant" shows only for admin and
-// board. Data: lib/grants.ts; an added grant in mock mode updates this page (lib/mock-store.ts); live mode writes with
-// lib/money-writes.ts.
+// Submitted, ...; a stage with no grants is only a count in the line at the bottom). Data: lib/grants.ts. "Add a grant" is
+// "Coming soon" for now (owner, 2026-10-12): a disabled control with a small label (./soon.tsx); lib/money-writes.ts
+// keeps addGrant for later.
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { OIcon } from '@/components/icons';
 import { MOCK_NOW } from '@/mock/applicants';
 import { PageHeader } from '@/components/page-header';
 import { dateOnlyLabel } from '@/lib/format';
 import { useMockState } from '@/lib/mock-store';
-import { canUseMoney, GRANT_STAGES, usd, type GrantRow, type GrantsData, type GrantStage } from '@/lib/money-shared';
-import { addGrant, type GrantInput } from '@/lib/money-writes';
-import type { StaffRole } from '@/lib/role';
-import { GrantDialog } from './money-dialogs';
+import { GRANT_STAGES, usd, type GrantRow, type GrantsData, type GrantStage } from '@/lib/money-shared';
+import { SoonHeaderAction } from './soon';
 import { WhoMark } from './ui';
 import { WideChecklistPanel } from './wide-checklist';
 
@@ -51,39 +47,15 @@ function dateLine(g: GrantRow) {
   return `Deadline ${g.deadline_on ? dateOnlyLabel(g.deadline_on) : '[date]'}`;
 }
 
-export function GrantsView({ data, demo, role }: { data: GrantsData; demo?: string; role: StaffRole }) {
-  const router = useRouter();
+export function GrantsView({ data, demo }: { data: GrantsData; demo?: string }) {
   const live = data.mode === 'live';
   const initial: State = { count: data.count, counts: data.counts, grants: data.grants };
-  const [mock, setMock] = useMockState<State>(`grants:${demo ?? ''}`, initial);
+  const [mock] = useMockState<State>(`grants:${demo ?? ''}`, initial);
   const s = live ? initial : mock;
-  const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const can = canUseMoney(role);
   // Who is "building the first list": the owner of the next checklist step.
   const next = data.checklist.steps.find((x) => x.current);
   const builder = next?.owner.kind === 'person' ? next.owner.name : null;
-
-  async function save(v: GrantInput) {
-    if (live) {
-      const ok = await addGrant(v);
-      if (!ok) {
-        setError("That didn't save. Try again.");
-        setOpen(false);
-        return;
-      }
-      setError(null);
-      router.refresh();
-    } else {
-      setMock((cur) => ({
-        count: cur.count + 1,
-        counts: { ...cur.counts, researching: cur.counts.researching + 1 },
-        grants: [{ id: `new-${Date.now()}`, name: v.name, funder: v.funder.trim() || null, amount_cents: v.amount_cents, amount_is_up_to: v.amount_is_up_to, stage: 'researching', outcome: null, deadline_on: null, date_note: null, submitted_on: null, owner: null }, ...cur.grants],
-      }));
-    }
-    setOpen(false);
-  }
 
   const stages = GRANT_STAGES.filter((st) => s.counts[st] > 0);
   const empty = GRANT_STAGES.filter((st) => s.counts[st] === 0);
@@ -101,23 +73,8 @@ export function GrantsView({ data, demo, role }: { data: GrantsData; demo?: stri
         }
         actionsClass="mn-acts"
       >
-        {can ? (
-          <>
-            <button type="button" className="o-btn s lg o-lg" onClick={() => setOpen(true)}>
-              <OIcon name="plus" size={16} />
-              Add a grant
-            </button>
-            <button type="button" className="o-sq o-ph" aria-label="Add a grant" onClick={() => setOpen(true)}>
-              <OIcon name="plus" size={22} />
-            </button>
-          </>
-        ) : null}
+        <SoonHeaderAction label="Add a grant" />
       </PageHeader>
-      {error ? (
-        <p className="mn-error" role="alert">
-          {error}
-        </p>
-      ) : null}
 
       <div className="mn-gstack">
         <WideChecklistPanel list={data.checklist} only="lg" />
@@ -174,7 +131,6 @@ export function GrantsView({ data, demo, role }: { data: GrantsData; demo?: stri
         <WideChecklistPanel list={data.checklist} only="ph" now={data.mode === 'live' ? new Date().toISOString() : MOCK_NOW} />
       </div>
 
-      {open ? <GrantDialog onClose={() => setOpen(false)} onSave={save} /> : null}
     </>
   );
 }

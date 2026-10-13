@@ -2,11 +2,12 @@
 
 // Scholarships > Selection (Figma "Scholarships > Selection", laptop and phone): the ranking by combined score and the
 // meeting agenda with the award decisions. A row opens to show the interview summary, the six scores and the quotes.
-// "Record the award" asks first (Figma "confirm the Legacy award") and can be undone until the letter goes out.
+// The ranking is information only: the board discusses and decides (owner, 2026-10-12), so an admin can record the main
+// award and an extra award for any submitted applicant the board chooses. "Record the award" asks first (Figma "confirm the Legacy award") and can be undone until the letter goes out.
 // Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until email is set up
 // (O8); the extra-award picker stays as built (design pending).
 import { useState } from 'react';
-import type { RankRow, Recorded, SelectionData } from '@/lib/selection';
+import type { Candidate, RankRow, Recorded, SelectionData } from '@/lib/selection';
 import { chooseNoExtra, recordAward, undoAward } from '@/lib/actions/selection';
 import { OIcon } from './icons';
 import { PageHeader } from './page-header';
@@ -14,20 +15,20 @@ import { Ring } from './ring';
 import { Dialog } from './sch-parts';
 import './scholarships.css';
 
-type Pending = { id: string; code: string; initials: string; kind: 'main' | 'extra' };
+type Pending = { id: string; code: string; name: string; kind: 'main' | 'extra' };
 
-// One row of the ranking (laptop): rank, code, combined score, who scored what, the pill; opens to the details.
+// One row of the ranking (laptop): rank, name and code, combined score, who scored what; opens to the details.
 function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle: () => void }) {
   return (
-    <div className={`s-rk${r.top ? ' tp' : ''}${open ? ' open' : ''}`}>
+    <div className={`s-rk${open ? ' open' : ''}`}>
       <button type="button" className="s-rkh" aria-expanded={open} onClick={onToggle}>
         <span className="n">{r.rank}</span>
-        <b>
-          {r.code} {r.initials}
-        </b>
+        <span className="who">
+          <b>{r.name}</b>
+          <span>{r.code}</span>
+        </span>
         <strong>{r.combined}</strong>
-        <span className={r.parts.length > 30 && r.chip ? 'p long' : 'p'}>{r.parts}</span>
-        {r.chip ? <span className={`s-chip ${r.chip.kind}`}>{r.chip.text}</span> : null}
+        <span className="p">{r.parts}</span>
       </button>
       {open ? (
         <div className="s-rkd">
@@ -63,6 +64,28 @@ function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle:
   );
 }
 
+// Choose who gets an award: any submitted applicant (ranked ones first, with their combined score), then record it.
+function Picker({ list, label, onPick }: { list: Candidate[]; label: string; onPick: (c: Candidate) => void }) {
+  const [id, setId] = useState('');
+  const picked = list.find((c) => c.id === id);
+  if (list.length === 0) return <p className="s-pick">No submitted applicants yet.</p>;
+  return (
+    <div className="s-pick">
+      <select value={id} onChange={(e) => setId(e.target.value)} aria-label={label}>
+        <option value="">Choose the applicant</option>
+        {list.map((c) => (
+          <option key={c.id} value={c.id}>
+            {`${c.name} · ${c.code}${c.combined ? ` · ${c.combined}` : ' · not scored yet'}`}
+          </option>
+        ))}
+      </select>
+      <button type="button" className="s-sb" disabled={!picked} onClick={() => picked && onPick(picked)}>
+        Record the award
+      </button>
+    </div>
+  );
+}
+
 export function SelectionView({ data }: { data: SelectionData }) {
   const [recorded, setRecorded] = useState<Recorded[]>(data.recorded);
   const [noExtra, setNoExtra] = useState(data.noExtra);
@@ -75,11 +98,10 @@ export function SelectionView({ data }: { data: SelectionData }) {
   const main = recorded.find((a) => a.kind === 'main');
   const extra = recorded.find((a) => a.kind === 'extra');
   const leg = data.legacy;
-  const top0 = leg.candidates[0] ?? { id: '', code: '', initials: 'nobody yet' };
-  const nameList = leg.candidates.map((c) => c.initials).join(' or ');
   const doneCount = (main ? 1 : 0) + (extra || noExtra ? 1 : 0);
-  const nowLabel = !main ? (leg.tie ? `Vote on the ${leg.name} award` : `Record the ${leg.name} award`) : !(extra || noExtra) ? 'Open an extra award' : data.callStep;
-  const extraNames = data.extra.candidates.map((c) => c.initials).join(' or ');
+  const nowLabel = !main ? `Record the ${leg.name} award` : !(extra || noExtra) ? 'Open an extra award' : data.callStep;
+  // One award per applicant: someone who already has one is not offered again.
+  const open = data.candidates.filter((c) => !recorded.some((a) => a.code === c.code));
   const allRows = [...data.rows, ...(showMore ? data.more : [])];
 
   async function confirm() {
@@ -90,15 +112,15 @@ export function SelectionView({ data }: { data: SelectionData }) {
       cycleId: data.cycleId,
       applicationId: p.id,
       code: p.code,
-      initials: p.initials,
+      name: p.name,
       kind: p.kind,
       awardName: award.name,
       amountCents: award.cents,
-      note: p.kind === 'main' ? (leg.tie ? `Vote, tie at ${leg.tieScore}` : 'Top score, no tie') : 'Decided at the selection meeting',
+      note: 'Decided by the board at the selection meeting',
     });
     setPending(null);
     if (res.ok && res.id) {
-      setRecorded((r) => [...r, { id: res.id as string, code: p.code, initials: p.initials, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : award.name, amountCents: award.cents }]);
+      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : award.name, amountCents: award.cents }]);
       setChoosing(false);
       setNote('');
     } else setNote(res.message);
@@ -118,27 +140,12 @@ export function SelectionView({ data }: { data: SelectionData }) {
 
   const dollar = (cents: number) => `$${(cents / 100).toLocaleString('en-US')}`;
 
-  // The action buttons for the Legacy step.
-  // Nobody has both scores in yet: nothing to record.
-  const legacyButtons = leg.candidates.length === 0 ? null : leg.tie ? (
-    leg.candidates.map((c) => (
-      <button type="button" key={c.code} className="s-sb" onClick={() => setPending({ id: c.id, code: c.code, initials: c.initials, kind: 'main' })}>
-        Record {c.initials}
-      </button>
-    ))
-  ) : (
-    <button type="button" className="s-sb" onClick={() => setPending({ id: top0.id, code: top0.code, initials: top0.initials, kind: 'main' })}>
-      Record the award
-    </button>
-  );
+  // The main award step: the board's choice, from every submitted applicant.
+  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'main' })} />;
 
   const extraButtons = choosing ? (
     <>
-      {data.extra.candidates.map((c) => (
-        <button type="button" key={c.code} className="s-sb" onClick={() => setPending({ id: c.id, code: c.code, initials: c.initials, kind: 'extra' })}>
-          Record {c.initials}
-        </button>
-      ))}
+      <Picker list={open} label={`Who gets the ${data.extra.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'extra' })} />
       <button type="button" className="s-sb" onClick={() => setChoosing(false)}>
         Cancel
       </button>
@@ -172,11 +179,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
               {leg.name} · {leg.amountLabel} · 1 award
             </b>
             <p>
-              {main
-                ? `${main.initials} recorded.`
-                : leg.tie
-                  ? `${nameList}, by vote. Tie at ${leg.tieScore}, so a vote.`
-                  : `${top0.initials} by score. Top score, no tie, so no vote.`}
+              {main ? `${main.name} recorded.` : 'The board discusses and decides.'}
               {main ? (
                 <>
                   {' '}
@@ -193,10 +196,10 @@ export function SelectionView({ data }: { data: SelectionData }) {
             <b>Extra award · optional</b>
             <p>
               {extra
-                ? `${extra.initials} recorded.`
+                ? `${extra.name} recorded.`
                 : noExtra
                   ? 'No extra award.'
-                  : `Open one for ${extraNames}? ${data.extra.name}, ${data.extra.amountLabel}. Decided at the meeting.`}
+                  : `${data.extra.name}, ${data.extra.amountLabel}. Decided at the meeting.`}
               {extra ? (
                 <>
                   {' '}
@@ -224,21 +227,21 @@ export function SelectionView({ data }: { data: SelectionData }) {
           </div>
           <div className="s-ph2 o-ph">
             <h2>Ranking</h2>
-            <span>top combined score wins</span>
+            <span>the board decides</span>
           </div>
-          <p className="s-rule o-lg">The top combined score wins. A tie goes to a vote.</p>
+          <p className="s-rule o-lg">Ranking by combined score. The board discusses and decides.</p>
           {allRows.map((r) => (
             <div key={r.code}>
               <div className="o-lg">
                 <LaptopRow r={r} open={Boolean(openRows[r.code])} onToggle={() => setOpenRows((o) => ({ ...o, [r.code]: !o[r.code] }))} />
               </div>
               <div className="o-ph s-prow">
-                <span className={`s-pn${r.top ? ' tp' : ''}`}>{r.rank}</span>
+                <span className="s-pn">{r.rank}</span>
                 <span className="t">
-                  <b>
-                    {r.code} · {r.initials}
-                  </b>
-                  <span>{r.chip ? r.chip.text : r.parts}</span>
+                  <b>{r.name}</b>
+                  <span>
+                    {r.code} · {r.parts}
+                  </span>
                 </span>
                 <strong>{r.combined}</strong>
               </div>
@@ -275,10 +278,10 @@ export function SelectionView({ data }: { data: SelectionData }) {
                 {main ? (
                   <>
                     <b>
-                      {main.awardName} award recorded: {main.initials}
+                      {main.awardName} award recorded: {main.name}
                     </b>
                     <span>
-                      {main.code} {main.initials} · {dollar(main.amountCents)} ·{' '}
+                      {main.code} · {dollar(main.amountCents)} ·{' '}
                       <button type="button" className="o-ul" onClick={() => void undo(main)}>
                         Undo
                       </button>{' '}
@@ -287,8 +290,8 @@ export function SelectionView({ data }: { data: SelectionData }) {
                   </>
                 ) : (
                   <>
-                    <b>{leg.tie ? `Vote on the ${leg.name} award: ${nameList}` : `Record the ${leg.name} award: ${top0.initials}`}</b>
-                    <span>{leg.tie ? `Tie at ${leg.tieScore}, goes to a vote` : 'Top score, no tie'}</span>
+                    <b>{`Record the ${leg.name} award`}</b>
+                    <span>The board discusses and decides. {leg.amountLabel}.</span>
                     <div className="s-acts">{legacyButtons}</div>
                   </>
                 )}
@@ -300,10 +303,10 @@ export function SelectionView({ data }: { data: SelectionData }) {
                 {extra ? (
                   <>
                     <b>
-                      {extra.awardName} award recorded: {extra.initials}
+                      {extra.awardName} award recorded: {extra.name}
                     </b>
                     <span>
-                      {extra.code} {extra.initials} · {dollar(extra.amountCents)} ·{' '}
+                      {extra.code} · {dollar(extra.amountCents)} ·{' '}
                       <button type="button" className="o-ul" onClick={() => void undo(extra)}>
                         Undo
                       </button>{' '}
@@ -321,7 +324,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
                   </>
                 ) : (
                   <>
-                    <b>Open an extra award for {extraNames}?</b>
+                    <b>Open an extra award?</b>
                     <span>
                       {data.extra.name}, {data.extra.amountLabel}
                     </span>
@@ -369,7 +372,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
       {pending ? (
         <Dialog title={`Record the ${pending.kind === 'main' ? data.legacy.name : data.extra.name} award?`} onClose={() => setPending(null)}>
           <p>
-            {pending.code} {pending.initials} gets the {pending.kind === 'main' ? data.legacy.name : data.extra.name} Scholarship, {pending.kind === 'main' ? data.legacy.amountLabel : data.extra.amountLabel}. You can undo this until the award letter goes out.
+            {pending.name} ({pending.code}) gets the {pending.kind === 'main' ? data.legacy.name : data.extra.name} Scholarship, {pending.kind === 'main' ? data.legacy.amountLabel : data.extra.amountLabel}. You can undo this until the award letter goes out.
           </p>
           <div className="s-dlg-b">
             <button type="button" className="o-btn p lg" onClick={confirm}>

@@ -120,11 +120,14 @@
 .s-ivc {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .s-ivc b {
   font-size: 15px;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .s-ivc span {
   font-size: 13px;
@@ -833,8 +836,40 @@
 }
 .s-acts {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+/* Selection: choose any submitted applicant for an award (the board decides). */
+.s-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  min-width: 0;
+}
+.s-pick select {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong, var(--ink));
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-overflow: ellipsis;
+}
+.s-acts .s-pick {
+  flex: 1 1 100%;
+  margin-top: 0;
+}
+.s-sb:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 /* phone: awards card */
 .s-aw {
@@ -882,10 +917,6 @@
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-}
-.s-pn.tp {
-  background: var(--ink);
-  color: var(--surface);
 }
 .s-prow .t {
   flex: 1;
@@ -1012,13 +1043,10 @@
   .s-rk {
     border-bottom: 1px solid var(--line);
   }
-  .s-rk.tp {
-    background: var(--gold-tint);
-    box-shadow: inset 3px 0 0 var(--gold);
-  }
   .s-rkh {
     display: grid;
-    grid-template-columns: 50px 204px 72px 1fr auto;
+    grid-template-columns: 50px minmax(0, 280px) 72px minmax(0, 1fr);
+    column-gap: 12px;
     align-items: center;
     width: 100%;
     height: 69px;
@@ -1030,10 +1058,24 @@
     font-weight: 700;
     color: var(--muted);
   }
-  .s-rkh b {
+  .s-rkh .who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .s-rkh .who b,
+  .s-rkh .who span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .s-rkh .who b {
     font-size: 15px;
     font-weight: 700;
-    white-space: nowrap;
+  }
+  .s-rkh .who span {
+    font-size: 13px;
+    color: var(--muted);
   }
   .s-rkh strong {
     font-size: 20px;
@@ -1043,48 +1085,9 @@
   .s-rkh .p {
     font-size: 14px;
     color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .s-chip {
-    display: inline-flex;
-    align-items: center;
-    height: 28px;
-    padding: 0 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .s-chip.lead {
-    background: var(--ink);
-    color: var(--surface);
-  }
-  .s-chip.out {
-    border: 1px solid var(--ink);
-    background: transparent;
-    padding: 0 11px;
-  }
-  .s-rkh:has(.p.long) {
-    grid-template-columns: 50px 204px 72px 1fr;
-    grid-template-rows: auto auto;
-    row-gap: 6px;
-  }
-  .s-rkh:has(.p.long) .n,
-  .s-rkh:has(.p.long) b,
-  .s-rkh:has(.p.long) strong {
-    grid-row: 1 / span 2;
-    align-self: center;
-  }
-  .s-rkh:has(.p.long) .p {
-    grid-column: 4;
-    grid-row: 1;
-    align-self: end;
-  }
-  .s-rkh:has(.p.long) .s-chip {
-    grid-column: 4;
-    grid-row: 2;
-    justify-self: end;
-    align-self: start;
   }
   .s-rkd {
     width: 640px;
@@ -1213,6 +1216,13 @@
   }
   .s-stp .s-acts {
     margin-top: 11px;
+  }
+  .s-stp > div {
+    flex: 1;
+    min-width: 0;
+  }
+  .s-stp .s-pick select {
+    flex-basis: 100%;
   }
 }
 

@@ -4,7 +4,7 @@
 // message instead of a raw database error.
 //
 // Tables (migration 20261013090000_ops_hub.sql): interview_slots, bookings, interview_pairings, board_availability,
-// staff_profiles, plus staff_directory() and the blind view application_reviews (code + initials, no names).
+// staff_profiles, plus staff_directory() and `applications` (code and name: staff see names, D2).
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BLOCKS, pairInterviews, type AvailabilityRow, type Block, type PairingPerson } from './pairing';
 import { checkNewSlots, isVideoUrl, type NewSlotInput } from './pairing-slots';
@@ -16,7 +16,7 @@ const SAVE_FAILED = "That didn't save. Try again.";
 
 export type CycleInfo = { id: string; interviewStart: string | null; interviewEnd: string | null };
 export type Staff = { userId: string; name: string; initials: string; role: string };
-export type BookedInterview = { slotId: string; startsAt: string; endsAt: string; applicationId: string; code: string; initials: string };
+export type BookedInterview = { slotId: string; startsAt: string; endsAt: string; applicationId: string; code: string; /** The applicant's full name (D2: staff see names). */ applicant: string };
 export type PairRow = { slotId: string; a: string; b: string; videoUrl: string | null };
 
 /** The role in the session's token ("admin", "board", ...), the same field the database policies read. */
@@ -49,7 +49,7 @@ export async function readStaff(client: Db): Promise<Staff[]> {
 
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
-/** The cycle's booked interviews (active bookings) with the applicant's code and initials, and the pairings so far. */
+/** The cycle's booked interviews (active bookings) with the applicant's code and name, and the pairings so far. */
 export async function readInterviews(client: Db, cycleId: string): Promise<{ booked: BookedInterview[]; pairs: Map<string, PairRow> }> {
   const [bk, pr] = await Promise.all([
     client.from('bookings').select('slot_id, application_id, interview_slots!inner(starts_at, ends_at, cycle_id)').eq('status', 'active').eq('interview_slots.cycle_id', cycleId),
@@ -58,18 +58,18 @@ export async function readInterviews(client: Db, cycleId: string): Promise<{ boo
   if (bk.error) throw bk.error;
   if (pr.error) throw pr.error;
   const ids = [...new Set((bk.data ?? []).map((b: { application_id: string }) => b.application_id))];
-  const apps = new Map<string, { code: string; initials: string }>();
+  const apps = new Map<string, { code: string; applicant: string }>();
   if (ids.length > 0) {
-    const a = await client.from('application_reviews').select('id, applicant_code, initials').in('id', ids);
+    const a = await client.from('applications').select('id, applicant_code, full_name').in('id', ids);
     if (a.error) throw a.error;
-    for (const r of a.data ?? []) apps.set(r.id, { code: r.applicant_code ?? '—', initials: r.initials ?? '' });
+    for (const r of a.data ?? []) apps.set(r.id, { code: r.applicant_code ?? '—', applicant: (r.full_name ?? '').trim() || (r.applicant_code ?? '—') });
   }
   const booked: BookedInterview[] = [];
   for (const b of bk.data ?? []) {
     const slot = one<{ starts_at: string; ends_at: string }>(b.interview_slots);
     const app = apps.get(b.application_id);
     if (!slot || !app) continue;
-    booked.push({ slotId: b.slot_id, startsAt: slot.starts_at, endsAt: slot.ends_at, applicationId: b.application_id, code: app.code, initials: app.initials });
+    booked.push({ slotId: b.slot_id, startsAt: slot.starts_at, endsAt: slot.ends_at, applicationId: b.application_id, code: app.code, applicant: app.applicant });
   }
   booked.sort((x, y) => x.startsAt.localeCompare(y.startsAt));
   const pairs = new Map<string, PairRow>();
@@ -97,7 +97,7 @@ export type AvailabilityData = {
   everyone: AvailabilityRow[];
 };
 
-/** Own picks and everyone's picks for the cycle. Board accounts and admins read all rows; reviewers read nothing. */
+/** Own picks and everyone's picks for the cycle. Board accounts and admins read all rows. */
 export async function readAvailability(client: Db, cycle: CycleInfo): Promise<AvailabilityData> {
   const me = await sessionRole(client);
   const r = await client.from('board_availability').select('user_id, day, block').eq('cycle_id', cycle.id);

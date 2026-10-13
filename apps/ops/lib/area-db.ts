@@ -6,7 +6,7 @@ import { sessionClient } from './supabase-server';
 
 export const loadStaff = async (): Promise<StaffMap> => staffMap(await read('staff_profiles', 'user_id, display_name, initials', { order: ['display_name', true] }));
 
-/** The area's chat thread (the last 40 messages). channelId and canPost let the composer post (not for a reviewer). */
+/** The area's chat thread (the last 40 messages). channelId and canPost let the composer post. */
 export async function loadAreaChat(area: string, title: string, staff: StaffMap): Promise<AreaChat> {
   const channels = await read('chat_channels', 'id', { eq: { kind: 'area', area }, limit: 1 });
   const { data } = await (await sessionClient()).auth.getUser();

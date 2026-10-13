@@ -4,7 +4,7 @@ import { esc } from './confirmation';
 export type StaffInviteInput = {
   name: string;
   to: string;
-  /** "Admin", "Board member" or "Reviewer". */
+  /** "Admin" or "Board member" (the only staff roles). */
   role: string;
   /** Where staff sign in, like https://ops.thebtxfoundation.org. */
   opsUrl: string;

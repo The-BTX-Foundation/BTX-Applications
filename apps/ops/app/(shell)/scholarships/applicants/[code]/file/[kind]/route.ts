@@ -15,10 +15,9 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   if (!hasSupabaseEnv()) return NextResponse.redirect(new URL('/mock/sample.pdf', request.nextUrl.origin));
 
   const client = await sessionClient();
-  // Blind review (D2): the application is looked up through the blind view, which every staff role may read (board
-  // members and reviewers may not read `applications`). application_files_select_staff then lets staff read the file
-  // rows of submitted applications, through is_submitted_application().
-  const { data: app } = await (client as unknown as SupabaseClient).from('application_reviews').select('id').eq('applicant_code', decodeURIComponent(code)).maybeSingle();
+  // Staff (admin and board) read submitted applications (applications_select_staff, D2); application_files_select_staff
+  // then lets them read the file rows of submitted applications, through is_submitted_application().
+  const { data: app } = await (client as unknown as SupabaseClient).from('applications').select('id').eq('applicant_code', decodeURIComponent(code)).eq('status', 'submitted').maybeSingle();
   if (!app) return new NextResponse('Not found', { status: 404 });
   const { data: file } = await (client as unknown as SupabaseClient).from('application_files').select('storage_path').eq('application_id', (app as { id: string }).id).eq('kind', kind).maybeSingle();
   if (!file) return new NextResponse('Not found', { status: 404 });

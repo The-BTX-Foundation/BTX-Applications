@@ -1,6 +1,6 @@
 // Scholarships > Interviews: the interviews left this week and the table of interviewer pairs.
 // LIVE (database from migration 20261013090000_ops_hub.sql): booked slots (`bookings` + `interview_slots`), the
-// applicant's code and initials (the blind view `application_reviews`, so board accounts can read it), who interviews
+// applicant's code and name (`applications`: every staff member sees names, D2), who interviews
 // (`interview_pairings`, names from `staff_profiles` + `staff_directory()`), the video link and the cycle's interview
 // end date (`cycles`). MOCK (mock/interviews.ts, mock/staff.ts): everything, when there is no Supabase env.
 import { hasSupabaseEnv } from '@btx/data';
@@ -21,8 +21,8 @@ export type UpcomingInterview = {
   dayNum: string;
   time: string;
   code: string;
-  /** Dotted initials, "S.P.". */
-  initials: string;
+  /** The applicant's full name, "Sade Price". */
+  applicant: string;
   /** The two interviewers; empty when nobody is paired yet ("Unassigned"). */
   pair: Interviewer[];
   /** The signed-in person is one of the two. */
@@ -49,7 +49,7 @@ export type InterviewsData = {
   source: 'live' | 'mock';
 };
 
-type Booking = { slotId: string; startsAt: string; code: string; initials: string; pair: Interviewer[]; videoUrl: string | null };
+type Booking = { slotId: string; startsAt: string; code: string; applicant: string; pair: Interviewer[]; videoUrl: string | null };
 
 const toInterviewer = (s: StaffProfile): Interviewer => ({ userId: s.user_id, name: s.display_name, initials: s.initials });
 
@@ -85,7 +85,7 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
       dayNum: wk[2],
       time: timeLabel(b.startsAt),
       code: b.code,
-      initials: b.initials,
+      applicant: b.applicant,
       pair,
       mine: meId !== null && pair.some((i) => i.userId === meId),
       videoUrl: b.videoUrl,
@@ -147,10 +147,10 @@ function stress(): InterviewsData {
     done: 116,
     total: 120,
     upcoming: [
-      row({ weekday: 'Mon', dayNum: '5', time: '8:00 AM', code: 'APP-2026-00120', initials: 'A-G.O.', pair: [kd, tf], mine: false, when: 'Tomorrow' }, 1),
-      row({ weekday: 'Tue', dayNum: '6', time: '9:30 PM', code: 'APP-2026-00119', initials: 'J-M.A.', pair: [ck, ds], mine: false, when: 'In 2 days' }, 2),
-      row({ weekday: 'Wed', dayNum: '7', time: '12:00 PM', code: 'APP-2026-00017', initials: 'F.N.', pair: [dm, cg], mine: true, when: 'In 3 days' }, 3),
-      row({ weekday: 'Thu', dayNum: '8', time: '7:00 PM', code: 'APP-2026-00118', initials: 'B.R.', pair: [], mine: false, when: 'In 4 days' }, 4),
+      row({ weekday: 'Mon', dayNum: '5', time: '8:00 AM', code: 'APP-2026-00120', applicant: 'Adaeze-Grace Okonkwo-Fitzgerald', pair: [kd, tf], mine: false, when: 'Tomorrow' }, 1),
+      row({ weekday: 'Tue', dayNum: '6', time: '9:30 PM', code: 'APP-2026-00119', applicant: 'Jean-Marc Abernathy-Oyelaran', pair: [ck, ds], mine: false, when: 'In 2 days' }, 2),
+      row({ weekday: 'Wed', dayNum: '7', time: '12:00 PM', code: 'APP-2026-00017', applicant: 'Folake Nwosu', pair: [dm, cg], mine: true, when: 'In 3 days' }, 3),
+      row({ weekday: 'Thu', dayNum: '8', time: '7:00 PM', code: 'APP-2026-00118', applicant: 'Brianna Reid', pair: [], mine: false, when: 'In 4 days' }, 4),
     ],
     pairs: [
       { key: 'a', names: 'Dania Morris + Chariah Ghee', done: 106, left: 1, next: 'Wed Sep 30' },
@@ -176,7 +176,7 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
       slotId: `mock-slot-${a.code}`,
       startsAt: a.interviewAt as string,
       code: a.code,
-      initials: a.initials,
+      applicant: a.name,
       ...mockPair(a.code),
     }));
     return build(bookings, new Date(MOCK_NOW), '2026-10-09', me, true, 'mock');
@@ -195,7 +195,7 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
       const p = pairs.get(b.slotId);
       const a = p ? person(p.a) : null;
       const c = p ? person(p.b) : null;
-      return { slotId: b.slotId, startsAt: b.startsAt, code: b.code, initials: b.initials, pair: a && c ? [a, c] : [], videoUrl: p?.videoUrl ?? null };
+      return { slotId: b.slotId, startsAt: b.startsAt, code: b.code, applicant: b.applicant, pair: a && c ? [a, c] : [], videoUrl: p?.videoUrl ?? null };
     });
     return build(bookings, new Date(), cycle.interviewEnd, me, auth.role === 'admin', 'live');
   } catch {
@@ -231,7 +231,7 @@ export async function loadAvailability(): Promise<AvailabilityView | null> {
 
 // ---- video links (D7) --------------------------------------------------------------------------------------------
 
-export type VideoLinkRow = { slotId: string; when: string; code: string; initials: string; names: string; url: string };
+export type VideoLinkRow = { slotId: string; when: string; code: string; /** The applicant's full name. */ applicant: string; names: string; url: string };
 export type VideoLinksData = {
   rows: VideoLinkRow[];
   /** Booked interviews ahead that have no pair yet, so no link can be added. */
@@ -242,11 +242,11 @@ export type VideoLinksData = {
 
 // The interviews ahead that can take a link ("Add the video links" on Today). Admins only; others get no rows.
 export async function loadVideoLinks(): Promise<VideoLinksData> {
-  const rowFor = (slotId: string, startsAt: string, code: string, initials: string, names: string, url: string | null): VideoLinkRow => ({
+  const rowFor = (slotId: string, startsAt: string, code: string, applicant: string, names: string, url: string | null): VideoLinkRow => ({
     slotId,
     when: `${dayLabel(startsAt)}, ${timeLabel(startsAt)}`,
     code,
-    initials,
+    applicant,
     names,
     url: url ?? '',
   });
@@ -256,7 +256,7 @@ export async function loadVideoLinks(): Promise<VideoLinksData> {
     for (const a of MOCK_APPLICANTS.filter((x) => x.interviewAt && new Date(x.interviewAt) > new Date(MOCK_NOW))) {
       const m = mockPair(a.code);
       if (m.pair.length !== 2) unpaired += 1;
-      else rows.push(rowFor(`mock-slot-${a.code}`, a.interviewAt as string, a.code, a.initials, `${m.pair[0].name} and ${m.pair[1].name}`, null));
+      else rows.push(rowFor(`mock-slot-${a.code}`, a.interviewAt as string, a.code, a.name, `${m.pair[0].name} and ${m.pair[1].name}`, null));
     }
     return { rows, unpaired, failed: false, source: 'mock' };
   }
@@ -273,7 +273,7 @@ export async function loadVideoLinks(): Promise<VideoLinksData> {
     for (const b of booked.filter((x) => Date.parse(x.startsAt) > now)) {
       const p = pairs.get(b.slotId);
       if (!p) unpaired += 1;
-      else rows.push(rowFor(b.slotId, b.startsAt, b.code, b.initials, `${name.get(p.a) ?? 'Unknown'} and ${name.get(p.b) ?? 'Unknown'}`, p.videoUrl));
+      else rows.push(rowFor(b.slotId, b.startsAt, b.code, b.applicant, `${name.get(p.a) ?? 'Unknown'} and ${name.get(p.b) ?? 'Unknown'}`, p.videoUrl));
     }
     return { rows, unpaired, failed: false, source: 'live' };
   } catch {

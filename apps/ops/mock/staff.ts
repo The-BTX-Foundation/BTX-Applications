@@ -1,4 +1,4 @@
-// MOCK: the board members and reviewers who appear on the Scholarships pages, shaped like the draft Ops Hub table
+// MOCK: the admins and board members who appear on the Scholarships pages, shaped like the draft Ops Hub table
 // `staff_profiles` (user_id, display_name, title, initials). The names are the ones the Figma frames spell out. The real
 // table does not exist yet (draft: supabase/migrations/20261010120000_ops_hub.sql on branch db/ops-schema).
 export type StaffProfile = {

@@ -5,12 +5,15 @@
 // The sample is the Figma "Scholarships > Selection, on Mon Oct 12" frame: all 18 applicants scored.
 // The award name and amount ($2,000 Legacy, $500 Empowerment) are cycle settings the draft schema does not have a column
 // for (`cycles.award_name` and `award_amount_cents` cover the main award only), so the extra award lives here.
+import { MOCK_APPLICANTS } from './applicants';
 import { pairingFor } from './interviews';
 import { staffById } from './staff';
 
 export type RankedRow = {
   code: string;
   initials: string;
+  /** The applicant's (made-up) full name: board members and admins see names (D2). */
+  name: string;
   /** Combined score, one decimal ("4.8"). */
   combined: string;
   /** Each interviewer's own weighted score, in the pair's order. */
@@ -21,10 +24,11 @@ const R = (code: string, initials: string, combined: string, a: string, b: strin
   const pr = pairingFor(code);
   const na = (pr && staffById(pr.interviewer_a)?.display_name) || 'Interviewer A';
   const nb = (pr && staffById(pr.interviewer_b)?.display_name) || 'Interviewer B';
-  return { code, initials, combined, parts: [{ name: na, score: a }, { name: nb, score: b }] };
+  const name = MOCK_APPLICANTS.find((m) => m.code === code)?.name ?? code;
+  return { code, initials, name, combined, parts: [{ name: na, score: a }, { name: nb, score: b }] };
 };
 
-/** All 18 applicants, best combined score first. Equal combined scores are ties. */
+/** All 18 applicants, best combined score first (information for the board, which discusses and decides). */
 export const RANKING: RankedRow[] = [
   R('APP-2026-00003', 'J.T.', '4.8', '4.9', '4.7'),
   R('APP-2026-00014', 'R.S.', '4.6', '4.7', '4.5'),
@@ -47,7 +51,7 @@ export const RANKING: RankedRow[] = [
 ];
 
 export const MAIN_AWARD = { name: 'Legacy', amountCents: 200000, count: 1 };
-export const EXTRA_AWARD = { name: 'Empowerment', amountCents: 50000, candidates: 2 };
+export const EXTRA_AWARD = { name: 'Empowerment', amountCents: 50000 };
 
 /** The selection meeting: when, and the video link (the draft table `calendar_events` has `video_url`). */
 export const MEETING = { dateLabel: 'Fri Oct 16', timeLabel: '7:00 PM', videoUrl: 'https://meet.example.org/btx/selection' };
@@ -55,7 +59,7 @@ export const MEETING = { dateLabel: 'Fri Oct 16', timeLabel: '7:00 PM', videoUrl
 /** The third agenda item, from the cycle's meeting checklist (a `checklists` + `tasks` row in the draft schema). */
 export const CALL_STEP = 'Who calls the winners';
 
-export type RecordedAward = { id: string; code: string; initials: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; note: string };
+export type RecordedAward = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; note: string };
 
 type Store = { awards: RecordedAward[]; noExtra: boolean; agendaSent: boolean; releasedAt: string | null };
 const g = globalThis as unknown as { __btxSelection?: Store };

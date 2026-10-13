@@ -1,5 +1,5 @@
 // MOCK: scoring and interview details for each applicant, looked up by applicant code. The schema has no scores, no
-// interviewers and no reviewer stages yet (those tables come with the Ops Hub schema), so this module stands in for them.
+// interviewers and no scoring stages yet (those tables come with the Ops Hub schema), so this module stands in for them.
 // The sample values are the Figma "Scholarships > Applicants" frames' (a Sunday, Oct 4). In live mode a code with no
 // fixture here gets a plain default row, so real applicants are never shown made-up scores.
 import { dayLabel } from '@/lib/format';

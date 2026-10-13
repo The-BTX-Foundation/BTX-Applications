@@ -111,8 +111,8 @@ describe('standing', () => {
     const s = standing({ ...base, pair: [a, b], progress: [{ scorerId: 'a', published: true }] });
     expect(s.stage).toEqual({ kind: 'waiting', label: 'Waiting on Bo Kim' });
     expect(s.score).toEqual({ kind: 'none', line1: '1 of 2' });
-    // A reviewer may not see progress at all.
-    expect(standing({ ...base, pair: [a, b], progress: null }).stage.label).toBe('Waiting on scores');
+    // Nobody has published yet.
+    expect(standing({ ...base, pair: [a, b], progress: [] }).stage.label).toBe('Waiting on scores');
   });
   it('interview done but nobody paired', () => {
     expect(standing({ ...base, pair: [] }).stage.label).toBe('Interviewers not paired');

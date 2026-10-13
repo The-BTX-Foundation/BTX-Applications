@@ -94,7 +94,7 @@ export async function loadChat({
       ]);
     for (const r of [profiles, channels, unread, markers, pins, areas])
       if (r.error) throw r.error;
-    // Chat is for admins and board members: reviewers have no channels, so they are not listed to message.
+    // Chat is for admins and board members (the only staff roles), so only they are listed to message.
     const roles = await (
       db as unknown as {
         rpc: (

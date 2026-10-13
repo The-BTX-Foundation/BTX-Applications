@@ -166,8 +166,14 @@ describe('sendStaffInvite', () => {
     const { store } = fakeStore({});
     const send = okSend();
     await sendStaffInvite({ name: 'A', email: 'a@example.org', role: 'admin' }, deps(store, send, { opsUrl: 'https://o' }));
-    await sendStaffInvite({ name: 'B', email: 'b@example.org', role: 'reviewer' }, deps(store, send, { opsUrl: 'https://o' }));
-    expect(send.mock.calls.map((c) => c[0].subject)).toEqual(["You're on the BTX Ops Hub as Admin", "You're on the BTX Ops Hub as Reviewer"]);
+    await sendStaffInvite({ name: 'B', email: 'b@example.org', role: 'board' }, deps(store, send, { opsUrl: 'https://o' }));
+    expect(send.mock.calls.map((c) => c[0].subject)).toEqual(["You're on the BTX Ops Hub as Admin", "You're on the BTX Ops Hub as Board member"]);
+  });
+  it('refuses a reviewer role (staff are admin or board only)', async () => {
+    const { store } = fakeStore({});
+    const send = okSend();
+    expect(await sendStaffInvite({ name: 'B', email: 'b@example.org', role: 'reviewer' as never }, deps(store, send, { opsUrl: 'https://o' }))).toEqual({ ok: false, reason: 'bad-input' });
+    expect(send).not.toHaveBeenCalled();
   });
   it('rejects bad input, non-admins and a missing Ops Hub address', async () => {
     const { store } = fakeStore({});

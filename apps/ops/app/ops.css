@@ -1399,9 +1399,35 @@ body {
     align-items: center;
     gap: 7px;
   }
-  .o-ap-c b {
+  .o-ap-c {
+    min-width: 0;
+  }
+  .o-ap-n {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .o-ap-n b,
+  .o-ap-n span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .o-ap-n b {
     font-size: 14px;
     font-weight: 700;
+    line-height: 18px;
+  }
+  .o-ap-n span {
+    font-size: 12px;
+    line-height: 15px;
+    color: var(--muted);
+  }
+  .o-dt-hn {
+    min-width: 0;
+  }
+  .o-dt-hn h2 {
+    overflow-wrap: anywhere;
   }
   .o-ap-av {
     min-width: 32px;

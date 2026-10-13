@@ -1578,3 +1578,41 @@
     font-size: 15px;
   }
 }
+
+/* Money actions that write are "Coming soon" (owner, 2026-10-12): a disabled control and a small label. */
+.mn-soonw {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+.mn-soonw button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.mn-soonw .mn-link:disabled {
+  text-decoration: none;
+}
+.mn-soon {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.mn-apsoon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}

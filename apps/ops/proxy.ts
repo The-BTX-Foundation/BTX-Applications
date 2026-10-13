@@ -1,6 +1,6 @@
 // Next.js proxy (called "middleware" before Next 16). It keeps the Supabase session fresh on every request and guards
 // every Ops Hub route: a signed-out visitor goes to /sign-in, and a signed-in account whose app_metadata.role is not
-// admin, board or reviewer is signed out (through /auth/denied). Only /sign-in and /auth/* are open. In mock mode
+// admin or board is signed out (there are no other staff roles) (through /auth/denied). Only /sign-in and /auth/* are open. In mock mode
 // (no Supabase env) there is no server-side session, so nothing is guarded and the pages show the sample data.
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';

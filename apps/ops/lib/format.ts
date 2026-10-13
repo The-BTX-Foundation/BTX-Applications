@@ -28,7 +28,7 @@ export function shortDate(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
-// "Alice Ortiz" -> "A.O." (blind review shows a code and initials, never the name).
+// "Alice Ortiz" -> "A.O." (the round applicant avatars; the name itself is shown beside them).
 export function dottedInitials(name: string | null | undefined): string {
   const parts = (name ?? '').split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '—';

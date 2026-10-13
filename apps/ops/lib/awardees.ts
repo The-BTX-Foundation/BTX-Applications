@@ -1,10 +1,9 @@
 // Scholarships > Awardees: who won, where each follow-up stands, and the five awardee steps.
-// LIVE: the published cycle's `scholarship_awards` (main and extra) with their `award_steps`, the code and initials from
-// the blind view `application_reviews`, and past awards (kind 'past'). Names and email come from `applications` for
-// admins only (D2); board members see the code and initials. MOCK (mock/awardees.ts): everything, in mock mode.
+// LIVE: the published cycle's `scholarship_awards` (main and extra) with their `award_steps`, the code, name and email
+// from `applications` (every staff member sees names, D2), and past awards (kind 'past'). MOCK (mock/awardees.ts): everything, in mock mode.
 import { hasSupabaseEnv } from '@btx/data';
 import { dateOnlyLabel, dayLabel } from './format';
-import { blindRows, db, identityFor, publishedCycle, whoAmI } from './sch-live';
+import { applicationRows, db, publishedCycle, whoAmI } from './sch-live';
 import { ANNOUNCED_ON, AWARDEES_NOW, AWARDEES_TERM, awardeeStore, AWARDS, PAST, type MockAward, type MockPast, type MockStep } from '@/mock/awardees';
 
 export type Cells = {
@@ -21,8 +20,8 @@ export type StepView = { step: number; title: string; sub: string; state: 'done'
 export type AwardeeRow = {
   awardId: string;
   code: string;
-  initials: string;
-  fullName: string;
+  /** The awardee's full name (the code when the name is blank). */
+  name: string;
   email: string;
   awardName: string;
   amountLabel: string;
@@ -92,11 +91,11 @@ function rowFor(a: MockAward, now: string): AwardeeRow {
     return { step: s.step, title: TITLES[i], sub, state };
   });
   const cur = views.find((v) => v.state === 'now');
+  const name = a.fullName || a.code;
   return {
     awardId: a.id,
     code: a.code,
-    initials: a.initials,
-    fullName: a.fullName,
+    name,
     email: a.email,
     awardName: a.award_name,
     amountLabel: money(a.amount_cents),
@@ -105,7 +104,7 @@ function rowFor(a: MockAward, now: string): AwardeeRow {
     cells,
     done: views.filter((v) => v.state === 'done').length,
     steps: views,
-    currentTitle: cur ? `${a.initials} ${SHORT[cur.step - 1]}` : `${a.initials} follow-up`,
+    currentTitle: cur ? `${name}: ${SHORT[cur.step - 1]}` : `${name}: follow-up`,
     currentSub: cur?.sub ?? 'All five steps are done',
     comment: a.comment,
     stepRowsKind: steps.map((s) => s.kind),
@@ -151,15 +150,14 @@ function stress(): AwardeesData {
     { step: 4, title: TITLES[3], sub: funds, state: 'todo' },
     { step: 5, title: TITLES[4], sub: 'Not started', state: 'todo' },
   ];
-  const mk = (o: Partial<AwardeeRow> & Pick<AwardeeRow, 'awardId' | 'code' | 'initials' | 'awardName' | 'amountLabel' | 'cells' | 'done'>): AwardeeRow => ({
-    fullName: 'Awardee name',
+  const mk = (o: Partial<AwardeeRow> & Pick<AwardeeRow, 'awardId' | 'code' | 'name' | 'awardName' | 'amountLabel' | 'cells' | 'done'>): AwardeeRow => ({
     email: 'awardee@example.org',
     kind: 'extra',
     note: '',
     steps: steps('Waiting, reminder sent Wed Sep 30', 'Due Thu Dec 31 · ticking it also logs the payment on Budget', 'Done Wed Sep 30'),
-    currentTitle: `${o.initials} acceptance form`,
+    currentTitle: `${o.name}: acceptance form`,
     currentSub: 'Waiting, reminder sent Wed Sep 30',
-    comment: { by: 'Darien Strachan', byInitials: 'DS', text: 'R.S. was close to the top. Glad we opened the Empowerment award.' },
+    comment: { by: 'Darien Strachan', byInitials: 'DS', text: 'Glad we opened the Empowerment award for Renee.' },
     stepRowsKind: [],
     ...o,
   });
@@ -169,9 +167,9 @@ function stress(): AwardeesData {
     sub: 'Fall 2026 · 3 awards · $4,500 and [amount], announced Wed Sep 30',
     phoneSub: 'Scholarships · 3 awards · $4,500 and [amount]',
     awardees: [
-      mk({ awardId: 's1', code: 'APP-2026-00003', initials: 'J.T.', awardName: 'BTX Think Big Scholarship', amountLabel: '$4,000', kind: 'main', cells: { letter: ['Sent', 'Sep 30'], accepted: ['Accepted', 'Oct 24'], waiting: false, payment: ['Scheduled', 'Dec 31'], paymentBold: true }, done: 2 }),
-      mk({ awardId: 's2', code: 'APP-2026-00014', initials: 'R.S.', awardName: 'BTX Community Impact Award', amountLabel: '[amount]', note: 'Opened at the selection meeting', cells: { letter: ['Sent', 'Oct 23'], accepted: ['Waiting', '3 days'], waiting: true, payment: ['Not yet', ''], paymentBold: true }, done: 1 }),
-      mk({ awardId: 's3', code: 'APP-2026-00120', initials: 'A-G.O.', awardName: 'Empowerment', amountLabel: '$500', cells: { letter: ['Sent', 'Oct 23'], accepted: ['Waiting', 'Since Sep 30'], waiting: true, payment: ['Not yet', ''], paymentBold: true }, done: 1 }),
+      mk({ awardId: 's1', code: 'APP-2026-00003', name: 'Jalen Thomas', awardName: 'BTX Think Big Scholarship', amountLabel: '$4,000', kind: 'main', cells: { letter: ['Sent', 'Sep 30'], accepted: ['Accepted', 'Oct 24'], waiting: false, payment: ['Scheduled', 'Dec 31'], paymentBold: true }, done: 2 }),
+      mk({ awardId: 's2', code: 'APP-2026-00014', name: 'Renee Simmons', awardName: 'BTX Community Impact Award', amountLabel: '[amount]', note: 'Opened at the selection meeting', cells: { letter: ['Sent', 'Oct 23'], accepted: ['Waiting', '3 days'], waiting: true, payment: ['Not yet', ''], paymentBold: true }, done: 1 }),
+      mk({ awardId: 's3', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', awardName: 'Empowerment', amountLabel: '$500', cells: { letter: ['Sent', 'Oct 23'], accepted: ['Waiting', 'Since Sep 30'], waiting: true, payment: ['Not yet', ''], paymentBold: true }, done: 1 }),
     ],
     total: 'Total $4,500 and [amount]',
     totalParts: 'Think Big $4,000 · Community Impact [amount] · Empowerment $500',
@@ -230,19 +228,16 @@ async function live(): Promise<AwardeesData> {
   if (current.error) throw current.error;
   if (past.error) throw past.error;
   const awards = (current.data ?? []) as AwardDb[];
-  const apps = cycle ? await blindRows(client, cycle.id) : [];
+  const apps = cycle ? await applicationRows(client, cycle.id) : [];
   const byId = new Map(apps.map((a) => [a.id, a]));
-  const who = await identityFor(client, me, awards.map((a) => a.application_id).filter((x): x is string => Boolean(x)));
   const list: MockAward[] = awards.map((a) => {
     const app = a.application_id ? byId.get(a.application_id) : undefined;
-    const id = a.application_id ? who.get(a.application_id) : undefined;
     const steps = [...(a.award_steps ?? [])].sort((x, y) => x.step - y.step);
     return {
       id: a.id,
       code: app?.applicant_code ?? '—',
-      initials: app?.initials ?? '—',
-      fullName: id?.full_name ?? '',
-      email: id?.terpmail ?? '',
+      fullName: app?.full_name?.trim() ?? '',
+      email: app?.terpmail ?? '',
       award_name: a.award_name,
       amount_cents: a.amount_cents,
       kind: a.kind === 'extra' ? 'extra' : 'main',

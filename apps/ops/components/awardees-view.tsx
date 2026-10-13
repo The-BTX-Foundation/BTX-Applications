@@ -95,8 +95,8 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
             {rows.map((r) => (
               <button type="button" key={r.awardId} className={`s-atr${r.awardId === sel?.awardId ? ' pick' : ''}`} onClick={() => setPick(r.awardId)}>
                 <span className="c">
-                  <b>{r.code}</b>
-                  <span>{r.initials}</span>
+                  <b>{r.name}</b>
+                  <span>{r.code}</span>
                 </span>
                 <span className="a">
                   <i>{r.awardName}</i>
@@ -134,10 +134,8 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                   <i />
                   <span>{sel.amountLabel}</span>
                 </p>
-                <h2>
-                  {sel.code} · {sel.initials}
-                </h2>
-                {sel.fullName ? <p className="n">{sel.fullName}</p> : null}
+                <h2>{sel.name}</h2>
+                <p className="n">{sel.code}</p>
               </div>
               <div className="s-agc">
                 <ScoreRing n={sel.done} of={5} size={44} />
@@ -195,7 +193,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                   <ScoreRing n={r.done} of={5} size={44} />
                   <span>
                     <b>
-                      {r.code} · {r.initials}
+                      {r.name} · {r.code}
                     </b>
                     <strong>
                       {r.awardName} · {r.amountLabel}

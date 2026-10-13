@@ -140,10 +140,10 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
             <button type="button" key={s.code} className={`s-qr${s.code === sheet.code ? ' pick' : ''}`} onClick={() => setCode(s.code)}>
               <ScoreRing n={count(picks[s.code] ?? {})} size={38} />
               <span className="s-qb">
-                <b>
-                  {s.code} {s.initials}
-                </b>
-                <span>{lineFor(s)}</span>
+                <b>{s.name}</b>
+                <span>
+                  {s.code} · {lineFor(s)}
+                </span>
               </span>
             </button>
           ))}
@@ -161,25 +161,25 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
             <button type="button" key={s.code} className={`s-qr${s.code === sheet.code ? ' pick' : ''}`} onClick={() => setCode(s.code)}>
               <ScoreRing n={count(picks[s.code] ?? {})} size={38} />
               <span className="s-qb">
-                <b>
-                  {s.code} {s.initials}
-                </b>
-                <span>{lineFor(s)}</span>
+                <b>{s.name}</b>
+                <span>
+                  {s.code} · {lineFor(s)}
+                </span>
               </span>
             </button>
           ))}
           <p className="s-qn">
-            {sheet.initials}&apos;s other interviewer, {sheet.otherName}, {sheet.otherPublished ? "has published. You'll see both scores once you publish." : "has not published yet. You'll see both scores once you both publish."}
+            {sheet.name}&apos;s other interviewer, {sheet.otherName}, {sheet.otherPublished ? "has published. You'll see both scores once you publish." : "has not published yet. You'll see both scores once you both publish."}
           </p>
         </section>
 
         {/* the rubric (laptop) */}
         <section className="o-card s-panel s-rub o-lg">
           <div className="s-rh">
-            <h2>
-              {sheet.code} · {sheet.initials}
-            </h2>
-            <p>{sheet.cycleLine}</p>
+            <h2>{sheet.name}</h2>
+            <p>
+              {sheet.code} · {sheet.cycleLine}
+            </p>
           </div>
           <p className="s-key">
             {PICK_LABELS.map((l, i) => (
@@ -255,7 +255,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
           <section className="o-card s-pap">
             <div>
               <b>
-                {sheet.code} · {sheet.initials}
+                {sheet.name} · {sheet.code}
               </b>
               <span>{sheet.cycleLine.split('.')[0]}</span>
               <span>{sheet.phoneLine}</span>
@@ -298,7 +298,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
       </div>
 
       {confirm ? (
-        <Dialog title={`Publish your score for ${sheet.code} ${sheet.initials}?`} onClose={() => setConfirm(false)}>
+        <Dialog title={`Publish your score for ${sheet.name} (${sheet.code})?`} onClose={() => setConfirm(false)}>
           <p>{sheet.otherPublished ? `${sheet.otherName.split(' ')[0]} has published, so you’ll both see both scores.` : 'Your score stays private until both interviewers publish.'}</p>
           <div className="s-dlg-b">
             <button type="button" className="o-btn p lg" onClick={publish}>

@@ -3,14 +3,12 @@
 // The phone's "Approving the Q4 budget" screen (Figma "Phone: approving the Q3 budget", now the Q4 plan): what the plan is,
 // where each dollar goes, what it does to the 2026 budget, the comments, and the two buttons. The same plan as the Budget
 // page and Today's "Approve Q4 budget" row (they share the state in use-budget.ts). On a laptop it is the same page in the
-// normal layout. Only admin and board see the buttons.
-import { useState } from 'react';
+// normal layout. Approve, Decline and Undo are "Coming soon" for now (owner, 2026-10-12): disabled, with a small label.
 import Link from 'next/link';
 import { OIcon } from '@/components/icons';
 import { dateOnlyLabel, timeLabel } from '@/lib/format';
-import { canUseMoney, totals, usd, type BudgetData } from '@/lib/money-shared';
-import type { StaffRole } from '@/lib/role';
-import { DeclineForm } from './budget-view';
+import { totals, usd, type BudgetData } from '@/lib/money-shared';
+import { SoonLink, SoonTag } from './soon';
 import { Bar } from './ui';
 import { useBudget } from './use-budget';
 
@@ -33,11 +31,9 @@ export function ApprovalTop({ initials }: { initials: string }) {
 const LINE_ORDER = ['Scholarships', 'Certification program', 'Operations', 'Sponsorships', 'Outreach'];
 const order = (name: string) => (LINE_ORDER.includes(name) ? LINE_ORDER.indexOf(name) : LINE_ORDER.length);
 
-export function ApprovalView({ data, demo, role, initials }: { data: BudgetData; demo?: string; role: StaffRole; initials: string }) {
+export function ApprovalView({ data, demo, initials }: { data: BudgetData; demo?: string; initials: string }) {
   const b = useBudget(data, demo);
   const { state: s } = b;
-  const [declining, setDeclining] = useState(false);
-  const can = canUseMoney(role);
   const t = totals(s.categories);
   const plan = data.plan;
   const approved = s.status === 'approved';
@@ -101,46 +97,35 @@ export function ApprovalView({ data, demo, role, initials }: { data: BudgetData;
         ) : null}
       </div>
 
-      {can ? (
-        <div className="mn-apbar">
-          {approved ? (
-            <p>
-              Approved by you, {timeLabel(s.decided_at ?? new Date().toISOString())}
-              {' · '}
-              <button type="button" className="mn-link" onClick={() => void b.reopen()}>
-                Undo
-              </button>
-            </p>
-          ) : declined ? (
-            <p>
-              Sent back to {plan.submitter}
-              {' · '}
-              <button type="button" className="mn-link" onClick={() => void b.reopen()}>
-                Undo
-              </button>
-            </p>
-          ) : declining ? (
-            <DeclineForm
-              to={plan.submitter}
-              busy={b.busy}
-              onCancel={() => setDeclining(false)}
-              onSend={(note) => {
-                void b.decline(note);
-                setDeclining(false);
-              }}
-            />
-          ) : (
+      <div className="mn-apbar">
+        {approved ? (
+          <p>
+            Approved by you, {timeLabel(s.decided_at ?? new Date().toISOString())}
+            {' · '}
+            <SoonLink label="Undo" />
+          </p>
+        ) : declined ? (
+          <p>
+            Sent back to {plan.submitter}
+            {' · '}
+            <SoonLink label="Undo" />
+          </p>
+        ) : (
+          <>
             <div className="mn-apbtns">
-              <button type="button" className="o-btn p" disabled={b.busy} onClick={() => void b.approve()}>
+              <button type="button" className="o-btn p" disabled aria-disabled="true">
                 {`Approve ${usd(t.plan)} for Q${plan.quarter}`}
               </button>
-              <button type="button" className="o-btn s" disabled={b.busy} onClick={() => setDeclining(true)}>
+              <button type="button" className="o-btn s" disabled aria-disabled="true">
                 Decline
               </button>
             </div>
-          )}
-        </div>
-      ) : null}
+            <p className="mn-apsoon">
+              <SoonTag />
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

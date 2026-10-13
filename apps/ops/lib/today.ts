@@ -24,7 +24,7 @@ export async function loadToday({ demo }: { demo?: string } = {}): Promise<Today
 
     const [cycles, reviews, summary, funds, gifts, goals, programs, calls, posts] = await Promise.all([
       safe(readRows('cycles', 'id, status, interview_end, created_at', { order: ['created_at', false] })),
-      safe(readRows('application_reviews', 'id, cycle_id')),
+      safe(readRows('applications', 'id, cycle_id', { eq: { status: 'submitted' } })),
       safe(readRows('application_score_summary', 'application_id, published_count')),
       safe(readRows('funds_snapshots', 'amount_cents, as_of', { order: ['as_of', false], limit: 1 })),
       safe(readRows('gifts', 'amount_cents, gift_on', { gte: { gift_on: `${year}-01-01` }, lte: { gift_on: `${year}-12-31` } })),

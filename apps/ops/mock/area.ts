@@ -17,5 +17,5 @@ export const MOCK_STAFF: Person[] = [DANIA, KELSEY, TOMI, MARCUS, CHARIAH];
 export const MOCK_STAFF_STRESS: Person[] = [DARIEN, CILLISHA, DANIA, KELSEY, MARCUS, CHARIAH];
 
 export type ChatMsg = { id: string; day: string; who: string; initials?: string; bot?: boolean; mine?: boolean; time: string; text: string };
-/** channelId + canPost are set only in live mode: the composer posts to that channel (a reviewer cannot, per the database rules). */
+/** channelId + canPost are set only in live mode: the composer posts to that channel (admin and board, per the database rules). */
 export type AreaChat = { title: string; people: number; messages: ChatMsg[]; channelId?: string | null; canPost?: boolean };

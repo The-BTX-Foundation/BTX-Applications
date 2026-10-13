@@ -1,7 +1,7 @@
 // Pure types and helpers shared by the Money pages and People and roles (no server imports, so client components may use
 // them). Types mirror the draft Ops Hub schema (budget_*, spending_entries, gifts, grants, staff_profiles, staff_directory;
 // see supabase/migrations/20261010120000_ops_hub.sql in the ops-schema worktree).
-import type { StaffRole } from './role';
+import { isStaffRole, type StaffRole } from './role';
 
 /** "$2,500", or "$12.50" when the amount has cents. */
 export function usd(cents: number): string {
@@ -22,14 +22,9 @@ export function parseCents(text: string): number | null {
   return c > 0 ? c : null;
 }
 
-/** The roles that may use the money pages (the draft schema gives reviewers nothing in Money). */
-export function canUseMoney(role: StaffRole): boolean {
-  return role === 'admin' || role === 'board';
-}
-
-/** Mock mode only: ?as=board|reviewer shows the page as that role, so the hidden controls can be checked. */
+/** Mock mode only: ?as=admin|board shows the page as that role, so the admin-only controls can be checked. */
 export function mockRole(as: string | undefined, real: StaffRole): StaffRole {
-  return as === 'admin' || as === 'board' || as === 'reviewer' ? as : real;
+  return isStaffRole(as) ? as : real;
 }
 
 /** A person on a checklist row: avatar and name. kind "group" is "Board", "none" is "Unassigned". */

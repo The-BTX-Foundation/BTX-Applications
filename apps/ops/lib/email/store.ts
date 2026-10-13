@@ -1,6 +1,6 @@
 // The data the email functions read and write, behind one small interface so the logic can be tested without a database.
 // supabaseStore() is the real thing: it uses the SERVICE ROLE client (server only) because admins' own sessions cannot
-// read every applicant's address through the blind-review rules, and email_log is written only by the server.
+// read every applicant's address, including drafts and other cycles, and email_log is written only by the server.
 import type { ServiceClient } from '@btx/data/server';
 
 export type EmailKind = 'confirmation' | 'book' | 'won' | 'not-picked' | 'staff-invite';

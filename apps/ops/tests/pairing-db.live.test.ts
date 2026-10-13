@@ -68,7 +68,7 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
     await user('b1', 'board', 'A2 Ada Board');
     await user('b2', 'board', 'A2 Bea Board');
     await user('b3', 'board', 'A2 Cy Board');
-    await user('rev', 'reviewer', 'A2 Reviewer');
+    await user('rev', 'volunteer', 'A2 Not Staff');
     await user('app1', 'applicant', null);
     await user('app2', 'applicant', null);
   }, 60_000);

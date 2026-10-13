@@ -1,6 +1,5 @@
-// The full application: the answers and the two PDFs (resume, transcript). Reviews are blind (D2), so the page is headed
-// by the code and initials; board members and reviewers get the blind answers only, and the identity fields (name,
-// emails, phone, gender, race) and the admin-only answers appear only for an admin. The PDFs open through /file/<kind>, which makes a short-lived signed link to the private storage bucket.
+// The full application: the applicant, the answers and the two PDFs (resume, transcript). No blind review (D2): every
+// staff member sees the name (headed by the name, with the code beside it), contact details and every answer. The PDFs open through /file/<kind>, which makes a short-lived signed link to the private storage bucket.
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -8,7 +7,6 @@ import { SHORT_ANSWER_QUESTIONS } from '@btx/data';
 import { PageHeader } from '@/components/page-header';
 import { OIcon } from '@/components/icons';
 import { loadApplication } from '@/lib/application';
-import { requireStaff } from '@/lib/user';
 
 type Props = { params: Promise<{ code: string }> };
 
@@ -21,17 +19,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // The page.
 export default async function ApplicationPage({ params }: Props) {
   const { code } = await params;
-  const user = await requireStaff();
-  const app = await loadApplication(decodeURIComponent(code), user.role);
+  const app = await loadApplication(decodeURIComponent(code));
   if (!app) notFound();
   return (
     <>
-      <PageHeader title={app.code} sub={`${app.initials} · ${app.term} · submitted ${app.submitted}`}>
+      <PageHeader title={app.name} sub={`${app.code} · ${app.term} · submitted ${app.submitted}`}>
         <Link href="/scholarships/applicants" className="o-btn s lg">
           Back to applicants
         </Link>
       </PageHeader>
       <div className="o-app-grid">
+        <section className="o-card o-app-sec o-app-wide">
+          <h2 className="o-h2">Applicant</h2>
+          <dl className="o-app-dl">
+            {app.identity.map((a) => (
+              <div key={a.label}>
+                <dt>{a.label}</dt>
+                <dd>{a.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
         <section className="o-card o-app-sec">
           <h2 className="o-h2">Answers</h2>
           <dl className="o-app-dl">
@@ -71,20 +79,6 @@ export default async function ApplicationPage({ params }: Props) {
             </div>
           ))}
         </section>
-        {user.role === 'admin' && app.identity.length > 0 ? (
-          <section className="o-card o-app-sec o-app-wide">
-            <h2 className="o-h2">Identity (admins only)</h2>
-            <p className="o-app-note">Reviewers see only the code and initials.</p>
-            <dl className="o-app-dl">
-              {app.identity.map((a) => (
-                <div key={a.label}>
-                  <dt>{a.label}</dt>
-                  <dd>{a.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ) : null}
       </div>
     </>
   );

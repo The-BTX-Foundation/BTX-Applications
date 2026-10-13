@@ -4,7 +4,7 @@
 //      (shouldCreateUser: false), so a typo cannot make a stray account. The screen answers the same either way, so it
 //      does not reveal who has an account.
 //   2. After the code checks out, the account's role is read (app_metadata.role, the field public.app_role() reads in the
-//      database). Anyone who is not admin, board or reviewer is signed out again.
+//      database). Anyone who is not admin or board is signed out again.
 // Mock mode (no Supabase env): any address is sent a code, 123456 signs in, 000000 is the expired-code case, and an
 // address starting "outsider" signs in as an account with no role so the no-access screen can be seen.
 import { getAuthMode, getBrowserClient, signOut, verifySignInCode } from '@btx/data';

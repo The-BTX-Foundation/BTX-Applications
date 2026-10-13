@@ -33,7 +33,7 @@ describe('releaseDecisionsWith', () => {
   });
 
   it('refuses anyone who is not an admin, without reading or writing', async () => {
-    for (const role of ['board', 'reviewer', 'applicant', null]) {
+    for (const role of ['board', 'applicant', 'volunteer', null]) {
       const { deps } = fake({ role });
       const r = await releaseDecisionsWith(deps, 'c1', NOW);
       expect(r.ok).toBe(false);
