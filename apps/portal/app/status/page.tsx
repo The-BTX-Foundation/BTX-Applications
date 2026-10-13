@@ -30,7 +30,8 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
     booking: d.booking,
     freeTimes: d.freeTimes,
     decision: d.decision,
-    timesOpen: d.slots.length > 0,
+    // Live only: the sample data always has open times, and its stage is set by the demo date instead.
+    timesOpen: !d.mock && d.slots.length > 0,
   });
   if (state === 'waiting') {
     return (
