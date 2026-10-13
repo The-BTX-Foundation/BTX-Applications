@@ -3,19 +3,23 @@
 // Scholarships > Selection (Figma "Scholarships > Selection", laptop and phone): the ranking by combined score and the
 // meeting agenda with the award decisions. A row opens to show the interview summary, the six scores and the quotes.
 // The ranking is information only: the board discusses and decides (owner, 2026-10-12), so an admin can record the main
-// award and an extra award for any submitted applicant the board chooses. "Record the award" asks first (Figma "confirm the Legacy award") and can be undone until the letter goes out.
+// award and any number of extra awards for any submitted applicant the board chooses. An extra award has no preset: the
+// board types its name and amount (owner, 2026-10-12), and can add them until decisions are released. "Record the award"
+// asks first (Figma "confirm the Legacy award") and can be undone until the letter goes out.
 // Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until email is set up
-// (O8); the extra-award picker stays as built (design pending).
+// (O8).
 import { useState } from 'react';
 import type { Candidate, RankRow, Recorded, SelectionData } from '@/lib/selection';
-import { chooseNoExtra, recordAward, undoAward } from '@/lib/actions/selection';
+import { recordAward, undoAward } from '@/lib/actions/selection';
+import { addRefusal, agendaDone, AGENDA_STEPS, checkExtraAward, dollarsToCents, EXTRA_NAME_MAX } from '@/lib/award-input';
 import { OIcon } from './icons';
 import { PageHeader } from './page-header';
 import { Ring } from './ring';
 import { Dialog } from './sch-parts';
 import './scholarships.css';
 
-type Pending = { id: string; code: string; name: string; kind: 'main' | 'extra' };
+/** Who gets which award; an extra award carries the name and amount the board typed. */
+type Pending = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; amountLabel: string };
 
 // One row of the ranking (laptop): rank, name and code, combined score, who scored what; opens to the details.
 function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle: () => void }) {
@@ -86,20 +90,99 @@ function Picker({ list, label, onPick }: { list: Candidate[]; label: string; onP
   );
 }
 
+// The extra awards block: each recorded one, then "Add an extra award" and its inline form (name, whole dollars, who).
+// The form keeps what was typed; "Record the award" (the Picker's button) checks it, then the confirm step asks.
+function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extras: Recorded[]; open: Candidate[]; released: boolean; dollar: (cents: number) => string; onUndo: (a: Recorded) => void; onPick: (p: Omit<Pending, 'kind'>) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState('');
+
+  function pick(c: Candidate) {
+    const cents = dollarsToCents(amount);
+    const check = checkExtraAward({ awardName: name, amountCents: cents });
+    if (!check.ok) return setError(check.message);
+    onPick({ id: c.id, code: c.code, name: c.name, awardName: check.awardName, amountCents: cents, amountLabel: dollar(cents) });
+    setAdding(false);
+    setName('');
+    setAmount('');
+    setError('');
+  }
+
+  return (
+    <div className="s-xa-in">
+      <b>Extra awards · optional</b>
+      {extras.length === 0 ? <p>Add as many as the board decides. Each one gets its own name and amount.</p> : null}
+      {extras.map((a) => (
+        <p key={a.id} className="s-xr">
+          <span>
+            {a.awardName} · {dollar(a.amountCents)} · {a.name}
+          </span>{' '}
+          <button type="button" className="o-ul" onClick={() => onUndo(a)}>
+            Undo
+          </button>
+        </p>
+      ))}
+      {released ? (
+        <p>Decisions have gone out.</p>
+      ) : adding ? (
+        <div className="s-xf">
+          <label>
+            <span>Award name</span>
+            <input type="text" value={name} maxLength={EXTRA_NAME_MAX} placeholder="e.g. Empowerment Award" onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label>
+            <span>Amount</span>
+            <span className="s-xd">
+              <i aria-hidden="true">$</i>
+              <input type="text" inputMode="numeric" value={amount} placeholder="500" aria-label="Amount in dollars" onChange={(e) => setAmount(e.target.value)} />
+            </span>
+          </label>
+          <span className="s-xw">Who gets it</span>
+          <Picker list={open} label="Who gets the extra award" onPick={pick} />
+          {error ? (
+            <p className="s-xe" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="s-acts">
+            <button
+              type="button"
+              className="s-sb"
+              onClick={() => {
+                setAdding(false);
+                setError('');
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="s-acts">
+          <button type="button" className="s-sb" onClick={() => setAdding(true)}>
+            Add an extra award
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SelectionView({ data }: { data: SelectionData }) {
   const [recorded, setRecorded] = useState<Recorded[]>(data.recorded);
-  const [noExtra, setNoExtra] = useState(data.noExtra);
-  const [choosing, setChoosing] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [openRows, setOpenRows] = useState<Record<string, boolean>>(() => Object.fromEntries(data.rows.filter((r) => r.open).map((r) => [r.code, true])));
   const [showMore, setShowMore] = useState(false);
   const [note, setNote] = useState('');
 
   const main = recorded.find((a) => a.kind === 'main');
-  const extra = recorded.find((a) => a.kind === 'extra');
+  const extras = recorded.filter((a) => a.kind === 'extra');
   const leg = data.legacy;
-  const doneCount = (main ? 1 : 0) + (extra || noExtra ? 1 : 0);
-  const nowLabel = !main ? `Record the ${leg.name} award` : !(extra || noExtra) ? 'Open an extra award' : data.callStep;
+  // Extra awards are optional, so they are not a step: the agenda is the main award, then the call.
+  const doneCount = agendaDone(Boolean(main));
+  const nowLabel = !main ? `Record the ${leg.name} award` : data.callStep;
+  const released = Boolean(addRefusal(data.releasedAt));
   // One award per applicant: someone who already has one is not offered again.
   const open = data.candidates.filter((c) => !recorded.some((a) => a.code === c.code));
   const allRows = [...data.rows, ...(showMore ? data.more : [])];
@@ -107,21 +190,19 @@ export function SelectionView({ data }: { data: SelectionData }) {
   async function confirm() {
     if (!pending) return;
     const p = pending;
-    const award = p.kind === 'main' ? { name: data.legacy.awardName, cents: data.legacy.amount } : { name: data.extra.name, cents: data.extra.amountCents };
     const res = await recordAward({
       cycleId: data.cycleId,
       applicationId: p.id,
       code: p.code,
       name: p.name,
       kind: p.kind,
-      awardName: award.name,
-      amountCents: award.cents,
+      awardName: p.awardName,
+      amountCents: p.amountCents,
       note: 'Decided by the board at the selection meeting',
     });
     setPending(null);
     if (res.ok && res.id) {
-      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : award.name, amountCents: award.cents }]);
-      setChoosing(false);
+      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : p.awardName, amountCents: p.amountCents }]);
       setNote('');
     } else setNote(res.message);
   }
@@ -132,33 +213,21 @@ export function SelectionView({ data }: { data: SelectionData }) {
     else setNote(res.message);
   }
 
-  async function skipExtra(v: boolean) {
-    const res = await chooseNoExtra(v);
-    if (res.ok) setNoExtra(v);
-    else setNote(res.message);
-  }
-
   const dollar = (cents: number) => `$${(cents / 100).toLocaleString('en-US')}`;
 
   // The main award step: the board's choice, from every submitted applicant.
-  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'main' })} />;
+  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'main', awardName: data.legacy.awardName, amountCents: data.legacy.amount, amountLabel: data.legacy.amountLabel })} />;
 
-  const extraButtons = choosing ? (
-    <>
-      <Picker list={open} label={`Who gets the ${data.extra.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'extra' })} />
-      <button type="button" className="s-sb" onClick={() => setChoosing(false)}>
-        Cancel
-      </button>
-    </>
-  ) : (
-    <>
-      <button type="button" className="s-sb" onClick={() => setChoosing(true)}>
-        Add an extra award
-      </button>
-      <button type="button" className="s-sb" onClick={() => void skipExtra(true)}>
-        No extra award
-      </button>
-    </>
+  // Extra awards (phone card and laptop agenda): the ones recorded, and a form to add another until decisions go out.
+  const extraAwards = (
+    <ExtraAwards
+      extras={extras}
+      open={open}
+      released={released}
+      dollar={dollar}
+      onUndo={(a) => void undo(a)}
+      onPick={(p) => setPending({ ...p, kind: 'extra' })}
+    />
   );
 
   return (
@@ -192,32 +261,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
             </p>
             {main ? null : <div className="s-acts">{legacyButtons}</div>}
           </div>
-          <div className="opt">
-            <b>Extra award · optional</b>
-            <p>
-              {extra
-                ? `${extra.name} recorded.`
-                : noExtra
-                  ? 'No extra award.'
-                  : `${data.extra.name}, ${data.extra.amountLabel}. Decided at the meeting.`}
-              {extra ? (
-                <>
-                  {' '}
-                  <button type="button" className="o-ul" onClick={() => void undo(extra)}>
-                    Undo
-                  </button>
-                </>
-              ) : noExtra ? (
-                <>
-                  {' '}
-                  <button type="button" className="o-ul" onClick={() => void skipExtra(false)}>
-                    Undo
-                  </button>
-                </>
-              ) : null}
-            </p>
-            {extra || noExtra ? null : <div className="s-acts">{extraButtons}</div>}
-          </div>
+          <div className="opt">{extraAwards}</div>
         </section>
 
         <section className="o-card s-panel s-rkp">
@@ -264,11 +308,11 @@ export function SelectionView({ data }: { data: SelectionData }) {
               <span>{data.meetingDate}</span>
             </div>
             <div className="s-agc">
-              <Ring frac={doneCount / 3} label={`${doneCount}/3`} color="gold" size={44} />
+              <Ring frac={doneCount / AGENDA_STEPS} label={`${doneCount}/${AGENDA_STEPS}`} color="gold" size={44} />
               <div>
                 <b>Agenda items</b>
                 <span>
-                  {doneCount} of 3 done, now {nowLabel}
+                  {doneCount} of {AGENDA_STEPS} done, now {nowLabel}
                 </span>
               </div>
             </div>
@@ -297,58 +341,23 @@ export function SelectionView({ data }: { data: SelectionData }) {
                 )}
               </div>
             </div>
-            <div className="s-stp">
-              {extra || noExtra ? <span className="s-sn done"><OIcon name="check" size={14} /></span> : <span className="s-sn">2</span>}
-              <div>
-                {extra ? (
-                  <>
-                    <b>
-                      {extra.awardName} award recorded: {extra.name}
-                    </b>
-                    <span>
-                      {extra.code} · {dollar(extra.amountCents)} ·{' '}
-                      <button type="button" className="o-ul" onClick={() => void undo(extra)}>
-                        Undo
-                      </button>{' '}
-                      until the letter goes out
-                    </span>
-                  </>
-                ) : noExtra ? (
-                  <>
-                    <b>No extra award</b>
-                    <span>
-                      <button type="button" className="o-ul" onClick={() => void skipExtra(false)}>
-                        Undo
-                      </button>
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <b>Open an extra award?</b>
-                    <span>
-                      {data.extra.name}, {data.extra.amountLabel}
-                    </span>
-                    <div className="s-acts">{extraButtons}</div>
-                  </>
-                )}
-              </div>
-            </div>
             <div className="s-stp last">
-              <span className="s-sn">3</span>
+              <span className="s-sn">2</span>
               <div>
                 <b>{data.callStep}</b>
               </div>
             </div>
+            <div className="s-xa">{extraAwards}</div>
           </section>
 
           {/* phone: the meeting agenda card */}
           <section className="o-card s-pag o-ph">
             <div className="h">
-              <Ring frac={doneCount / 3} label={`${doneCount}/3`} color="gold" size={44} />
+              <Ring frac={doneCount / AGENDA_STEPS} label={`${doneCount}/${AGENDA_STEPS}`} color="gold" size={44} />
               <span className="t">
                 <b>Meeting agenda · {data.meetingDate}</b>
                 <span>
-                  {doneCount} of 3 done, now {nowLabel}
+                  {doneCount} of {AGENDA_STEPS} done, now {nowLabel}
                 </span>
               </span>
             </div>
@@ -370,9 +379,9 @@ export function SelectionView({ data }: { data: SelectionData }) {
       ) : null}
 
       {pending ? (
-        <Dialog title={`Record the ${pending.kind === 'main' ? data.legacy.name : data.extra.name} award?`} onClose={() => setPending(null)}>
+        <Dialog title={pending.kind === 'main' ? `Record the ${data.legacy.name} award?` : `Record ${pending.awardName}?`} onClose={() => setPending(null)}>
           <p>
-            {pending.name} ({pending.code}) gets the {pending.kind === 'main' ? data.legacy.name : data.extra.name} Scholarship, {pending.kind === 'main' ? data.legacy.amountLabel : data.extra.amountLabel}. You can undo this until the award letter goes out.
+            {pending.name} ({pending.code}) gets {pending.kind === 'main' ? `the ${data.legacy.name} Scholarship` : pending.awardName}, {pending.amountLabel}. You can undo this until the award letter goes out.
           </p>
           <div className="s-dlg-b">
             <button type="button" className="o-btn p lg" onClick={confirm}>

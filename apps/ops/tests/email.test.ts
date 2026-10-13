@@ -132,6 +132,22 @@ describe('sendDecisionEmails', () => {
     expect(rows.map((x) => x.kind).sort()).toEqual(['not-picked', 'not-picked', 'won', 'won']);
   });
 
+  it('handles several extra awards with their own names and amounts', async () => {
+    const two: AwardRow[] = [
+      { application_id: 'w1', award_name: 'Legacy', amount_cents: 200000, kind: 'main' },
+      { application_id: 'n1', award_name: 'Persistence Award', amount_cents: 25000, kind: 'extra' },
+      { application_id: 'x1', award_name: 'Community Leadership Award', amount_cents: 150000, kind: 'extra' },
+    ];
+    const { store } = fakeStore({ applicants, awards: two, cycle: released });
+    const send = okSend();
+    await sendDecisionEmails('c1', deps(store, send));
+    const by = Object.fromEntries(send.mock.calls.map((c) => [c[0].to.split('@')[0], c[0]]));
+    expect(by.n1.subject).toBe('You won the Persistence Award');
+    expect(by.n1.html).toContain('$250');
+    expect(by.x1.subject).toBe('You won the Community Leadership Award');
+    expect(by.x1.html).toContain('$1,500');
+  });
+
   it('never twice, and a late-added winner still gets their own email', async () => {
     const first = fakeStore({ applicants, awards: [awards[0]], cycle: released });
     const send = okSend();

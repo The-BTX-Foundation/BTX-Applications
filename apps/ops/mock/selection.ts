@@ -3,8 +3,8 @@
 // average of the published `scores.weighted_score`); a recorded award is a `scholarship_awards` row (award_name,
 // amount_cents, kind 'main' | 'extra', decision_note). None of these tables exist yet (draft on branch db/ops-schema).
 // The sample is the Figma "Scholarships > Selection, on Mon Oct 12" frame: all 18 applicants scored.
-// The award name and amount ($2,000 Legacy, $500 Empowerment) are cycle settings the draft schema does not have a column
-// for (`cycles.award_name` and `award_amount_cents` cover the main award only), so the extra award lives here.
+// The main award's name and amount ($2,000 Legacy) are cycle settings. There is no preset extra award: the board adds as
+// many as it wants, each with its own name and amount, so extras exist here only once they are recorded.
 import { MOCK_APPLICANTS } from './applicants';
 import { pairingFor } from './interviews';
 import { staffById } from './staff';
@@ -51,7 +51,6 @@ export const RANKING: RankedRow[] = [
 ];
 
 export const MAIN_AWARD = { name: 'Legacy', amountCents: 200000, count: 1 };
-export const EXTRA_AWARD = { name: 'Empowerment', amountCents: 50000 };
 
 /** The selection meeting: when, and the video link (the draft table `calendar_events` has `video_url`). */
 export const MEETING = { dateLabel: 'Fri Oct 16', timeLabel: '7:00 PM', videoUrl: 'https://meet.example.org/btx/selection' };
@@ -61,12 +60,12 @@ export const CALL_STEP = 'Who calls the winners';
 
 export type RecordedAward = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; note: string };
 
-type Store = { awards: RecordedAward[]; noExtra: boolean; agendaSent: boolean; releasedAt: string | null };
+type Store = { awards: RecordedAward[]; agendaSent: boolean; releasedAt: string | null };
 const g = globalThis as unknown as { __btxSelection?: Store };
 
 /** The in-memory record of what was decided in this server process (mock mode only). */
 export function selectionStore(): Store {
-  g.__btxSelection ??= { awards: [], noExtra: false, agendaSent: false, releasedAt: null };
+  g.__btxSelection ??= { awards: [], agendaSent: false, releasedAt: null };
   return g.__btxSelection;
 }
 

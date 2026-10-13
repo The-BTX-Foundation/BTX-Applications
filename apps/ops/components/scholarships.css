@@ -897,6 +897,88 @@
 .s-aw .opt p {
   color: var(--ink);
 }
+/* Selection: extra awards (phone awards card, laptop agenda): the recorded ones and the inline form to add another. */
+.s-xa {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--line);
+}
+.s-xa-in b {
+  display: block;
+  font-size: 16px;
+  line-height: 20.8px;
+  font-weight: 700;
+}
+.s-xa-in > p {
+  margin-top: 1px;
+  font-size: 14px;
+  line-height: 18.9px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.s-xa .s-xa-in > p {
+  color: var(--muted);
+}
+.s-xa .s-xa-in > p.s-xr,
+.s-xa .s-xa-in > p.s-xe {
+  color: var(--ink);
+}
+.s-xf {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  min-width: 0;
+}
+.s-xf label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 0;
+}
+.s-xf input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong, var(--ink));
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+.s-xd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+}
+.s-xd i {
+  font-style: normal;
+  font-size: 14px;
+}
+.s-xd input {
+  max-width: 160px;
+}
+.s-xw {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: -6px;
+}
+.s-xf .s-pick {
+  margin-top: 0;
+}
+.s-xe {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.s-xf .s-acts {
+  margin-top: 0;
+}
 /* phone: ranking */
 .s-prow {
   display: flex;
