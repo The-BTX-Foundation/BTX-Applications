@@ -116,6 +116,7 @@ const PATHS = {
       <circle cx="15.5" cy="10" r="1.1" fill="currentColor" />
     </>
   ),
+  signout: <path d="M8 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8M12.5 6.5L16 10l-3.5 3.5M16 10H8.5" />,
   send: <path d="M10 16V4.5M5 9.5l5-5 5 5" />,
   refresh: (
     <>

@@ -3,11 +3,10 @@
 // The Calendar screen (Figma "Calendar", laptop and phone). Laptop: month grid with bars across days and chips inside a
 // day (three, then "+N more"), a side panel listing everything on the selected day (owner's decision O4), a legend and
 // filters. Phone: a week strip with dots and the agenda for three days from the selected day. Month is the only view
-// drawn in Figma: the Week and List buttons are hidden (owner's decision O5). "Add event" adds to this component's own
-// state; in live mode it also inserts into `calendar_events` (title, kind, area, starts_at, all_day). Its new design waits
-// for the owner's sign-off, so it is unchanged here.
-import { useMemo, useState } from "react";
-import { getBrowserClient, hasSupabaseEnv } from "@btx/data";
+// drawn in Figma: the Week and List buttons are hidden (owner's decision O5). "Add event" opens a small form (title, date,
+// time, area; Figma "Calendar > Add event"): the event is added to this component's own state, and in live mode also
+// saved to `calendar_events` (lib/actions/calendar.ts).
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../page-header";
 import { OIcon } from "../icons";
 import {
@@ -32,6 +31,8 @@ import {
   weekStart,
 } from "./dates";
 import { dayAgenda } from "@/lib/daily-calendar";
+import { addCalendarEvent } from "@/lib/actions/calendar";
+import { AREAS, checkEvent, DEFAULT_TIME, EVENT_TIMES, timeLabel } from "@/lib/calendar-event";
 import "./calendar.css";
 
 const KIND: Record<CalArea, string> = {
@@ -249,6 +250,99 @@ function AgendaRow({
   );
 }
 
+type EventForm = { title: string; date: string; time: string; area: string };
+
+// The "Add event" form: title, date, time and area. A problem shows as one plain sentence above the buttons.
+function AddEventForm({
+  start,
+  onAdd,
+  onCancel,
+}: {
+  start: string;
+  onAdd: (f: EventForm) => Promise<string | null>;
+  onCancel: () => void;
+}) {
+  const [f, setF] = useState<EventForm>({ title: "", date: start, time: DEFAULT_TIME, area: "scholarships" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const title = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    title.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  const set = (k: keyof EventForm) => (e: { target: { value: string } }) =>
+    setF((o) => ({ ...o, [k]: e.target.value }));
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const check = checkEvent(f);
+    if (!check.ok) return setError(check.message);
+    setBusy(true);
+    const problem = await onAdd(f);
+    setBusy(false);
+    if (problem) setError(problem);
+  }
+  return (
+    <div className="ca-scrim" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
+      <form className="ca-dlg" role="dialog" aria-modal="true" aria-label="Add event" noValidate onSubmit={submit}>
+        <h2>Add event</h2>
+        <label className="ca-f">
+          <span>Title</span>
+          <input ref={title} type="text" value={f.title} placeholder="What is happening" onChange={set("title")} />
+        </label>
+        <div className="ca-fr">
+          <label className="ca-f">
+            <span>Date</span>
+            <input type="date" value={f.date} onChange={set("date")} />
+          </label>
+          <label className="ca-f">
+            <span>Time</span>
+            <span className="ca-fs">
+              <select value={f.time} onChange={set("time")}>
+                {EVENT_TIMES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <OIcon name="down" size={16} />
+            </span>
+          </label>
+        </div>
+        <label className="ca-f">
+          <span>Area</span>
+          <span className="ca-fs">
+            <select value={f.area} onChange={set("area")}>
+              {AREAS.map((a) => (
+                <option key={a} value={a}>
+                  {AREA_LABEL[a]}
+                </option>
+              ))}
+            </select>
+            <OIcon name="down" size={16} />
+          </span>
+        </label>
+        {error ? (
+          <p className="ca-fe" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="ca-fb">
+          <button type="submit" className="o-btn p lg" disabled={busy}>
+            Add event
+          </button>
+          <button type="button" className="o-btn s lg" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export function CalendarView({ data }: { data: CalendarData }) {
   const { today, me } = data;
   const names = useMemo(
@@ -277,39 +371,32 @@ export function CalendarView({ data }: { data: CalendarData }) {
     setMonth(monthStart(today));
     pick(today);
   };
-  // "Add event": a title for the selected day (the design has no form for it yet).
-  async function addEvent() {
-    const title = window.prompt("Event title")?.trim();
-    if (!title) return;
-    const item: CalItem = {
-      id: `new-${added.length}`,
-      date: sel,
-      source: "event",
-      area: "scholarships",
-      chip: title,
-      title,
-      start: null,
-      people: [me],
-    };
-    setAdded((a) => [...a, item]);
-    if (hasSupabaseEnv()) {
-      const w = getBrowserClient() as unknown as {
-        from: (t: string) => {
-          insert: (
-            r: Record<string, unknown>,
-          ) => PromiseLike<{ error: unknown }>;
-        };
-      };
-      await w.from("calendar_events").insert({
-        title,
-        kind: "event",
-        area: "scholarships",
-        starts_at: `${sel}T04:00:00Z`,
-        all_day: true,
-      });
-    }
+  // "Add event": the form opens on the selected day. Saves first (live mode), then shows the event on the calendar.
+  const [adding, setAdding] = useState(false);
+  async function addEvent(f: EventForm): Promise<string | null> {
+    const check = checkEvent(f);
+    if (!check.ok) return check.message;
+    const res = await addCalendarEvent({ ...f, ownerId: me });
+    if (!res.ok) return res.message;
+    const start = check.time === "all-day" ? null : timeLabel(check.time);
+    setAdded((a) => [
+      ...a,
+      {
+        id: `ev:${res.id}`,
+        date: check.date,
+        source: "event",
+        area: check.area,
+        chip: start ? `${start.replace(/ (AM|PM)$/, "")} ${check.title}` : check.title,
+        title: check.title,
+        start,
+        people: [me],
+      },
+    ]);
+    pick(check.date);
+    setMonth(monthStart(check.date));
+    setAdding(false);
+    return null;
   }
-
   // Phone: the three days from the selected one, each with its items in list order.
   const agenda = [0, 1, 2]
     .map((n) => addDays(sel, n))
@@ -332,6 +419,7 @@ export function CalendarView({ data }: { data: CalendarData }) {
 
   return (
     <div className="ca">
+      {adding ? <AddEventForm start={sel} onAdd={addEvent} onCancel={() => setAdding(false)} /> : null}
       {/* laptop header */}
       <div className="o-lg">
         <PageHeader
@@ -359,7 +447,7 @@ export function CalendarView({ data }: { data: CalendarData }) {
           <button type="button" className="o-btn s lg" onClick={goToday}>
             Today
           </button>
-          <button type="button" className="o-btn s lg" onClick={addEvent}>
+          <button type="button" className="o-btn s lg" onClick={() => setAdding(true)}>
             <OIcon name="plus" size={16} />
             Add event
           </button>
@@ -385,6 +473,9 @@ export function CalendarView({ data }: { data: CalendarData }) {
             onClick={() => setWk(addDays(wk, 7))}
           >
             <Chev dir="right" size={22} />
+          </button>
+          <button type="button" aria-label="Add event" onClick={() => setAdding(true)}>
+            <OIcon name="plus" size={22} />
           </button>
         </div>
       </div>

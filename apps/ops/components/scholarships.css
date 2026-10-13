@@ -840,6 +840,59 @@
   gap: 8px;
   margin-top: 10px;
 }
+/* Selection: release decisions. Laptop: the "Released ..." line in the page header; phone: the card above the awards. */
+.s-rel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.s-rel p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.s-rel p svg,
+.s-rl b svg {
+  box-sizing: content-box;
+  width: 11px;
+  height: 11px;
+  padding: 2px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  flex: none;
+}
+.s-rel span,
+.s-rel-w {
+  font-size: 13px;
+  color: var(--muted);
+}
+.s-rl {
+  padding: 16px;
+}
+.s-rl b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 20.8px;
+  font-weight: 700;
+}
+.s-rl p {
+  margin-top: 3px;
+  font-size: 15px;
+  line-height: 21px;
+  color: var(--muted);
+}
+.o-btn.s-rlb {
+  width: 100%;
+  height: 48px;
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: 700;
+}
 /* Selection: choose any submitted applicant for an award (the board decides). */
 .s-pick {
   display: flex;

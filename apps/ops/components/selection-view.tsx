@@ -6,12 +6,16 @@
 // award and any number of extra awards for any submitted applicant the board chooses. An extra award has no preset: the
 // board types its name and amount (owner, 2026-10-12), and can add them until decisions are released. "Record the award"
 // asks first (Figma "confirm the Legacy award") and can be undone until the letter goes out.
-// Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until email is set up
-// (O8).
+// Once the main award is recorded, a board member with admin rights gets "Release decisions" (Figma "Selection > Release
+// decisions"): it asks first, then releases and sends the emails, and the page shows when it went out. Nobody else gets
+// the button. Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until
+// email is set up (O8).
 import { useState } from 'react';
 import type { Candidate, RankRow, Recorded, SelectionData } from '@/lib/selection';
-import { recordAward, undoAward } from '@/lib/actions/selection';
+import { recordAward, releaseAndNotify, undoAward } from '@/lib/actions/selection';
 import { addRefusal, agendaDone, AGENDA_STEPS, checkExtraAward, dollarsToCents, EXTRA_NAME_MAX } from '@/lib/award-input';
+import { canShowRelease } from '@/lib/release';
+import { emailLine, releaseBody, releaseCounts, releaseTitle, releasedWhen, type EmailOutcome } from '@/lib/release-copy';
 import { OIcon } from './icons';
 import { PageHeader } from './page-header';
 import { Ring } from './ring';
@@ -169,12 +173,18 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
   );
 }
 
-export function SelectionView({ data }: { data: SelectionData }) {
+export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin: boolean }) {
   const [recorded, setRecorded] = useState<Recorded[]>(data.recorded);
   const [pending, setPending] = useState<Pending | null>(null);
   const [openRows, setOpenRows] = useState<Record<string, boolean>>(() => Object.fromEntries(data.rows.filter((r) => r.open).map((r) => [r.code, true])));
   const [showMore, setShowMore] = useState(false);
   const [note, setNote] = useState('');
+  // Release decisions: the confirm step, the time it went out (kept from the page load, set again after a release here)
+  // and what happened to the emails (known only right after a release here).
+  const [confirmRelease, setConfirmRelease] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const [releasedAt, setReleasedAt] = useState<string | null>(data.releasedAt);
+  const [emails, setEmails] = useState<EmailOutcome | null>(null);
 
   const main = recorded.find((a) => a.kind === 'main');
   const extras = recorded.filter((a) => a.kind === 'extra');
@@ -182,7 +192,9 @@ export function SelectionView({ data }: { data: SelectionData }) {
   // Extra awards are optional, so they are not a step: the agenda is the main award, then the call.
   const doneCount = agendaDone(Boolean(main));
   const nowLabel = !main ? `Record the ${leg.name} award` : data.callStep;
-  const released = Boolean(addRefusal(data.releasedAt));
+  const released = Boolean(addRefusal(releasedAt));
+  const showRelease = canShowRelease({ role: isAdmin ? 'admin' : null, hasMainAward: Boolean(main), releasedAt });
+  const counts = { total: data.total, mainName: leg.name, extras: extras.length, recorded: recorded.length };
   // One award per applicant: someone who already has one is not offered again.
   const open = data.candidates.filter((c) => !recorded.some((a) => a.code === c.code));
   const allRows = [...data.rows, ...(showMore ? data.more : [])];
@@ -203,6 +215,18 @@ export function SelectionView({ data }: { data: SelectionData }) {
     setPending(null);
     if (res.ok && res.id) {
       setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : p.awardName, amountCents: p.amountCents }]);
+      setNote('');
+    } else setNote(res.message);
+  }
+
+  async function release() {
+    setReleasing(true);
+    const res = await releaseAndNotify(data.cycleId ?? '');
+    setReleasing(false);
+    setConfirmRelease(false);
+    if (res.ok) {
+      setReleasedAt(res.releasedAt);
+      setEmails(res.emails);
       setNote('');
     } else setNote(res.message);
   }
@@ -233,14 +257,50 @@ export function SelectionView({ data }: { data: SelectionData }) {
   return (
     <div className="s-page s-sel">
       <PageHeader title="Selection" sub={<><span className="o-lg">{data.sub}</span><span className="o-ph">{data.phoneSub}</span></>} actionsClass="o-lg">
-        {data.meetingVideo ? (
+        {releasedAt ? (
+          <div className="s-rel">
+            <p>
+              <OIcon name="check" size={18} />
+              Released {releasedWhen(releasedAt)}
+            </p>
+            {emails ? <span>{emailLine(emails)}</span> : null}
+          </div>
+        ) : null}
+        {!releasedAt && data.meetingVideo ? (
           <a className="o-btn s lg" href={data.meetingVideo} target="_blank" rel="noreferrer">
             Join the call
           </a>
         ) : null}
+        {showRelease ? (
+          <button type="button" className="o-btn p lg" onClick={() => setConfirmRelease(true)}>
+            Release decisions
+          </button>
+        ) : null}
+        {!releasedAt && main && !isAdmin ? <span className="s-rel-w">Decisions are not released yet</span> : null}
       </PageHeader>
 
       <div className="s-sbody">
+        {/* phone: the release card */}
+        {releasedAt ? (
+          <section className="o-card s-rl o-ph">
+            <b>
+              <OIcon name="check" size={18} />
+              Released {releasedWhen(releasedAt)}
+            </b>
+            <p>{releaseCounts(counts)}</p>
+            {emails ? <p>{emailLine(emails)}</p> : null}
+          </section>
+        ) : main ? (
+          <section className="o-card s-rl o-ph">
+            <b>The main award is recorded</b>
+            <p>{isAdmin ? 'Students hear nothing until you release.' : 'Students hear nothing until a board member with admin rights releases decisions.'}</p>
+            {showRelease ? (
+              <button type="button" className="o-btn p xl s-rlb" onClick={() => setConfirmRelease(true)}>
+                Release decisions
+              </button>
+            ) : null}
+          </section>
+        ) : null}
         {/* phone: the awards card */}
         <section className="o-card s-aw o-ph">
           <div>
@@ -377,6 +437,20 @@ export function SelectionView({ data }: { data: SelectionData }) {
         <p className="s-note" role="status">
           {note}
         </p>
+      ) : null}
+
+      {confirmRelease ? (
+        <Dialog title={releaseTitle(data.total)} onClose={() => (releasing ? undefined : setConfirmRelease(false))}>
+          <p>{releaseBody(releaseCounts({ ...counts, won: true }))}</p>
+          <div className="s-dlg-b">
+            <button type="button" className="o-btn p lg" disabled={releasing} onClick={() => void release()}>
+              {releasing ? 'Releasing...' : 'Release decisions'}
+            </button>
+            <button type="button" className="o-btn s lg" data-autofocus disabled={releasing} onClick={() => setConfirmRelease(false)}>
+              Cancel
+            </button>
+          </div>
+        </Dialog>
       ) : null}
 
       {pending ? (
