@@ -114,9 +114,14 @@ export async function saveFreeRanges(client: BtxClient, applicationId: string, v
   const ranges = v.ranges.filter(isRange).map((r) => ({ day: r.day, start: r.start, end: r.end }));
   if (ranges.length === 0) return { ok: false };
   const said = v.said.trim();
-  const { error } = await client
-    .from('interview_free_times')
-    .upsert({ application_id: applicationId, ranges, said: said || null }, { onConflict: 'application_id' });
+  // Not an upsert: its conflict branch also sets application_id, and students may not update that column (they may
+  // insert it, and update only the answer columns). So: change her row if she has one, otherwise add it.
+  const row = { ranges, said: said || null };
+  const { data: existing, error: readError } = await client.from('interview_free_times').select('application_id').eq('application_id', applicationId).maybeSingle();
+  if (readError) return { ok: false };
+  const { error } = existing
+    ? await client.from('interview_free_times').update(row).eq('application_id', applicationId)
+    : await client.from('interview_free_times').insert({ application_id: applicationId, ...row });
   return { ok: !error };
 }
 

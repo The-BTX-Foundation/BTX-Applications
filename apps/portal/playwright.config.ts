@@ -20,6 +20,8 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: '',
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: '',
       NEXT_PUBLIC_PORTAL_TEST_EMAILS: '',
+      // the stand-in reader (dev server only), so typed times can be read without an API key
+      BTX_AI_FAKE: '1',
     },
   },
 });

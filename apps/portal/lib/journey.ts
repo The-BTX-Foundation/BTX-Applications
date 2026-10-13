@@ -27,8 +27,11 @@ export type Booking = {
   switched: boolean;
 };
 
-/** Her answer to "None of these times work" (needs a table the live schema does not have yet; mock only). */
-export type FreeTimes = { days: string[]; windows: string[]; note: string };
+/** One free time: an Eastern day ("2026-11-10") with a start and end ("18:00", "21:00"; "24:00" ends the day). */
+export type FreeRange = { day: string; start: string; end: string };
+
+/** Her answer to "None of these times work". Newer answers are `ranges` (with `note` = what she typed); older ones are days and windows. */
+export type FreeTimes = { days: string[]; windows: string[]; note: string; ranges?: FreeRange[] };
 
 /** The board's decision (needs the Ops Hub tables; mock only until they are applied). */
 export type Decision = { kind: 'won'; storySent: boolean } | { kind: 'not-picked' } | null;
@@ -170,3 +173,94 @@ export function describeFreeTimes(f: FreeTimes): string {
   const w = WINDOWS.filter((x) => f.windows.includes(x.id)).map((x) => `${x.id.slice(0, 1) === 'm' ? 'mornings' : x.id === 'afternoon' ? 'afternoons' : 'evenings'}`);
   return `${list(days.map((d) => names[d]))}, ${list(w)}.`;
 }
+
+/** Minutes since midnight, Eastern, of a timestamp. */
+export function easternMinutes(ts: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: NY, hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date(ts));
+  const get = (t: string) => Number(parts.find((x) => x.type === t)?.value ?? 0) % 24;
+  return get('hour') * 60 + get('minute');
+}
+
+const minutesOf = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+/** The open slots that sit wholly inside one of her free ranges (Eastern day and clock time). */
+export function slotsFitRanges(slots: Slot[], ranges: FreeRange[]): Slot[] {
+  if (!ranges.length) return [];
+  return slots.filter((s) => {
+    const day = easternDate(s.startsAt);
+    const start = easternMinutes(s.startsAt);
+    const length = Math.round((new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime()) / 60000);
+    return ranges.some((r) => r.day === day && minutesOf(r.start) <= start && start + length <= minutesOf(r.end));
+  });
+}
+
+/** The days she can add times on: from today (or the first interview day) to the last interview day. Never empty. */
+export function freeWindow(today: string, interviewStart: string | null, interviewEnd: string | null): { start: string; end: string } {
+  const start = interviewStart && interviewStart > today ? interviewStart : today;
+  const end = interviewEnd && interviewEnd >= start ? interviewEnd : addDays(start, 13);
+  return { start, end };
+}
+
+/** "6 to 9 PM" or "11 AM to 12:30 PM" for one range, as the chips show it. */
+export function spanLabel(r: FreeRange): string {
+  const part = (hhmm: string) => {
+    const m = minutesOf(hhmm);
+    const h24 = Math.floor(m / 60) % 24;
+    const mm = m % 60;
+    return { text: `${h24 % 12 === 0 ? 12 : h24 % 12}${mm ? `:${String(mm).padStart(2, '0')}` : ''}`, ampm: h24 < 12 ? 'AM' : 'PM' };
+  };
+  const a = part(r.start);
+  const b = part(r.end);
+  return a.ampm === b.ampm ? `${a.text} to ${b.text} ${b.ampm}` : `${a.text} ${a.ampm} to ${b.text} ${b.ampm}`;
+}
+
+/** Ranges in a link ("2026-11-10_18:00-21:00,2026-11-12_18:00-21:00"); mock mode carries her answer to the status page this way. */
+export const encodeRanges = (rs: FreeRange[]): string => rs.map((r) => `${r.day}_${r.start}-${r.end}`).join(',');
+export function parseRanges(s: string | undefined): FreeRange[] {
+  if (!s) return [];
+  return s
+    .split(',')
+    .map((x) => /^(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec(x))
+    .filter((m): m is RegExpExecArray => !!m)
+    .map((m) => ({ day: m[1], start: m[2], end: m[3] }));
+}
+
+/** Sorts her ranges and joins the ones that overlap or touch on the same day. Same rule as the reader's tidy-up. */
+export function mergeFreeRanges(ranges: FreeRange[]): FreeRange[] {
+  const sorted = [...ranges].sort((a, b) => a.day.localeCompare(b.day) || minutesOf(a.start) - minutesOf(b.start));
+  const out: FreeRange[] = [];
+  for (const r of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.day === r.day && minutesOf(r.start) <= minutesOf(last.end)) {
+      if (minutesOf(r.end) > minutesOf(last.end)) last.end = r.end;
+    } else out.push({ ...r });
+  }
+  return out;
+}
+
+/** The half-hour times she can pick from: 8:00 AM to 10:00 PM, as "08:00" with its label "8:00 AM". */
+export const TIME_CHOICES: { value: string; label: string }[] = Array.from({ length: 29 }, (_, i) => {
+  const m = 8 * 60 + i * 30;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return { value: `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, label: `${h % 12 === 0 ? 12 : h % 12}:${String(mm).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}` };
+});
+
+/** "Tue Nov 10" for an "YYYY-MM-DD" day. */
+export const dayName = (iso: string): string => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(Date.UTC(y, m - 1, d))).replace(',', '');
+};
+
+/** Every day from first to last ("YYYY-MM-DD"), at most 62. */
+export function daysFrom(first: string, last: string): string[] {
+  const out: string[] = [];
+  for (let d = first; d <= last && out.length < 62; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+
+/** The minutes of a "HH:MM" time. */
+export const hhmmMinutes = minutesOf;

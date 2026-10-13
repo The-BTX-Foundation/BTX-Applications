@@ -70,29 +70,69 @@ test('change your time switches at once', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Switched to Thu');
 });
 
-test('none of these times work: no fit sends free times, a fit books a time', async ({ page }) => {
+test('none of these times work: typed times are read back, fixed and sent', async ({ page }) => {
   await page.goto('/status/schedule?demo=schedule');
   await page.getByRole('link', { name: 'None of these times work' }).first().click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText("Tell us when you're free.");
-  await expect(page.getByText('No open times fit.')).toBeVisible();
-  await page.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Finding you a time, Ebony.');
-  await expect(page.getByText('Sundays, mornings.')).toBeVisible();
-
-  // Saturday mornings have open times
-  await page.goto('/status/no-time?demo=no-time');
-  await page.getByRole('button', { name: 'Sun' }).click();
-  await page.getByRole('button', { name: 'Sat' }).click();
-  await expect(page.getByText(/open times? fits? what you picked\./)).toBeVisible();
+  await page.getByLabel('When are you free?').fill('weeknights after 6');
+  await page.getByRole('button', { name: 'Show my times' }).click();
+  await expect(page.getByText('Here’s what we read. Fix anything that’s off.')).toBeVisible();
+  const row = page.getByRole('listitem').filter({ hasText: 'Wed Sep 16' });
+  await expect(row.getByRole('button', { name: 'Change 6 to 9 PM on Wed Sep 16' })).toBeVisible();
+  // remove Wednesday, change Thursday's end, add a Saturday
+  await row.getByRole('button', { name: 'Remove 6 to 9 PM on Wed Sep 16' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Wed Sep 16' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Change 6 to 9 PM on Thu Sep 17' }).click();
+  await page.locator('#nt-to').selectOption('20:00');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('button', { name: 'Change 6 to 8 PM on Thu Sep 17' })).toBeVisible();
+  await page.getByRole('button', { name: '+ Add a day' }).click();
+  await page.locator('#nt-day').selectOption('2026-09-19');
+  await page.locator('#nt-from').selectOption('10:00');
+  await page.locator('#nt-to').selectOption('14:00');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('button', { name: 'Change 10 AM to 2 PM on Sat Sep 19' })).toBeVisible();
+  // an open time on Saturday fits, and books
+  await expect(page.getByText(/open times? fits? what you added\./)).toBeVisible();
   await page.getByRole('button', { name: 'Sat Sep 19, 10:00 AM', exact: true }).click();
   await page.getByRole('button', { name: 'Book Sat Sep 19, 10:00 AM' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText("You're booked, Ebony.");
 });
 
+test('none of these times work: sending the ranges shows them on the status page', async ({ page }) => {
+  await page.goto('/status/no-time?demo=no-time');
+  await page.getByLabel('When are you free?').fill('Sunday mornings are fine. Weekends.');
+  await page.getByRole('button', { name: 'Show my times' }).click();
+  await expect(page.getByText('Here’s what we read.')).toBeVisible();
+  await page.getByRole('button', { name: 'Send', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Finding you a time, Ebony.');
+  await expect(page.getByText(/Sun Sep 20: 9:00 AM to 5:00 PM/)).toBeVisible();
+});
+
+test('none of these times work: text the reader cannot read falls back to adding times by hand', async ({ page }) => {
+  await page.goto('/status/no-time?demo=no-time');
+  await page.getByLabel('When are you free?').fill('asdf');
+  await page.getByRole('button', { name: 'Show my times' }).click();
+  await expect(page.getByText('Add the days and times you’re free.')).toBeVisible();
+  // nothing yet: Send is refused with a message
+  await page.getByRole('button', { name: 'Send', exact: true }).first().click();
+  await expect(page.locator('main [role=alert]')).toContainText('Add at least one day and time.');
+  // the editor is already open on the first day
+  await page.locator('#nt-from').selectOption('09:00');
+  await page.locator('#nt-to').selectOption('08:30');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('The end has to be after the start.')).toBeVisible();
+  await page.locator('#nt-to').selectOption('11:00');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Send', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Finding you a time, Ebony.');
+  await expect(page.getByText(/9:00 to 11:00 AM/)).toBeVisible();
+});
+
 test('empty free times are refused with a message', async ({ page }) => {
   await page.goto('/status/no-time');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(page.locator('main [role=alert]')).toContainText('Pick at least one day and one time.');
+  await expect(page.locator('main [role=alert]')).toContainText("Say when you're free first.");
 });
 
 test('the winner adds a photo and story', async ({ page }) => {
