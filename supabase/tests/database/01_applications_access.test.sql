@@ -1,5 +1,6 @@
--- Applications: own-only, open published cycle only, staff can't apply, and
--- blind review (D2). Run with: npx supabase test db
+-- Applications: own-only, open published cycle only, staff can't apply, staff
+-- (admin and board) read submitted applications in full (D2: no blind review),
+-- and there is no reviewer role (D6). Run with: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
@@ -39,7 +40,8 @@ update public.cycles set status = 'archived' where status = 'published';
 -- ---- setup -------------------------------------------------------------------
 select tests.new_user('admin@t.test', 'admin');
 select tests.new_user('board@t.test', 'board');
-select tests.new_user('reviewer@t.test', 'reviewer');
+-- There is no reviewer role (D6): an account with role 'reviewer' is not staff.
+select tests.new_user('stale@t.test', 'reviewer');
 select tests.new_user('ada@terpmail.umd.edu', 'applicant');
 select tests.new_user('bea@terpmail.umd.edu', 'applicant');
 
@@ -105,7 +107,27 @@ select tests.login('bea@terpmail.umd.edu');
 select is((select count(*) from public.applications), 0::bigint, 'another applicant sees no one else''s application');
 select throws_ok($$ select public.submit_application(tests.app_id('ada@terpmail.umd.edu')) $$,
   'P0002', 'not_found', 'another applicant cannot submit someone else''s application');
-select is((select count(*) from public.application_reviews), 0::bigint, 'applicants read nothing from application_reviews');
+
+-- Bea starts a draft of her own (never submitted).
+select lives_ok($$
+  insert into public.applications (cycle_id, full_name, major)
+  values ('11111111-1111-1111-1111-111111111111', 'Bea Draft', 'Physics') $$,
+  'a second applicant starts her own draft');
+select is((select count(*) from public.applications), 1::bigint, 'an applicant reads only her own application');
+select is((select full_name from public.applications), 'Bea Draft', 'that one row is her own');
+
+select tests.login('ada@terpmail.umd.edu');
+select is((select count(*) from public.applications), 1::bigint, 'Ada reads only her own application, not Bea''s draft');
+
+-- The PDFs in storage (written as the database owner, the way the upload lands).
+reset role;
+insert into storage.objects (bucket_id, name, owner)
+values ('applicant-documents',
+        tests.uid('ada@terpmail.umd.edu') || '/' || tests.app_id('ada@terpmail.umd.edu') || '/resume.pdf',
+        tests.uid('ada@terpmail.umd.edu')),
+       ('applicant-documents',
+        tests.uid('bea@terpmail.umd.edu') || '/' || tests.app_id('bea@terpmail.umd.edu') || '/resume.pdf',
+        tests.uid('bea@terpmail.umd.edu'));
 
 -- ---- staff cannot start an application ---------------------------------------
 reset role;
@@ -115,24 +137,25 @@ select throws_ok($$
   insert into public.applications (cycle_id, full_name) values ('11111111-1111-1111-1111-111111111111', 'Board Person') $$,
   '42501', null, 'a board account cannot start an application');
 
--- ---- blind review (D2) ---------------------------------------------------------
-select is((select count(*) from public.applications), 0::bigint, 'board cannot read the applications table (names, emails)');
-select is((select count(*) from public.application_reviews), 1::bigint, 'board reads the submitted application through application_reviews');
-select is((select initials from public.application_reviews), 'A.O.', 'board sees initials');
-select is((select applicant_code from public.application_reviews), 'APP-2026-00001', 'board sees the application code');
-select is((select answer_3 from public.application_reviews), 'Three.', 'board sees the short answers');
+-- ---- D2: no blind review. Board reads submitted applications in full -------
+select is((select count(*) from public.applications), 1::bigint,
+  'board reads the one submitted application, not the draft');
+select is((select full_name from public.applications where id = tests.app_id('ada@terpmail.umd.edu')),
+  'Ada Okafor', 'board reads the applicant''s full name');
+select is((select terpmail || ' ' || phone || ' ' || answer_3 from public.applications
+           where id = tests.app_id('ada@terpmail.umd.edu')),
+  'ada@terpmail.umd.edu 301-555-0101 Three.', 'board reads the full application');
+select is((select count(*) from public.applications where full_name = 'Bea Draft'), 0::bigint,
+  'board cannot read someone''s draft');
 select is((select count(*) from public.application_files), 2::bigint, 'board sees the resume and transcript rows');
-select hasnt_column('public', 'application_reviews', 'full_name', 'application_reviews has no full name');
-select hasnt_column('public', 'application_reviews', 'terpmail', 'application_reviews has no email');
-select hasnt_column('public', 'application_reviews', 'phone', 'application_reviews has no phone');
-select hasnt_column('public', 'application_reviews', 'gender', 'application_reviews has no gender');
-select hasnt_column('public', 'application_reviews', 'race', 'application_reviews has no race');
-
-reset role;
-select tests.login('reviewer@t.test');
-set local role authenticated;
-select is((select count(*) from public.applications), 0::bigint, 'reviewer cannot read the applications table');
-select is((select count(*) from public.application_reviews), 1::bigint, 'reviewer reads application_reviews');
+select is((select count(*) from storage.objects where bucket_id = 'applicant-documents'), 1::bigint,
+  'board reads the submitted application''s PDF in storage, not the draft''s');
+select hasnt_view('public', 'application_reviews', 'the blind-review view is gone');
+select hasnt_function('public', 'blind_applications', array['uuid'], 'the blind-review function is gone');
+select policies_are('public', 'applications',
+  array['applications_select_own', 'applications_select_staff', 'applications_insert_own',
+        'applications_update_own_draft'],
+  'applications has the own and staff read rules only (no admin-only split)');
 
 reset role;
 select tests.login('admin@t.test');
@@ -140,10 +163,34 @@ set local role authenticated;
 select is((select full_name || ' ' || terpmail || ' ' || phone || ' ' || gender || ' ' || race
            from public.applications where id = tests.app_id('ada@terpmail.umd.edu')),
           'Ada Okafor ada@terpmail.umd.edu 301-555-0101 Woman Black', 'admin reads name, email, phone, gender and race');
+select is((select count(*) from public.applications where full_name = 'Bea Draft'), 0::bigint,
+  'admin cannot read someone''s draft');
+select is((select count(*) from public.application_files), 2::bigint, 'admin sees the submitted files');
+select is((select count(*) from storage.objects where bucket_id = 'applicant-documents'), 1::bigint,
+  'admin reads the submitted PDF in storage, not the draft''s');
+
+-- ---- D6: there is no reviewer role ---------------------------------------------
+reset role;
+select tests.login('stale@t.test');
+set local role authenticated;
+select is(public.is_staff(), false, 'role reviewer is not staff (admin and board only)');
+select is((select count(*) from public.applications), 0::bigint, 'role reviewer reads no applications');
+select is((select count(*) from public.application_files), 0::bigint, 'role reviewer sees no application files');
+select is((select count(*) from storage.objects where bucket_id = 'applicant-documents'), 0::bigint,
+  'role reviewer reads no PDFs');
 
 reset role;
+select is((select count(*) from pg_policies where schemaname in ('public', 'storage')
+           and (coalesce(qual, '') || ' ' || coalesce(with_check, '')) ilike '%reviewer%'), 0::bigint,
+  'no policy in public or storage mentions reviewer');
+select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname in ('public', 'storage') and p.prosrc ilike '%reviewer%'), 0::bigint,
+  'no function in public or storage mentions reviewer');
+
+-- ---- signed out --------------------------------------------------------------
 set local role anon;
-select throws_ok($$ select count(*) from public.application_reviews $$, '42501', null, 'signed-out users cannot read application_reviews');
+select throws_ok($$ select count(*) from public.applications where full_name is not null $$, '42501', null,
+  'signed-out users cannot read applications');
 
 reset role;
 select * from finish();

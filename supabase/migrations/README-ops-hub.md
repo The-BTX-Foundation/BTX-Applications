@@ -9,25 +9,29 @@ Dominick approves it by naming that project. It runs as one transaction: if any 
 changes. It is **safe to run twice** (`if not exists`, `create or replace`, every policy and trigger dropped first,
 seed rows `on conflict do nothing`).
 
-It **adds** the Ops Hub. It **changes three Portal read rules** for blind review (D2, below): the staff read rule on
-`applications`, the staff read rule on `application_files`, and the staff read rule on the `applicant-documents`
-storage bucket. The `legacy` schema is read, not changed.
+It **adds** the Ops Hub. It **redefines `public.is_staff()`** as admin or board only (D6), and keeps the Portal's staff
+read rules on submitted applications, their files and the `applicant-documents` bucket (D2: no blind review). The
+`legacy` schema is read, not changed.
 
 ## Owner's decisions applied (2026-10-12)
 
 - **D1 Program plan:** only the 2026 plan moves in, without MS-006 and MS-010: 7 milestones, 11 tasks. The 2021 plan,
   MS-006 and MS-010 stay only in the `legacy` backup (the earlier draft imported them all as archived rows).
-- **D2 Blind review is a database rule.** Board members and reviewers read applications through the view
-  `application_reviews` (application number, initials "A.O.", year, credits left, major, program interests, the three
-  short answers, submit time) and still see the resume and transcript. Only admins read the `applications` table
-  itself (full name, Terpmail and secondary email, phone, gender, race, "how did you hear"). See "Blind review" below.
+- **D2: no blind review; board members see names (owner, 2026-10-12).** Admins and board members read every submitted
+  application in full (name included), its files and its PDFs. Nobody reads someone else's draft; applicants read only
+  their own. See "Reading applications" below.
 - **D3 Money deletes are admin-only:** budget years, categories, quarter plans and plan lines, spending, funds on hand,
   donors, gifts, grants and sponsorships (a sponsorship's delete also deletes its spending). Board members still read,
   add and edit them.
 - **D4 Availability is Morning / Afternoon / Evening per day,** given before interview times exist:
   `board_availability` is now (cycle, person, day, block), not (slot, person).
-- **D5 No votes table.** A tie vote is written in the award's `decision_note`.
-- **D6 Reviewers score only** (as drafted).
+- **D5 No votes table.** The board discusses and decides; the ranking by combined score is information only, and an
+  admin can record the main or an extra award for any submitted applicant. How it was decided (for example a vote)
+  can go in the award's `decision_note`. Still enforced: one main award per cycle, one award per applicant.
+- **D6 No reviewer role** (owner, 2026-10-12). Staff are admins and board members only. This file redefines
+  `public.is_staff()` as admin or board, and its final check fails if any policy, function, view or constraint in
+  `public` or `storage` still mentions a reviewer. Any other role (including an old `reviewer` value) is treated as
+  not staff.
 - **D7 Video link per interview:** `interview_pairings.video_url`, set by an admin when pairing. The Portal reads it
   through `my_interview` (journey file).
 - **D8 No "unpublish score"** in the app (as drafted: only the service key can).
@@ -42,9 +46,8 @@ to scoring and budget approvals; only admins change roles; no one changes their 
 | Role | Can |
 |---|---|
 | **admin** | Everything below, plus the admin-only setup: areas, task types, the scoring rubric, interviewer pairing and video links, area chat channels, other people's profiles. |
-| **board** | Everything an admin can, except that admin-only setup and deleting money records (D3). Reads applications blind (D2). |
-| **reviewer** | Scoring only: their own profile, the staff list, the rubric, the blind application view, summaries of the applications they interview, their own scores and private notes, and tasks assigned to them. No chat, money, programs, outreach, calendar, goals or availability. |
-| **applicant / signed out** | Nothing in this change. |
+| **board** | Everything an admin can, except that admin-only setup and deleting money records (D3). Reads submitted applications in full, names included (D2). |
+| **applicant / signed out / any other role** | Nothing in this change. |
 
 Every rule reads the role only through `public.app_role()` or `public.is_staff()` (from `app_metadata`, which only
 the server can write). Nothing reads `user_metadata`. Roles are still changed with the service key (Admin API), never
@@ -61,8 +64,8 @@ from the app's own database calls.
 | `task_types` | Task, Request, Approval, Post, Scoring, Meeting, Decision, Document, Goal, Follow-up (seeded) | All staff read; admins write | The line under each task title |
 | `checklists` | A named list of steps tied to a cycle, program, quarter plan, post or meeting (steps are tasks) | admin + board | Cycle checklist, Q4 budget, Setup checklist, Year-end giving, Getting started with grants, Where it stands, Post checklist, Selection agenda |
 | `plan_milestones` | Plan milestones by year (code, name, area, program, due, done, archived) | admin + board | Programs pages, Calendar |
-| `tasks` | Every task and checklist step: type, area, status, due, note, group owner, links to cycle / application / milestone / grant / checklist | admin + board; reviewers read and update tasks assigned to them | Today, Tasks, every checklist |
-| `task_assignees` | Who owns a task (one or more people) | admin + board; reviewers read their own rows | Owner column |
+| `tasks` | Every task and checklist step: type, area, status, due, note, group owner, links to cycle / application / milestone / grant / checklist | admin + board | Today, Tasks, every checklist |
+| `task_assignees` | Who owns a task (one or more people) | admin + board | Owner column |
 | `task_comments` | Comments on a task | admin + board read; you write, edit and delete only your own | Comments panel |
 | `calendar_events` | Events added in the app: meetings, planning calls, the selection meeting, deadlines | admin + board | Calendar ("Add event") |
 | `goals` | A year's goals: title, what it counts, target, status | admin + board | Goals, Today "Year goals" |
@@ -90,8 +93,8 @@ from the app's own database calls.
 | `newsletter_sections` | An issue's sections (they are its checklist): owner, status, "waits for" date | admin + board | Newsletter, email preview |
 | `rubric_criteria` | A cycle's scoring criteria and weights | All staff read; admins write | Scoring |
 | `board_availability` | Morning / Afternoon / Evening blocks per day a board member is free, per cycle (D4) | admin + board read; you add and remove your own; admins anyone's | Interviews "Your availability", Today "Add times" |
-| `interview_pairings` | The two interviewers for a slot, and the video link | admin + board read; a reviewer reads pairs they are in; **admins only** write | Interviews, "Re-run pairing", "Add the video links" |
-| `interview_summaries` | Shared interview summary, quotes, length | admin + board; a reviewer reads summaries of applications they interview; admins and that application's two interviewers write | Scoring "Interview notes", Applicants, Selection |
+| `interview_pairings` | The two interviewers for a slot, and the video link | admin + board read; **admins only** write | Interviews, "Re-run pairing", "Add the video links" |
+| `interview_summaries` | Shared interview summary, quotes, length | admin + board read; admins and that application's two interviewers write | Scoring "Interview notes", Applicants, Selection |
 | `scores` | One score per interviewer per application: picks per criterion (jsonb), weighted score, published | See "Scores" below | Scoring, Applicants, Selection |
 | `score_private_notes` | "Your private notes" | The writer only | Scoring |
 | `scholarship_awards` | Each award decision (main or extra, amount, who decided, decision note incl. a tie vote), letter / accepted / paid dates; also past awards entered by hand | admin + board | Selection, Awardees, Goals chart |
@@ -100,34 +103,29 @@ from the app's own database calls.
 **Scores.** You always see your own score. You can change it while it is a draft; publishing needs all criteria and
 then locks it. You can only score an application you interview (you are one of the pair on its booked slot). Admin and
 board see other people's scores only after **both** interviewers have published ("Scores stay private until both
-interviewers publish"). Reviewers never see other people's scores.
+interviewers publish").
 
-### Blind review (D2)
+### Reading applications (D2: no blind review)
 
-Everyone signed in is the same database role, so a column rule can't tell a board member from an admin. So:
-
-- `applications`: the staff read rule (`applications_select_staff`) is replaced by `applications_select_admin`.
-  Applicants still read their own (unchanged).
-- `blind_applications(application id or null)`: security definer; returns the blind columns of submitted
-  applications to staff, nothing to anyone else.
-- `application_reviews`: a security-invoker view over it. **The Ops Hub must read this instead of `applications`**
-  (today `apps/ops/lib/applicants.ts` on `ops/hub` reads `applications.full_name`; for a board member that now returns
-  no rows).
-- `is_submitted_application(id)`: true/false only; the staff file rules use it, so board members keep seeing the
-  resume and transcript.
-- The score check and "Funds sent" read the application through `blind_applications`, so they work for board members.
-- Not blind: file names. A PDF named "Ada_Okafor_resume.pdf" shows the name. The Portal could rename uploads.
+- `applications`: `applications_select_staff` (from the Portal file) is kept: admins and board members read submitted
+  applications in full. Applicants still read their own (unchanged). An earlier draft's admin-only rule, the
+  `application_reviews` view and `blind_applications()` are dropped if present, and the final check fails if they
+  come back.
+- `is_submitted_application(id)`: true/false only; the staff file rules on `application_files` and the
+  `applicant-documents` bucket use it.
+- The score check and "Funds sent" read the application under the caller's own rules, so they work for board members.
+- The final check signs in as a board member for a moment and fails unless that account reads the `full_name` of every
+  submitted application.
 
 ### Views (all "security invoker": they only show what your own rules allow)
 
 - `application_score_summary`: published count and combined score per application.
 - `budget_category_totals`: budget, spent so far, and each quarter's plan per category.
 - `chat_unread_counts`: your unread messages per channel.
-- `application_reviews`: the blind application list (D2).
 
 ### Functions
 
-- `blind_applications(id)`, `is_submitted_application(id)`: blind review (D2).
+- `is_submitted_application(id)`: used by the staff file rules (D2).
 - `staff_directory()`: each staff member's role and last sign-in, for People and roles. Staff only.
 - `score_progress(cycle)`: who has a draft or published score on what, **without the scores**, for "Not started,
   Chariah published" and "Waiting on Marcus Davis". Admin and board only.
@@ -170,8 +168,8 @@ MS-005 Certification. Rows already imported (same `legacy_id`) are skipped on a 
   journey file, apply cleanly in order. Both files were then run a second time on top: no errors.
 - Import dry run on the local stack with stand-in legacy rows (9 milestones and 14 tasks for 2026): 7 and 11 imported,
   none archived, check passed.
-- pgTAP tests in `supabase/tests/database/` (`npx supabase test db`): applications and blind review, interviews and
-  decisions, money deletes, availability and scoring. All pass.
+- pgTAP tests in `supabase/tests/database/` (`npx supabase test db`): applications (staff read rules), interviews and
+  decisions, money deletes, availability and scoring, no reviewer role, names visible to board members. All pass.
 - Not run against the real project (that is the apply step).
 
 ## Check it worked (run in the SQL editor after applying)
@@ -185,9 +183,9 @@ where relnamespace = 'public'::regnamespace and relkind = 'r';            -- 47,
 select plan_year, count(*) from public.plan_milestones group by 1;        -- 2026: 7
 select count(*) from public.tasks where legacy_id is not null;            -- 11
 
--- 3b. Blind review (D2): no staff-wide read rule on applications.
+-- 3b. No blind review (D2): staff read submitted applications.
 select policyname from pg_policies where tablename = 'applications' and cmd = 'SELECT';
--- applications_select_admin, applications_select_own
+-- applications_select_own, applications_select_staff
 
 -- 3. No rule reads user_metadata.
 select schemaname, tablename, policyname from pg_policies
@@ -218,15 +216,15 @@ set local role anon;
 select count(*) from public.tasks;                                  -- error: permission denied
 rollback;
 
--- Reviewer: rubric and staff list yes; chat, money, tasks no.
+-- Any role other than admin or board (D6): not staff, so nothing.
 begin;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated",
   "app_metadata":{"role":"reviewer"}}', true);
 set local role authenticated;
-select count(*) from public.areas;                                  -- 4
-select count(*) from public.chat_channels;                          -- 0
-select count(*) from public.budget_categories;                      -- 0
-select count(*) from public.tasks;                                  -- 0 (unless assigned)
+select public.is_staff();                                           -- false
+select count(*) from public.areas;                                  -- 0
+select count(*) from public.staff_profiles;                         -- 0
+select count(*) from public.rubric_criteria;                        -- 0
 select * from public.score_progress(gen_random_uuid());             -- error: not_allowed
 rollback;
 
@@ -237,7 +235,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 set local role authenticated;
 select count(*) from public.chat_channels;                          -- 4
 select count(*) from public.tasks where not archived;               -- 11 (the imported 2026 plan)
-select count(*) from public.applications;                           -- 0 (blind review: use application_reviews)
+select count(full_name) from public.applications;                   -- every submitted application (D2)
 delete from public.gifts;                                           -- DELETE 0 (money deletes are admin-only)
 insert into public.areas (slug, name) values ('hack', 'Hack');      -- error: row-level security
 rollback;
@@ -253,12 +251,12 @@ rollback;
 
 ## Settled by the owner's decisions (2026-10-12)
 
-The earlier draft's open questions are closed by D1 to D9 above: the import is 2026-only; blind review is enforced by
-the database; money deletes are admin-only; availability is per day and block; no votes table; reviewers score only;
+The earlier draft's open questions are closed by D1 to D9 above: the import is 2026-only; no blind review (board
+members see names); money deletes are admin-only; availability is per day and block; no votes table; no reviewer role;
 the video link is per interview and the Portal reads it; no un-publish; staff are created server side.
 
 Still true from the draft: post images, newsletter sending and subscriber numbers, and the calendar feed are not
-stored yet. A reviewer can edit any field of a task assigned to them, not just tick it. A staff profile can't be
+stored yet. A staff profile can't be
 removed while that person has a published score or an interview pair.
 
 ## How to roll back
@@ -268,8 +266,9 @@ Roll back the journey file first (it reads the Ops Hub tables). Then, in one tra
 1. Put back the three Portal read rules from `20261009130000_portal_fresh_start.sql`:
    `applications_select_staff`, `application_files_select_staff` and the storage rule
    `applicant_documents_select_staff` (drop the new versions first), and drop `applications_select_admin`.
-2. Drop the 4 views, the 40 tables (with `cascade`) and the functions this file creates (`scores_check`,
+2. Drop the 3 views, the 40 tables (with `cascade`) and the functions this file creates (`scores_check`,
    `application_scores_released`, `score_progress`, `staff_directory`, `is_channel_member`, `open_direct_channel`,
    `budget_plan_stamp`, `undo_budget_decision`, `tasks_stamp_done`, `award_steps_create`, `log_sponsorship`,
-   `mark_award_funds_sent`, `blind_applications`, `is_submitted_application`). The program plan stays safe in `legacy` either way. Any data entered in the
+   `mark_award_funds_sent`, `is_submitted_application`). Leave `is_staff()` as this file
+   redefines it (admin or board, D6). The program plan stays safe in `legacy` either way. Any data entered in the
 Ops Hub after applying would be lost, so back it up first.

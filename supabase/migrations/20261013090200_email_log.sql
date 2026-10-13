@@ -6,7 +6,7 @@
 --   Written:  only by the server with the service role (the Portal's confirmation
 --             email and the Ops Hub's batches). No insert/update/delete policy for
 --             any signed-in role.
---   Read:     admins only (board members and reviewers never see addresses here).
+--   Read:     admins only.
 --
 -- Safe to run twice.
 -- =============================================================================

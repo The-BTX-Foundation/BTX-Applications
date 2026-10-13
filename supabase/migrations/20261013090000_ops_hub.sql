@@ -7,18 +7,20 @@
 --
 -- Runs after 20261009130000_portal_fresh_start.sql and
 -- 20261012120000_portal_short_answers.sql (both applied). It ADDS the Ops Hub,
--- and changes three Portal read rules for blind review (section m, decision
--- D2): staff other than admins no longer read the applications table; they
--- read public.application_reviews (code, initials, short answers) instead.
+-- redefines public.is_staff() as admin or board only (D6), and keeps the
+-- Portal's staff read rules on submitted applications and their files (D2: no
+-- blind review; board members see names).
 --
 -- Safe to run twice: tables and indexes use "if not exists", functions and
 -- views "create or replace", every policy and trigger is dropped first, and
 -- seed rows use "on conflict do nothing".
 --
 -- Owner's decisions applied here (2026-10-12): D1 import only the 2026 plan
--- minus MS-006/MS-010; D2 blind review in the database; D3 deleting money
+-- minus MS-006/MS-010; D2 no blind review: board members see applicants'
+-- names and full applications (owner, 2026-10-12); D3 deleting money
 -- records is admin-only; D4 availability is Morning/Afternoon/Evening per day;
--- D5 no votes table; D6 reviewers score only; D7 video link per interview
+-- D5 no votes table; D6 no reviewer role: staff are admin and board only
+-- (owner, 2026-10-12); D7 video link per interview
 -- (interview_pairings.video_url); D8 no un-publish in the app; D9 staff are
 -- created server side (no schema change).
 --
@@ -41,7 +43,7 @@
 --   j. Grants and RLS policies on every new table.
 --   k. Import of the 2026 program plan (minus MS-006, MS-010) into
 --      plan_milestones and tasks. Everything else stays in `legacy`.
---   m. Blind review: application_reviews for staff, full rows for admins.
+--   m. Staff (admin and board) read submitted applications in full (D2).
 --   l. A final check that raises (and rolls everything back) if a rule below
 --      is broken.
 --
@@ -53,12 +55,11 @@
 --            rubric, interviewer pairing, chat channels, staff profiles of
 --            others).
 --   board    everything an admin can, except that admin-only setup and
---            deleting money records (D3). Reads applications blind (D2).
---   reviewer scoring only: own profile, the staff list, the rubric, the
---            applications they interview (pairing), their own scores and
---            notes, and tasks assigned to them. No chat, money, programs,
---            outreach, calendar or goals.
---   applicant / signed out: nothing in this file.
+--            deleting money records (D3). Reads submitted applications in
+--            full, names included (D2).
+--   applicant / signed out / any other role: nothing in this file.
+-- There are no other staff roles (D6). public.is_staff() is redefined below
+-- to mean admin or board only.
 -- Every policy reads the role only through public.app_role() / is_staff().
 -- =============================================================================
 
@@ -68,7 +69,22 @@ begin;
 -- a. Staff profiles
 -- -----------------------------------------------------------------------------
 
--- One row per staff member (admin, board, reviewer). The role is NOT here: it
+-- Staff are admins and board members only (D6). This replaces the Portal's
+-- definition (20261009130000), which every policy here and in the Portal reads.
+-- create or replace keeps its existing grants.
+create or replace function public.is_staff()
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(public.app_role() in ('admin', 'board'), false);
+$$;
+
+revoke all on function public.is_staff() from public;
+grant execute on function public.is_staff() to anon, authenticated, service_role;
+
+-- One row per staff member (admin or board). The role is NOT here: it
 -- lives in auth.users.raw_app_meta_data and is read with public.app_role().
 -- Created by the person on first sign-in to the Ops Hub, or by an admin.
 create table if not exists public.staff_profiles (
@@ -619,9 +635,10 @@ create table if not exists public.scholarship_awards (
   kind              text not null default 'main' check (kind in ('main', 'extra', 'past')),
   decided_at        timestamptz not null default now(),
   decided_by        uuid default auth.uid() references public.staff_profiles (user_id) on delete set null,
-  -- D5: there is no votes table. A tie goes to a vote and the note says so
-  -- ("Tie with APP-2026-00012, decided by board vote 4-2").
-  decision_note     text check (char_length(decision_note) <= 2000),   -- "Top score, no tie" / tie vote
+  -- D5: there is no votes table. The board discusses and decides; the note
+  -- may say how ("Decided by board vote 4-2"). Any submitted applicant can
+  -- be chosen, not only the top-ranked one.
+  decision_note     text check (char_length(decision_note) <= 2000),
   -- Past awards only: which term, and a label instead of an application.
   past_term         text check (char_length(past_term) <= 40),          -- 'Spring 2025'
   past_term_starts  date,                                                -- for ordering the chart
@@ -907,79 +924,17 @@ create table if not exists public.chat_pins (
 );
 
 -- -----------------------------------------------------------------------------
--- m. Blind review (D2)
+-- m. Staff read submitted applications in full (D2: no blind review)
 -- -----------------------------------------------------------------------------
--- Board members and reviewers see an application's code, initials, the three
--- short answers and the files. Only admins see full name, email (terpmail and
--- secondary email), phone, gender and race.
---
--- Every signed-in person is the same database role (`authenticated`), so
--- column grants can't tell a board member from an admin. Instead:
---   * the applications table's staff read rule becomes admin-only;
---   * public.blind_applications() (security definer) returns only the blind
---     columns of submitted applications, to staff only (empty for anyone else);
---   * public.application_reviews is a security-invoker view over it, so the
---     Ops Hub reads `from('application_reviews')`;
---   * the two file rules that looked the application up under the caller's
---     own rights now ask public.is_submitted_application() instead, so board
---     members keep seeing the resume and transcript.
--- Left out of the blind columns on purpose (admin only): heard_from,
--- stay_in_touch, agreed_true and every contact or demographic field.
+-- Owner, 2026-10-12: board members see applicants' real names and full
+-- applications. Admin and board (public.is_staff()) read every submitted
+-- application, its files and its PDFs; nobody reads someone else's draft;
+-- applicants read only their own (applications_select_own, unchanged).
+-- An earlier draft of this file added a blind-review view, function and an
+-- admin-only read rule; they are dropped here in case a local database ran it.
 
-create or replace function public.blind_applications(p_application_id uuid default null)
-returns table (
-  id                     uuid,
-  cycle_id               uuid,
-  applicant_code         text,
-  initials               text,
-  year_in_school         text,
-  credits_left           smallint,
-  major                  text,
-  interest_certification boolean,
-  interest_mentoring     boolean,
-  answer_1               text,
-  answer_2               text,
-  answer_3               text,
-  submitted_at           timestamptz)
-language plpgsql
-stable
-security definer
-set search_path = ''
-as $$
-begin
-  -- Role check: staff only; anyone else gets no rows (not an error, so the
-  -- view simply reads empty for them).
-  if not public.is_staff() then
-    return;
-  end if;
-  return query
-    select a.id, a.cycle_id, a.applicant_code,
-           -- "Ada Okafor" -> "A.O."; one word -> "A."
-           case
-             when coalesce(btrim(a.full_name), '') = '' then null
-             when btrim(a.full_name) !~ '\s' then upper(left(btrim(a.full_name), 1)) || '.'
-             else upper(left(btrim(a.full_name), 1)) || '.'
-                  || upper(left(regexp_replace(btrim(a.full_name), '^.*\s', ''), 1)) || '.'
-           end,
-           a.year_in_school, a.credits_left, a.major,
-           a.interest_certification, a.interest_mentoring,
-           a.answer_1, a.answer_2, a.answer_3, a.submitted_at
-    from public.applications a
-    where a.status = 'submitted'
-      and (p_application_id is null or a.id = p_application_id)
-    order by a.submitted_at;
-end;
-$$;
-
-revoke all on function public.blind_applications(uuid) from public, anon;
-grant execute on function public.blind_applications(uuid) to authenticated, service_role;
-
-create or replace view public.application_reviews
-with (security_invoker = true) as
-select * from public.blind_applications(null);
-
-revoke all on public.application_reviews from public, anon, authenticated;
-grant select on public.application_reviews to authenticated, service_role;
+drop view if exists public.application_reviews;
+drop function if exists public.blind_applications(uuid);
 
 -- True when the application (given as text, so storage folder names can be
 -- passed straight in) exists and is submitted. Returns only true/false.
@@ -998,21 +953,20 @@ $$;
 revoke all on function public.is_submitted_application(text) from public, anon;
 grant execute on function public.is_submitted_application(text) to authenticated, service_role;
 
--- applications: staff read rule becomes admin-only (applicants still read
--- their own through applications_select_own, unchanged).
-drop policy if exists applications_select_staff on public.applications;
+-- applications: admin and board read submitted applications in full.
 drop policy if exists applications_select_admin on public.applications;
-create policy applications_select_admin on public.applications
+drop policy if exists applications_select_staff on public.applications;
+create policy applications_select_staff on public.applications
   for select to authenticated
-  using ((select public.app_role()) = 'admin' and status = 'submitted');
+  using ((select public.is_staff()) and status = 'submitted');
 
--- application_files: staff still see the files of submitted applications.
+-- application_files: staff see the files of submitted applications.
 drop policy if exists application_files_select_staff on public.application_files;
 create policy application_files_select_staff on public.application_files
   for select to authenticated
   using ((select public.is_staff()) and public.is_submitted_application(application_id::text));
 
--- Storage: staff still read the PDFs of submitted applications.
+-- Storage: staff read the PDFs of submitted applications.
 drop policy if exists applicant_documents_select_staff on storage.objects;
 create policy applicant_documents_select_staff on storage.objects
   for select to authenticated
@@ -1029,9 +983,9 @@ create policy applicant_documents_select_staff on storage.objects
 -- for the application's cycle with a value 1..5, counts the picks, works out
 -- the weighted score over the picked criteria, requires all criteria before
 -- publishing, and stamps published_at the moment it is published.
--- Runs as the caller (no security definer). The application's cycle comes
--- from public.blind_applications() (D2: board members can't read the
--- applications table itself); the rubric through the caller's own rules.
+-- Runs as the caller (no security definer). The application's cycle and the
+-- rubric are read through the caller's own rules (staff read submitted
+-- applications, D2).
 create or replace function public.scores_check()
 returns trigger
 language plpgsql
@@ -1045,7 +999,9 @@ declare
   v_wsum    numeric;
   v_weights numeric;
 begin
-  select b.cycle_id into v_cycle from public.blind_applications(new.application_id) b;
+  select a.cycle_id into v_cycle
+  from public.applications a
+  where a.id = new.application_id and a.status = 'submitted';
   if v_cycle is null then
     raise exception 'application_not_found' using errcode = 'P0002';
   end if;
@@ -1164,7 +1120,7 @@ begin
     select u.id, u.raw_app_meta_data ->> 'role', u.last_sign_in_at
     from auth.users u
     join public.staff_profiles p on p.user_id = u.id
-    where u.raw_app_meta_data ->> 'role' in ('admin', 'board', 'reviewer');
+    where u.raw_app_meta_data ->> 'role' in ('admin', 'board');
 end;
 $$;
 
@@ -1485,8 +1441,8 @@ begin
     raise exception 'no_scholarship_category:%', extract(year from p_paid_on) using errcode = 'P0002';
   end if;
 
-  -- Through the blind-review function (D2): works for board members too.
-  select b.applicant_code into v_code from public.blind_applications(v_award.application_id) b;
+  -- Staff read submitted applications (D2), so this works for board members too.
+  select a.applicant_code into v_code from public.applications a where a.id = v_award.application_id;
 
   insert into public.spending_entries (spent_on, description, category_id, amount_cents, award_id)
   values (p_paid_on, v_award.award_name || ' award, ' || coalesce(v_code, 'awardee'),
@@ -1597,8 +1553,8 @@ revoke all on public.application_score_summary, public.budget_category_totals,
 grant select on public.application_score_summary, public.budget_category_totals,
   public.chat_unread_counts to authenticated, service_role;
 
--- "Team" tables: admin and board read and write everything; reviewers and
--- applicants nothing. One FOR ALL policy each, reading the role only through
+-- "Team" tables: admin and board read and write everything; applicants
+-- nothing. One FOR ALL policy each, reading the role only through
 -- public.app_role().
 do $$
 declare
@@ -1703,7 +1659,7 @@ create policy task_types_write_admin on public.task_types
   using ((select public.app_role()) = 'admin')
   with check ((select public.app_role()) = 'admin');
 
--- Reviewers read the rubric too (they score with it).
+-- Staff read the rubric (they score with it).
 drop policy if exists rubric_criteria_select_staff on public.rubric_criteria;
 create policy rubric_criteria_select_staff on public.rubric_criteria
   for select to authenticated using ((select public.is_staff()));
@@ -1712,34 +1668,6 @@ create policy rubric_criteria_write_admin on public.rubric_criteria
   for all to authenticated
   using ((select public.app_role()) = 'admin')
   with check ((select public.app_role()) = 'admin');
-
--- ---- tasks: reviewers see and update only tasks assigned to them -----------
--- (Admin and board have tasks_team_all above; policies are OR-ed.)
-drop policy if exists tasks_select_reviewer_assigned on public.tasks;
-create policy tasks_select_reviewer_assigned on public.tasks
-  for select to authenticated
-  using (
-    (select public.app_role()) = 'reviewer'
-    and exists (select 1 from public.task_assignees ta
-                where ta.task_id = tasks.id and ta.user_id = (select auth.uid())));
-
-drop policy if exists tasks_update_reviewer_assigned on public.tasks;
-create policy tasks_update_reviewer_assigned on public.tasks
-  for update to authenticated
-  using (
-    (select public.app_role()) = 'reviewer'
-    and exists (select 1 from public.task_assignees ta
-                where ta.task_id = tasks.id and ta.user_id = (select auth.uid())))
-  with check (
-    (select public.app_role()) = 'reviewer'
-    and exists (select 1 from public.task_assignees ta
-                where ta.task_id = tasks.id and ta.user_id = (select auth.uid())));
-
--- A reviewer sees their own assignment rows (so the policy above can find them).
-drop policy if exists task_assignees_select_own on public.task_assignees;
-create policy task_assignees_select_own on public.task_assignees
-  for select to authenticated
-  using ((select public.is_staff()) and user_id = (select auth.uid()));
 
 -- ---- task_comments ---------------------------------------------------------
 -- Admin and board read all comments and add their own; authors edit or
@@ -1788,14 +1716,11 @@ create policy board_availability_delete_own on public.board_availability
     and (user_id = (select auth.uid()) or (select public.app_role()) = 'admin'));
 
 -- ---- interview_pairings ----------------------------------------------------
--- Admin and board see all pairs; anyone (e.g. a reviewer) sees the pairs they are in.
+-- Admin and board see all pairs.
 drop policy if exists interview_pairings_select on public.interview_pairings;
 create policy interview_pairings_select on public.interview_pairings
   for select to authenticated
-  using (
-    (select public.app_role()) in ('admin', 'board')
-    or ((select public.is_staff())
-        and (select auth.uid()) in (interviewer_a, interviewer_b)));
+  using ((select public.app_role()) in ('admin', 'board'));
 
 -- "Admins only: Re-run pairing" and adding video links.
 drop policy if exists interview_pairings_write_admin on public.interview_pairings;
@@ -1805,19 +1730,11 @@ create policy interview_pairings_write_admin on public.interview_pairings
   with check ((select public.app_role()) = 'admin');
 
 -- ---- interview_summaries ---------------------------------------------------
--- Admin and board read every summary; a reviewer reads summaries of
--- applications they interview (their pairing on the application's active booking).
+-- Admin and board read every summary.
 drop policy if exists interview_summaries_select on public.interview_summaries;
 create policy interview_summaries_select on public.interview_summaries
   for select to authenticated
-  using (
-    (select public.app_role()) in ('admin', 'board')
-    or ((select public.is_staff()) and exists (
-          select 1 from public.bookings b
-          join public.interview_pairings p on p.slot_id = b.slot_id
-          where b.application_id = interview_summaries.application_id
-            and b.status = 'active'
-            and (select auth.uid()) in (p.interviewer_a, p.interviewer_b))));
+  using ((select public.app_role()) in ('admin', 'board'));
 
 -- Admins, or the application's two interviewers, write the summary.
 drop policy if exists interview_summaries_write on public.interview_summaries;
@@ -2033,6 +1950,8 @@ declare
   v_ms_in bigint;
   v_tk    bigint;
   v_tk_in bigint;
+  v_all   bigint;
+  v_seen  bigint;
 begin
   -- D1: exactly the 2026 plan minus MS-006 and MS-010 arrived (production on
   -- 2026-10-09: 7 milestones, 11 tasks). A brand-new local database has an
@@ -2064,10 +1983,41 @@ begin
     raise exception 'board_availability is not per day and block (D4)';
   end if;
 
-  -- D2: only admins read the applications table as staff; the old rule is gone.
+  -- D2: no blind review. Staff read submitted applications through
+  -- applications_select_staff; the admin-only split and the blind view are gone.
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'applications'
+                 and policyname = 'applications_select_staff') then
+    raise exception 'applications_select_staff is missing: board members must read submitted applications (D2)';
+  end if;
   if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'applications'
-             and policyname = 'applications_select_staff') then
-    raise exception 'applications_select_staff still lets every staff member read names (D2)';
+             and policyname = 'applications_select_admin')
+     or to_regclass('public.application_reviews') is not null
+     or to_regprocedure('public.blind_applications(uuid)') is not null then
+    raise exception 'blind-review objects still present (D2 reversed)';
+  end if;
+
+  -- D6: there is no reviewer role. No policy, function, view or constraint in
+  -- public or storage may mention one.
+  select string_agg(x, ', ') into v_bad from (
+    select 'policy ' || schemaname || '.' || tablename || ':' || policyname as x
+    from pg_policies
+    where schemaname in ('public', 'storage')
+      and (coalesce(qual, '') || ' ' || coalesce(with_check, '')) ilike '%reviewer%'
+    union all
+    select 'function ' || n.nspname || '.' || p.proname
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'storage') and coalesce(p.prosrc, '') ilike '%reviewer%'
+    union all
+    select 'view ' || schemaname || '.' || viewname
+    from pg_views
+    where schemaname in ('public', 'storage') and definition ilike '%reviewer%'
+    union all
+    select 'constraint ' || n.nspname || '.' || c.conname
+    from pg_constraint c join pg_namespace n on n.oid = c.connamespace
+    where n.nspname in ('public', 'storage') and pg_get_constraintdef(c.oid) ilike '%reviewer%'
+  ) found;
+  if v_bad is not null then
+    raise exception 'reviewer role still mentioned (D6): %', v_bad;
   end if;
 
   -- No policy (public or storage) may read user_metadata.
@@ -2159,13 +2109,28 @@ begin
       'sponsorships', 'donors', 'gifts', 'spending_entries', 'funds_snapshots', 'goals',
       'year_figures', 'chat_channels', 'chat_channel_members', 'chat_messages',
       'chat_read_markers', 'chat_pins',
-      -- Ops Hub views (this file), incl. blind review (D2)
+      -- Ops Hub views (this file)
       'application_score_summary', 'budget_category_totals', 'chat_unread_counts',
-      'application_reviews',
-      -- Portal journey (20261013090100), when this file is re-run after it
-      'interview_free_times', 'award_stories');
+      -- Portal journey (20261013090100) and the email log (20261013090200), when this file is re-run after them
+      'interview_free_times', 'award_stories', 'email_log');
   if v_bad is not null then
     raise exception 'unexpected objects in public: %', v_bad;
+  end if;
+
+  -- D2: a board account reads the full_name of every submitted application.
+  -- Checked last because it signs in as a board member for a moment (a made-up
+  -- user id; nothing is written). With no submitted applications yet, both
+  -- counts are 0 and the pgTAP tests cover it instead.
+  select count(full_name) into v_all from public.applications where status = 'submitted';
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', gen_random_uuid(), 'role', 'authenticated',
+                      'app_metadata', json_build_object('role', 'board'))::text, true);
+  execute 'set local role authenticated';
+  select count(full_name) into v_seen from public.applications where status = 'submitted';
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', true);
+  if v_seen <> v_all then
+    raise exception 'a board account reads % of % submitted applicants'' names (D2)', v_seen, v_all;
   end if;
 end;
 $$;

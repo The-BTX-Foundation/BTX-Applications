@@ -42,13 +42,15 @@ update public.cycles set status = 'archived' where status = 'published';
 select tests.new_user('admin@t.test', 'admin');
 select tests.new_user('board@t.test', 'board');
 select tests.new_user('board2@t.test', 'board');
-select tests.new_user('reviewer@t.test', 'reviewer');
+-- There is no reviewer role (D6): an account left with role 'reviewer' is not staff,
+-- even with a staff profile row and an interview pair.
+select tests.new_user('stale@t.test', 'reviewer');
 select tests.new_user('ada@terpmail.umd.edu', 'applicant');
 insert into public.staff_profiles (user_id, display_name, initials) values
   (tests.uid('admin@t.test'), 'Dania Admin', 'DA'),
   (tests.uid('board@t.test'), 'Kelsey Davis', 'KD'),
   (tests.uid('board2@t.test'), 'Tomi Falodun', 'TF'),
-  (tests.uid('reviewer@t.test'), 'Rae Viewer', 'RV');
+  (tests.uid('stale@t.test'), 'Sam Stale', 'SS');
 insert into public.cycles (id, term, year, status, award_name, award_amount_cents, opens_at, closes_at, interview_start, interview_end)
 values ('11111111-1111-1111-1111-111111111111', 'Test Open', 2026, 'published', 'Legacy', 200000,
         now() - interval '1 day', now() + interval '2 days', current_date + 3, current_date + 5);
@@ -112,9 +114,18 @@ select is((select count(*) from public.gifts) + (select count(*) from public.gra
           + (select count(*) from public.budget_quarter_plan_lines) + (select count(*) from public.spending_entries)
           + (select count(*) from public.sponsorships), 0::bigint, 'an admin deletes money records');
 
-select tests.login('reviewer@t.test'); set local role authenticated;
-select is((select count(*) from public.budget_categories), 0::bigint, 'a reviewer sees no money records (D6)');
-select is((select count(*) from public.chat_channels), 0::bigint, 'a reviewer sees no chat (D6)');
+select tests.login('stale@t.test'); set local role authenticated;
+select is(public.is_staff(), false, 'role reviewer is not staff (D6)');
+select is((select count(*) from public.budget_categories), 0::bigint, 'role reviewer sees no money records (D6)');
+select is((select count(*) from public.chat_channels), 0::bigint, 'role reviewer sees no chat (D6)');
+select is((select count(*) from public.staff_profiles), 0::bigint, 'role reviewer cannot read the staff list (D6)');
+select is((select count(*) from public.areas), 0::bigint, 'role reviewer cannot read areas (D6)');
+select is((select count(*) from public.tasks), 0::bigint, 'role reviewer cannot read tasks (D6)');
+select throws_ok($$ select * from public.staff_directory() $$, '42501', 'not_allowed',
+  'role reviewer cannot read People and roles (D6)');
+select throws_ok($$ insert into public.staff_profiles (user_id, display_name, initials)
+  values (tests.uid('ada@terpmail.umd.edu'), 'X', 'X') $$,
+  '42501', null, 'role reviewer cannot add a staff profile (D6)');
 
 -- ---- availability: Morning / Afternoon / Evening per day (D4) ------------------
 reset role; select tests.login('board@t.test'); set local role authenticated;
@@ -128,16 +139,16 @@ select throws_ok($$ insert into public.board_availability (cycle_id, user_id, da
 select throws_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
   ('11111111-1111-1111-1111-111111111111', tests.uid('board2@t.test'), current_date + 4, 'morning') $$,
   '42501', null, 'a board member cannot give someone else''s availability');
-reset role; select tests.login('reviewer@t.test'); set local role authenticated;
+reset role; select tests.login('stale@t.test'); set local role authenticated;
 select throws_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
-  ('11111111-1111-1111-1111-111111111111', tests.uid('reviewer@t.test'), current_date + 4, 'morning') $$,
-  '42501', null, 'a reviewer does not give availability (scoring only)');
+  ('11111111-1111-1111-1111-111111111111', tests.uid('stale@t.test'), current_date + 4, 'morning') $$,
+  '42501', null, 'role reviewer cannot give availability (D6)');
 reset role; select tests.login('admin@t.test'); set local role authenticated;
 select lives_ok($$ insert into public.board_availability (cycle_id, user_id, day, block) values
   ('11111111-1111-1111-1111-111111111111', tests.uid('board2@t.test'), current_date + 4, 'afternoon') $$,
   'an admin enters availability for a board member');
 
--- ---- scoring still works for board members under blind review -----------------
+-- ---- scoring works for board members (the score check reads the application as them, D2)
 reset role;
 insert into public.rubric_criteria (cycle_id, key, name, weight, position) values
   ('11111111-1111-1111-1111-111111111111', 'community', 'Community engagement and values', 20, 1),
@@ -154,7 +165,7 @@ values ('51000000-0000-0000-0000-000000000001', tests.uid('board@t.test'), tests
 select tests.login('board@t.test'); set local role authenticated;
 select lives_ok($$ insert into public.scores (application_id, criteria)
   values ('aa000000-0000-0000-0000-000000000001', '{"community": 4, "communication": 1}') $$,
-  'an interviewer scores the application (rubric check reads it blind)');
+  'an interviewer scores the application (the rubric check reads it as the board member)');
 select is((select weighted_score from public.scores where scorer_id = tests.uid('board@t.test')), 3.00::numeric(4,2),
   'the weighted score is worked out');
 select lives_ok($$ update public.scores set published = true where scorer_id = tests.uid('board@t.test') $$, 'the interviewer publishes');
@@ -163,13 +174,76 @@ reset role;
 select is((select published from public.scores where application_id = 'aa000000-0000-0000-0000-000000000001'), true,
   'a published score cannot be un-published from the app (D8)');
 
-select tests.login('reviewer@t.test'); set local role authenticated;
+select tests.login('admin@t.test'); set local role authenticated;
 select throws_ok($$ insert into public.scores (application_id, criteria)
   values ('aa000000-0000-0000-0000-000000000001', '{"community": 4}') $$,
   '42501', null, 'staff who do not interview the applicant cannot score');
 
+-- Role reviewer, paired as an interviewer anyway: still no scoring (D6).
+reset role;
+insert into public.applications (id, cycle_id, user_id, terpmail, full_name, status, applicant_code, submitted_at, agreed_true)
+values ('aa000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', tests.new_user('bea@terpmail.umd.edu', 'applicant'),
+        'bea@terpmail.umd.edu', 'Bea Lin', 'submitted', 'APP-2026-00002', now(), true);
+insert into public.interview_slots (id, cycle_id, starts_at, ends_at)
+values ('51000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', now() + interval '4 days', now() + interval '4 days 30 minutes');
+insert into public.bookings (application_id, slot_id) values ('aa000000-0000-0000-0000-000000000002', '51000000-0000-0000-0000-000000000002');
+insert into public.interview_pairings (slot_id, interviewer_a, interviewer_b)
+values ('51000000-0000-0000-0000-000000000002', tests.uid('board@t.test'), tests.uid('stale@t.test'));
+select tests.login('stale@t.test'); set local role authenticated;
+select throws_ok($$ insert into public.scores (application_id, criteria)
+  values ('aa000000-0000-0000-0000-000000000002', '{"community": 4}') $$,
+  null::char(5), null, 'role reviewer cannot score, even when paired (D6)');
+select is((select count(*) from public.interview_pairings), 0::bigint, 'role reviewer sees no interview pairs (D6)');
+select is((select count(*) from public.rubric_criteria), 0::bigint, 'role reviewer cannot read the rubric (D6)');
+select is((select count(*) from public.applications), 0::bigint, 'role reviewer reads no applications (D6)');
+select throws_ok($$ select * from public.score_progress('11111111-1111-1111-1111-111111111111') $$, '42501', 'not_allowed',
+  'role reviewer cannot read scoring progress (D6)');
+select throws_ok($$ insert into public.interview_summaries (application_id, summary)
+  values ('aa000000-0000-0000-0000-000000000002', 'x') $$,
+  '42501', null, 'role reviewer cannot write an interview summary, even when paired (D6)');
+
 reset role; select tests.login('board2@t.test'); set local role authenticated;
 select is((select count(*) from public.scores), 0::bigint, 'the other interviewer sees no score until both publish');
+
+-- ---- awards: the board decides; the top score does not win automatically -------
+reset role;
+delete from public.scores;
+insert into public.scores (application_id, scorer_id, criteria, published) values
+  ('aa000000-0000-0000-0000-000000000001', tests.uid('board@t.test'),  '{"community": 5, "communication": 5}', true),
+  ('aa000000-0000-0000-0000-000000000001', tests.uid('board2@t.test'), '{"community": 5, "communication": 5}', true),
+  ('aa000000-0000-0000-0000-000000000002', tests.uid('board@t.test'),  '{"community": 3, "communication": 3}', true),
+  ('aa000000-0000-0000-0000-000000000002', tests.uid('admin@t.test'),  '{"community": 3, "communication": 3}', true);
+insert into public.budget_years (year) values (extract(year from current_date)::smallint) on conflict do nothing;
+insert into public.budget_categories (year, name, kind, budget_cents)
+values (extract(year from current_date)::smallint, 'Scholarships', 'scholarships', 400000) on conflict do nothing;
+
+select tests.login('admin@t.test'); set local role authenticated;
+select is((select application_id::text from public.application_score_summary order by combined_score desc limit 1),
+  'aa000000-0000-0000-0000-000000000001', 'Ada has the top combined score');
+select lives_ok($$ insert into public.scholarship_awards (cycle_id, application_id, award_name, amount_cents, kind, decision_note)
+  values ('11111111-1111-1111-1111-111111111111', 'aa000000-0000-0000-0000-000000000002', 'Legacy', 200000, 'main',
+          'Decided by the board at the selection meeting') $$,
+  'an admin records the main award for the second-ranked applicant (the board decides)');
+select lives_ok($$ insert into public.scholarship_awards (cycle_id, application_id, award_name, amount_cents, kind)
+  values ('11111111-1111-1111-1111-111111111111', 'aa000000-0000-0000-0000-000000000001', 'Empowerment', 50000, 'extra') $$,
+  'an extra award goes to another applicant');
+select throws_ok($$ insert into public.scholarship_awards (cycle_id, application_id, award_name, amount_cents, kind)
+  values ('11111111-1111-1111-1111-111111111111', 'aa000000-0000-0000-0000-000000000002', 'Empowerment', 50000, 'extra') $$,
+  '23505', null, 'still one award per applicant');
+select throws_ok($$ insert into public.scholarship_awards (cycle_id, award_name, amount_cents, kind)
+  values ('11111111-1111-1111-1111-111111111111', 'Legacy', 200000, 'main') $$,
+  '23514', null, 'a current award still needs an applicant');
+
+reset role; select tests.login('board@t.test'); set local role authenticated;
+select lives_ok($$ select public.mark_award_funds_sent(
+  (select id from public.scholarship_awards where application_id = 'aa000000-0000-0000-0000-000000000002'), current_date) $$,
+  'a board member marks the funds sent');
+select is((select description from public.spending_entries where award_id =
+  (select id from public.scholarship_awards where application_id = 'aa000000-0000-0000-0000-000000000002')),
+  'Legacy award, APP-2026-00002', 'the payment is logged once, with the application code');
+select throws_ok($$ select public.mark_award_funds_sent(
+  (select id from public.scholarship_awards where application_id = 'aa000000-0000-0000-0000-000000000002'), current_date) $$,
+  'P0001', 'already_paid', 'funds cannot be sent twice');
 
 reset role;
 select * from finish();

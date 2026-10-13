@@ -4,7 +4,7 @@
 // applicant in the current cycle with a 2-person interview slot, drawn
 // from scholarship_board_availability, and writes the result into
 // scholarship_interviews. Stricter than save-board-availability's
-// admin/board/reviewer gate -- admin ONLY -- because this is a real
+// admin/board gate -- admin ONLY -- because this is a real
 // operational action with side effects (it schedules real interviews),
 // not a read or a self-service availability save.
 //
@@ -221,8 +221,8 @@ Deno.serve(async (req) => {
   if (!role) {
     return json({ success: false, error: 'Unauthorized' }, 401)
   }
-  // Admin only -- stricter than save-board-availability's admin/board/
-  // reviewer gate. See this function's own header comment on why.
+  // Admin only -- stricter than save-board-availability's admin/board
+  // gate. See this function's own header comment on why.
   if (role !== 'admin') {
     return json({ success: false, error: 'Forbidden' }, 403)
   }

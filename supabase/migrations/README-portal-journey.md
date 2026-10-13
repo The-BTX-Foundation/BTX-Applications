@@ -6,10 +6,12 @@ applied right after `20261013090000_ops_hub.sql`, in the same approval, on proje
 transaction and is safe to run twice.
 
 **Reconciled with the short answers (2026-10-12):** nothing in this file reads the essay or the answers. It only uses
-`applications.id`, `user_id`, `cycle_id` and `status`, so no change was needed. Blind review (D2, in the Ops Hub file)
-doesn't affect it: every Portal function here is security definer and reads only the caller's own rows.
+`applications.id`, `user_id`, `cycle_id` and `status`, so no change was needed. Staff read rules on applications (D2, in the Ops
+Hub file) don't affect it: every Portal function here is security definer and reads only the caller's own rows.
 
 **Owner's decisions that touch this file:**
+- **D6:** no reviewer role (owner, 2026-10-12). "Staff" in this file's rules (`public.is_staff()`, redefined in the
+  Ops Hub file) means admins and board members only.
 - **D7:** the student's video link is per interview: `interview_pairings.video_url`, set by an admin when pairing.
   `my_interview` returns it as `videoUrl` (tested).
 - **Release per cycle:** `cycles.decisions_released_at`. Only admins can set it (the existing cycles rules; tested).
