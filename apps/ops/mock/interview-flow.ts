@@ -28,6 +28,9 @@ export const FLOW_PEOPLE: MockPerson[] = [
   { userId: 'mock-staff-ds', name: 'Darien Strachan', freeHours: 10, maxInterviews: null, sent: true },
 ];
 
+/** The two board members the "waiting on availability" frame is still waiting on. */
+export const FLOW_WAITING_IDS = ['mock-staff-md', 'mock-staff-ds'];
+
 // [day, hour, minute, free] in Eastern standard time (UTC-5): the 24 proposed times of the frame.
 const PROPOSED: [string, number, number, number][] = [
   ['2026-11-10', 18, 0, 3], ['2026-11-10', 18, 30, 2],

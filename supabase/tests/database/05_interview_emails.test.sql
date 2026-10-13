@@ -1,4 +1,4 @@
--- Interview emails (20261013090400): the email log takes the six new kinds, and "never twice" holds per
+-- Interview emails (20261013090400): the email log takes the seven new kinds, and "never twice" holds per
 -- (kind, application, slot, recipient) for them and per (kind, application) for the old kinds.
 -- Run with: npx supabase test db
 begin;
@@ -44,6 +44,18 @@ select throws_ok($$ insert into public.email_log (kind, cycle_id, application_id
   ('video-link', '33333333-3333-3333-3333-333333333333', null, null, null, 'x@x.org'),
   ('video-link', '33333333-3333-3333-3333-333333333333', null, null, null, 'x@x.org') $$,
   '23505', null, 'null slot, application and recipient still count as one value');
+
+-- the board's availability reminder: no application or slot; the recipient key carries the Eastern date
+select lives_ok($$ insert into public.email_log (kind, cycle_id, recipient, to_address) values
+  ('availability-reminder', '33333333-3333-3333-3333-333333333333', 'kd@x.org|2032-10-01', 'kd@x.org') $$,
+  'an availability reminder is logged with no application and no slot');
+select throws_ok($$ insert into public.email_log (kind, cycle_id, recipient, to_address) values
+  ('availability-reminder', '33333333-3333-3333-3333-333333333333', 'KD@x.org|2032-10-01', 'KD@x.org') $$,
+  '23505', null, 'the same person is reminded once a day (case does not matter)');
+select lives_ok($$ insert into public.email_log (kind, cycle_id, recipient, to_address) values
+  ('availability-reminder', '33333333-3333-3333-3333-333333333333', 'kd@x.org|2032-10-02', 'kd@x.org'),
+  ('availability-reminder', '33333333-3333-3333-3333-333333333333', 'tf@x.org|2032-10-01', 'tf@x.org') $$,
+  'a later day, or another person, still sends');
 
 -- the old kinds keep their rule
 select lives_ok($$ insert into public.email_log (kind, cycle_id, application_id, to_address) values

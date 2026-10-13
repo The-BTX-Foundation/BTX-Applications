@@ -10,9 +10,10 @@ import { sessionClient } from '../supabase-server';
 import { planPairing, runPairing, setVideoLinks, swapInterviewer, type Db } from '../pairing-db';
 import { addTime, openProposedTimes, rebalanceInterviews, rebuildProposedTimes, removeTime } from '../interview-flow-db';
 import { sendBookingInvites } from '../email/send';
-import { sendRebalanceEmails, sendVideoLinkEmails, type InterviewMailResult } from '../email/interviews';
+import { sendAvailabilityReminders, sendRebalanceEmails, sendVideoLinkEmails, type InterviewMailResult } from '../email/interviews';
 import { previewRebalance } from '../interviews';
-import { affected, joinNames, whenLine, type MoveView } from '../interview-times';
+import { affected, joinNames, namesLine, remindMessage, whenLine, type MoveView } from '../interview-times';
+import { FLOW_PEOPLE, FLOW_WAITING_IDS } from '@/mock/interview-flow';
 
 type Msg = { ok: boolean; message: string };
 
@@ -156,9 +157,15 @@ export async function sendTimes(cycleId: string): Promise<SendTimesResult> {
   }
 }
 
-// "Remind the others": no reminder email exists yet, so this says so instead of pretending.
-export async function remindBoard(): Promise<Msg> {
-  return { ok: false, message: "Reminder emails aren't set up yet. Ask them in Board chat." };
+// Admin only. "Remind the others": emails each board member who has not sent their availability for the cycle (never
+// the caller), at most once a day each. Mock mode names the two people the Figma frame is waiting on.
+export async function remindBoard(cycleId: string): Promise<Msg> {
+  if (!hasSupabaseEnv()) return { ok: true, message: `Emailed ${namesLine(FLOW_PEOPLE.filter((p) => FLOW_WAITING_IDS.includes(p.userId)).map((p) => p.name))}.` };
+  try {
+    return remindMessage(await sendAvailabilityReminders(cycleId));
+  } catch {
+    return { ok: false, message: "That didn't send. Try again." };
+  }
 }
 
 // ---- fairness (admin) --------------------------------------------------------------------------------------------

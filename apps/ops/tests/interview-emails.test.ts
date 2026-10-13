@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bookedEmail, cancelEmail, easternWhen, groupQuestions, prepEmail, rebalanceEmail, reminderEmail, videoLinkEmail } from '@btx/emails';
+import { availabilityReminderEmail, bookedEmail, cancelEmail, easternWhen, groupQuestions, prepEmail, rebalanceEmail, reminderEmail, videoLinkEmail } from '@btx/emails';
 
 const base = { term: 'Fall 2026', award: 'Legacy Scholarship', origin: 'https://apply.example.org', code: 'APP-2026-00015', applicantName: 'Ada Okafor', startsAt: '2026-11-12T00:00:00Z', endsAt: '2026-11-12T00:30:00Z' };
 
@@ -125,5 +125,24 @@ describe('booked, video link, rebalance, cancel', () => {
     const r = cancelEmail({ ...base, firstName: 'Kelsey' });
     expect(r.subject).toBe('Interview cancelled: Wed Nov 11, 7:00 PM');
     expect(r.html).toContain('Ada Okafor');
+  });
+});
+
+describe('availabilityReminderEmail', () => {
+  const i = { firstName: 'Marcus Davis', closesAt: '2026-11-06T17:00:00Z', availabilityUrl: 'https://ops.example.org/scholarships/interviews/availability', term: 'Fall 2026', award: 'Legacy Scholarship', origin: 'https://apply.example.org' };
+  it('puts the Eastern close date in the subject, greets by first name and has one button', () => {
+    const m = availabilityReminderEmail(i);
+    expect(m.subject).toBe('Give your interview availability by Fri Nov 6');
+    expect(m.html).toContain('Hi Marcus.');
+    expect(m.html).not.toContain('Davis');
+    expect(m.html.match(/<a href="https:\/\/ops\.example\.org[^>]*>Give your availability<\/a>/g)).toHaveLength(1);
+    expect(m.text).toContain('Give your availability: https://ops.example.org/scholarships/interviews/availability');
+    expect(m.text).toContain('Hi Marcus.');
+  });
+  it('uses the Eastern day, not the UTC day', () => {
+    expect(availabilityReminderEmail({ ...i, closesAt: '2026-11-07T03:00:00Z' }).subject).toBe('Give your interview availability by Fri Nov 6'); // 10 PM EST
+  });
+  it('drops the date when there is none', () => {
+    expect(availabilityReminderEmail({ ...i, closesAt: null }).subject).toBe('Give your interview availability');
   });
 });

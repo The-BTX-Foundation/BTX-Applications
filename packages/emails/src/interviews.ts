@@ -419,6 +419,37 @@ export function cancelEmail(i: CancelInput): Rendered {
   return { subject, html, text };
 }
 
+// ---- Board: give your interview availability -------------------------------------------------------------------
+
+export type AvailabilityReminderInput = {
+  firstName: string;
+  /** When applications close (an instant); the subject shows its Eastern date. Null when the cycle has no close date. */
+  closesAt: string | null;
+  /** Where the board member gives it, like https://ops.example.org/scholarships/interviews/availability. */
+  availabilityUrl: string;
+  term: string;
+  award: string;
+  /** The logo's host. */
+  origin: string;
+};
+
+export function availabilityReminderEmail(i: AvailabilityReminderInput): Rendered {
+  const by = i.closesAt ? easternDay(i.closesAt) : null;
+  const subject = by ? `Give your interview availability by ${by}` : 'Give your interview availability';
+  const lead = `Hi ${firstOf(i.firstName)}. We build the interview times from when every board member is free. It takes a few minutes.`;
+  const html = shell({
+    origin: i.origin,
+    title: subject,
+    preheader: 'We build the interview times from everyone’s availability.',
+    heading: 'We’re waiting on your availability.',
+    body: p(esc(lead)),
+    button: { label: 'Give your availability', href: i.availabilityUrl },
+    footer: interviewerFooter(i),
+  });
+  const text = ['We\'re waiting on your availability.', '', lead, '', `Give your availability: ${i.availabilityUrl}`, '', interviewerFooterText(i)].join('\n');
+  return { subject, html, text };
+}
+
 /** The description line inside the calendar invite. */
 export function inviteDescription(i: { applicantName: string; code: string; interviewers: string[]; videoUrl: string | null }): string {
   return [`Interview with ${i.applicantName} (${i.code}).`, i.interviewers.length ? `Interviewers: ${joinNames(i.interviewers)}.` : '', i.videoUrl ? `Video call: ${i.videoUrl}` : VIDEO_LATER].filter(Boolean).join('\n');
