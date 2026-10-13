@@ -7,7 +7,7 @@
 // MOCK (mock/interview-flow.ts, mock/staff.ts): everything, when there is no Supabase env.
 import { hasSupabaseEnv } from '@btx/data';
 import { currentStaffId } from './me';
-import { currentCycle, readCandidates, readInterviews, readStaff, sessionRole, type AvailabilityData, type Db, readAvailability } from './pairing-db';
+import { currentCycle, readCandidates, readInterviews, readStaff, sessionRole, type Db } from './pairing-db';
 import { readBoardAvailability, readFairness, readProposedTimes } from './interview-flow-db';
 import { planRebalance, type RebalanceInterview } from './rebalance';
 import { lastSent } from './email/send';
@@ -399,32 +399,6 @@ export async function previewRebalance(db: Db, cycleId: string, now = new Date()
     return { ok: true, moves };
   } catch {
     return { ok: false, message: "Couldn't check the rebalance. Try again." };
-  }
-}
-
-// ---- availability (D4) -------------------------------------------------------------------------------------------
-
-export type AvailabilityView = AvailabilityData & {
-  /** People who gave availability, with their names (admins read everyone's). */
-  people: { userId: string; name: string }[];
-  isAdmin: boolean;
-  source: 'live' | 'mock';
-};
-
-// The availability data for the signed-in person: their own picks and, for admins and board members, everyone's. Live
-// only; there is no grid on the page yet ("design pending"), so nothing calls this until a design exists.
-export async function loadAvailability(): Promise<AvailabilityView | null> {
-  if (!hasSupabaseEnv()) return null;
-  try {
-    const client = (await sessionClient()) as unknown as Db;
-    const cycle = await currentCycle(client);
-    if (!cycle) return null;
-    const [data, staff, auth] = await Promise.all([readAvailability(client, cycle), readStaff(client), sessionRole(client)]);
-    const names = new Map(staff.map((s) => [s.userId, s.name]));
-    const ids = [...new Set(data.everyone.map((a) => a.userId))];
-    return { ...data, people: ids.map((id) => ({ userId: id, name: names.get(id) ?? 'Unknown' })), isAdmin: auth.role === 'admin', source: 'live' };
-  } catch {
-    return null;
   }
 }
 

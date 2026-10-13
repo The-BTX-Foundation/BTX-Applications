@@ -7,9 +7,10 @@
 // In mock mode (no Supabase env) the actions succeed and change nothing, like the Figma preview.
 import { hasSupabaseEnv } from '@btx/data';
 import { sessionClient } from '../supabase-server';
-import { planPairing, runPairing, saveMyAvailability, setVideoLinks, swapInterviewer, type Db } from '../pairing-db';
+import { planPairing, runPairing, setVideoLinks, swapInterviewer, type Db } from '../pairing-db';
 import { addTime, openProposedTimes, rebalanceInterviews, rebuildProposedTimes, removeTime } from '../interview-flow-db';
 import { sendBookingInvites } from '../email/send';
+import { sendRebalanceEmails, sendVideoLinkEmails, type InterviewMailResult } from '../email/interviews';
 import { previewRebalance } from '../interviews';
 import { affected, joinNames, whenLine, type MoveView } from '../interview-times';
 
@@ -56,23 +57,31 @@ export async function swapInterviewerAction(slotId: string, fromUserId: string, 
   }
 }
 
-// A board member saves their own Morning / Afternoon / Evening picks for the interview dates (D4).
-export async function saveAvailability(picks: { day: string; block: string }[]): Promise<Msg> {
-  if (!hasSupabaseEnv()) return { ok: true, message: 'Saved.' };
-  try {
-    const r = await saveMyAvailability(await db(), picks);
-    return r.ok ? { ok: true, message: 'Saved.' } : r;
-  } catch {
-    return { ok: false, message: "That didn't save. Try again." };
-  }
+// One plain sentence about the emails an action just sent, or why none went. Empty when there was nothing new to send
+// (the same link saved again).
+function mailLine(m: InterviewMailResult, sent: string): string {
+  if (!m.ok || m.notConfigured) return "Email isn't set up here, so no emails went out.";
+  if (m.sent === 0 && m.failed === 0) return '';
+  return m.failed > 0 ? `${sent} ${m.failed} didn't go; save again to try those once more.` : sent;
 }
 
 // Admin only. One video link per paired interview (D7); the applicant sees it in the Portal through my_interview().
+// The student and both interviewers are emailed the link (lib/email/interviews.ts: once per link; a changed link sends
+// again).
 export async function saveVideoLinks(links: { slotId: string; url: string }[]): Promise<Msg> {
   if (!hasSupabaseEnv()) return { ok: true, message: 'Saved.' };
   try {
-    const r = await setVideoLinks(await db(), links);
-    return r.ok ? { ok: true, message: r.saved === 1 ? 'Saved 1 link.' : `Saved ${r.saved} links.` } : r;
+    const client = await db();
+    const r = await setVideoLinks(client, links);
+    if (!r.ok) return r;
+    const saved = r.saved === 1 ? 'Saved 1 link.' : `Saved ${r.saved} links.`;
+    const slotIds = links.filter((l) => l.url.trim()).map((l) => l.slotId);
+    if (slotIds.length === 0) return { ok: true, message: saved };
+    const slot = await client.from('interview_slots').select('cycle_id').in('id', slotIds).limit(1);
+    const cycleId = (slot.data?.[0] as { cycle_id?: string } | undefined)?.cycle_id;
+    if (!cycleId) return { ok: true, message: saved };
+    const line = mailLine(await sendVideoLinkEmails(cycleId, slotIds), 'The student and both interviewers got the link by email.');
+    return { ok: true, message: line ? `${saved} ${line}` : saved };
   } catch {
     return { ok: false, message: "That didn't save. Try again." };
   }
@@ -170,8 +179,7 @@ export async function previewRebalanceAction(cycleId: string): Promise<Rebalance
 
 export type RebalanceResult = Msg & { moves: MoveView[]; at: string };
 
-// Moves future interviews (never within 48 hours; every interview keeps two people). Returns the moves so the caller
-// can email the people affected: the coordinator wires sendRebalanceEmails(cycleId, moves) here after merge.
+// Moves future interviews (never within 48 hours; every interview keeps two people), then emails the people affected.
 export async function rebalanceAction(cycleId: string): Promise<RebalanceResult> {
   const at = new Date().toISOString();
   if (!hasSupabaseEnv()) return { ok: true, message: '', moves: [], at };
@@ -179,9 +187,18 @@ export async function rebalanceAction(cycleId: string): Promise<RebalanceResult>
     const r = await rebalanceInterviews(await db(), cycleId);
     if (!r.ok) return { ok: false, message: r.message, moves: [], at };
     const moves: MoveView[] = r.moves.map((m) => ({ slotId: m.slotId, startsAt: m.startsAt, applicant: m.applicant, from: m.from, to: m.to, fromName: m.fromName, toName: m.toName }));
-    // WIRE: await sendRebalanceEmails(cycleId, moves); then say who got an email.
     const n = moves.length;
-    const message = n === 0 ? 'Nothing needed to move.' : `Moved ${n} ${n === 1 ? 'interview' : 'interviews'}, ${whenLine(at)}. Emails to the people affected aren't set up yet, so tell ${joinNames(affected(moves))}.`;
+    if (n === 0) return { ok: true, message: 'Nothing needed to move.', moves, at };
+    // The person added gets an invite and the person removed a cancellation (lib/email/interviews.ts).
+    const mail = await sendRebalanceEmails(cycleId, moves);
+    const names = joinNames(affected(moves));
+    const told =
+      !mail.ok || mail.notConfigured
+        ? `Email isn't set up here, so tell ${names}.`
+        : mail.failed > 0
+          ? `${mail.failed} ${mail.failed === 1 ? "email didn't" : "emails didn't"} go, so check with ${names}.`
+          : 'The people affected got an email.';
+    const message = `Moved ${n} ${n === 1 ? 'interview' : 'interviews'}, ${whenLine(at)}. ${told}`;
     return { ok: true, message, moves, at };
   } catch {
     return { ok: false, message: "That didn't save. Try again.", moves: [], at };
