@@ -1,5 +1,5 @@
-// Admin > People and roles. Mock data until the Ops Hub tables exist (lib/people.ts). ?demo=stress / ?demo=error as on the
-// Money pages; in mock mode ?as=board shows the page as a board member (admins see "Change role", others do not).
+// Board members (route /people). Mock data until the Ops Hub tables exist (lib/people.ts). ?demo=stress / ?demo=error as on the
+// Finance pages; in mock mode ?as=board shows the page as a board member (admins see "Give admin rights" / "Remove admin rights", others do not).
 import type { Metadata } from 'next';
 import { PeopleView } from '@/components/people/people-view';
 import { LoadError } from '@/components/load-error';
@@ -9,7 +9,7 @@ import { mockRole } from '@/lib/money-shared';
 import { requireStaff } from '@/lib/user';
 import '@/components/money/money.css';
 
-export const metadata: Metadata = { title: 'People and roles' };
+export const metadata: Metadata = { title: 'Board members' };
 
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ demo?: string; as?: string }> }) {
   const { demo, as } = await searchParams;
@@ -19,9 +19,9 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
   if (data.failed) {
     return (
       <>
-        <PageHeader title="People and roles" />
+        <PageHeader title="Board members" />
         <div className="mn-errwrap">
-          <LoadError what="People and roles" />
+          <LoadError what="Board members" />
         </div>
       </>
     );

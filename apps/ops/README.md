@@ -1,6 +1,6 @@
 # Ops Hub (staff app)
 
-Next.js app for BTX board members and admins (the only two staff roles; owner, 2026-10-12). Design source: Figma file `byg3AToqjCajJKPI88DkOz`, page "Ops Hub (staff)".
+Next.js app for BTX board members. One staff role, board member. A board member with admin rights has app_metadata.role 'admin' (owner, 2026-10-12). Design source: Figma file `byg3AToqjCajJKPI88DkOz`, page "Ops Hub (staff)".
 
 Run it from the repo root: `npm run dev:ops` (port 3001), `npm run build:ops`, `npm run lint:ops`, `npm run typecheck:ops`.
 
@@ -17,14 +17,14 @@ Scholarships > Interviews, Scoring, Selection and Awardees (branch `ops/scholars
 
 Mock, all behind `mock/`: Today, the sidebar counts, scores, interviewers, stages, the interview summary, the three schedule dates `cycles` has no column for, the cycle checklist and the Scholarships chat. Swap each `mock/` module for a loader with the same shape when the Ops Hub tables exist.
 
-## Money and People and roles
+## Finance and Board members
 
-Pages: Money > Budget (`/money/budget`), the phone approval screen (`/money/budget/approval`), Money > Fundraising, Money > Grants and Admin > People and roles (`/people`). Everything about them is in `components/money/`, `components/people/`, `lib/{budget,fundraising,grants,people,money-*,mock-store,people-actions}.ts` and `mock/money.ts`.
+Pages: Finance > Budget (`/finance/budget`), the phone approval screen (`/finance/budget/approval`), Finance > Fundraising (`/finance/fundraising`), Finance > Grants (`/finance/grants`) and Board members (`/people`). Everything about them is in `components/money/`, `components/people/`, `lib/{budget,fundraising,grants,people,money-*,mock-store,people-actions}.ts` and `mock/money.ts`.
 
 - **Mock mode** (no Supabase env): the fixtures in `mock/money.ts` are the Figma frames' values. A role change changes an in-memory store (`lib/mock-store.ts`) that lasts until the tab reloads. `?demo=stress` draws the stress frames' data, `?demo=error` the "didn't load" card, `?as=board` shows a page as a board member (mock mode only).
 - **Live mode**: the loaders read the draft Ops Hub tables and the writes call them (`lib/money-writes.ts`). All of it is NOT TESTED: the tables are a draft and not applied. Role changes go through the server action in `lib/people-actions.ts`, which needs `SUPABASE_SERVICE_ROLE_KEY` in the server's environment (not set anywhere; NOT TESTED).
-- **Money actions are "Coming soon"** (owner, 2026-10-12): on Budget (and the phone approval screen), Fundraising and Grants every action that writes (log or edit spending, update funds on hand, log a gift, add a grant, approve, decline or undo a quarter plan) is a disabled control with a small "Coming soon" label. The pages still load and show whatever data exists. The write code in `lib/money-writes.ts` stays for later. Programs > Sponsorships ("Log a sponsorship") is unchanged.
-- **Roles**: staff are admins and board members only. Both see every page; only an admin sees "Change role", and nobody sees "Change role" on their own row. There is no invite screen (owner, 2026-10-12): accounts are set up server side through `inviteStaff` in `lib/people-actions.ts`, which has no button.
+- **Finance actions are "Coming soon"** (owner, 2026-10-12): on Budget (and the phone approval screen), Fundraising and Grants every action that writes (log or edit spending, update funds on hand, log a gift, add a grant, approve, decline or undo a quarter plan) is a disabled control with a small "Coming soon" label. The pages still load and show whatever data exists. The write code in `lib/money-writes.ts` stays for later. Programs > Sponsorships ("Log a sponsorship") is unchanged.
+- **Roles**: one staff role, board member. A board member with admin rights has app_metadata.role 'admin'. Everyone sees every page; only a board member with admin rights sees "Give admin rights" / "Remove admin rights", and nobody sees it on their own row. There is no invite screen (owner, 2026-10-12): accounts are set up server side through `inviteStaff` in `lib/people-actions.ts`, which has no button.
 
 ## Programs and Outreach
 

@@ -174,7 +174,7 @@ export async function planPairing(client: Db, now = new Date()): Promise<Result<
 /** Admin only: pairs every booked, future interview that has no pair yet. Pairs already set are never changed. */
 export async function runPairing(client: Db, now = new Date()): Promise<Result<{ paired: number; uncovered: number }>> {
   const me = await sessionRole(client);
-  if (me.role !== 'admin') return { ok: false, message: 'Only admins can re-run pairing.' };
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can re-run pairing.' };
   const planned = await planPairing(client, now);
   if (!planned.ok) return planned;
   const rows = planned.plan.assignments.map((a) => ({ slot_id: a.slotId, interviewer_a: a.a, interviewer_b: a.b }));
@@ -189,7 +189,7 @@ export async function runPairing(client: Db, now = new Date()): Promise<Result<{
 /** Admin only: replaces one interviewer on a paired interview by hand (no availability check: the admin decides). */
 export async function swapInterviewer(client: Db, slotId: string, fromUserId: string, toUserId: string): Promise<Result> {
   const me = await sessionRole(client);
-  if (me.role !== 'admin') return { ok: false, message: 'Only admins can change interviewers.' };
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can change interviewers.' };
   const cur = await client.from('interview_pairings').select('interviewer_a, interviewer_b').eq('slot_id', slotId).maybeSingle();
   if (cur.error) return { ok: false, message: SAVE_FAILED };
   if (!cur.data) return { ok: false, message: 'That interview has no pair yet.' };
@@ -197,7 +197,7 @@ export async function swapInterviewer(client: Db, slotId: string, fromUserId: st
   if (fromUserId !== a && fromUserId !== b) return { ok: false, message: 'That person is not one of the two interviewers.' };
   if (toUserId === a || toUserId === b) return { ok: false, message: 'That person is already interviewing.' };
   const staff = await readStaff(client);
-  if (!staff.some((s) => s.userId === toUserId && (s.role === 'board' || s.role === 'admin'))) return { ok: false, message: 'Pick a board member or admin.' };
+  if (!staff.some((s) => s.userId === toUserId && (s.role === 'board' || s.role === 'admin'))) return { ok: false, message: 'Pick a board member.' };
   const upd = await client
     .from('interview_pairings')
     .update(fromUserId === a ? { interviewer_a: toUserId } : { interviewer_b: toUserId })
@@ -212,7 +212,7 @@ export async function swapInterviewer(client: Db, slotId: string, fromUserId: st
 /** Admin only: sets the one video link on each paired interview. Stops at the first problem and says which. */
 export async function setVideoLinks(client: Db, links: { slotId: string; url: string }[]): Promise<Result<{ saved: number }>> {
   const me = await sessionRole(client);
-  if (me.role !== 'admin') return { ok: false, message: 'Only admins can add video links.' };
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can add video links.' };
   const clean = links.map((l) => ({ slotId: l.slotId, url: l.url.trim() })).filter((l) => l.url !== '');
   if (clean.some((l) => !isVideoUrl(l.url))) return { ok: false, message: 'Each link must start with https:// and be a full web address.' };
   let saved = 0;
@@ -230,7 +230,7 @@ export async function setVideoLinks(client: Db, links: { slotId: string; url: st
 /** Admin only: adds 30-minute slots inside the cycle's interview window. Nothing is added if any entry is wrong. */
 export async function addInterviewSlots(client: Db, entries: NewSlotInput[], now = new Date()): Promise<Result<{ added: number }>> {
   const me = await sessionRole(client);
-  if (me.role !== 'admin') return { ok: false, message: 'Only admins can add interview times.' };
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can add interview times.' };
   const cycle = await currentCycle(client);
   if (!cycle) return { ok: false, message: 'There is no open cycle.' };
   const ex = await client.from('interview_slots').select('starts_at, ends_at').eq('cycle_id', cycle.id);
@@ -246,7 +246,7 @@ export async function addInterviewSlots(client: Db, entries: NewSlotInput[], now
 /** Admin only: removes an interview time nobody has booked. A time with a booking (or booking history) stays. */
 export async function removeInterviewSlot(client: Db, slotId: string): Promise<Result> {
   const me = await sessionRole(client);
-  if (me.role !== 'admin') return { ok: false, message: 'Only admins can remove interview times.' };
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can remove interview times.' };
   const b = await client.from('bookings').select('id', { count: 'exact', head: true }).eq('slot_id', slotId).eq('status', 'active');
   if (b.error) return { ok: false, message: SAVE_FAILED };
   if ((b.count ?? 0) > 0) return { ok: false, message: 'Someone has booked that time, so it stays.' };

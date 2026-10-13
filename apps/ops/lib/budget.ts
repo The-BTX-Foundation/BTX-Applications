@@ -64,7 +64,7 @@ export async function loadBudget({ demo, me = 'dm' }: { demo?: string; me?: stri
       }
     }
 
-    // The newest message in the Money chat channel (area channels are open to admin and board).
+    // The newest message in the Finance chat channel (area channels are open to admin and board).
     let chat: BudgetData['chat'] = null;
     const channel = await read('chat_channels', 'id', { eq: { area: 'money' }, limit: 1 });
     if (channel[0]) {

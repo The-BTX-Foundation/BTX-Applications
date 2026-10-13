@@ -16,7 +16,7 @@ import { useBudget } from './use-budget';
 export function ApprovalTop({ initials }: { initials: string }) {
   return (
     <header className="mn-aptop">
-      <Link href="/money/budget" aria-label="Back to Budget" className="mn-back">
+      <Link href="/finance/budget" aria-label="Back to Budget" className="mn-back">
         <OIcon name="right" size={20} />
       </Link>
       <b>Approval</b>

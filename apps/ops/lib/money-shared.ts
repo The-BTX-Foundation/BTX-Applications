@@ -1,4 +1,4 @@
-// Pure types and helpers shared by the Money pages and People and roles (no server imports, so client components may use
+// Pure types and helpers shared by the Finance pages and Board members (no server imports, so client components may use
 // them). Types mirror the draft Ops Hub schema (budget_*, spending_entries, gifts, grants, staff_profiles, staff_directory;
 // see supabase/migrations/20261010120000_ops_hub.sql in the ops-schema worktree).
 import { isStaffRole, type StaffRole } from './role';
@@ -115,7 +115,7 @@ export type BudgetData = {
   plan: PlanState;
   steps: BudgetStep[];
   comments: { count: number; list: Comment[] };
-  /** The newest Money chat message; null = none yet. */
+  /** The newest Finance chat message; null = none yet. */
   chat: { name: string; initials: string; time: string; body: string } | null;
 };
 
@@ -179,7 +179,7 @@ export type GrantsData = {
   checklist: WideChecklist;
 };
 
-// ---------------------------------------------------------------- People and roles
+// ---------------------------------------------------------------- Board members (People page)
 
 /** staff_profiles joined with staff_directory(): a staff member, their role and last sign-in. */
 export type PersonRow = {

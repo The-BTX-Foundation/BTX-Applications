@@ -183,7 +183,7 @@ export function todayRow(t: TaskItem): TaskRow {
   let href: string | undefined;
   if (t.type === 'approval') {
     action = { label: t.approval?.approveLabel ?? 'Review', kind: 's' };
-    href = '/money/budget/approval';
+    href = '/finance/budget/approval';
   } else if (t.type === 'request') {
     action = { label: 'Add times', kind: 's' };
     href = '/scholarships/interviews';
@@ -294,13 +294,13 @@ export function overview(f: AreaFacts): OverviewArea[] {
     },
     {
       id: 'money',
-      name: 'Money',
+      name: 'Finance',
       ring: { frac: frac(mon), label: label(mon), color: 'gold' },
       big: f.fundsCents === null ? 'Not set' : dollars(f.fundsCents),
       label: 'on hand',
       line: f.raiseTargetCents ? `${dollars(f.raisedCents)} of ${dollars(f.raiseTargetCents)} raised` : `${dollars(f.raisedCents)} raised`,
       forYou: forYou(f.mineByArea.money),
-      href: '/money/budget',
+      href: '/finance/budget',
     },
     {
       id: 'programs',

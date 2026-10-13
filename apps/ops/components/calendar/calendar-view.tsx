@@ -426,7 +426,7 @@ export function CalendarView({ data }: { data: CalendarData }) {
           </span>
           <span>
             <i className="ca-sw m" />
-            Money
+            Finance
           </span>
           <span>
             <i className="ca-sw o" />

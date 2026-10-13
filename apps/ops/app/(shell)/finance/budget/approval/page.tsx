@@ -1,5 +1,5 @@
 // The phone's approval screen for the Q4 budget (Today's "Approve Q4 budget" row opens it). Same data as Budget.
-// ?demo=stress / ?demo=error as on the other Money pages.
+// ?demo=stress / ?demo=error as on the other Finance pages.
 import type { Metadata } from 'next';
 import { ApprovalTop, ApprovalView } from '@/components/money/approval-view';
 import { LoadError } from '@/components/load-error';

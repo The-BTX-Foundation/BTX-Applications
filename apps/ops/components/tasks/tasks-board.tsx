@@ -376,7 +376,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
   };
   // An approval is decided on the budget approval screen (live); the mock just marks it.
   const decide = (id: string, status: 'done' | 'declined') => {
-    if (mode === 'live') router.push('/money/budget/approval');
+    if (mode === 'live') router.push('/finance/budget/approval');
     else finish(id, status);
   };
   const addComment = (id: string, body: string) => {

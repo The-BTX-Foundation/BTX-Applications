@@ -43,4 +43,4 @@ export type CalendarData = {
   failed: boolean;
 };
 
-export const AREA_LABEL: Record<CalArea, string> = { scholarships: 'Scholarships', programs: 'Programs', money: 'Money', outreach: 'Outreach' };
+export const AREA_LABEL: Record<CalArea, string> = { scholarships: 'Scholarships', programs: 'Programs', money: 'Finance', outreach: 'Outreach' };

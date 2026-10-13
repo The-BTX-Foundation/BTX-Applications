@@ -1,4 +1,4 @@
-// Admin > People and roles: the data. staff_profiles gives names and titles; the role and last sign-in come from
+// Board members (route /people): the data. staff_profiles gives names and titles; the role and last sign-in come from
 // staff_directory() (the role is read from app_metadata there; it is not a column).
 // MOCK (mock/money.ts): everything in mock mode, including ?demo=stress. LIVE: reads the Ops Hub tables.
 import { hasSupabaseEnv } from '@btx/data';

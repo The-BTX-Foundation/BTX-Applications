@@ -1,10 +1,11 @@
-// The staff invite email: plain and short, text first. Sent from the Ops Hub when an admin adds a person.
+// The staff invite email: plain and short, text first. Sent from the Ops Hub when a board member with admin rights adds a
+// person. One staff role, board member. A board member with admin rights has app_metadata.role 'admin'.
 import { esc } from './confirmation';
 
 export type StaffInviteInput = {
   name: string;
   to: string;
-  /** "Admin" or "Board member" (the only staff roles). */
+  /** What they are added as: "a board member", or "a board member with admin rights". */
   role: string;
   /** Where staff sign in, like https://ops.thebtxfoundation.org. */
   opsUrl: string;

@@ -1,5 +1,5 @@
-// Money > Fundraising. Mock data until the Ops Hub tables exist (lib/fundraising.ts). ?demo=stress / ?demo=error as on
-// the other Money pages.
+// Finance > Fundraising. Mock data until the Ops Hub tables exist (lib/fundraising.ts). ?demo=stress / ?demo=error as on
+// the other Finance pages.
 import type { Metadata } from 'next';
 import { FundraisingView } from '@/components/money/fundraising-view';
 import { LoadError } from '@/components/load-error';

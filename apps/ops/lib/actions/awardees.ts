@@ -45,7 +45,7 @@ export async function setStepDone(awardId: string, step: number, done: boolean):
     .eq('step', step)
     .select('step');
   if (error) return { ok: false, message: "That didn't save. Try again." };
-  if ((data ?? []).length === 0) return { ok: false, message: 'Only admins and board members can change awardee steps.' };
+  if ((data ?? []).length === 0) return { ok: false, message: 'Only board members can change awardee steps.' };
   return { ok: true, message: 'Saved.' };
 }
 

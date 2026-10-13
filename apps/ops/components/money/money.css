@@ -1,10 +1,13 @@
-/* Money (Budget, Fundraising, Grants, the phone approval screen) and Admin > People and roles. Everything is prefixed mn-.
+/* Finance (Budget, Fundraising, Grants, the phone approval screen) and Board members (People page). Everything is prefixed mn-.
    Numbers come from the Figma frames (file byg3AToqjCajJKPI88DkOz). The phone layout is the base; the 1440 x 900 laptop
    layout starts at 900px, as in ops.css. Colors and fonts are the shared tokens. */
 
 /* ---------- parts shared by every page here ---------- */
 .mn-acts {
   gap: 12px;
+}
+.mn-no {
+  color: var(--muted);
 }
 .mn-link {
   font: inherit;
@@ -920,7 +923,7 @@
   color: var(--ink);
 }
 
-/* ---------- People and roles: phone ---------- */
+/* ---------- Board members (People page): phone ---------- */
 .mn-pp {
   display: flex;
   flex-direction: column;
@@ -1464,7 +1467,7 @@
   .mn-gfoot b {
     font-weight: 700;
   }
-  /* People and roles */
+  /* Board members (People page) */
   .mn-pp {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 380px;

@@ -1,6 +1,6 @@
 'use client';
 
-// Money > Fundraising (Figma laptop and phone): the five numbers, recent gifts, where the money came from, and the
+// Finance > Fundraising (Figma laptop and phone): the five numbers, recent gifts, where the money came from, and the
 // Year-end giving checklist. Data: lib/fundraising.ts. "Log a gift" (and editing a gift) is "Coming soon" for now
 // (owner, 2026-10-12): a disabled control with a small label (./soon.tsx); lib/money-writes.ts keeps logGift for later.
 import Link from 'next/link';
@@ -35,7 +35,7 @@ export function FundraisingView({ data, demo }: { data: FundraisingData; demo?: 
         sub={
           <>
             <span className="o-lg">{`Q3 brought in ${usd(data.q3_cents)} · ${usd(toGo)} to go by Dec 31`}</span>
-            <span className="o-ph">{`Money · ${usd(s.raised_cents)} of ${usd(goal)} raised`}</span>
+            <span className="o-ph">{`Finance · ${usd(s.raised_cents)} of ${usd(goal)} raised`}</span>
           </>
         }
         actionsClass="mn-acts"
@@ -93,7 +93,7 @@ export function FundraisingView({ data, demo }: { data: FundraisingData; demo?: 
           <div className="mn-ph">
             <h2 id="mn-g-h">Recent gifts</h2>
             <span className="o-lg">Last 5</span>
-            <Link href="/money/fundraising" className="mn-seeall">
+            <Link href="/finance/fundraising" className="mn-seeall">
               See all
             </Link>
           </div>

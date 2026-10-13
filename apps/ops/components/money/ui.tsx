@@ -1,7 +1,7 @@
 'use client';
 
-// Small shared parts of the Money pages and People and roles: the dialog (the Figma "Log a sponsorship" and "Make ... an
-// Admin?" pattern), the period chip, the avatar-and-name for an owner, the progress bar and the toast.
+// Small shared parts of the Finance pages and Board members: the dialog (the Figma "Log a sponsorship" and "Give ... admin
+// rights?" pattern), the period chip, the avatar-and-name for an owner, the progress bar and the toast.
 import { useEffect, useId, useRef } from 'react';
 import { OIcon } from '@/components/icons';
 import type { Who } from '@/lib/money-shared';
@@ -88,7 +88,7 @@ export function Bar({ pct, className }: { pct: number; className?: string }) {
   );
 }
 
-// The dark message at the bottom of the page ("Kelsey Davis is now an Admin · Undo").
+// The dark message at the bottom of the page ("Kelsey Davis now has admin rights · Undo").
 export function Toast({ children, onUndo }: { children: React.ReactNode; onUndo?: () => void }) {
   return (
     <div className="mn-toast" role="status">

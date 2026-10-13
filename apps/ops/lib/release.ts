@@ -23,7 +23,7 @@ export type ReleaseResult = { ok: true; releasedAt: string; already: boolean } |
 
 export async function releaseDecisionsWith(deps: ReleaseDeps, cycleId: string, now: Date = new Date()): Promise<ReleaseResult> {
   if (!cycleId) return { ok: false, message: 'No cycle to release.' };
-  if ((await deps.role()) !== 'admin') return { ok: false, message: 'Only an admin can release decisions.' };
+  if ((await deps.role()) !== 'admin') return { ok: false, message: 'Only a board member with admin rights can send decisions.' };
   const current = await deps.releasedAt(cycleId);
   if (current === undefined) return { ok: false, message: 'That cycle was not found.' };
   if (current) return { ok: true, releasedAt: current, already: true };

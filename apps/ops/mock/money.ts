@@ -1,4 +1,4 @@
-// MOCK: everything on Money > Budget, Fundraising, Grants, the phone approval screen and Admin > People and roles. The
+// MOCK: everything on Finance > Budget, Fundraising, Grants, the phone approval screen and Board members. The
 // Ops Hub tables are a draft and not applied, so this is the Figma frames' sample data (a Sunday in October). Money
 // figures here come from the frames only; the "[date]" style rows are the frames' own placeholders. The "stress"
 // exports are the stress frames' values (?demo=stress). Each loader in lib/ returns the same shapes from the draft
@@ -158,7 +158,7 @@ export const GRANTS_STRESS: typeof GRANTS_MOCK = {
   checklist: GS([darien, cillisha, cillisha], ['2026-12-31', '2026-09-30', '2026-09-30'], 'Announce the Legacy Scholarship at the NSBE event and cocktail hour', 'Document'),
 };
 
-// ---------------------------------------------------------------- People and roles
+// ---------------------------------------------------------------- Board members (People page)
 
 const P = (user_id: string, display_name: string, initials: string, title: string | null, role: PersonRow['role'], last: string | null): PersonRow => ({
   user_id,

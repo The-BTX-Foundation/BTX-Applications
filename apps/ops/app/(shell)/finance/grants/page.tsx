@@ -1,5 +1,5 @@
-// Money > Grants. Mock data until the Ops Hub tables exist (lib/grants.ts). ?demo=stress / ?demo=error as on
-// the other Money pages.
+// Finance > Grants. Mock data until the Ops Hub tables exist (lib/grants.ts). ?demo=stress / ?demo=error as on
+// the other Finance pages.
 import type { Metadata } from 'next';
 import { GrantsView } from '@/components/money/grants-view';
 import { LoadError } from '@/components/load-error';

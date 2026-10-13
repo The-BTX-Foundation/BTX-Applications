@@ -185,7 +185,7 @@ export function CycleSettingsView({ cycle, applications, otherPublishedTerm, can
           {message.text}
         </p>
       ) : null}
-      {!canEdit ? <p className="cs-msg">Only admins can change these settings. Board members can look but not edit.</p> : null}
+      {!canEdit ? <p className="cs-msg">Only board members with admin rights can change these settings. Everyone else can look.</p> : null}
       {published && canEdit ? (
         <p className="cs-live">
           This cycle is live. Save changes puts your edits in front of students right away.

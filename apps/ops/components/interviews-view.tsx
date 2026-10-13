@@ -161,7 +161,7 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
         <div className="s-ph">
           <h2>Interviewer pairs</h2>
           <div className="s-adm">
-            <span>Admins only</span>
+            <span>Needs admin rights</span>
             {data.isAdmin ? (
               <button type="button" className="o-ul" onClick={openRerun}>
                 Re-run pairing

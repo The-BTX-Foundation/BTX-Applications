@@ -27,7 +27,7 @@ function Comments({ n }: { n: number }) {
 function Row({ row, onVideoLinks }: { row: TaskRow; onVideoLinks?: () => void }) {
   const videoTask = Boolean(onVideoLinks) && isVideoLinksTask(row.title);
   // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button).
-  const href = row.href ?? (row.approval ? '/money/budget/approval' : '/tasks');
+  const href = row.href ?? (row.approval ? '/finance/budget/approval' : '/tasks');
   const titleParts = (
     <>
           <b>

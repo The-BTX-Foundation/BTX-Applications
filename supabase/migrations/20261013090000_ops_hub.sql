@@ -113,7 +113,7 @@ create table if not exists public.areas (
 
 insert into public.areas (slug, name, position) values
   ('scholarships', 'Scholarships', 1),
-  ('money',        'Money',        2),
+  ('money',        'Finance',      2),
   ('programs',     'Programs',     3),
   ('outreach',     'Outreach',     4)
 on conflict do nothing;

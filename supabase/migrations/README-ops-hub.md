@@ -40,8 +40,11 @@ read rules on submitted applications, their files and the `applicant-documents` 
 
 ## Who can do what
 
-Taken from the signed-off "People and roles" screen: *admins and board members can do everything, from tasks and chat
-to scoring and budget approvals; only admins change roles; no one changes their own.*
+One staff role, board member. A board member with admin rights has app_metadata.role 'admin'. (The database values
+`admin` and `board` do not change; the Ops Hub shows them as "Board member · admin rights" and "Board member".)
+
+Taken from the signed-off Board members screen: *every board member can do everything, from tasks and chat to scoring
+and selection; admin rights add a few extra controls; no one removes their own.*
 
 | Role | Can |
 |---|---|
@@ -60,7 +63,7 @@ from the app's own database calls.
 | Table | What it holds | Who reads / writes | Screen |
 |---|---|---|---|
 | `staff_profiles` | Name, title, initials per staff member (role is NOT here) | All staff read. You add and edit your own; admins anyone's; admins delete | People and roles, every avatar |
-| `areas` | Scholarships, Money, Programs, Outreach (seeded) | All staff read; admins write | Sidebar, area pills |
+| `areas` | Scholarships, Finance (slug money), Programs, Outreach (seeded) | All staff read; admins write | Sidebar, area pills |
 | `task_types` | Task, Request, Approval, Post, Scoring, Meeting, Decision, Document, Goal, Follow-up (seeded) | All staff read; admins write | The line under each task title |
 | `checklists` | A named list of steps tied to a cycle, program, quarter plan, post or meeting (steps are tasks) | admin + board | Cycle checklist, Q4 budget, Setup checklist, Year-end giving, Getting started with grants, Where it stands, Post checklist, Selection agenda |
 | `plan_milestones` | Plan milestones by year (code, name, area, program, due, done, archived) | admin + board | Programs pages, Calendar |

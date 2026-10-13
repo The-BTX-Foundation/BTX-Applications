@@ -26,7 +26,7 @@ const Q4: ApprovalDetail = {
 };
 
 const SCH = { area: 'scholarships', area_name: 'Scholarships' } as const;
-const MON = { area: 'money', area_name: 'Money' } as const;
+const MON = { area: 'money', area_name: 'Finance' } as const;
 const OUT = { area: 'outreach', area_name: 'Outreach' } as const;
 const TASK = { type: 'task', type_label: 'Task' } as const;
 const OPEN = { status: 'open' } as const;

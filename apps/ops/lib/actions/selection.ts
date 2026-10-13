@@ -47,7 +47,7 @@ export async function recordAward(input: { cycleId: string | null; applicationId
     .single();
   if (error || !data) {
     const dup = error?.code === '23505';
-    return { ok: false, message: dup ? 'That applicant already has an award.' : error?.code === '42501' ? 'Only admins and board members can record awards.' : "That didn't save. Try again." };
+    return { ok: false, message: dup ? 'That applicant already has an award.' : error?.code === '42501' ? 'Only board members can record awards.' : "That didn't save. Try again." };
   }
   return { ok: true, message: 'Recorded.', id: (data as { id: string }).id };
 }

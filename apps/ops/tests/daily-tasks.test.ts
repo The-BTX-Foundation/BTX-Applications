@@ -72,7 +72,7 @@ describe('buildTasks', () => {
       { id: 'k1', task_id: 't1', author_id: ME, body: 'first', created_at: '2026-10-02T00:00:00Z' },
     ],
     types: [{ code: 'task', label: 'Task' }, { code: 'approval', label: 'Approval' }],
-    areas: [{ slug: 'scholarships', name: 'Scholarships' }, { slug: 'money', name: 'Money' }],
+    areas: [{ slug: 'scholarships', name: 'Scholarships' }, { slug: 'money', name: 'Finance' }],
     checklists: [{ id: 'c1', title: 'Fall 2026 cycle' }, { id: 'c2', title: 'Q4 budget', budget_plan_id: 'p1' }],
     people: [{ user_id: ME, display_name: 'Me Admin', initials: 'MA' }],
     plans: [{ id: 'p1', year: 2026, quarter: 4, status: 'awaiting_approval' }],
@@ -121,9 +121,9 @@ describe('headline', () => {
 });
 
 describe('todayRow', () => {
-  const item = (o: object) => ({ id: 'x', title: 'T', type: 'task', type_label: 'Task', area: 'money', area_name: 'Money', status: 'open', due_on: '2026-10-09', due_label: 'Fri Oct 9', weekday: 'Fri', short_date: 'Oct 9', late_days: 0, rel: null, bucket: 'this_week', owner_id: null, context: null, mine: true, team: true, comment_count: 0, ...o }) as never;
+  const item = (o: object) => ({ id: 'x', title: 'T', type: 'task', type_label: 'Task', area: 'money', area_name: 'Finance', status: 'open', due_on: '2026-10-09', due_label: 'Fri Oct 9', weekday: 'Fri', short_date: 'Oct 9', late_days: 0, rel: null, bucket: 'this_week', owner_id: null, context: null, mine: true, team: true, comment_count: 0, ...o }) as never;
   it('sends approvals, requests and scoring to their screens', () => {
-    expect(todayRow(item({ type: 'approval', type_label: 'Approval' })).href).toBe('/money/budget/approval');
+    expect(todayRow(item({ type: 'approval', type_label: 'Approval' })).href).toBe('/finance/budget/approval');
     expect(todayRow(item({ type: 'request' })).action?.label).toBe('Add times');
     expect(todayRow(item({ type: 'scoring' })).href).toBe('/scholarships/scoring');
   });

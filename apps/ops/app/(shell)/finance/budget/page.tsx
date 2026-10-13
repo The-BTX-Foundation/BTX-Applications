@@ -1,4 +1,4 @@
-// Money > Budget. Mock data until the Ops Hub tables exist (lib/budget.ts). ?demo=stress draws the stress sample, ?demo=error
+// Finance > Budget. Mock data until the Ops Hub tables exist (lib/budget.ts). ?demo=stress draws the stress sample, ?demo=error
 // the "didn't load" state.
 import type { Metadata } from 'next';
 import { BudgetView } from '@/components/money/budget-view';

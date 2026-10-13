@@ -32,7 +32,7 @@ describe('createStaffUser', () => {
   it('refuses any role but admin or board, without calling the API (no reviewer role)', async () => {
     const m = mockFetch([]);
     const r = await createStaffUser(env(m.fetchImpl), { name: 'A B', email: 'a@b.co', role: 'reviewer' as never });
-    expect(r).toEqual({ ok: false, reason: 'A person can be an Admin or a Board member.' });
+    expect(r).toEqual({ ok: false, reason: 'Choose whether this board member has admin rights.' });
     expect(m.calls).toHaveLength(0);
   });
   it('removes the new auth user when the profile row fails', async () => {

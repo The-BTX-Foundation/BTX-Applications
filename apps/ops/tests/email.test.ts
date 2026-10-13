@@ -158,7 +158,7 @@ describe('sendStaffInvite', () => {
     expect(r).toEqual({ ok: true, sent: true, reason: undefined });
     const mail = send.mock.calls[0][0];
     expect(mail.to).toBe('kelsey@example.org');
-    expect(mail.subject).toBe("You're on the BTX Ops Hub as Board member");
+    expect(mail.subject).toBe("You're on the BTX Ops Hub as a board member");
     expect(mail.text).toContain('Sign in at https://ops.example.org with this email address; we\'ll send you a code.');
     expect(rows[0]).toMatchObject({ kind: 'staff-invite', to_address: 'kelsey@example.org', application_id: null });
   });
@@ -167,7 +167,7 @@ describe('sendStaffInvite', () => {
     const send = okSend();
     await sendStaffInvite({ name: 'A', email: 'a@example.org', role: 'admin' }, deps(store, send, { opsUrl: 'https://o' }));
     await sendStaffInvite({ name: 'B', email: 'b@example.org', role: 'board' }, deps(store, send, { opsUrl: 'https://o' }));
-    expect(send.mock.calls.map((c) => c[0].subject)).toEqual(["You're on the BTX Ops Hub as Admin", "You're on the BTX Ops Hub as Board member"]);
+    expect(send.mock.calls.map((c) => c[0].subject)).toEqual(["You're on the BTX Ops Hub as a board member with admin rights", "You're on the BTX Ops Hub as a board member"]);
   });
   it('refuses a reviewer role (staff are admin or board only)', async () => {
     const { store } = fakeStore({});

@@ -28,7 +28,7 @@ import {
   type Mail,
   type SendResult,
 } from '@btx/emails';
-import { roleLabel, type StaffRole, isStaffRole } from '../role';
+import { roleInEmail, type StaffRole, isStaffRole } from '../role';
 import type { ApplicantRow, EmailKind, EmailStore } from './store';
 
 export const HELP_EMAIL = 'info@thebtxfoundation.org';
@@ -218,7 +218,7 @@ export async function sendStaffInvite(input: { name: string; email: string; role
   if (!s.ok) return { ok: false, reason: s.error };
   const opsUrl = (deps.opsUrl ?? process.env.OPS_HUB_URL ?? '').replace(/\/+$/, '');
   if (!opsUrl) return { ok: false, reason: 'no-ops-url' };
-  const mail = { name, to: email, role: roleLabel(input.role), opsUrl };
+  const mail = { name, to: email, role: roleInEmail(input.role), opsUrl };
   const result = await s.send({ to: email, subject: staffInviteSubject(mail), html: staffInviteHtml(mail), text: staffInviteText(mail) }, s.from);
   if (result.sent) {
     const claim = await s.store.claim({ kind: 'staff-invite', cycle_id: null, application_id: null, to_address: email });

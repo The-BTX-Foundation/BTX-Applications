@@ -148,7 +148,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
 
       <div className="o-col">
         <header className="o-pt">
-          <button type="button" className="o-ib" aria-label="Menu: areas and admin" onClick={() => setMenu(true)}>
+          <button type="button" className="o-ib" aria-label="Menu: areas and board members" onClick={() => setMenu(true)}>
             <OIcon name="menu" size={22} />
           </button>
           <img className="o-pt-logo" src="/btx-logo-on-light.png" alt="The BTX Foundation" width={59} height={26} />

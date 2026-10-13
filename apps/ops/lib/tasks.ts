@@ -13,7 +13,7 @@ import { decorate, type TasksData } from './tasks-shared';
 
 const AREAS = [
   { slug: 'scholarships', name: 'Scholarships' },
-  { slug: 'money', name: 'Money' },
+  { slug: 'money', name: 'Finance' },
   { slug: 'programs', name: 'Programs' },
   { slug: 'outreach', name: 'Outreach' },
 ];

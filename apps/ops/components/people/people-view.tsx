@@ -1,9 +1,10 @@
 'use client';
 
-// Admin > People and roles (Figma laptop and phone): the staff, each person's title, role and last sign-in, and what each
-// role can do. Only an admin sees "Change role", and nobody gets "Change role" on their own row; the
-// server action and the database check the same rules again. Changing a role asks first ("Make Kelsey Davis an Admin?"),
-// then shows "Kelsey Davis is now an Admin · Undo".
+// Board members (Figma laptop and phone): the board members, each person's title, whether they have admin rights and last
+// sign-in, and what admin rights add. One staff role, board member; app_metadata.role 'admin' means a board member with admin
+// rights. Only a board member with admin rights sees "Give admin rights" / "Remove admin rights", and nobody gets it on their
+// own row; the server action and the database check the same rules again. The change asks first ("Give Kelsey Davis admin
+// rights?"), then shows "Kelsey Davis now has admin rights · Undo".
 // MOCK mode keeps the roles in lib/mock-store.ts. LIVE mode calls the server action in lib/people-actions.ts, which writes
 // app_metadata with the service key. There is no invite control (owner, 2026-10-12): accounts are set up server side
 // through inviteStaff() in lib/people-actions.ts.
@@ -18,23 +19,28 @@ import { dayLabel } from '@/lib/format';
 import { useMockState } from '@/lib/mock-store';
 import { changeRoleAction } from '@/lib/people-actions';
 import type { PeopleData, PersonRow } from '@/lib/money-shared';
-import type { StaffRole } from '@/lib/role';
+import { ADMIN_RIGHTS_LIST, type StaffRole } from '@/lib/role';
 
-const NAME: Record<StaffRole, string> = { admin: 'Admin', board: 'Board' };
-const WITH_ARTICLE: Record<StaffRole, string> = { admin: 'an Admin', board: 'a Board member' };
-const BUTTON: Record<StaffRole, string> = { admin: 'Make Admin', board: 'Make Board member' };
-
-// The role a "Change role" click offers: there are only two, so Board -> Admin (as in the Figma) and Admin -> Board.
+// The role a button click offers: there are only two values, so board -> admin (give) and admin -> board (remove).
 function offered(role: StaffRole): StaffRole {
   return role === 'board' ? 'admin' : 'board';
 }
 
+// Keyed by the role the click sets: 'admin' gives the rights, 'board' removes them.
+const BUTTON: Record<StaffRole, string> = { admin: 'Give admin rights', board: 'Remove admin rights' };
+const EXPLAINER = `Every board member can do everything here, from tasks and chat to scoring and selection. Admin rights also let a board member ${ADMIN_RIGHTS_LIST}. No one can remove their own admin rights.`;
+
 // What the dialog explains.
 function explain(p: PersonRow, to: StaffRole): string {
   const first = p.display_name.split(' ')[0];
-  const today = p.role === 'board' ? 'Board' : 'an Admin';
-  if (to === 'admin') return `${p.display_name} is ${today} today. As an Admin, ${first} can also change other people’s roles.`;
-  return `${p.display_name} is ${today} today. As a Board member, ${first} can do everything except change people’s roles.`;
+  if (to === 'admin') return `With admin rights, ${first} can also ${ADMIN_RIGHTS_LIST}.`;
+  return `${first} stays a board member and can still do everything else.`;
+}
+
+// The toast after a change ("now has" / "no longer has"), and after an undo.
+function done(name: string, to: StaffRole, undone?: boolean): string {
+  if (to === 'admin') return undone ? `${name} has admin rights again` : `${name} now has admin rights`;
+  return `${name} no longer has admin rights`;
 }
 
 // "Today", "Fri Oct 2", or "Invited" when the person has not signed in yet.
@@ -79,28 +85,36 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
     setToast({ text, undo });
   }
 
-  const roleCell = (p: PersonRow) =>
-    p.user_id === data.me ? (
-      <>{NAME[p.role]} · you</>
-    ) : (
+  const adminCell = (p: PersonRow) => {
+    const yes = p.role === 'admin';
+    return (
       <>
-        {NAME[p.role]}
+        <span className={yes ? undefined : 'mn-no'}>{`${yes ? 'Yes' : 'No'}${p.user_id === data.me ? ' · you' : ''}`}</span>
         {canChange(p) ? (
           <button type="button" className="mn-link" onClick={() => setAsk({ p, to: offered(p.role) })}>
-            Change role
+            {BUTTON[offered(p.role)]}
           </button>
         ) : null}
       </>
     );
+  };
+  const phoneCell = (p: PersonRow) =>
+    canChange(p) ? (
+      <button type="button" className="mn-link" onClick={() => setAsk({ p, to: offered(p.role) })}>
+        {BUTTON[offered(p.role)]}
+      </button>
+    ) : p.user_id === data.me ? (
+      <>You</>
+    ) : null;
 
   return (
     <>
       <PageHeader
-        title="People and roles"
+        title="Board members"
         sub={
           <>
-            <span className="o-lg">{`${people.length} people · only admins can change a role`}</span>
-            <span className="o-ph">{`Admin · ${people.length} people`}</span>
+            <span className="o-lg">{`${people.length} board members · ${people.filter((p) => p.role === 'admin').length} with admin rights`}</span>
+            <span className="o-ph">{`${people.length} board members`}</span>
           </>
         }
       />
@@ -112,11 +126,11 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
       ) : null}
 
       <div className="mn-pp">
-        <section className="o-card mn-panel mn-people o-lg" aria-label="People">
+        <section className="o-card mn-panel mn-people o-lg" aria-label="Board members">
           <div className="mn-th mn-prow">
             <span>Person</span>
             <span>Title</span>
-            <span>Role</span>
+            <span>Admin rights</span>
             <span>Last active</span>
           </div>
           {people.map((p) => (
@@ -126,7 +140,7 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
                 <b>{p.display_name}</b>
               </span>
               <span>{p.title ?? ''}</span>
-              <span className="mn-pr">{roleCell(p)}</span>
+              <span className="mn-pr">{adminCell(p)}</span>
               <b>{lastActive(p.last_sign_in_at, data.now)}</b>
             </div>
           ))}
@@ -134,20 +148,20 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
 
         <section className="o-card mn-panel mn-roles o-lg" aria-labelledby="mn-rl">
           <div className="mn-ph">
-            <h2 id="mn-rl">What each role can do</h2>
+            <h2 id="mn-rl">What admin rights add</h2>
           </div>
-          <p>Admins and board members can do everything here, from tasks and chat to scoring and budget approvals. Only admins can change roles, and no one can change their own.</p>
+          <p>{EXPLAINER}</p>
         </section>
 
-        <section className="o-card mn-plist o-ph" aria-label="People">
+        <section className="o-card mn-plist o-ph" aria-label="Board members">
           {people.map((p) => (
             <div key={p.user_id} className="mn-pcard">
               <span className="mn-av pp">{p.initials}</span>
               <span className="mn-pcard-n">
                 <b>{p.display_name}</b>
-                <span>{[p.title, lastActive(p.last_sign_in_at, data.now)].filter(Boolean).join(', ')}</span>
+                <span>{[`${p.title ?? ''}${p.role === 'admin' ? `${p.title ? ' · ' : ''}admin rights` : ''}`, lastActive(p.last_sign_in_at, data.now)].filter(Boolean).join(', ')}</span>
               </span>
-              <span className="mn-pcard-r">{roleCell(p)}</span>
+              <span className="mn-pcard-r">{phoneCell(p)}</span>
             </div>
           ))}
         </section>
@@ -155,8 +169,8 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
           <button type="button" aria-expanded={more} onClick={() => setMore((v) => !v)}>
             <OIcon name="people" size={18} />
             <span>
-              <b>What each role can do</b>
-              <span>{more ? 'Admins and board members can do everything here, from tasks and chat to scoring and budget approvals. Only admins can change roles, and no one can change their own.' : 'Board members can do everything except change roles.'}</span>
+              <b>What admin rights add</b>
+              <span>{more ? EXPLAINER : 'Admin rights add a few extra controls.'}</span>
             </span>
             <OIcon name={more ? 'down' : 'right'} size={18} />
           </button>
@@ -164,14 +178,14 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
       </div>
 
       {ask ? (
-        <Dialog title={`Make ${ask.p.display_name} ${WITH_ARTICLE[ask.to]}?`} onClose={() => setAsk(null)} narrow>
+        <Dialog title={ask.to === 'admin' ? `Give ${ask.p.display_name} admin rights?` : `Remove admin rights from ${ask.p.display_name}?`} onClose={() => setAsk(null)} narrow>
           <p className="mn-dlg-p">{explain(ask.p, ask.to)}</p>
           <div className="mn-qa">
             <button
               type="button"
               className="o-btn p mn-b36"
               disabled={busy}
-              onClick={() => void change(ask.p.user_id, ask.to, `${ask.p.display_name} is now ${WITH_ARTICLE[ask.to]}`, { id: ask.p.user_id, role: ask.p.role })}
+              onClick={() => void change(ask.p.user_id, ask.to, done(ask.p.display_name, ask.to), { id: ask.p.user_id, role: ask.p.role })}
             >
               {BUTTON[ask.to]}
             </button>
@@ -189,7 +203,7 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
               ? () => {
                   const u = toast.undo!;
                   const name = people.find((x) => x.user_id === u.id)?.display_name ?? '';
-                  void change(u.id, u.role, `${name} is back to ${WITH_ARTICLE[u.role]}`);
+                  void change(u.id, u.role, done(name, u.role, true));
                 }
               : undefined
           }

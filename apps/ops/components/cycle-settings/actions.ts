@@ -10,7 +10,7 @@ import { canPublish, canUnpublish, formToColumns, missingForPublish, validateFor
 
 export type SaveResult = { ok: true; status: string } | { ok: false; message: string; errors?: FieldErrors };
 
-const DENIED = 'Only admins can change cycle settings.';
+const DENIED = 'Only board members with admin rights can change cycle settings.';
 const FAILED = "That didn't save. Try again.";
 
 function done() {

@@ -1,7 +1,7 @@
 'use client';
 
-// Money > Budget (Figma "Money > Budget" laptop and phone): funds on hand, the 2026 budget by category, recent spending, the
-// Q4 budget checklist with its approval, and the Money chat. Data: lib/budget.ts (mock or live).
+// Finance > Budget (Figma "Money > Budget" laptop and phone): funds on hand, the 2026 budget by category, recent spending, the
+// Q4 budget checklist with its approval, and the Finance chat. Data: lib/budget.ts (mock or live).
 // Every action that writes (log or edit spending, update funds on hand, approve, decline or undo the quarter plan) is
 // "Coming soon" for now (owner, 2026-10-12): a disabled control with a small label (./soon.tsx).
 import { useState } from 'react';
@@ -59,7 +59,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
   const checkLine = `${doneN} of ${steps.length} done${nowLabel ? `, now ${nowLabel}` : ''}`;
   const planCents = t.plan;
   const approveLabel = `Approve ${usd(planCents)} for Q4`;
-  const approvalHref = `/money/budget/approval${demo ? `?demo=${demo}` : ''}`;
+  const approvalHref = `/finance/budget/approval${demo ? `?demo=${demo}` : ''}`;
   const planLine = (
     <>
       Q{plan.quarter} plan: <b>{usd(planCents)}</b> for October to December.{plan.note ? ` ${plan.note}` : ''}
@@ -82,7 +82,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
         sub={
           <>
             <span className="o-lg">{sub}</span>
-            <span className="o-ph">{`Money · ${usd(t.spent)} of ${usd(t.budget)} spent`}</span>
+            <span className="o-ph">{`Finance · ${usd(t.spent)} of ${usd(t.budget)} spent`}</span>
           </>
         }
         actionsClass="mn-acts"
@@ -192,7 +192,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
             <div className="mn-ph">
               <h2 id="mn-rec-h">Recent spending</h2>
               <span className="o-lg">Last 5</span>
-              <Link href="/money/budget" className="mn-seeall">
+              <Link href="/finance/budget" className="mn-seeall">
                 See all
               </Link>
             </div>
@@ -286,9 +286,9 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
 
           <section className="o-card mn-panel mn-chat" aria-labelledby="mn-ch-h">
             <div className="mn-ph">
-              <h2 id="mn-ch-h">Money chat</h2>
+              <h2 id="mn-ch-h">Finance chat</h2>
               <Link href="/chat" className="mn-seeall">
-                Open Money chat
+                Open Finance chat
               </Link>
             </div>
             <div className="mn-chat-b">

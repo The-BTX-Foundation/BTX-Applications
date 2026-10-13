@@ -1,6 +1,6 @@
 'use client';
 
-// Money > Grants (Figma laptop and phone): the getting-started checklist, then the pipeline by stage (Researching,
+// Finance > Grants (Figma laptop and phone): the getting-started checklist, then the pipeline by stage (Researching,
 // Submitted, ...; a stage with no grants is only a count in the line at the bottom). Data: lib/grants.ts. "Add a grant" is
 // "Coming soon" for now (owner, 2026-10-12): a disabled control with a small label (./soon.tsx); lib/money-writes.ts
 // keeps addGrant for later.
@@ -68,7 +68,7 @@ export function GrantsView({ data, demo }: { data: GrantsData; demo?: string }) 
         sub={
           <>
             <span className="o-lg">{sub}</span>
-            <span className="o-ph">{`Money · ${sub.split(' · ')[0]}`}</span>
+            <span className="o-ph">{`Finance · ${sub.split(' · ')[0]}`}</span>
           </>
         }
         actionsClass="mn-acts"

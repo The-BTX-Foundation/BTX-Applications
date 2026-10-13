@@ -108,7 +108,7 @@ export const CHAT_MOCK: ChatData = {
   now: NOW,
   channels: [
     area(AREAS.scholarships, "scholarships", "Scholarships", 2, READ),
-    area(AREAS.money, "money", "Money", 1, READ),
+    area(AREAS.money, "money", "Finance", 1, READ),
     area(
       AREAS.programs,
       "programs",
@@ -189,7 +189,7 @@ export const CHAT_STRESS: ChatData = {
   now: NOW,
   channels: [
     area(AREAS.scholarships, "scholarships", "Scholarships", 120, READ),
-    area(AREAS.money, "money", "Money", 1, READ),
+    area(AREAS.money, "money", "Finance", 1, READ),
     // The stress frame draws a "0" pill here.
     area(
       AREAS.programs,

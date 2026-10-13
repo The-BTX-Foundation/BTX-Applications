@@ -31,12 +31,12 @@ export const GROUPS: NavGroup[] = [
   },
   {
     id: 'money',
-    label: 'Money',
+    label: 'Finance',
     icon: 'money',
     items: [
-      { id: 'budget', label: 'Budget', href: '/money/budget' },
-      { id: 'fundraising', label: 'Fundraising', href: '/money/fundraising' },
-      { id: 'grants', label: 'Grants', href: '/money/grants' },
+      { id: 'budget', label: 'Budget', href: '/finance/budget' },
+      { id: 'fundraising', label: 'Fundraising', href: '/finance/fundraising' },
+      { id: 'grants', label: 'Grants', href: '/finance/grants' },
     ],
   },
   {
@@ -62,7 +62,7 @@ export const GROUPS: NavGroup[] = [
 ];
 
 /** The admin entry under the folding areas. */
-export const PEOPLE: NavLeaf = { id: 'people', label: 'People and roles', href: '/people' };
+export const PEOPLE: NavLeaf = { id: 'people', label: 'Board members', href: '/people' };
 
 /** Every route the sidebar knows, with its page title, for the "Not built yet" page and the page titles. */
 export const ALL_ROUTES: NavLeaf[] = [...TOP, ...GROUPS.flatMap((g) => g.items), PEOPLE];
