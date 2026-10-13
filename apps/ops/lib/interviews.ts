@@ -1,14 +1,21 @@
-// Scholarships > Interviews: the interviews left this week and the table of interviewer pairs.
-// LIVE (database from migration 20261013090000_ops_hub.sql): booked slots (`bookings` + `interview_slots`), the
-// applicant's code and name (`applications`: every staff member sees names, D2), who interviews
-// (`interview_pairings`, names from `staff_profiles` + `staff_directory()`), the video link and the cycle's interview
-// end date (`cycles`). MOCK (mock/interviews.ts, mock/staff.ts): everything, when there is no Supabase env.
+// Scholarships > Interviews: interview times (proposed from the board's availability), fairness (interviews per board
+// member), the booked interviews ahead and the table of interviewer pairs.
+// LIVE (database from migrations 20261013090000_ops_hub.sql and 20261013090300_interview_flow.sql): the cycle's times and
+// who is free (`interview_slots`, `board_free_ranges`, `board_interview_prefs`; lib/interview-flow-db.ts), booked slots
+// (`bookings`), the applicant's code and name (`applications`: every staff member sees names, D2), who interviews
+// (`interview_pairings`, names from `staff_profiles` + `staff_directory()`) and the video link.
+// MOCK (mock/interview-flow.ts, mock/staff.ts): everything, when there is no Supabase env.
 import { hasSupabaseEnv } from '@btx/data';
 import { currentStaffId } from './me';
-import { currentCycle, readAvailability, readInterviews, readStaff, sessionRole, type AvailabilityData, type Db } from './pairing-db';
-import { dateOnlyLabel, dayLabel, timeLabel } from './format';
+import { currentCycle, readCandidates, readInterviews, readStaff, sessionRole, type AvailabilityData, type Db, readAvailability } from './pairing-db';
+import { readBoardAvailability, readFairness, readProposedTimes } from './interview-flow-db';
+import { planRebalance, type RebalanceInterview } from './rebalance';
+import { lastSent } from './email/send';
+import { dateOnlyLabel, dayLabel, shortDate, timeLabel } from './format';
+import { easternYmd, groupByDay, type FairPerson, type MoveView, type TimeChip, type TimeDay, whenLine } from './interview-times';
 import { sessionClient } from './supabase-server';
 import { MOCK_APPLICANTS, MOCK_NOW } from '@/mock/applicants';
+import { FLOW_BOOKED, FLOW_CYCLE, FLOW_FAIR, FLOW_NOW, FLOW_PEOPLE, MOCK_BOOKED_TIMES, mockChips } from '@/mock/interview-flow';
 import { pairingFor } from '@/mock/interviews';
 import { staffById, type StaffProfile } from '@/mock/staff';
 
@@ -20,6 +27,8 @@ export type UpcomingInterview = {
   weekday: string;
   dayNum: string;
   time: string;
+  /** "Thu Nov 12, 7:00 PM". */
+  whenLine: string;
   code: string;
   /** The applicant's full name, "Sade Price". */
   applicant: string;
@@ -34,16 +43,61 @@ export type UpcomingInterview = {
 
 export type PairRow = { key: string; names: string; done: number; left: number; next: string };
 
+/** One board member in the "Board availability" panel. */
+export type BoardPerson = { userId: string; name: string; freeHours: number; maxInterviews: number | null; sent: boolean };
+
+/** The "Interview times" panel: proposed times by day, who is free, and where sending stands. */
+export type TimesData = {
+  cycleId: string;
+  /** Every day of the interview dates, with its times. */
+  days: TimeDay[];
+  people: BoardPerson[];
+  /** Applicants who submitted. */
+  applicants: number;
+  /** Times a student holds now. */
+  booked: number;
+  /** Applicants without a booking: who "Email applicants to book" is for. */
+  toEmail: number;
+  /** "Applications closed Fri Nov 6 with 18 applicants." */
+  closedLine: string;
+  /** When the times were opened to students ("Mon Nov 9, 9:02 AM"); null until they are. */
+  openedLabel: string | null;
+  /** How many booking emails went out in the latest send (0 when none, or when email is not set up). */
+  emailedCount: number;
+};
+
+export type FairRow = FairPerson & { sent: boolean };
+export type NeedsTwoRow = { slotId: string; when: string; code: string; applicant: string };
+
+/** The "Interviews per board member" panel. */
+export type FairData = {
+  people: FairRow[];
+  /** Interviews with both interviewers set. */
+  interviews: number;
+  /** Booked interviews that still need two interviewers. */
+  needsTwo: NeedsTwoRow[];
+};
+
 export type InterviewsData = {
-  /** "Interviews end Fri Oct 9 · all on video". */
+  /** The cycle's id (null in mock mode). */
+  cycleId: string | null;
+  /** "Fall 2026 Legacy Scholarship · interviews Nov 10 to Nov 20 · all on video". */
   sub: string;
+  /** "Nov 10 to Nov 20 · all on video" (phone). */
+  subPhone: string;
   /** "ends Fri Oct 9" (phone). */
   endsLabel: string;
   done: number;
   total: number;
+  /** Booked interviews ahead. */
   upcoming: UpcomingInterview[];
+  /** "14 of 18 booked". */
+  bookedCount: number;
+  applicantCount: number;
   pairs: PairRow[];
-  /** Admins may re-run pairing. */
+  times: TimesData | null;
+  fair: FairData | null;
+  /** Board members with admin rights change times, rebalance and re-run pairing. */
   isAdmin: boolean;
   failed: boolean;
   source: 'live' | 'mock';
@@ -70,7 +124,7 @@ function whenLabel(startsAt: string, now: Date): string {
   return days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`;
 }
 
-// Builds the page data from booked interviews (shared by mock and live mode).
+// Builds the page data from booked interviews (shared by mock and live mode). The times and fairness panels are added by the caller.
 function build(bookings: Booking[], now: Date, endISO: string | null, meId: string | null, isAdmin: boolean, source: 'live' | 'mock'): InterviewsData {
   const sorted = [...bookings].sort((x, y) => x.startsAt.localeCompare(y.startsAt));
   const past = sorted.filter((b) => new Date(b.startsAt) <= now);
@@ -84,6 +138,7 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
       weekday: wk[0],
       dayNum: wk[2],
       time: timeLabel(b.startsAt),
+      whenLine: whenLine(b.startsAt),
       code: b.code,
       applicant: b.applicant,
       pair,
@@ -119,12 +174,18 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
 
   const end = endISO ? dateOnlyLabel(endISO) : '';
   return {
+    cycleId: null,
     sub: end ? `Interviews end ${end} · all on video` : 'All on video',
+    subPhone: 'Scholarships · all on video',
     endsLabel: end ? `ends ${end}` : '',
     done: past.length,
     total: sorted.length,
     upcoming,
+    bookedCount: sorted.length,
+    applicantCount: sorted.length,
     pairs,
+    times: null,
+    fair: null,
     isAdmin,
     failed: false,
     source,
@@ -140,9 +201,11 @@ function stress(): InterviewsData {
   const ds = toInterviewer(staffById('mock-staff-ds')!);
   const dm = toInterviewer(staffById('mock-staff-dm')!);
   const cg = toInterviewer(staffById('mock-staff-cg')!);
-  const row = (r: Omit<UpcomingInterview, 'slotId' | 'videoUrl'>, i: number): UpcomingInterview => ({ ...r, slotId: `stress-${i}`, videoUrl: r.pair.length ? 'https://meet.example.org/btx/stress' : null });
+  const row = (r: Omit<UpcomingInterview, 'slotId' | 'videoUrl' | 'whenLine'>, i: number): UpcomingInterview => ({ ...r, whenLine: `${r.weekday} ${r.dayNum}, ${r.time}`, slotId: `stress-${i}`, videoUrl: r.pair.length ? 'https://meet.example.org/btx/stress' : null });
   return {
+    cycleId: null,
     sub: 'Interviews end Fri Oct 9 · all on video',
+    subPhone: 'Scholarships · all on video',
     endsLabel: 'ends Thu Dec 31',
     done: 116,
     total: 120,
@@ -152,6 +215,8 @@ function stress(): InterviewsData {
       row({ weekday: 'Wed', dayNum: '7', time: '12:00 PM', code: 'APP-2026-00017', applicant: 'Folake Nwosu', pair: [dm, cg], mine: true, when: 'In 3 days' }, 3),
       row({ weekday: 'Thu', dayNum: '8', time: '7:00 PM', code: 'APP-2026-00118', applicant: 'Brianna Reid', pair: [], mine: false, when: 'In 4 days' }, 4),
     ],
+    bookedCount: 120,
+    applicantCount: 120,
     pairs: [
       { key: 'a', names: 'Dania Morris + Chariah Ghee', done: 106, left: 1, next: 'Wed Sep 30' },
       { key: 'b', names: 'Kelsey Davis + Tomi Falodun', done: 3, left: 1, next: 'Mon Oct 5' },
@@ -160,26 +225,66 @@ function stress(): InterviewsData {
       { key: 'e', names: 'Tomi Falodun + Darien Strachan', done: 2, left: 0, next: 'Done' },
       { key: 'f', names: 'Dania Morris + Marcus Davis', done: 1, left: 0, next: 'Done' },
     ],
+    times: null,
+    fair: null,
     isAdmin: true,
     failed: false,
     source: 'mock',
   };
 }
 
+// The mock story of the interview flow. ?demo= picks the stage: "waiting" (nobody has built times), "proposed" (the
+// default), "sent" (times opened, two booked), "fair" (14 of 18 booked, an uneven split) or "board" (proposed, read-only).
+function mockFlow(demo: string | undefined, me: string | null): InterviewsData {
+  const now = new Date(FLOW_NOW);
+  const fairStage = demo === 'fair';
+  const bookings: Booking[] = fairStage
+    ? FLOW_BOOKED.map((b) => ({ slotId: b.slotId, startsAt: b.startsAt, code: b.code, applicant: b.applicant, videoUrl: null, pair: b.pair.map((id) => toInterviewer(staffById(id)!)) }))
+    : [];
+  const base = build(bookings, now, FLOW_CYCLE.interviewEnd, me, demo !== 'board', 'mock');
+  const waiting = demo === 'waiting';
+  const sent = demo === 'sent';
+  const chips: TimeChip[] = waiting ? [] : mockChips(sent, sent ? MOCK_BOOKED_TIMES : {});
+  const people: BoardPerson[] = FLOW_PEOPLE.map((p) => ({ ...p, sent: waiting ? !['mock-staff-md', 'mock-staff-ds'].includes(p.userId) : true }));
+  const booked = chips.filter((c) => c.booked).length;
+  const times: TimesData | null = fairStage
+    ? null
+    : {
+        cycleId: FLOW_CYCLE.id,
+        days: groupByDay(FLOW_CYCLE.interviewStart, FLOW_CYCLE.interviewEnd, chips),
+        people,
+        applicants: FLOW_CYCLE.applicants,
+        booked,
+        toEmail: FLOW_CYCLE.applicants - booked,
+        closedLine: `Applications closed ${FLOW_CYCLE.closesLine} with ${FLOW_CYCLE.applicants} applicants.`,
+        openedLabel: sent ? 'Mon Nov 9, 9:02 AM' : null,
+        emailedCount: sent ? FLOW_CYCLE.applicants : 0,
+      };
+  const fair: FairData | null = fairStage
+    ? {
+        people: FLOW_FAIR.map((p) => ({ userId: p.userId, name: p.name, interviews: p.interviews, target: p.target, maxInterviews: p.maxInterviews, overBy: p.interviews - p.target, sent: true })),
+        interviews: 18,
+        needsTwo: [],
+      }
+    : null;
+  return {
+    ...base,
+    sub: `${FLOW_CYCLE.term} ${FLOW_CYCLE.award} · interviews ${shortDate(FLOW_CYCLE.interviewStart)} to ${shortDate(FLOW_CYCLE.interviewEnd)} · all on video`,
+    subPhone: `${shortDate(FLOW_CYCLE.interviewStart)} to ${shortDate(FLOW_CYCLE.interviewEnd)} · all on video`,
+    bookedCount: fairStage ? 14 : booked,
+    applicantCount: FLOW_CYCLE.applicants,
+    times,
+    fair,
+  };
+}
+
 // Loads the interviews page. A failed query returns failed: true instead of throwing.
-export async function loadInterviews(opts: { forceError?: boolean; stress?: boolean } = {}): Promise<InterviewsData> {
+export async function loadInterviews(opts: { forceError?: boolean; stress?: boolean; demo?: string } = {}): Promise<InterviewsData> {
   const me = await currentStaffId();
   if (!hasSupabaseEnv()) {
-    if (opts.forceError) return { ...build([], new Date(MOCK_NOW), null, me, true, 'mock'), failed: true };
+    if (opts.forceError) return { ...build([], new Date(FLOW_NOW), null, me, true, 'mock'), failed: true };
     if (opts.stress) return stress();
-    const bookings: Booking[] = MOCK_APPLICANTS.filter((a) => a.interviewAt).map((a) => ({
-      slotId: `mock-slot-${a.code}`,
-      startsAt: a.interviewAt as string,
-      code: a.code,
-      applicant: a.name,
-      ...mockPair(a.code),
-    }));
-    return build(bookings, new Date(MOCK_NOW), '2026-10-09', me, true, 'mock');
+    return mockFlow(opts.demo, me);
   }
   try {
     const client = (await sessionClient()) as unknown as Db;
@@ -197,9 +302,103 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
       const c = p ? person(p.b) : null;
       return { slotId: b.slotId, startsAt: b.startsAt, code: b.code, applicant: b.applicant, pair: a && c ? [a, c] : [], videoUrl: p?.videoUrl ?? null };
     });
-    return build(bookings, new Date(), cycle.interviewEnd, me, auth.role === 'admin', 'live');
+    const base = build(bookings, new Date(), cycle.interviewEnd, me, auth.role === 'admin', 'live');
+
+    // The cycle's name and dates, and how many applicants submitted.
+    const [head, apps, tp, ba, fr] = await Promise.all([
+      client.from('cycles').select('term, award_name, closes_at').eq('id', cycle.id).maybeSingle(),
+      client.from('applications').select('id', { count: 'exact', head: true }).eq('cycle_id', cycle.id).eq('status', 'submitted'),
+      readProposedTimes(client, cycle.id),
+      readBoardAvailability(client, cycle.id),
+      readFairness(client, cycle.id),
+    ]);
+    if (head.error || apps.error || !tp.ok || !ba.ok || !fr.ok) throw new Error('read failed');
+    const applicants = apps.count ?? 0;
+    const name = [head.data?.term, head.data?.award_name].filter(Boolean).join(' ');
+    const dates = cycle.interviewStart && cycle.interviewEnd ? `${shortDate(cycle.interviewStart)} to ${shortDate(cycle.interviewEnd)}` : '';
+    const heldBy = new Map(booked.map((b) => [b.slotId, b.applicant]));
+    const chips: TimeChip[] = tp.times.map((t) => ({
+      slotId: t.slotId,
+      startsAt: t.startsAt,
+      time: timeLabel(t.startsAt),
+      freeCount: t.freeCount,
+      opened: t.openedAt !== null,
+      booked: t.booked,
+      bookedBy: t.booked ? (heldBy.get(t.slotId) ?? null) : null,
+    }));
+    const firstOpen = tp.times.map((t) => t.openedAt).filter((x): x is string => x !== null).sort()[0] ?? null;
+    const heldCount = chips.filter((c) => c.booked).length;
+    const closes = head.data?.closes_at ? easternYmd(head.data.closes_at) : null;
+    const closed = closes !== null && new Date(head.data!.closes_at as string).getTime() < Date.now();
+    const closedLine = closes === null ? `${applicants} ${applicants === 1 ? 'applicant' : 'applicants'} so far.` : closed ? `Applications closed ${dateOnlyLabel(closes)} with ${applicants} ${applicants === 1 ? 'applicant' : 'applicants'}.` : `${applicants} ${applicants === 1 ? 'application' : 'applications'} so far. They close ${dateOnlyLabel(closes)}.`;
+    const emailed = firstOpen && auth.role === 'admin' ? await lastSent('book', cycle.id).catch(() => ({ count: 0, at: null })) : { count: 0, at: null };
+    const times: TimesData = {
+      cycleId: cycle.id,
+      days: groupByDay(cycle.interviewStart, cycle.interviewEnd, chips),
+      people: ba.people.map((p) => ({ userId: p.userId, name: p.name, freeHours: p.freeHours, maxInterviews: p.maxInterviews, sent: p.sentAt !== null })),
+      applicants,
+      booked: heldCount,
+      toEmail: Math.max(0, applicants - booked.length),
+      closedLine,
+      openedLabel: firstOpen ? `${dayLabel(firstOpen)}, ${timeLabel(firstOpen)}` : null,
+      emailedCount: emailed.count,
+    };
+    const fair: FairData | null =
+      booked.length === 0
+        ? null
+        : {
+            people: fr.people.map((p) => ({ userId: p.userId, name: p.name, interviews: p.interviews, target: p.target, maxInterviews: p.maxInterviews, overBy: p.overBy, sent: p.sentAt !== null })),
+            interviews: booked.length - fr.needsTwo.length,
+            needsTwo: fr.needsTwo.map((n) => ({ slotId: n.slotId, when: whenLine(n.startsAt), code: n.code, applicant: n.applicant })),
+          };
+    return {
+      ...base,
+      cycleId: cycle.id,
+      sub: `${[name, dates ? `interviews ${dates}` : '', 'all on video'].filter(Boolean).join(' · ')}`,
+      subPhone: `${[dates, 'all on video'].filter(Boolean).join(' · ')}`,
+      bookedCount: booked.length,
+      applicantCount: applicants,
+      times,
+      fair,
+    };
   } catch {
     return { ...build([], new Date(), null, me, false, 'live'), failed: true, source: 'live' };
+  }
+}
+
+// What "Rebalance future interviews" would move, without moving anything (the confirm step lists each move). Admin only.
+// Same plan as rebalanceInterviews in lib/interview-flow-db.ts: only interviews more than 48 hours away, one interviewer
+// at a time, from someone over their share to someone under it who may take that interview.
+export async function previewRebalance(db: Db, cycleId: string, now = new Date()): Promise<{ ok: true; moves: MoveView[] } | { ok: false; message: string }> {
+  const me = await sessionRole(db);
+  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can rebalance interviews.' };
+  try {
+    const [fr, { booked, pairs }] = await Promise.all([readFairness(db, cycleId), readInterviews(db, cycleId)]);
+    if (!fr.ok) return fr;
+    const cutoff = now.getTime() + 48 * 3_600_000;
+    const interviews: RebalanceInterview[] = [];
+    for (const b of booked) {
+      const p = pairs.get(b.slotId);
+      if (!p) continue;
+      const candidates = Date.parse(b.startsAt) > cutoff ? (await readCandidates(db, b.slotId, b.applicationId)).map((c) => c.userId) : [];
+      interviews.push({ slotId: b.slotId, startsAt: b.startsAt, endsAt: b.endsAt, a: p.a, b: p.b, candidates });
+    }
+    const senders = fr.people.filter((p) => p.target !== null).map((p) => ({ userId: p.userId, name: p.name, maxInterviews: p.maxInterviews }));
+    const plan = planRebalance({ people: senders, interviews, now });
+    const names = new Map(fr.people.map((p) => [p.userId, p.name]));
+    const bySlot = new Map(booked.map((b) => [b.slotId, b]));
+    const moves: MoveView[] = plan.moves.map((m) => ({
+      slotId: m.slotId,
+      startsAt: bySlot.get(m.slotId)?.startsAt ?? '',
+      applicant: bySlot.get(m.slotId)?.applicant ?? '',
+      from: m.from,
+      to: m.to,
+      fromName: names.get(m.from) ?? 'Unknown',
+      toName: names.get(m.to) ?? 'Unknown',
+    }));
+    return { ok: true, moves };
+  } catch {
+    return { ok: false, message: "Couldn't check the rebalance. Try again." };
   }
 }
 

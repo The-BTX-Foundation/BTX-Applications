@@ -11,6 +11,7 @@ import { publishScore, saveDraft, savePrivateNote } from '@/lib/actions/scoring'
 import { PageHeader } from './page-header';
 import { Dialog, PhoneBar, ScoreRing, VideoMark } from './sch-parts';
 import './scholarships.css';
+import './interviews/interview-flow.css';
 
 type Picks = Record<string, Record<string, number>>;
 
@@ -45,6 +46,21 @@ function Scale({ crit, value, disabled, onPick, phone }: { crit: Criterion; valu
   );
 }
 
+// The interview questions for one criterion, beside its score. Compact: a short "Questions (2)" link that opens the list,
+// so a scorecard row keeps its height until you ask (the questions are written on the Interview questions page).
+function QuestionList({ list }: { list: string[] }) {
+  return (
+    <ol className="iv-sq">
+      {list.map((q, i) => (
+        <li key={i}>
+          <span className="nn">{i + 1}.</span>
+          <span>{q}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function ScoringView({ data, initials }: { data: ScoringData; initials?: string }) {
   const first = data.sheets.find((s) => !s.published) ?? data.sheets[0];
   const [code, setCode] = useState(first?.code ?? '');
@@ -53,6 +69,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
   const [saved, setSaved] = useState<Record<string, string | null>>(() => Object.fromEntries(data.sheets.map((s) => [s.code, s.draftSavedAt])));
   const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(data.sheets.map((s) => [s.code, s.privateNote])));
   const [confirm, setConfirm] = useState(false);
+  const [openQ, setOpenQ] = useState<string | null>(null);
   const [error, setError] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
@@ -188,16 +205,29 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
               </span>
             ))}
           </p>
-          {data.criteria.map((c) => (
-            <div key={c.key} className={`s-cr${current === c.key && !isPub ? ' cur' : ''}`}>
-              <div>
-                <b>{c.name}</b>
-                <span>{weightLine(c, data.weightStyle, false)}</span>
-                {!mine[c.key] ? <em>{current === c.key && !isPub ? 'Not scored, up next' : 'Not scored'}</em> : null}
+          <div className="s-crs">
+            {data.criteria.map((c) => (
+              <div key={c.key} className={`s-cr${current === c.key && !isPub ? ' cur' : ''}`}>
+                <div>
+                  <b>{c.name}</b>
+                  <span>
+                    {weightLine(c, data.weightStyle, false)}
+                    {data.questions?.[c.key]?.length ? (
+                      <>
+                        {' '}
+                        <button type="button" className="iv-qt" aria-expanded={openQ === c.key} onClick={() => setOpenQ(openQ === c.key ? null : c.key)}>
+                          {data.questions[c.key].length === 1 ? 'Question' : `Questions (${data.questions[c.key].length})`}
+                        </button>
+                      </>
+                    ) : null}
+                  </span>
+                  {!mine[c.key] ? <em>{current === c.key && !isPub ? 'Not scored, up next' : 'Not scored'}</em> : null}
+                  {openQ === c.key && data.questions?.[c.key] ? <QuestionList list={data.questions[c.key]} /> : null}
+                </div>
+                <Scale crit={c} value={mine[c.key]} disabled={isPub} onPick={(v) => pick(c.key, v)} />
               </div>
-              <Scale crit={c} value={mine[c.key]} disabled={isPub} onPick={(v) => pick(c.key, v)} />
-            </div>
-          ))}
+            ))}
+          </div>
           <div className="s-rf">
             <p className="s-sco">
               <b>
@@ -282,6 +312,12 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
                 <strong>{mine[c.key] ? `${mine[c.key]} · ${PICK_LABELS[mine[c.key] - 1]}` : 'Not scored'}</strong>
               </p>
               <Scale crit={c} value={mine[c.key]} disabled={isPub} onPick={(v) => pick(c.key, v)} phone />
+              {data.questions?.[c.key]?.length ? (
+                <details className="iv-sqd">
+                  <summary>{data.questions[c.key].length === 1 ? 'Question' : `Questions (${data.questions[c.key].length})`}</summary>
+                  <QuestionList list={data.questions[c.key]} />
+                </details>
+              ) : null}
             </section>
           ))}
         </div>

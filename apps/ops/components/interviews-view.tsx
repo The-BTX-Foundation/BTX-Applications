@@ -1,15 +1,21 @@
 'use client';
 
-// Scholarships > Interviews (Figma "Scholarships > Interviews", laptop and phone): the interviews left this week with
-// who interviews and the video link, then the table of interviewer pairs. "Re-run pairing" (admins only) opens a
-// preview that says nothing would move.
+// Scholarships > Interviews (Figma "Options: interview flow", laptop and phone): interview times proposed from the
+// board's availability, interviews per board member against an even target, the booked interviews ahead and the table
+// of interviewer pairs. Board members with admin rights change times, rebalance and re-run pairing; every other board
+// member reads. Links in the header go to the interview questions and to "Your availability".
+// The older "Left this week" list stays for data with no times or fairness (the stress frame).
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { InterviewsData, UpcomingInterview } from '@/lib/interviews';
 import { previewPairing, rerunPairing, type PairingPreview } from '@/lib/actions/interviews';
 import { PageHeader } from './page-header';
 import { Avatar, Dialog, VideoMark } from './sch-parts';
+import { FairnessSection } from './interviews/fairness-panel';
+import { TimesPanel } from './interviews/times-panel';
 import './scholarships.css';
+import './interviews/interview-flow.css';
 
 // One interview on the laptop: date, applicant, the two interviewers, the video mark and when or "Yours".
 function LaptopRow({ r }: { r: UpcomingInterview }) {
@@ -97,12 +103,32 @@ function PhoneCard({ r }: { r: UpcomingInterview }) {
   );
 }
 
+// "Interview questions" and "Your availability": in the header on the laptop, under it on the phone.
+function HeaderLinks({ className }: { className: string }) {
+  return (
+    <div className={`iv-hdr-links ${className}`}>
+      <Link className="o-ul" href="/scholarships/interviews/questions">
+        Interview questions
+      </Link>
+      <Link className="o-ul" href="/scholarships/interviews/availability">
+        Your availability
+      </Link>
+    </div>
+  );
+}
+
+// The page remounts its panels when the server sends new data (after a live change), so each panel starts from it.
+const signature = (d: InterviewsData) =>
+  JSON.stringify([d.times?.days.flatMap((x) => x.times.map((t) => [t.slotId, t.opened, t.booked])), d.times?.people.map((p) => [p.userId, p.sent]), d.fair?.people.map((p) => [p.userId, p.interviews]), d.upcoming.map((u) => [u.slotId, u.pair.map((p) => p.userId)])]);
+
 export function InterviewsView({ data }: { data: InterviewsData }) {
   const router = useRouter();
   const [rerun, setRerun] = useState(false);
   const [preview, setPreview] = useState<PairingPreview | null>(null);
   const [note, setNote] = useState('');
+  const [moved, setMoved] = useState('');
   const frac = data.total > 0 ? data.done / data.total : 0;
+  const mock = data.source === 'mock';
 
   // Opens the preview: asks the server what pairing would do, without doing it.
   async function openRerun() {
@@ -120,74 +146,97 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
   }
 
   const nothing = preview !== null && preview.ok && preview.unpaired === 0;
+  const sig = signature(data);
 
   return (
-    <div className="s-page">
-      <PageHeader title="Interviews" sub={<><span className="o-lg">{data.sub}</span><span className="o-ph">Scholarships · all on video</span></>} />
+    <div className="s-page iv-wide">
+      <PageHeader title="Interviews" sub={<><span className="o-lg">{data.sub}</span><span className="o-ph">{data.subPhone}</span></>}>
+        <HeaderLinks className="o-lg" />
+      </PageHeader>
+      <HeaderLinks className="o-ph" />
 
-      <section className="o-card s-panel">
-        <div className="s-ph o-lg">
-          <h2>Left this week</h2>
-          <div className="s-pg">
-            <i>
-              <span style={{ width: `${(frac * 100).toFixed(1)}%` }} />
-            </i>
-            <b>
-              {data.done} of {data.total} interviewed
-            </b>
-          </div>
-        </div>
-        <div className="s-ph2 o-ph">
-          <h2>Left this week</h2>
-          <span>{data.endsLabel}</span>
-        </div>
-        <p className="s-ln o-lg">Every applicant meets two board members on a video call.</p>
-        {data.upcoming.map((r) => (
-          <div key={r.slotId}>
-            <div className="o-lg">
-              <LaptopRow r={r} />
-            </div>
-            <div className="o-ph">
-              <PhoneCard r={r} />
-            </div>
-          </div>
-        ))}
-        <div className="s-lkr o-ph">
-          <b>Interviewer pairs</b>
-        </div>
-      </section>
-
-      <section className="o-card s-panel s-pairs o-lg">
-        <div className="s-ph">
-          <h2>Interviewer pairs</h2>
-          <div className="s-adm">
-            <span>Needs admin rights</span>
-            {data.isAdmin ? (
-              <button type="button" className="o-ul" onClick={openRerun}>
-                Re-run pairing
-              </button>
-            ) : null}
-          </div>
-        </div>
-        <div className="s-th">
-          <span>Pair</span>
-          <span>Done</span>
-          <span>Left</span>
-          <span>Next</span>
-        </div>
-        {data.pairs.map((p) => (
-          <div className="s-tr" key={p.key}>
-            <b>{p.names}</b>
-            <span>{p.done}</span>
-            <span>{p.left}</span>
-            <span className={p.next === 'Done' ? 'strong' : undefined}>{p.next}</span>
-          </div>
-        ))}
-      </section>
       {note ? (
-        <p className="s-note o-lg" role="status">
+        <p className="iv-note" role="status">
           {note}
         </p>
+      ) : null}
+
+      {data.times ? <TimesPanel key={`t-${sig}`} data={data.times} isAdmin={data.isAdmin} mock={mock} onNote={setNote} /> : null}
+
+      {data.fair ? (
+        <FairnessSection
+          key={`f-${sig}`}
+          fair={data.fair}
+          upcoming={data.upcoming}
+          bookedCount={data.bookedCount}
+          applicantCount={data.applicantCount}
+          cycleId={data.cycleId}
+          isAdmin={data.isAdmin}
+          mock={mock}
+          moved={moved}
+          onMoved={setMoved}
+          onNote={setNote}
+          onPair={openRerun}
+        />
+      ) : data.upcoming.length > 0 ? (
+        <section className="o-card s-panel">
+          <div className="s-ph o-lg">
+            <h2>Left this week</h2>
+            <div className="s-pg">
+              <i>
+                <span style={{ width: `${(frac * 100).toFixed(1)}%` }} />
+              </i>
+              <b>
+                {data.done} of {data.total} interviewed
+              </b>
+            </div>
+          </div>
+          <div className="s-ph2 o-ph">
+            <h2>Left this week</h2>
+            <span>{data.endsLabel}</span>
+          </div>
+          <p className="s-ln o-lg">Every applicant meets two board members on a video call.</p>
+          {data.upcoming.map((r) => (
+            <div key={r.slotId}>
+              <div className="o-lg">
+                <LaptopRow r={r} />
+              </div>
+              <div className="o-ph">
+                <PhoneCard r={r} />
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {data.pairs.length > 0 ? (
+        <section className="o-card s-panel s-pairs o-lg">
+          <div className="s-ph">
+            <h2>Interviewer pairs</h2>
+            <div className="s-adm">
+              <span>Needs admin rights</span>
+              {data.isAdmin ? (
+                <button type="button" className="o-ul" onClick={openRerun}>
+                  Re-run pairing
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <div className="s-th">
+            <span>Pair</span>
+            <span>Done</span>
+            <span>Left</span>
+            <span>Next</span>
+          </div>
+          {data.pairs.map((p) => (
+            <div className="s-tr" key={p.key}>
+              <b>{p.names}</b>
+              <span>{p.done}</span>
+              <span>{p.left}</span>
+              <span className={p.next === 'Done' ? 'strong' : undefined}>{p.next}</span>
+            </div>
+          ))}
+        </section>
       ) : null}
 
       {rerun ? (
@@ -198,8 +247,7 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
             <p>{preview.message}</p>
           ) : nothing ? (
             <p>
-              Nothing would move. {data.done} interviews are done and the {data.upcoming.length} booked this week stay as they are.
-              {data.source === 'mock' ? ' Pairing already runs again on its own Tue at 9:00 AM.' : ''}
+              Nothing would move. {data.done} interviews are done and the {data.upcoming.length} booked ahead stay as they are.
             </p>
           ) : (
             <p>
