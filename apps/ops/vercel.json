@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/interview-emails?kind=prep", "schedule": "0 23 * * *" },
+    { "path": "/api/cron/interview-emails?kind=reminder", "schedule": "0 14 * * *" }
+  ]
+}

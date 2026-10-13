@@ -1,6 +1,6 @@
 // Next.js proxy (called "middleware" before Next 16). It keeps the Supabase session fresh on every request and guards
 // every Ops Hub route: a signed-out visitor goes to /sign-in, and a signed-in account whose app_metadata.role is not
-// admin or board is signed out (there are no other staff roles) (through /auth/denied). Only /sign-in and /auth/* are open. In mock mode
+// admin or board is signed out (there are no other staff roles) (through /auth/denied). Only /sign-in, /auth/* and /api/cron/* (which checks its own secret) are open. In mock mode
 // (no Supabase env) there is no server-side session, so nothing is guarded and the pages show the sample data.
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
@@ -40,7 +40,8 @@ export async function proxy(request: NextRequest) {
   const staff = isStaffRole(claims?.app_metadata?.role);
 
   const { pathname, search } = request.nextUrl;
-  const open = pathname === '/sign-in' || pathname.startsWith('/auth/');
+  // /api/cron/ is open to the guard because Vercel's cron has no session; each cron route checks CRON_SECRET itself.
+  const open = pathname === '/sign-in' || pathname.startsWith('/auth/') || pathname.startsWith('/api/cron/');
 
   if (!signedIn && !open) {
     const url = request.nextUrl.clone();

@@ -70,7 +70,7 @@ export type Deps = {
   from?: string;
 };
 
-async function defaultIsAdmin(): Promise<boolean> {
+export async function defaultIsAdmin(): Promise<boolean> {
   const { sessionClient } = await import('../supabase-server');
   const client = await sessionClient();
   const { data } = await client.auth.getUser();

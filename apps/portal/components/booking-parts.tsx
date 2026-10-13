@@ -4,7 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ErrorIcon, Icon } from '@btx/ui';
-import { bookSlot, getAuthMode, getBrowserClient } from '@btx/data';
+import { getAuthMode, type BookResult } from '@btx/data';
 import { clock, dayLabel, type Slot } from '@/lib/journey';
 import b from './booking.module.css';
 
@@ -35,8 +35,18 @@ export function ErrorBox({ children, id }: { children: React.ReactNode; id?: str
 
 export type BookProblem = 'pick' | 'failed' | 'note_long' | 'saved' | null;
 
+// The Portal's own route books (switch_booking as her) and sends the booking emails; see app/api/book/route.ts.
+async function postBook(slotId: string, note?: string): Promise<BookResult> {
+  try {
+    const res = await fetch('/api/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slotId, note }) });
+    return (await res.json()) as BookResult;
+  } catch {
+    return { ok: false, kind: 'network' };
+  }
+}
+
 // Books (or switches to) a slot. In mock mode there is no database: it goes to the matching status preview with the
-// time she picked. Live, it calls switch_booking; 'taken' sends her back to the open times with the notice.
+// time she picked. Live, it asks /api/book (which calls switch_booking); 'taken' sends her back to the open times with the notice.
 // NOT TESTED AGAINST LIVE DATA.
 export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) {
   const router = useRouter();
@@ -56,7 +66,7 @@ export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) 
       router.push(`/status?demo=${demo}&at=${encodeURIComponent(slot.startsAt)}`);
       return;
     }
-    const r = await bookSlot(getBrowserClient(), slot.id, note);
+    const r = await postBook(slot.id, note);
     if (r.ok && r.result === 'unchanged' && note?.trim()) {
       // she kept the same time and sent a note: the database saved it
       setBusy(false);
