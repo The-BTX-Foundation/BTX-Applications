@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { daysBetween, isDay } from './dates';
 import { normalizeRanges } from './normalize';
+import { fakeAllowed, fakeRead } from './fake';
 import { MODEL, OUTPUT_SCHEMA, buildSystemPrompt, buildUserMessage } from './prompt';
 
 export type Range = { day: string; start: string; end: string };
@@ -38,6 +39,9 @@ export async function readFreeTimes(
     const text = typeof input.text === 'string' ? input.text : '';
     if (text.trim() === '') return { ok: false, reason: 'empty' };
     if (text.length > MAX_TEXT) return { ok: false, reason: 'too-long' };
+
+    // Local test runs only (BTX_AI_FAKE=1, never in a production build): a stand-in that needs no key.
+    if (!deps?.client && !deps?.apiKey && fakeAllowed()) return fakeRead(input);
 
     const apiKey = deps?.apiKey ?? process.env.ANTHROPIC_API_KEY;
     const client = (deps?.client as Client | undefined) ?? (apiKey ? makeClient(apiKey) : undefined);
