@@ -1,0 +1,229 @@
+/* The journey status screens (drafts status-book / status-sent / status-booked / status-request / status /
+   status-today, with their phone versions). Phone first; laptop from 1024px. Builds on status-view.module.css
+   (title, lead, pick rows, foot, follow card). On the phone the two columns dissolve (display: contents) and the
+   parts are ordered: card, dates drawing, before-your-interview list, follow card, footer. */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-top: 14px;
+}
+.meta span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nb {
+  display: flex;
+  width: 100%;
+  margin-top: 18px;
+  height: 52px;
+}
+.wide {
+  margin-top: 36px;
+}
+.cols {
+  display: flex;
+  flex-direction: column;
+}
+.c1,
+.c2 {
+  display: contents;
+}
+.hero {
+  order: 1;
+  margin-top: 20px;
+}
+.hero:empty {
+  display: none;
+}
+.side {
+  order: 2;
+  margin-top: 36px;
+}
+.side:empty {
+  display: none;
+}
+.prep {
+  order: 3;
+  margin-top: 36px;
+}
+.follow {
+  order: 4;
+  margin-top: 36px;
+}
+.ft {
+  order: 5;
+}
+
+/* the booked-time card */
+.tk {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  padding: 18px 16px 18px 22px;
+}
+.tkBar {
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  bottom: -1px;
+  width: 6px;
+  background: var(--gold);
+}
+.tkHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+.tkC {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.tkD {
+  font-size: 36px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-top: 4px;
+}
+.tk .meta {
+  margin-top: 10px;
+}
+.tkW {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.tkW :global(.i) {
+  margin-top: 2px;
+}
+.tkA {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 16px;
+}
+.tkA :global(.btn) {
+  display: flex;
+  width: 100%;
+  height: 52px;
+}
+.change {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 16px;
+}
+.tb {
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  padding: 16px;
+}
+.tbt {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.tb .change {
+  display: inline-flex;
+  margin-top: 8px;
+}
+
+@media (min-width: 1024px) {
+  .meta {
+    margin-top: 18px;
+  }
+  .nb {
+    display: inline-flex;
+    width: auto;
+    margin-top: 20px;
+    padding: 0 26px;
+  }
+  .wide {
+    margin-top: 48px;
+  }
+  .cols {
+    flex-direction: row;
+    gap: 80px;
+    margin-top: 28px;
+    align-items: flex-start;
+  }
+  .colsBook {
+    margin-top: 44px;
+  }
+  .c1 {
+    display: block;
+    width: min(744px, calc(100% - 440px));
+    flex: none;
+  }
+  .c2 {
+    display: block;
+    flex: 1;
+    min-width: 360px;
+  }
+  .hero,
+  .side,
+  .follow,
+  .ft,
+  .prep {
+    order: 0;
+  }
+  .hero {
+    margin-top: 0;
+  }
+  .side {
+    margin-top: 0;
+  }
+  .follow {
+    margin-top: 36px;
+  }
+  .colsBook .follow {
+    margin-top: 0;
+  }
+  .prep {
+    margin-top: 32px;
+  }
+  .colsBook .prep {
+    margin-top: 0;
+  }
+  .tk {
+    padding: 24px 28px 24px 34px;
+  }
+  .tkD {
+    font-size: 44px;
+    margin-top: 6px;
+  }
+  .tk .meta {
+    margin-top: 12px;
+  }
+  .tkW {
+    margin-top: 10px;
+  }
+  .tkA {
+    gap: 16px 24px;
+    margin-top: 20px;
+  }
+  .tkA :global(.btn) {
+    display: inline-flex;
+    width: auto;
+    padding: 0 24px;
+  }
+  .change {
+    min-height: 0;
+  }
+  .tb {
+    padding: 20px 24px;
+  }
+}

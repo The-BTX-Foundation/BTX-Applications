@@ -1,0 +1,6 @@
+/* Real staff names can be longer than the sample ones: wrap inside the Owner column instead of running under Due. */
+.o-cl-ow {
+  min-width: 0;
+  white-space: normal !important;
+  line-height: 1.2;
+}

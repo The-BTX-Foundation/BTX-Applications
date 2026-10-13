@@ -73,12 +73,13 @@ database connection).
   `user_metadata`, but nothing reads it anymore.
 - Every new account starts as `applicant`. A new trigger sets that and strips any `role` someone tries to sneak into
   `user_metadata` at sign-up.
-- Staff roles (`admin`, `board`, `reviewer`) are set only with the service key, after the person has signed in once:
+- Staff roles (`admin`, `board`) are set only with the service key, after the person has signed in once:
   Supabase Admin API `updateUserById(id, { app_metadata: { role: 'admin' } })`, or in SQL as the database owner:
   `update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}' where email = '...';`
 - A role change takes effect when the person's sign-in refreshes (within an hour, or right away after signing out and
   in again).
-- Every access rule calls `public.app_role()` (or `public.is_staff()` = admin, board or reviewer).
+- Every access rule calls `public.app_role()` (or `public.is_staff()` = admin or board). Since the owner's decision of
+  2026-10-12 there is no third staff role; the Ops Hub file redefines `is_staff()` to match.
 
 ## New tables, and who can do what
 

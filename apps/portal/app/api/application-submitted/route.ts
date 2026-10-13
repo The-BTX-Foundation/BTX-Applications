@@ -3,9 +3,9 @@
 // Without RESEND_API_KEY it only logs. Safe to call twice: the email service gets an idempotency key per application.
 import { NextResponse } from 'next/server';
 import { fetchPublishedCycle } from '@btx/data';
+import { createServiceClient } from '@btx/data/server';
 import { HELP_EMAIL } from '@btx/ui';
-import { confirmationHtml, confirmationSubject, confirmationText } from '@/lib/email/confirmation';
-import { sendMail } from '@/lib/email/send';
+import { confirmationHtml, confirmationSubject, confirmationText, sendMail } from '@btx/emails';
 import { toView } from '@/lib/cycle';
 import { longDay, shortDay } from '@/lib/format';
 import { sessionClient } from '@/lib/supabase-server';
@@ -38,12 +38,25 @@ export async function POST(request: Request) {
     statusUrl: `${origin}/status`,
     helpEmail: HELP_EMAIL,
   };
-  const result = await sendMail({
-    to: input.to,
-    subject: confirmationSubject(input),
-    html: confirmationHtml(input),
-    text: confirmationText(input),
-    idempotencyKey: `application-submitted-${app.id}`,
-  });
+  const result = await sendMail(
+    {
+      to: input.to,
+      subject: confirmationSubject(input),
+      html: confirmationHtml(input),
+      text: confirmationText(input),
+      idempotencyKey: `application-submitted-${app.id}`,
+    },
+    process.env.PORTAL_EMAIL_FROM,
+  );
+  // Write the send to email_log (server only, service role). The unique index keeps a repeat from logging twice.
+  if (result.sent) {
+    const admin = createServiceClient();
+    if (admin) {
+      const { error } = await admin
+        .from('email_log')
+        .insert({ kind: 'confirmation', cycle_id: cycle.id, application_id: app.id, to_address: input.to, resend_id: result.id ?? null });
+      if (error && error.code !== '23505') console.error('[email] could not write email_log', error.message);
+    }
+  }
   return NextResponse.json(result, { status: 202 });
 }

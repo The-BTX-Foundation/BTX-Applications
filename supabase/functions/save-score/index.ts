@@ -1,6 +1,6 @@
 // save-score
 //
-// Admin/board/reviewer-only write endpoint: saves one (applicant,
+// Admin/board-only write endpoint: saves one (applicant,
 // interviewer) scorecard as a draft, or publishes it, into
 // public.scholarship_scores. Follows save-board-availability's own
 // auth/cycle-open pattern exactly (same getCallerRole/JWT verification,
@@ -38,7 +38,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'content-type, authorization',
 }
 
-const STAFF_ROLES = ['admin', 'board', 'reviewer']
+const STAFF_ROLES = ['admin', 'board']
 const MAX_LABEL_LENGTH = 200
 const MAX_NOTE_LENGTH = 2000
 const MAX_GENERAL_NOTES_LENGTH = 5000

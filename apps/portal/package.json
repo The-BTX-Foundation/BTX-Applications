@@ -12,7 +12,9 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@btx/ai": "*",
     "@btx/data": "*",
+    "@btx/emails": "*",
     "@btx/ui": "*",
     "next": "^16.4.0",
     "react": "^19.2.0",

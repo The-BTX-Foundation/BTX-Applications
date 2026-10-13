@@ -2,8 +2,8 @@
 // submit time, the dates drawing from the cycle, things to do while waiting, and the Follow BTX card.
 import { DatesDrawing, HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { DECISION_TO_COME, type CycleView } from '@/lib/cycle';
-import { daysBetween, easternDate, longDay, shortDay } from '@/lib/format';
-import { LINKEDIN_URL } from '@/lib/config';
+import { daysBetween, easternDate, shortDay } from '@/lib/format';
+import { LINKEDIN_URL, OFFERS_URL, PREPARE_GUIDE_URL } from '@/lib/config';
 import s from './status-view.module.css';
 
 // "Sat Sep 12, 4:52 PM" in Eastern time.
@@ -50,7 +50,8 @@ export function StatusView({
         dates: { opens: '', apply: '', interview: `${shortDay(d.interviewStart)} to ${shortDay(d.interviewEnd)}`, decision: d.decisionKnown ? shortDay(d.decision) : DECISION_TO_COME },
       }
     : { mode: 'submitted' as const, dates: { opens: '', apply: '', interview: '[date]', decision: '[date]' } };
-  const interviewDay = d ? longDay(d.interviewStart) : '[date]';
+  // The board emails interview times after applications close (then she books in the Portal).
+  const closeDay = view.applyByLong;
 
   return (
     <div className="app">
@@ -61,7 +62,7 @@ export function StatusView({
             {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}.{copySent ? ` Confirmation sent to ${email}` : ''}
           </p>
           <h1 className={s.title}>Application submitted.</h1>
-          <p className={s.lead}>We&apos;ll email you {interviewDay} to schedule your video interview.</p>
+          <p className={s.lead}>We&apos;ll email you after applications close on {closeDay} to schedule your video interview.</p>
           {copySent ? <p className={s.copy}>Confirmation sent to {email}</p> : null}
           <div className={s.drawing}>
             <DatesDrawing {...drawing} />
@@ -70,14 +71,18 @@ export function StatusView({
             <div className={s.c1}>
               <p className={s.label}>While you wait</p>
               <div className={s.pick}>
-                <a href="#" className={s.pickRow}>
-                  <Icon name="file" />
-                  <span className="lk">How to prepare for your interview</span>
-                </a>
-                <a href="#" className={s.pickRow}>
-                  <Icon name="people" />
-                  <span className="lk">What BTX offers students</span>
-                </a>
+                {PREPARE_GUIDE_URL ? (
+                  <a href={PREPARE_GUIDE_URL} className={s.pickRow}>
+                    <Icon name="file" />
+                    <span className="lk">How to prepare for your interview</span>
+                  </a>
+                ) : null}
+                {OFFERS_URL ? (
+                  <a href={OFFERS_URL} className={s.pickRow}>
+                    <Icon name="people" />
+                    <span className="lk">What BTX offers students</span>
+                  </a>
+                ) : null}
                 <div className={s.pickRow}>
                   <Icon name="check" />
                   <span>Certification program: we&apos;ll email you when it opens</span>

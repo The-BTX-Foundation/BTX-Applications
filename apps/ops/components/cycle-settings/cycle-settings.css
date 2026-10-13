@@ -1,0 +1,454 @@
+/* Cycle settings page. Numbers from the Figma frames (file byg3AToqjCajJKPI88DkOz, page "Options: Cycle settings"):
+   fields are 38px high on a laptop (Dominick's decision S5, to match the Ops Hub buttons) and 48px on a phone. */
+.cs {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.cs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* the header buttons live in the page header on a laptop; the phone has them at the end of the form */
+body .o-top-a.cs-top-a {
+  display: none;
+}
+.cs-msg {
+  font-size: 15px;
+  color: var(--muted);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.cs-msg.ok {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.cs-msg.bad {
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-weight: 600;
+}
+.cs-live {
+  font-size: 15px;
+  color: var(--muted);
+  background: var(--gold-tint);
+  border-radius: 4px;
+  padding: 10px 14px;
+}
+.cs-grid {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cs-col {
+  display: contents;
+}
+.cs-o1 { order: 1; }
+.cs-o2 { order: 2; }
+.cs-o3 { order: 3; }
+.cs-o4 { order: 4; }
+.cs-o5 { order: 5; }
+.cs-o6 { order: 6; }
+.cs-o7 { order: 7; }
+.cs-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-width: 0;
+}
+.cs-card > h2 {
+  font-size: 18px;
+  font-weight: 500;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.cs-card > h2 span {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.cs-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cs-f {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cs-f > label,
+.cs-lb {
+  font-size: 14px;
+  font-weight: 600;
+}
+.cs-in {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  padding: 0 14px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+select.cs-in {
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+.cs-in::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.cs-in:focus-visible,
+.cs-money:focus-within,
+.cs-seg button:focus-visible,
+.cs-link:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.cs-in.bad {
+  border-width: 2.5px;
+  padding: 0 12.5px;
+}
+.cs-grow {
+  height: auto;
+  min-height: 48px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  line-height: 1.35;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
+}
+.cs-grow.bad {
+  padding-top: 9.5px;
+  padding-bottom: 9.5px;
+}
+.cs-money {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cs-money input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+  padding: 0;
+  height: 100%;
+}
+.cs-money input::placeholder {
+  color: var(--muted);
+}
+.cs-in:disabled,
+.cs-money:has(input:disabled),
+fieldset:disabled .cs-in {
+  color: var(--ink);
+  background: var(--wash);
+  border-color: var(--line);
+}
+.cs-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.cs-note svg {
+  flex: none;
+}
+.cs-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 10px;
+  align-items: center;
+}
+.cs-pair.to {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.cs-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.cs-reqs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cs-reqs li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+.cs-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-align: left;
+  min-height: 32px;
+  padding: 0;
+}
+.cs-link.add {
+  align-self: flex-start;
+}
+.cs-empty,
+.cs-hint {
+  font-size: 14px;
+  color: var(--muted);
+}
+.cs-hint {
+  margin-top: 6px;
+}
+.cs-evrow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.cs-seg {
+  display: inline-flex;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface);
+  height: 48px;
+}
+.cs-seg button {
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 52px;
+}
+.cs-seg button + button {
+  border-left: 1px solid var(--ink);
+}
+.cs-seg button.on {
+  background: var(--ink);
+  color: var(--surface);
+}
+/* what publishing still needs */
+.cs-miss {
+  border: 2px solid var(--ink);
+  padding: 16px 20px 18px;
+}
+.cs-miss h2 {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.cs-miss p {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.cs-miss ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+/* the drawn Portal landing */
+.cs-pv {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.cs-pv > * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cs-pv-term {
+  font-family: var(--font-code);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.cs-pv-name {
+  font-size: 22px;
+  line-height: 1.2;
+}
+.cs-pv-amt {
+  font-size: 18px;
+  font-weight: 700;
+}
+.cs-pv-dates {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.cs-pv-h {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.cs-pv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.cs-pv-list li {
+  padding-left: 14px;
+  position: relative;
+}
+.cs-pv-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  background: var(--gold);
+}
+.cs-pv-apply {
+  margin-top: 6px;
+  height: 44px;
+  padding: 0 28px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--gold);
+  color: var(--on-gold);
+  font-weight: 600;
+  border-radius: 2px;
+}
+.cs-br {
+  background: var(--gold-tint);
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.cs-pv-key {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cs-bottom {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.cs-bottom .o-btn:disabled,
+.cs-top-a .o-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cs-bottom .o-btn.p {
+  order: 2;
+}
+.cs-dlg {
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  padding: 24px;
+  max-width: min(440px, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--ink);
+  margin: auto;
+}
+.cs-dlg::backdrop {
+  background: var(--scrim);
+}
+.cs-dlg h2 {
+  font-size: 20px;
+  font-weight: 500;
+}
+.cs-dlg p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+.cs-dlg-a {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+@media (min-width: 900px) {
+  body .o-top-a.cs-top-a {
+    display: flex;
+  }
+  .cs-bottom {
+    display: none;
+  }
+  .cs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+  .cs-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  .cs-o1, .cs-o2, .cs-o3, .cs-o4, .cs-o5, .cs-o6, .cs-o7 {
+    order: 0;
+  }
+  /* the missing-settings box sits above the preview on a laptop */
+  .cs-in,
+  .cs-seg {
+    height: 38px;
+    font-size: 15px;
+  }
+  .cs-grow {
+    height: auto;
+    min-height: 38px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .cs-grow.bad {
+    padding-top: 5.5px;
+    padding-bottom: 5.5px;
+  }
+}

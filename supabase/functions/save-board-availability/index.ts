@@ -1,6 +1,6 @@
 // save-board-availability
 //
-// Admin/board/reviewer-only write endpoint: replaces one board member's
+// Admin/board-only write endpoint: replaces one board member's
 // own availability slot list for the current cycle via
 // replace_board_availability() (see that function's own migration
 // comment -- 20261002130000_scholarship_interview_pairing.sql -- for why
@@ -50,7 +50,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'content-type, authorization',
 }
 
-const STAFF_ROLES = ['admin', 'board', 'reviewer']
+const STAFF_ROLES = ['admin', 'board']
 const MAX_SLOTS = 50
 const MAX_LABEL_LENGTH = 200
 

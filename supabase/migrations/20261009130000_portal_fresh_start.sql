@@ -1,8 +1,9 @@
 -- =============================================================================
 -- Portal fresh start (2026-10-09)
 --
--- DRAFT. NOT APPLIED. Apply only after Dominick approves it by naming the
--- production project (awiaebtqalcmfafvktwh, "BTX Student/Operations Hub").
+-- APPLIED 2026-10-09 to the production project (awiaebtqalcmfafvktwh). The two
+-- checks marked "local resets only" were relaxed on 2026-10-12 so a fresh local
+-- database can replay this file; production never re-runs it.
 -- Plain-English guide: supabase/migrations/README-portal-fresh-start.md
 --
 -- What this does, in one transaction:
@@ -72,6 +73,13 @@ begin
   select count(*) into v_ms_copy from legacy.program_plan_milestones;
   select count(*) into v_tk_src  from public.program_plan_tasks;
   select count(*) into v_tk_copy from legacy.program_plan_tasks;
+  -- A brand-new local database (supabase db reset) has no plan rows at all;
+  -- there is nothing to copy, so skip the check. Added 2026-10-12 for local
+  -- resets only: production applied this file on 2026-10-09 (24 and 81 rows).
+  if v_ms_src = 0 and v_tk_src = 0 then
+    raise notice 'legacy copy: source tables empty (fresh local database), check skipped';
+    return;
+  end if;
   if v_ms_src <> v_ms_copy or v_tk_src <> v_tk_copy or v_ms_copy = 0 or v_tk_copy = 0 then
     raise exception 'legacy copy incomplete: milestones %/%, tasks %/%',
       v_ms_copy, v_ms_src, v_tk_copy, v_tk_src;
@@ -150,7 +158,10 @@ begin
     'dlittleton@bookyachtsy.com'
   );
   get diagnostics v_deleted = row_count;
-  if v_deleted <> 9 then
+  -- 0 is allowed only for a brand-new local database (supabase db reset),
+  -- where none of these accounts exist. Added 2026-10-12; production applied
+  -- this file on 2026-10-09 and deleted all 9.
+  if v_deleted not in (0, 9) then
     raise exception 'expected to delete 9 test accounts, deleted %', v_deleted;
   end if;
 end;
