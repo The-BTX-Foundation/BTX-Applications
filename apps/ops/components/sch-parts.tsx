@@ -30,7 +30,8 @@ export function Avatar({ initials, size = 24 }: { initials: string; size?: numbe
 export function Dialog({ title, width = 460, onClose, children }: { title: string; width?: number; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('button, a')?.focus();
+    // A button marked data-autofocus (Cancel on a step that can't be undone) gets focus first; otherwise the first one.
+    (ref.current?.querySelector<HTMLElement>('[data-autofocus]') ?? ref.current?.querySelector<HTMLElement>('button, a'))?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };

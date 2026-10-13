@@ -446,7 +446,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
             <button type="button" className="o-btn p lg" disabled={releasing} onClick={() => void release()}>
               {releasing ? 'Releasing...' : 'Release decisions'}
             </button>
-            <button type="button" className="o-btn s lg" disabled={releasing} onClick={() => setConfirmRelease(false)}>
+            <button type="button" className="o-btn s lg" data-autofocus disabled={releasing} onClick={() => setConfirmRelease(false)}>
               Cancel
             </button>
           </div>
