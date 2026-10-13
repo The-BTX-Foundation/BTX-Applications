@@ -73,7 +73,7 @@ export function ScholarshipForm({
               {[
                 'You interview on video with two board members.',
                 'Each of them scores the interview on their own.',
-                `The top combined score wins the ${name}.`,
+                `The board looks at the scores together and decides who wins the ${name}.`,
               ].map((t) => (
                 <li key={t}>
                   <span className={s.dm} aria-hidden="true" />
