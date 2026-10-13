@@ -11,7 +11,7 @@ export async function loadNavCounts(): Promise<Record<string, number | string> |
   try {
     const who = await whoAmI();
     if (!who) return {};
-    const [mine, assignees, unread, bookings, pairings, scores, cycles, prefs] = await Promise.all([
+    const [mine, assignees, unread, bookings, pairings, scores, cycles, prefs, slots] = await Promise.all([
       safe(readRows('tasks', 'id, area, status, assignee_group', { eq: { archived: false } })),
       safe(readRows('task_assignees', 'task_id', { eq: { user_id: who.id } })),
       safe(readRows('chat_unread_counts', 'unread')),
@@ -20,7 +20,10 @@ export async function loadNavCounts(): Promise<Record<string, number | string> |
       safe(readRows('scores', 'application_id, scorer_id, published', { eq: { scorer_id: who.id } })),
       safe(readRows('cycles', 'id, status, interview_start, interview_end, closes_at, created_at', { order: ['created_at', false] })),
       safe(readRows('board_interview_prefs', 'cycle_id, availability_sent_at', { eq: { user_id: who.id } })),
+      safe(readRows('interview_slots', 'id, starts_at')),
     ]);
+    const now = new Date();
+    const started = new Set(slots.filter((s) => new Date(String(s.starts_at)) <= now).map((s) => String(s.id)));
     const mineIds = new Set(assignees.map((a) => String(a.task_id)));
     const open = mine.filter((t) => (t.status === 'open' || t.status === 'in_progress') && (mineIds.has(String(t.id)) || t.assignee_group === 'all_board'));
     const mineByArea: Record<string, number> = {};
@@ -32,14 +35,14 @@ export async function loadNavCounts(): Promise<Record<string, number | string> |
       ? availabilityRow({
           cycle: { id: String(cycle.id), closesAt: (cycle.closes_at as string | null) ?? null, interviewStart: (cycle.interview_start as string | null) ?? null, interviewEnd: (cycle.interview_end as string | null) ?? null },
           sentAt: sent ? ((sent.availability_sent_at as string | null) ?? null) : null,
-          today: easternDay(new Date()),
+          today: easternDay(now),
         })
       : null;
     return sidebarCounts({
       mineOpen: open.length + (ask ? 1 : 0),
       unread: unread.reduce((s, u) => s + Number(u.unread ?? 0), 0),
       mineByArea,
-      scoringTodo: scoringTodo(who.id, bookings, pairings, scores),
+      scoringTodo: scoringTodo(who.id, bookings, pairings, scores, started),
     });
   } catch {
     return {};

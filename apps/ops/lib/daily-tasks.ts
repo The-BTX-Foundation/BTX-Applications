@@ -357,8 +357,15 @@ export function sidebarCounts(a: { mineOpen: number; unread: number; mineByArea:
 }
 
 /** Applications this person interviews (an active booking on a slot they are paired for) and has not published a score for. */
-export function scoringTodo(me: string, bookings: Raw[], pairings: Raw[], scores: Raw[]): number {
-  const mySlots = new Set(pairings.filter((p) => p.interviewer_a === me || p.interviewer_b === me).map((p) => str(p.slot_id)));
+// startedSlots (optional): the slots whose interview has started, so the count matches the Scoring page, which lists
+// an interview once it has begun.
+export function scoringTodo(me: string, bookings: Raw[], pairings: Raw[], scores: Raw[], startedSlots?: Set<string>): number {
+  const mySlots = new Set(
+    pairings
+      .filter((p) => p.interviewer_a === me || p.interviewer_b === me)
+      .map((p) => str(p.slot_id))
+      .filter((id) => !startedSlots || startedSlots.has(id)),
+  );
   const done = new Set(scores.filter((x) => x.scorer_id === me && x.published === true).map((x) => str(x.application_id)));
   const apps = new Set(bookings.filter((b) => b.status === 'active' && mySlots.has(str(b.slot_id))).map((b) => str(b.application_id)));
   return [...apps].filter((a) => !done.has(a)).length;

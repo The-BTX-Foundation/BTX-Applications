@@ -206,5 +206,7 @@ describe('sidebar counts', () => {
     const pairings = [{ slot_id: 's1', interviewer_a: ME, interviewer_b: OTHER }, { slot_id: 's2', interviewer_a: OTHER, interviewer_b: ME }, { slot_id: 's3', interviewer_a: OTHER, interviewer_b: 'z' }];
     const scores = [{ application_id: 'a2', scorer_id: ME, published: true }, { application_id: 'a1', scorer_id: ME, published: false }];
     expect(scoringTodo(ME, bookings, pairings, scores)).toBe(1);
+    // Only interviews that have started count, as on the Scoring page.
+    expect(scoringTodo(ME, bookings, pairings, scores, new Set())).toBe(0);
   });
 });

@@ -80,6 +80,15 @@ export async function undoAward(awardId: string): Promise<Result> {
     return { ok: true, message: 'Undone.' };
   }
   const client = await db();
+  // Once decisions are released the student has been told, so the award stays (her Portal result would change).
+  const award = await client.from('scholarship_awards').select('cycle_id').eq('id', awardId).maybeSingle();
+  const cycleId = (award.data as { cycle_id?: string } | null)?.cycle_id;
+  if (cycleId) {
+    const cycle = await client.from('cycles').select('decisions_released_at').eq('id', cycleId).maybeSingle();
+    if ((cycle.data as { decisions_released_at?: string | null } | null)?.decisions_released_at) {
+      return { ok: false, message: 'Decisions have gone out, so this award can no longer be undone here.' };
+    }
+  }
   // "Undo until the letter goes out": refuse once step 1 (award letter sent) is ticked.
   const letter = await client.from('award_steps').select('done_at').eq('award_id', awardId).eq('step', 1).maybeSingle();
   if (letter.error) return { ok: false, message: "That didn't undo. Try again." };

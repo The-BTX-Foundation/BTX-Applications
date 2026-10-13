@@ -141,7 +141,9 @@ export async function loadJourney(here: string, raw: string | undefined, fallbac
     } else {
       decision = { kind: 'won', storySent: dec.storySent };
       awardId = dec.awardId;
+      // Her own award: an extra award has its own name and amount, not the cycle's main award.
       if (dec.amountCents) view = { ...view, amount: formatMoney(dec.amountCents) };
+      if (dec.awardName) view = { ...view, awardName: dec.awardName };
       const s = await fetchStory(client, dec.awardId);
       if (s.failed) return { failed: true };
       story = s.row;

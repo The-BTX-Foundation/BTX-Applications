@@ -21,6 +21,14 @@ describe('status state picker', () => {
     // 03:00 UTC on Sep 15 is still Sep 14 in Eastern time
     expect(pickState({ ...base, now: new Date('2026-09-15T03:00:00Z') })).toBe('waiting');
   });
+  it('asks her to book as soon as the board opens times, even before the first interview day', () => {
+    const early = new Date('2026-09-10T16:00:00Z');
+    expect(pickState({ ...base, now: early })).toBe('waiting');
+    expect(pickState({ ...base, now: early, timesOpen: true })).toBe('book');
+  });
+  it('shows a booking made before the first interview day', () => {
+    expect(pickState({ ...base, now: new Date('2026-09-10T16:00:00Z'), booking: { ...oct6, bookedAt: '2026-09-10T15:00:00Z' } })).toBe('booked');
+  });
   it('shows the sent screen after she sent her free times', () => {
     expect(pickState({ ...base, freeTimes: { days: ['Sun'], windows: ['morning'], note: '' } })).toBe('sent');
   });

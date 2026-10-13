@@ -57,16 +57,20 @@ function Foot() {
   );
 }
 
+// A date the cycle settings may not have yet: "[date]" style placeholders never reach a winner's screen.
+const known = (d: string | null | undefined) => Boolean(d && !d.includes('['));
+
 export function WonStatus(p: Common & { sent: boolean; storyHref: string }) {
   const { view, award } = p;
   const first = <Name>{p.firstName}</Name>;
-  const scholar = (view.awardName ?? 'Scholarship').replace(/ Scholarship$/, ' Scholar');
+  // "Legacy Scholarship" -> "Legacy Scholar"; an extra award like "Persistence Award" -> "Persistence Scholar".
+  const scholar = (view.awardName ?? 'Scholarship').replace(/ (Scholarship|Award)$/, ' Scholar');
   const steps: { state: 'done' | 'now' | 'next'; date: string; title: string; text: string; action?: React.ReactNode }[] = [
     p.sent
       ? { state: 'done', date: `Sent ${award.sentDate}`, title: 'Photo and story sent', text: "We'll email you when your scholar page is live." }
       : {
           state: 'now',
-          date: `Due ${view.photoDue}`,
+          date: known(view.photoDue) ? `Due ${view.photoDue}` : 'Now',
           title: 'Add your photo and story',
           text: 'Your scholar page on the BTX website shows your photo and a few lines in your own words.',
           action: (
@@ -75,14 +79,19 @@ export function WonStatus(p: Common & { sent: boolean; storyHref: string }) {
             </Link>
           ),
         },
-    { state: p.sent ? 'now' : 'next', date: award.payDate, title: `We send your ${view.amount}`, text: view.paymentNote },
+    {
+      state: p.sent ? 'now' : 'next',
+      date: known(award.payDate) ? award.payDate : 'Next',
+      title: `We send your ${view.amount}`,
+      text: known(view.paymentNote) ? view.paymentNote : "We'll email you how and when it's paid.",
+    },
     ...(view.eventOn
       ? [
           {
             state: 'next' as const,
-            date: view.eventDate,
+            date: known(view.eventDate) ? view.eventDate : 'Later',
             title: 'Meet the board and the other scholars',
-            text: view.eventDate === '[Event date]' ? "[Event]. We'll email you the details." : "We'll email you the details.",
+            text: known(view.eventDate) ? "We'll email you the details." : "We'll email you the date and the details.",
           },
         ]
       : []),

@@ -121,10 +121,15 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
         <p key={a.id} className="s-xr">
           <span>
             {a.awardName} · {dollar(a.amountCents)} · {a.name}
-          </span>{' '}
-          <button type="button" className="o-ul" onClick={() => onUndo(a)}>
-            Undo
-          </button>
+          </span>
+          {released ? null : (
+            <>
+              {' '}
+              <button type="button" className="o-ul" onClick={() => onUndo(a)}>
+                Undo
+              </button>
+            </>
+          )}
         </p>
       ))}
       {released ? (
@@ -194,7 +199,10 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
   const nowLabel = !main ? `Record the ${leg.name} award` : data.callStep;
   const released = Boolean(addRefusal(releasedAt));
   const showRelease = canShowRelease({ role: isAdmin ? 'admin' : null, hasMainAward: Boolean(main), releasedAt });
-  const counts = { total: data.total, mainName: leg.name, extras: extras.length, recorded: recorded.length };
+  // Everyone who applied gets a decision, scored or not (lib/email/send.ts sendDecisionEmails), so the count is every
+  // submitted applicant, not only the ranked ones.
+  const everyone = Math.max(data.total, data.candidates.length);
+  const counts = { total: everyone, mainName: leg.name, extras: extras.length, recorded: recorded.length };
   // One award per applicant: someone who already has one is not offered again.
   const open = data.candidates.filter((c) => !recorded.some((a) => a.code === c.code));
   const allRows = [...data.rows, ...(showMore ? data.more : [])];
@@ -309,7 +317,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
             </b>
             <p>
               {main ? `${main.name} recorded.` : 'The board discusses and decides.'}
-              {main ? (
+              {main && !released ? (
                 <>
                   {' '}
                   <button type="button" className="o-ul" onClick={() => void undo(main)}>
@@ -386,11 +394,16 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
                       {main.awardName} award recorded: {main.name}
                     </b>
                     <span>
-                      {main.code} · {dollar(main.amountCents)} ·{' '}
-                      <button type="button" className="o-ul" onClick={() => void undo(main)}>
-                        Undo
-                      </button>{' '}
-                      until the letter goes out
+                      {main.code} · {dollar(main.amountCents)}
+                      {released ? null : (
+                        <>
+                          {' · '}
+                          <button type="button" className="o-ul" onClick={() => void undo(main)}>
+                            Undo
+                          </button>{' '}
+                          until the letter goes out
+                        </>
+                      )}
                     </span>
                   </>
                 ) : (
@@ -440,7 +453,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
       ) : null}
 
       {confirmRelease ? (
-        <Dialog title={releaseTitle(data.total)} onClose={() => (releasing ? undefined : setConfirmRelease(false))}>
+        <Dialog title={releaseTitle(everyone)} onClose={() => (releasing ? undefined : setConfirmRelease(false))}>
           <p>{releaseBody(releaseCounts({ ...counts, won: true }))}</p>
           <div className="s-dlg-b">
             <button type="button" className="o-btn p lg" disabled={releasing} onClick={() => void release()}>

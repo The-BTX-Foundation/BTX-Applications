@@ -44,6 +44,8 @@ export type JourneyInput = {
   booking: Booking | null;
   freeTimes: FreeTimes | null;
   decision: Decision;
+  /** True when the board has opened interview times she can book (open_interview_slots returned some). */
+  timesOpen?: boolean;
 };
 
 const DAY = 86400000;
@@ -51,7 +53,9 @@ const DAY = 86400000;
 // Picks the screen. Rules, in order:
 //  1. A decision shows when the database returns one (my_decision is null until an admin releases the decisions), so
 //     there is no date check here.
-//  2. Before the interviews open (or when the cycle sets no interview dates): the waiting screen.
+//  2. Before any times are open to book and before the interview weeks (or when the cycle sets no interview dates):
+//     the waiting screen. The board opens times after applications close, which can be days before the first
+//     interview, so open times (or a booking) end the wait.
 //  3. With a booking: interview day, then just booked or switched (first 24 hours), then 1 to 3 days away, then
 //     plain booked; once the interview has ended: the after screen.
 //  4. Without one: after the interview weeks, the after screen; free times sent, the sent screen; otherwise book.
@@ -61,7 +65,8 @@ export function pickState(i: JourneyInput): JourneyState {
     if (i.decision.kind === 'not-picked') return 'not-picked';
     return i.decision.storySent ? 'won-sent' : 'won';
   }
-  if (!i.interviewStart || today < i.interviewStart) return 'waiting';
+  const started = Boolean(i.interviewStart && today >= i.interviewStart);
+  if (!i.booking && !i.timesOpen && !started) return 'waiting';
   if (i.booking) {
     const end = new Date(i.booking.endsAt);
     if (i.now > end) return 'after';

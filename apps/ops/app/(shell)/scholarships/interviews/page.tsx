@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import { InterviewsView } from '@/components/interviews-view';
 import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';
-import { loadInterviews } from '@/lib/interviews';
+import { loadInterviews, loadVideoLinks } from '@/lib/interviews';
 
 export const metadata: Metadata = { title: 'Interviews' };
 
@@ -20,5 +20,7 @@ export default async function InterviewsPage({ searchParams }: { searchParams: P
       </>
     );
   }
-  return <InterviewsView data={data} />;
+  // Admins add the video links here (the student and both interviewers get them by email).
+  const videoLinks = data.isAdmin ? await loadVideoLinks() : undefined;
+  return <InterviewsView data={data} videoLinks={videoLinks} />;
 }

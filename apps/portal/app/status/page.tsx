@@ -30,6 +30,7 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
     booking: d.booking,
     freeTimes: d.freeTimes,
     decision: d.decision,
+    timesOpen: d.slots.length > 0,
   });
   if (state === 'waiting') {
     return (

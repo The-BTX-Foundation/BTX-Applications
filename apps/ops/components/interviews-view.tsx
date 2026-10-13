@@ -8,12 +8,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { InterviewsData, UpcomingInterview } from '@/lib/interviews';
+import type { InterviewsData, UpcomingInterview, VideoLinksData } from '@/lib/interviews';
 import { previewPairing, rerunPairing, type PairingPreview } from '@/lib/actions/interviews';
 import { PageHeader } from './page-header';
 import { Avatar, Dialog, VideoMark } from './sch-parts';
 import { FairnessSection } from './interviews/fairness-panel';
 import { TimesPanel } from './interviews/times-panel';
+import { VideoLinksPanel } from './interviews/video-links-panel';
 import './scholarships.css';
 import './interviews/interview-flow.css';
 
@@ -104,7 +105,8 @@ function PhoneCard({ r }: { r: UpcomingInterview }) {
 }
 
 // "Interview questions" and "Your availability": in the header on the laptop, under it on the phone.
-function HeaderLinks({ className }: { className: string }) {
+// onVideoLinks is set for admins once an interview is booked: it opens the "Add the video links" panel.
+function HeaderLinks({ className, onVideoLinks }: { className: string; onVideoLinks?: () => void }) {
   return (
     <div className={`iv-hdr-links ${className}`}>
       <Link className="o-ul" href="/scholarships/interviews/questions">
@@ -113,6 +115,11 @@ function HeaderLinks({ className }: { className: string }) {
       <Link className="o-ul" href="/scholarships/interviews/availability">
         Your availability
       </Link>
+      {onVideoLinks ? (
+        <button type="button" className="o-ul" onClick={onVideoLinks}>
+          Video links
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -121,8 +128,11 @@ function HeaderLinks({ className }: { className: string }) {
 const signature = (d: InterviewsData) =>
   JSON.stringify([d.times?.days.flatMap((x) => x.times.map((t) => [t.slotId, t.opened, t.booked])), d.times?.people.map((p) => [p.userId, p.sent]), d.fair?.people.map((p) => [p.userId, p.interviews]), d.upcoming.map((u) => [u.slotId, u.pair.map((p) => p.userId)])]);
 
-export function InterviewsView({ data }: { data: InterviewsData }) {
+// videoLinks is set for admins: the booked interviews whose video links can be added or changed.
+export function InterviewsView({ data, videoLinks }: { data: InterviewsData; videoLinks?: VideoLinksData }) {
   const router = useRouter();
+  const [vlOpen, setVlOpen] = useState(false);
+  const openLinks = videoLinks && videoLinks.rows.length > 0 ? () => setVlOpen(true) : undefined;
   const [rerun, setRerun] = useState(false);
   const [preview, setPreview] = useState<PairingPreview | null>(null);
   const [note, setNote] = useState('');
@@ -151,9 +161,9 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
   return (
     <div className="s-page iv-wide">
       <PageHeader title="Interviews" sub={<><span className="o-lg">{data.sub}</span><span className="o-ph">{data.subPhone}</span></>}>
-        <HeaderLinks className="o-lg" />
+        <HeaderLinks className="o-lg" onVideoLinks={openLinks} />
       </PageHeader>
-      <HeaderLinks className="o-ph" />
+      <HeaderLinks className="o-ph" onVideoLinks={openLinks} />
 
       {note ? (
         <p className="iv-note" role="status">
@@ -162,6 +172,16 @@ export function InterviewsView({ data }: { data: InterviewsData }) {
       ) : null}
 
       {data.times ? <TimesPanel key={`t-${sig}`} data={data.times} isAdmin={data.isAdmin} mock={mock} onNote={setNote} /> : null}
+
+      {videoLinks && vlOpen ? (
+        <VideoLinksPanel
+          data={videoLinks}
+          onClose={() => {
+            setVlOpen(false);
+            router.refresh();
+          }}
+        />
+      ) : null}
 
       {data.fair ? (
         <FairnessSection
