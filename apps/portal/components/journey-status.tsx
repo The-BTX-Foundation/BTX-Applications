@@ -2,6 +2,7 @@
 // status-request, status, status-today and their phone versions): book your interview, free times sent, just booked,
 // switched to a new time, interview soon, interview day, and the interview-done screen.
 import Link from 'next/link';
+import { describeRanges } from '@btx/ai';
 import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { PREPARE_GUIDE_URL } from '@/lib/config';
 import { easternDate, longDay } from '@/lib/format';
@@ -112,7 +113,15 @@ export function JourneyStatus(p: JourneyStatusProps) {
     state === 'sent' && p.freeTimes ? (
       <section className={j.tb}>
         <p className={s.label}>When you&apos;re free</p>
-        <p className={j.tbt}>{describeFreeTimes(p.freeTimes)}</p>
+        {p.freeTimes.ranges && p.freeTimes.ranges.length > 0 ? (
+          describeRanges(p.freeTimes.ranges).map((line) => (
+            <p key={line} className={j.tbt}>
+              {line}
+            </p>
+          ))
+        ) : (
+          <p className={j.tbt}>{describeFreeTimes(p.freeTimes)}</p>
+        )}
         <Link href={p.links.noTime} className={`lk ${j.change}`}>
           Change your times
         </Link>

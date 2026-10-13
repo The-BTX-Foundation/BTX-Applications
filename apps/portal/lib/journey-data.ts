@@ -12,6 +12,7 @@
 // is on the next-cycle reminder (the row is left out).
 import { redirect } from 'next/navigation';
 import {
+  fetchFreeRanges,
   fetchFreeTimes,
   fetchMyDecision,
   fetchMyInterview,
@@ -109,14 +110,15 @@ export async function loadJourney(here: string, raw: string | undefined, fallbac
   if (!cycle || !application || application.status !== 'submitted') redirect('/apply/start');
   const app: Application = application;
 
-  const [slotsRes, interviewRes, bookingsRes, decisionRes, freeRes] = await Promise.all([
+  const [slotsRes, interviewRes, bookingsRes, decisionRes, freeRes, rangesRes] = await Promise.all([
     fetchOpenSlots(client, cycle.id),
     fetchMyInterview(client, cycle.id),
     client.from('bookings').select('*').eq('application_id', app.id),
     fetchMyDecision(client, cycle.id),
     fetchFreeTimes(client, app.id),
+    fetchFreeRanges(client, app.id),
   ]);
-  if (!slotsRes || interviewRes.failed || bookingsRes.error || decisionRes.failed || freeRes.failed) return { failed: true };
+  if (!slotsRes || interviewRes.failed || bookingsRes.error || decisionRes.failed || freeRes.failed || rangesRes.failed) return { failed: true };
 
   const all = bookingsRes.data ?? [];
   const active = all.find((b) => b.status === 'active') ?? null;
@@ -170,7 +172,8 @@ export async function loadJourney(here: string, raw: string | undefined, fallbac
     now: new Date(),
     view,
     booking,
-    freeTimes: freeRes.row,
+    // her newer answer (time ranges) wins over an older days-and-windows one
+    freeTimes: rangesRes.row ? { days: [], windows: [], note: rangesRes.row.said, ranges: rangesRes.row.ranges } : freeRes.row,
     decision,
     interviewers: iv?.interviewers ?? [],
     joinUrl: iv?.videoUrl ?? null,

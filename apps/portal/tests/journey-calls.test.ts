@@ -34,6 +34,16 @@ function tableClient(row: unknown, error: unknown = null) {
         log.push({ table, op: 'upsert', payload, opts });
         return { error };
       },
+      insert: async (payload: unknown) => {
+        log.push({ table, op: 'insert', payload });
+        return { error };
+      },
+      update: (payload: unknown) => ({
+        eq: async (col: string, val: string) => {
+          log.push({ table, op: `update where ${col}=${val}`, payload });
+          return { error };
+        },
+      }),
     }),
   } as unknown as BtxClient;
   return { client, log };
@@ -108,15 +118,19 @@ describe('free times', () => {
 
 describe('free times as ranges', () => {
   const ranges = [{ day: '2026-10-15', start: '18:00', end: '20:00' }];
-  it('upserts the ranges and what she typed', async () => {
+  it('adds her row the first time, with the ranges and what she typed', async () => {
     const { client, log } = tableClient(null);
     expect(await saveFreeRanges(client, 'app1', { ranges, said: '  after labs ' })).toEqual({ ok: true });
-    expect(log[0]).toEqual({
-      table: 'interview_free_times',
-      op: 'upsert',
-      payload: { application_id: 'app1', ranges, said: 'after labs' },
-      opts: { onConflict: 'application_id' },
-    });
+    expect(log).toEqual([
+      { table: 'interview_free_times', op: 'select application_id where application_id=app1' },
+      { table: 'interview_free_times', op: 'insert', payload: { application_id: 'app1', ranges, said: 'after labs' } },
+    ]);
+  });
+  it('changes only the answer columns when she already has a row (no upsert: students cannot update application_id)', async () => {
+    const { client, log } = tableClient({ application_id: 'app1' });
+    expect(await saveFreeRanges(client, 'app1', { ranges, said: '' })).toEqual({ ok: true });
+    expect(log[1]).toEqual({ table: 'interview_free_times', op: 'update where application_id=app1', payload: { ranges, said: null } });
+    expect(log.some((l) => l.op === 'upsert')).toBe(false);
   });
   it('needs at least one range and reports a refusal', async () => {
     const { client, log } = tableClient(null);

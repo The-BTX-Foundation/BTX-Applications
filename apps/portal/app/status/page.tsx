@@ -9,19 +9,20 @@ import { NotPickedStatus, WonStatus } from '@/components/decision-status';
 import { JourneyStatus } from '@/components/journey-status';
 import { StatusView } from '@/components/status-view';
 import { journeyLinks } from '@/lib/journey-demo';
-import { pickState } from '@/lib/journey';
+import { parseRanges, pickState } from '@/lib/journey';
 import { loadJourney } from '@/lib/journey-data';
 import { easternDate } from '@/lib/format';
 import { emailConfigured } from '@btx/emails';
 
 export const metadata: Metadata = { title: 'Application submitted' };
 
-export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string; at?: string; days?: string; windows?: string }> }) {
-  const { demo, at, days, windows } = await searchParams;
+export default async function StatusPage({ searchParams }: { searchParams: Promise<{ demo?: string; at?: string; days?: string; windows?: string; r?: string }> }) {
+  const { demo, at, days, windows, r } = await searchParams;
   const d = await loadJourney('/status', demo, 'waiting', at);
   // mock: the free times she just sent on the none-of-these-times page
   if ('mock' in d && d.mock && d.freeTimes && days && windows) d.freeTimes = { days: days.split(','), windows: windows.split(','), note: '' };
   if ('failed' in d) return <ApplyLoadError status />;
+  if (d.mock && r && parseRanges(r).length > 0) d.freeTimes = { days: [], windows: [], note: '', ranges: parseRanges(r) };
   const state = pickState({
     now: d.now,
     interviewStart: d.view.drawing?.interviewStart ?? null,
