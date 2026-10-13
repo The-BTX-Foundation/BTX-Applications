@@ -34,3 +34,11 @@ export async function releaseDecisionsWith(deps: ReleaseDeps, cycleId: string, n
   const after = await deps.releasedAt(cycleId);
   return after ? { ok: true, releasedAt: after, already: true } : { ok: false, message: "Decisions weren't released. Try again." };
 }
+
+/**
+ * Whether the Selection page offers "Release decisions": only a board member with admin rights, once the main award is
+ * recorded, and not again after decisions have gone out. Everyone else sees the status without the button.
+ */
+export function canShowRelease(i: { role: string | null; hasMainAward: boolean; releasedAt: string | null }): boolean {
+  return i.role === 'admin' && i.hasMainAward && !i.releasedAt;
+}

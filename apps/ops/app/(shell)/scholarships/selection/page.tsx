@@ -4,6 +4,7 @@ import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';
 import { SelectionView } from '@/components/selection-view';
 import { loadSelection } from '@/lib/selection';
+import { requireStaff } from '@/lib/user';
 
 export const metadata: Metadata = { title: 'Selection' };
 
@@ -18,5 +19,7 @@ export default async function SelectionPage({ searchParams }: { searchParams: Pr
       </>
     );
   }
-  return <SelectionView data={data} />;
+  // Only a board member with admin rights gets the "Release decisions" button (the server action checks it again).
+  const user = await requireStaff();
+  return <SelectionView data={data} isAdmin={user.role === 'admin'} />;
 }

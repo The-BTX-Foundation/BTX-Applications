@@ -15,12 +15,15 @@
 //   - undoAward (tested live 2026-10-12 on the local stack: undone, and refused after the letter step is ticked) deletes that row (its award_steps go with it), only until the award letter is ticked.
 //   - releaseDecisions (tested live 2026-10-12 on the local stack on a separate draft cycle: refused for board, refused
 //     before the main award, stamped once, repeat answers with the same time) sets cycles.decisions_released_at (admins only, main award first, idempotent;
-//     the rule is lib/release.ts). There is no button for it yet (design pending).
+//     the rule is lib/release.ts). The Selection page's "Release decisions" button calls releaseAndNotify(), which releases
+//     and then sends the "you won" / "not picked" emails.
 //   - "Send the agenda" is hidden until email is set up (O8): live mode answers that it is not connected instead of
 //     guessing.
 import { hasSupabaseEnv } from '@btx/data';
 import { db, whoAmI } from '../sch-live';
 import { releaseDecisionsWith, type ReleaseResult } from '../release';
+import { emailOutcome, type EmailOutcome } from '../release-copy';
+import { sendDecisionEmails } from '../email/send';
 import { addRefusal, checkExtraAward } from '../award-input';
 import { selectionStore } from '@/mock/selection';
 
@@ -134,5 +137,24 @@ export async function releaseDecisions(cycleId: string): Promise<ReleaseResult> 
     );
   } catch {
     return { ok: false, message: "Decisions weren't released. Try again." };
+  }
+}
+
+/** What the "Release decisions" button gets back: when it was released and what happened to the emails. */
+export type ReleaseAndNotify = { ok: true; releasedAt: string; already: boolean; emails: EmailOutcome } | { ok: false; message: string };
+
+/**
+ * Releases the decisions, then sends the decision emails (once each: the send is safe to repeat). Mock mode has no email
+ * service, so it releases in memory and says no emails went out.
+ */
+export async function releaseAndNotify(cycleId: string): Promise<ReleaseAndNotify> {
+  const released = await releaseDecisions(cycleId);
+  if (!released.ok) return { ok: false, message: released.message };
+  if (!hasSupabaseEnv()) return { ok: true, releasedAt: released.releasedAt, already: released.already, emails: { state: 'not-configured' } };
+  try {
+    const sent = await sendDecisionEmails(cycleId);
+    return { ok: true, releasedAt: released.releasedAt, already: released.already, emails: emailOutcome(sent) };
+  } catch {
+    return { ok: true, releasedAt: released.releasedAt, already: released.already, emails: { state: 'failed' } };
   }
 }
