@@ -957,13 +957,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The subline wraps rather than cutting off the last-active day beside "Give admin rights". */
 .mn-pcard-n span {
   line-height: 20px;
   font-size: 14px;
   color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .mn-pcard-r {
   display: flex;

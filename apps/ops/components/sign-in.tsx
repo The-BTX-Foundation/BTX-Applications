@@ -90,7 +90,7 @@ export function SignIn({ next, notice }: { next?: string; notice?: 'access' | 'l
       {stage === 'email' ? (
         <form className="o-si-box" onSubmit={sendCode} noValidate>
           <h1>Sign in to the Ops Hub</h1>
-          <p className="o-si-sub">For BTX board members and staff.</p>
+          <p className="o-si-sub">For BTX board members.</p>
           <label className="o-si-lb" htmlFor="si-email">
             Email
           </label>

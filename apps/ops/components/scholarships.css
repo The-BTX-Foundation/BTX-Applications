@@ -980,6 +980,14 @@
   margin-top: 0;
 }
 /* phone: ranking */
+/* Selection: the ranking before anyone is scored. */
+.s-rke {
+  margin: 0;
+  padding: 16px 20px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
 .s-prow {
   display: flex;
   align-items: center;

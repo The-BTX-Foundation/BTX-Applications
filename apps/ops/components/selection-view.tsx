@@ -274,6 +274,7 @@ export function SelectionView({ data }: { data: SelectionData }) {
             <span>the board decides</span>
           </div>
           <p className="s-rule o-lg">Ranking by combined score. The board discusses and decides.</p>
+          {allRows.length === 0 ? <p className="s-rke">No scores yet. The ranking fills in as board members score interviews.</p> : null}
           {allRows.map((r) => (
             <div key={r.code}>
               <div className="o-lg">
