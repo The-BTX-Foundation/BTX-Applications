@@ -4,8 +4,9 @@
 //   laptop (900px and wider): the sidebar on the left, the page on the right;
 //   phone: a top bar (menu button, logo, avatar), the page, and five bottom tabs. The menu button opens a sheet with
 //   every route.
-// The folding areas open on their own page and fold with a click. The user card at the bottom signs out.
-import { useEffect, useState } from 'react';
+// The folding areas open on their own page and fold with a click. The user card at the bottom opens a small menu with
+// "Sign out" (Figma "Sidebar > Sign-out menu" and "Phone menu > Sign out").
+import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut } from '@btx/data';
@@ -26,11 +27,36 @@ function Count({ n, plain }: { n?: number | string; plain?: boolean }) {
   return <span className={plain ? 'o-ct plain' : 'o-ct'}>{n}</span>;
 }
 
-// The user card: initials, name and role. A click signs out (the card has no visible button in the design).
-function UserCard({ user, className }: { user: ShellUser; className: string }) {
+// The user card: initials, name and role. A click opens a small menu with "Sign out": a pop-up above the card on the laptop,
+// a row under it in the phone menu (a pop-up would cover a menu row). It closes on Escape, on a click outside and on
+// choosing an item, like the Portal's account menu (packages/ui/src/account-menu.tsx).
+function UserCard({ user, phone }: { user: ShellUser; phone?: boolean }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        button.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
   // Ends the session (cookies in live mode, the tab's remembered email in mock mode), then goes to sign-in.
   async function leave() {
+    setOpen(false);
     await signOut();
     try {
       sessionStorage.removeItem('btx-ops-alive');
@@ -39,14 +65,34 @@ function UserCard({ user, className }: { user: ShellUser; className: string }) {
     }
     router.push('/sign-in');
   }
+  const menu = (
+    <div className={phone ? 'o-m-out' : 'o-me-menu'} id={id}>
+      <button type="button" className="o-me-item" onClick={() => void leave()}>
+        {phone ? <OIcon name="signout" size={22} /> : null}
+        Sign out
+      </button>
+    </div>
+  );
   return (
-    <button type="button" className={className} onClick={leave} aria-label={`${user.name}, ${user.roleText}. Sign out`}>
-      <span className="o-av">{user.initials}</span>
-      <span className="o-me-t">
-        <b>{user.name}</b>
-        <span>{user.roleText}</span>
-      </span>
-    </button>
+    <div className={phone ? 'o-m-mew' : 'o-me-w'} ref={root}>
+      {open && !phone ? menu : null}
+      <button
+        ref={button}
+        type="button"
+        className={`${phone ? 'o-m-me' : 'o-me'}${open ? ' open' : ''}`}
+        aria-expanded={open}
+        aria-controls={id}
+        aria-label={`${user.name}, ${user.roleText}. Account menu`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="o-av">{user.initials}</span>
+        <span className="o-me-t">
+          <b>{user.name}</b>
+          <span>{user.roleText}</span>
+        </span>
+      </button>
+      {open && phone ? menu : null}
+    </div>
   );
 }
 
@@ -143,7 +189,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
             <span>{PEOPLE.label}</span>
           </Link>
         </nav>
-        <UserCard user={user} className="o-me" />
+        <UserCard user={user} />
       </aside>
 
       <div className="o-col">
@@ -201,7 +247,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
               <OIcon name="people" size={22} />
               <span className="o-m-l">{PEOPLE.label}</span>
             </Link>
-            <UserCard user={user} className="o-m-me" />
+            <UserCard user={user} phone />
           </nav>
         </div>
       ) : null}
