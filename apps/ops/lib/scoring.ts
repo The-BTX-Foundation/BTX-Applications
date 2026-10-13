@@ -7,6 +7,9 @@ import { loadApplicants, type ApplicantRow } from './applicants';
 import { shortAwardName, weightedScore } from './sch-logic';
 import { applicationRows, db, interviewsFor, publishedCycle, rubricFor, scoreProgress, staffNames, summariesFor, visibleScores, whoAmI, type Interview } from './sch-live';
 import { MOCK_SCHEDULE } from '@/mock/cycle';
+import { STARTER_QUESTIONS } from '@/mock/interview-flow';
+import { readQuestions } from './interview-flow-db';
+import type { Db } from './pairing-db';
 import { CYCLE_AVERAGE, QUEUE_CODES, RUBRIC, sheetFixture, weighted, type Quote } from '@/mock/scores';
 import { staffById } from '@/mock/staff';
 
@@ -39,6 +42,8 @@ export type ScoringData = {
   /** "3 to score by Sun Oct 11 · ...". */
   sub: string;
   criteria: Criterion[];
+  /** The interview questions for each criterion (by key), shown beside its score inputs. Empty when the cycle has none. */
+  questions?: Record<string, string[]>;
   /** "points" prints "20 points", "percent" prints "20%" (the stress frame). */
   weightStyle: 'points' | 'percent';
   sheets: Sheet[];
@@ -136,7 +141,9 @@ export async function loadScoring(opts: { forceError?: boolean; stress?: boolean
     const list = await loadApplicants();
     const rows = QUEUE_CODES.map((c) => list.rows.find((r) => r.code === c)).filter((r): r is ApplicantRow => Boolean(r));
     const sheets = rows.map(sheetFor);
-    return { sub: subLine(sheets.filter((s) => !s.published).length, due), criteria: criteria(), weightStyle: 'points', sheets, queueTotal: sheets.filter((s) => !s.published).length, failed: false, source: 'mock' };
+    const questions: Record<string, string[]> = {};
+    for (const q of STARTER_QUESTIONS) if (q.key) (questions[q.key] ??= []).push(q.text);
+    return { sub: subLine(sheets.filter((s) => !s.published).length, due), criteria: criteria(), questions, weightStyle: 'points', sheets, queueTotal: sheets.filter((s) => !s.published).length, failed: false, source: 'mock' };
   }
   try {
     return await live();
@@ -211,7 +218,11 @@ async function live(): Promise<ScoringData> {
     };
   });
   const open = sheets.filter((s) => !s.published).length;
-  return { sub: subLine(open, ''), criteria: crit, weightStyle: 'points', sheets, queueTotal: open, failed: false, source: 'live' };
+  // The cycle's interview questions by criterion; a failed read only means none are shown.
+  const questions: Record<string, string[]> = {};
+  const qs = await readQuestions(client as unknown as Db, cycle.id).catch(() => null);
+  if (qs?.ok) for (const q of qs.questions) if (q.criterionKey) (questions[q.criterionKey] ??= []).push(q.text);
+  return { sub: subLine(open, ''), criteria: crit, questions, weightStyle: 'points', sheets, queueTotal: open, failed: false, source: 'live' };
 }
 
 // The signed-in person's private notes (only the writer can read them).
