@@ -44,7 +44,7 @@ export function AccountMenu({ kind, accountName, helpHref, signOutHref = '/sign-
     trigger = (
       <>
         <Icon name="user" />
-        <span>{accountName}</span>
+        <span data-review-private>{accountName}</span>
         <Icon name="down" small />
       </>
     );
@@ -67,7 +67,7 @@ export function AccountMenu({ kind, accountName, helpHref, signOutHref = '/sign-
       </button>
       {open ? (
         <div className="am-list" id={id}>
-          {kind === 'phone' ? <p className="am-name">{accountName}</p> : null}
+          {kind === 'phone' ? <p className="am-name" data-review-private>{accountName}</p> : null}
           {kind === 'phone' ? (
             <a href={helpHref} className="am-item" onClick={() => setOpen(false)}>
               Help: email us

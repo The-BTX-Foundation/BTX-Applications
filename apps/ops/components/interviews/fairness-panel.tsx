@@ -112,7 +112,7 @@ export function FairnessSection({
 
   return (
     <div className="iv-cols fair">
-      <section className="o-card s-panel iv-main" aria-label="Interviews per board member">
+      <section className="o-card s-panel iv-main" aria-label="Interviews per board member" data-review="Interviews per board member">
         <div className="iv-ph">
           <h2>
             <span className="o-lg">Interviews per board member</span>
@@ -162,7 +162,7 @@ export function FairnessSection({
             <span className="iv-fn" />
           );
           return (
-            <div className="iv-fr" key={p.userId}>
+            <div className="iv-fr" key={p.userId} data-review-private>
               <div className="iv-top o-ph">
                 <b>{p.name}</b>
                 <span className="iv-ct">{p.interviews}</span>
@@ -203,7 +203,7 @@ export function FairnessSection({
         ) : null}
       </section>
 
-      <section className="o-card s-panel iv-side" aria-label="Booked interviews">
+      <section className="o-card s-panel iv-side" aria-label="Booked interviews" data-review="Booked interviews">
         <div className="iv-ph">
           <h2>Booked interviews</h2>
           <span>
@@ -212,7 +212,7 @@ export function FairnessSection({
         </div>
         {rows.length === 0 ? <p className="iv-pf">No interviews are coming up.</p> : null}
         {rows.map((r) => (
-          <div className="iv-bk" key={r.slotId}>
+          <div className="iv-bk" key={r.slotId} data-review-private>
             <b>{r.whenLine}</b>
             <Link className="o-ul" href={QUESTIONS_HREF}>
               Questions

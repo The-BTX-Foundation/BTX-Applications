@@ -23,13 +23,13 @@ export default async function ApplicationPage({ params }: Props) {
   if (!app) notFound();
   return (
     <>
-      <PageHeader title={app.name} sub={`${app.code} · ${app.term} · submitted ${app.submitted}`}>
+      <PageHeader title={app.name} sub={`${app.code} · ${app.term} · submitted ${app.submitted}`} reviewPrivate>
         <Link href="/scholarships/applicants" className="o-btn s lg">
           Back to applicants
         </Link>
       </PageHeader>
       <div className="o-app-grid">
-        <section className="o-card o-app-sec o-app-wide">
+        <section className="o-card o-app-sec o-app-wide" data-review="Applicant summary" data-review-private>
           <h2 className="o-h2">Applicant</h2>
           <dl className="o-app-dl">
             {app.identity.map((a) => (
@@ -40,7 +40,7 @@ export default async function ApplicationPage({ params }: Props) {
             ))}
           </dl>
         </section>
-        <section className="o-card o-app-sec">
+        <section className="o-card o-app-sec" data-review="Applicant answers" data-review-private>
           <h2 className="o-h2">Answers</h2>
           <dl className="o-app-dl">
             {app.answers.map((a) => (
@@ -51,7 +51,7 @@ export default async function ApplicationPage({ params }: Props) {
             ))}
           </dl>
         </section>
-        <section className="o-card o-app-sec">
+        <section className="o-card o-app-sec" data-review="Applicant documents" data-review-private>
           <h2 className="o-h2">Documents</h2>
           <ul className="o-app-files">
             {app.files.map((f) => (
@@ -70,7 +70,7 @@ export default async function ApplicationPage({ params }: Props) {
             ))}
           </ul>
         </section>
-        <section className="o-card o-app-sec o-app-wide">
+        <section className="o-card o-app-sec o-app-wide" data-review="Applicant short answers" data-review-private>
           <h2 className="o-h2">Short answers</h2>
           {SHORT_ANSWER_QUESTIONS.map((q, i) => (
             <div key={q}>

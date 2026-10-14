@@ -106,7 +106,7 @@ export function Landing({ variant, view, notified }: { variant: CycleVariant; vi
       <TopBar variant="signed-out" />
       <main id="main" className={`pm ${root}`}>
         <div className={s.top}>
-          <div className={s.left}>
+          <div className={s.left} data-review="Landing hero">
             <p className={s.status}>
               <span className={open ? 'gd' : `gd ${s.dotOpen}`} aria-hidden="true" />
               {open ? (
@@ -195,7 +195,7 @@ export function Landing({ variant, view, notified }: { variant: CycleVariant; vi
               </p>
             )}
           </div>
-          <aside className={s.card} aria-label="Who can apply and what you need">
+          <aside className={s.card} aria-label="Who can apply and what you need" data-review="Landing requirements">
             <div className={s.block}>
               <h2>Who can apply</h2>
               <ul className="ed">
@@ -225,7 +225,7 @@ export function Landing({ variant, view, notified }: { variant: CycleVariant; vi
           </aside>
         </div>
         {closed ? null : (
-          <section className={s.dates}>
+          <section className={s.dates} data-review="Landing dates">
             <h2>{view.term ?? PLACEHOLDER.date} dates.</h2>
             <DatesDrawing {...drawingProps(view, soon ? 'before' : 'open')} />
           </section>

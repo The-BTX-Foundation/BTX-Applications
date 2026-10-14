@@ -196,7 +196,7 @@ export function CycleSettingsView({ cycle, applications, otherPublishedTerm, can
       <fieldset className="cs-grid" disabled={locked || pending}>
         <legend className="cs-sr">Cycle settings</legend>
         <div className="cs-col">
-          <section className="cs-card cs-o1">
+          <section className="cs-card cs-o1" data-review="Cycle details">
             <h2>Award</h2>
             <div className="cs-body">
               <div className="cs-f">
@@ -215,7 +215,7 @@ export function CycleSettingsView({ cycle, applications, otherPublishedTerm, can
             </div>
           </section>
 
-          <section className="cs-card cs-o2">
+          <section className="cs-card cs-o2" data-review="Cycle dates">
             <h2>
               Dates <span>Eastern time</span>
             </h2>
@@ -267,7 +267,7 @@ export function CycleSettingsView({ cycle, applications, otherPublishedTerm, can
         </div>
 
         <div className="cs-col">
-          <section className="cs-card cs-o3">
+          <section className="cs-card cs-o3" data-review="Cycle award and requirements">
             <h2>Application</h2>
             <div className="cs-body">
               <div className="cs-f">
@@ -292,7 +292,7 @@ export function CycleSettingsView({ cycle, applications, otherPublishedTerm, can
             </div>
           </section>
 
-          <section className="cs-card cs-o4">
+          <section className="cs-card cs-o4" data-review="Cycle extras">
             <h2>After the award</h2>
             <div className="cs-body">
               <div className="cs-f">

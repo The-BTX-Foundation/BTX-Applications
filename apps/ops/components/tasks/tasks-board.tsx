@@ -39,7 +39,7 @@ function Avatar({ p, small }: { p: Person | undefined; small?: boolean }) {
     );
   }
   return (
-    <span className={`tk2-av${small ? ' sm' : ''}`} aria-hidden="true">
+    <span className={`tk2-av${small ? ' sm' : ''}`} aria-hidden="true" data-review-private>
       {p.initials}
     </span>
   );
@@ -480,7 +480,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
         </div>
         <label className="tk2-chip tk2-lg">
           <span>Person</span>
-          <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person">
+          <select data-review-private value={who} onChange={(e) => setWho(e.target.value)} aria-label="Person">
             <option value="">Everyone</option>
             {people.map((p) => (
               <option key={p.user_id} value={p.user_id}>
@@ -538,7 +538,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
       ) : null}
 
       <div className={`tk2-body${phoneOpen ? ' open' : ''}`}>
-        <section className="tk2-tab" aria-label="Tasks">
+        <section className="tk2-tab" aria-label="Tasks" data-review="Task list">
           <div className="tk2-th tk2-lg" aria-hidden="true">
             <span />
             <span>Task</span>
@@ -579,7 +579,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
             ) : null}
           </div>
         </section>
-        <aside className="tk2-dt" aria-label="Task details">
+        <aside className="tk2-dt" aria-label="Task details" data-review="Task details">
           <Details
             key={sel?.id ?? 'none'}
             t={sel}

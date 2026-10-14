@@ -188,7 +188,7 @@ export function NoTimeView(p: NoTimeProps) {
         </Button>
       }
     >
-      <div className={b.nc}>
+      <div className={b.nc} data-review="No time works">
         <Link href={p.scheduleHref} className={`lk ${b.bk}`}>
           <Icon name="left" small />
           <span>Back to the open times</span>
@@ -204,6 +204,7 @@ export function NoTimeView(p: NoTimeProps) {
             When are you free?
           </label>
           <textarea
+            data-review-private
             id="nt-said"
             className={`${b.ta} ${n.box} ${stage === 'edit' ? n.boxS : ''}`}
             value={said}
@@ -238,7 +239,7 @@ export function NoTimeView(p: NoTimeProps) {
                     : 'Add the days and times you’re free.'}
             </p>
             {rowsDays.length > 0 ? (
-              <ul className={n.list}>
+              <ul className={n.list} data-review-private>
                 {rowsDays.map((day) => (
                   <li key={day} className={n.row}>
                     <span className={n.dn}>{dayName(day)}</span>

@@ -49,7 +49,7 @@ export function FundraisingView({ data, demo }: { data: FundraisingData; demo?: 
         <PeriodChip year={2026} phone />
       </div>
 
-      <section className="mn-stats" aria-label="Fundraising numbers">
+      <section className="mn-stats" aria-label="Fundraising numbers" data-review="Fundraising numbers" data-review-private>
         <div className="o-card mn-stat">
           <p className="mn-sl">Raised</p>
           <p className="mn-sv">{usd(s.raised_cents)}</p>
@@ -89,7 +89,7 @@ export function FundraisingView({ data, demo }: { data: FundraisingData; demo?: 
       <WideChecklistPanel list={data.checklist} only="ph" now={data.mode === 'live' ? new Date().toISOString() : MOCK_NOW} />
 
       <div className="mn-two">
-        <section className="o-card mn-panel mn-gifts" aria-labelledby="mn-g-h">
+        <section className="o-card mn-panel mn-gifts" aria-labelledby="mn-g-h" data-review="Recent gifts" data-review-private>
           <div className="mn-ph">
             <h2 id="mn-g-h">Recent gifts</h2>
             <span className="o-lg">Last 5</span>
@@ -120,7 +120,7 @@ export function FundraisingView({ data, demo }: { data: FundraisingData; demo?: 
           ))}
         </section>
 
-        <section className="o-card mn-panel mn-src" aria-labelledby="mn-s-h">
+        <section className="o-card mn-panel mn-src" aria-labelledby="mn-s-h" data-review="Gifts by source" data-review-private>
           <div className="mn-ph">
             <h2 id="mn-s-h">By source</h2>
             <span>

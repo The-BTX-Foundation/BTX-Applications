@@ -102,7 +102,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
         </p>
       ) : null}
 
-      <section className="o-card mn-funds" aria-label="Funds on hand">
+      <section className="o-card mn-funds" aria-label="Funds on hand" data-review="Funds on hand" data-review-private>
         <p className="mn-funds-l">Funds on hand</p>
         <p className="mn-funds-v">{usd(s.funds.cents)}</p>
         <p className="mn-funds-n">
@@ -128,7 +128,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
 
       <div className="mn-cols">
         <div className="mn-lc">
-          <section className="o-card mn-panel mn-cat o-lg" aria-labelledby="mn-cat-h">
+          <section className="o-card mn-panel mn-cat o-lg" aria-labelledby="mn-cat-h" data-review="Budget by category" data-review-private>
             <div className="mn-ph">
               <h2 id="mn-cat-h">2026 budget by category</h2>
               <span>Spent so far and the Q4 plan</span>
@@ -167,7 +167,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
             </div>
           </section>
 
-          <section className="o-card mn-cat-ph o-ph" aria-label="By category">
+          <section className="o-card mn-cat-ph o-ph" aria-label="By category" data-review="Budget by category" data-review-private>
             <div className="mn-ph">
               <h2>By category</h2>
               <span>Spent of {data.year} budget</span>
@@ -188,7 +188,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
             })}
           </section>
 
-          <section className="o-card mn-panel mn-recent" aria-labelledby="mn-rec-h">
+          <section className="o-card mn-panel mn-recent" aria-labelledby="mn-rec-h" data-review="Recent spending" data-review-private>
             <div className="mn-ph">
               <h2 id="mn-rec-h">Recent spending</h2>
               <span className="o-lg">Last 5</span>
@@ -221,7 +221,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
         </div>
 
         <div className="mn-rc o-lg">
-          <section className="o-card mn-panel mn-q4" aria-labelledby="mn-q4-h">
+          <section className="o-card mn-panel mn-q4" aria-labelledby="mn-q4-h" data-review="Q4 budget checklist" data-review-private>
             <div className="mn-q4h">
               <Ring frac={steps.length ? doneN / steps.length : 0} label={`${doneN}/${steps.length}`} color="gold" size={44} />
               <div>
@@ -284,7 +284,7 @@ export function BudgetView({ data, demo }: { data: BudgetData; demo?: string }) 
             })}
           </section>
 
-          <section className="o-card mn-panel mn-chat" aria-labelledby="mn-ch-h">
+          <section className="o-card mn-panel mn-chat" aria-labelledby="mn-ch-h" data-review="Finance chat" data-review-private>
             <div className="mn-ph">
               <h2 id="mn-ch-h">Finance chat</h2>
               <Link href="/chat" className="mn-seeall">

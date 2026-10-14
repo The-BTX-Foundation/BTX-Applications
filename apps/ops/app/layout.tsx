@@ -3,6 +3,8 @@ import '@btx/ui/tokens.css';
 import '@btx/ui/components.css';
 import './ops.css';
 import { googleSansCode, googleSansFlex } from './fonts';
+import RaykenReview from './RaykenReview';
+import { ReviewContext } from '@/components/review-context';
 
 export const metadata: Metadata = {
   title: { default: 'Ops Hub | The BTX Foundation', template: '%s | Ops Hub' },
@@ -16,7 +18,13 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${googleSansFlex.variable} ${googleSansCode.variable}`}>
-      <body>{children}</body>
+      <head>
+        <RaykenReview />
+      </head>
+      <body>
+        <ReviewContext />
+        {children}
+      </body>
     </html>
   );
 }

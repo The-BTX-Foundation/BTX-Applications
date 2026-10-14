@@ -123,7 +123,7 @@ export function TasksCard({ data, videoLinks }: { data: TodayData; videoLinks?: 
     { id: 'approvals', label: 'Approvals', n: counts.approvals },
   ];
   return (
-    <section className="o-tk" aria-labelledby="tk-h">
+    <section className="o-tk" aria-labelledby="tk-h" data-review="Today tasks">
       <div className="o-tkh">
         <h2 className="o-h2" id="tk-h">
           Tasks

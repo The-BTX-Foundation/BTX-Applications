@@ -36,7 +36,7 @@ export function AreaChatPanel({ chat, composerLabel }: { chat: AreaChat; compose
     }
   }
   return (
-    <aside className="o-chat ar-chat" aria-label={chat.title}>
+    <aside className="o-chat ar-chat" aria-label={chat.title} data-review="Area chat" data-review-private>
       <div className="o-chat-h">
         <h2>{chat.title}</h2>
         <span>{chat.people} people</span>

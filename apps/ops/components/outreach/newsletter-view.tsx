@@ -78,7 +78,7 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
       </div>
 
       <div className="ou-nl">
-        <section className="ar-panel ou-issue" aria-labelledby="nl-issue">
+        <section className="ar-panel ou-issue" aria-labelledby="nl-issue" data-review="Newsletter issue">
           <div className="ou-ih">
             <Ring frac={total ? done / total : 0} label={`${done}/${total}`} color="gold" size={44} />
             <div>

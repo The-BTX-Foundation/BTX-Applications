@@ -19,7 +19,7 @@ function withCodes(text: string) {
 export function ChatPanel() {
   const days = Array.from(new Set(MOCK_CHAT.messages.map((m) => m.day)));
   return (
-    <aside className="o-chat" aria-label={MOCK_CHAT.title}>
+    <aside className="o-chat" aria-label={MOCK_CHAT.title} data-review="Area chat" data-review-private>
       <div className="o-chat-h">
         <h2>{MOCK_CHAT.title}</h2>
         <span>{MOCK_CHAT.people} people</span>

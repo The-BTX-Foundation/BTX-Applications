@@ -11,7 +11,7 @@ export function Name({ children }: { children: string }) {
       {parts.map((p, i) => (
         <Fragment key={i}>
           {i > 0 ? ' ' : null}
-          <span style={{ whiteSpace: 'nowrap' }}>{p}</span>
+          <span data-review-private style={{ whiteSpace: 'nowrap' }}>{p}</span>
         </Fragment>
       ))}
     </>
@@ -21,7 +21,7 @@ export function Name({ children }: { children: string }) {
 export function FileName({ children }: { children: string }) {
   const parts = children.split('_');
   return (
-    <>
+    <span data-review-private>
       {parts.map((p, i) => (
         <Fragment key={i}>
           {p}
@@ -32,6 +32,6 @@ export function FileName({ children }: { children: string }) {
           ) : null}
         </Fragment>
       ))}
-    </>
+    </span>
   );
 }

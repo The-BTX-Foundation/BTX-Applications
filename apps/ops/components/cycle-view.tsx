@@ -27,7 +27,7 @@ function OwnerMark({ o }: { o: Owner }) {
         <OIcon name="people" size={14} />
       </span>
     );
-  return <span className="o-ow">{o.initials}</span>;
+  return <span className="o-ow" data-review-private>{o.initials}</span>;
 }
 
 // One checklist row.
@@ -141,7 +141,7 @@ export function CycleView({ cycle }: { cycle: CycleOverview }) {
         </Link>
       </PageHeader>
 
-      <section className="o-card o-panel" aria-labelledby="cy-where">
+      <section className="o-card o-panel" aria-labelledby="cy-where" data-review="Cycle: where we are">
         <div className="o-ph2">
           <h2 className="o-h2" id="cy-where">
             Where the cycle is
@@ -178,7 +178,7 @@ export function CycleView({ cycle }: { cycle: CycleOverview }) {
         </ol>
       </section>
 
-      <section className="o-card o-panel o-cl" aria-labelledby="cy-list">
+      <section className="o-card o-panel o-cl" aria-labelledby="cy-list" data-review="Cycle checklist">
         <div className="o-ph2 list">
           <Ring frac={cl.total ? cl.done / cl.total : 0} label={`${cl.done}/${cl.total}`} color="gold" size={44} />
           <div>

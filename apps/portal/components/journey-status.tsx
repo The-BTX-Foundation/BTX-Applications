@@ -147,7 +147,7 @@ export function JourneyStatus(p: JourneyStatusProps) {
         {p.interviewers.length ? (
           <p className={j.tkW}>
             <Icon name="people" />
-            <span>With {names(p.interviewers)}, BTX board members.</span>
+            <span data-review-private>With {names(p.interviewers)}, BTX board members.</span>
           </p>
         ) : null}
         <div className={j.tkA}>
@@ -224,7 +224,7 @@ export function JourneyStatus(p: JourneyStatusProps) {
     <div className="app">
       <TopBar variant="signed-in" accountName={p.accountName} />
       <main id="main" className={`pm ${s.page}`}>
-        <div className={s.wrap}>
+        <div className={s.wrap} data-review={`Status: ${state}`}>
           <h1 className={s.title}>{title}</h1>
           {lead ? <p className={s.lead}>{lead}</p> : null}
           {book}

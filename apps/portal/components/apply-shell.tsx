@@ -66,7 +66,7 @@ export function ApplyShell({
           <div className="sr-only" role="status" aria-live="polite">
             {live ?? saved}
           </div>
-          <main id="main" className="wk">
+          <main id="main" className="wk" data-review={`Apply step ${current}: ${steps[current - 1]?.name ?? ''}`}>
             <div className="col">{children}</div>
           </main>
           <BottomBar

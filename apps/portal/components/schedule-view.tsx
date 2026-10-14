@@ -75,7 +75,7 @@ export function ScheduleView(p: ScheduleProps) {
         </Button>
       }
     >
-      <div className={b.sc}>
+      <div className={b.sc} data-review="Interview times">
         <h1 className={`st ${b.title}`}>Schedule your interview.</h1>
         {p.takenLabel ? (
           <p className={b.taken} role="status">

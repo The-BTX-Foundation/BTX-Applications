@@ -278,7 +278,7 @@ export function ChatView({ data }: { data: ChatData }) {
         </label>
       </div>
 
-      <nav className="ch-list" aria-label="Channels">
+      <nav className="ch-list" aria-label="Channels" data-review="Chat channels">
         <h1>Board chat</h1>
         <label className="ch-search">
           <OIcon name="search" size={17} />
@@ -329,14 +329,14 @@ export function ChatView({ data }: { data: ChatData }) {
             aria-current={sel === keyOf(c) ? "true" : undefined}
             onClick={() => open(keyOf(c))}
           >
-            <span className="ch-av s">{c.initials}</span>
-            <span>{c.name}</span>
+            <span className="ch-av s" data-review-private>{c.initials}</span>
+            <span data-review-private>{c.name}</span>
             <Pill n={c.unread} />
           </button>
         ))}
       </nav>
 
-      <section className="ch-th" aria-label={`${title} thread`}>
+      <section className="ch-th" aria-label={`${title} thread`} data-review="Chat thread" data-review-private>
         <div className="ch-thh">
           <div>
             <h2>{title}</h2>
@@ -454,7 +454,7 @@ export function ChatView({ data }: { data: ChatData }) {
         </form>
       </section>
 
-      <aside className="ch-sp" aria-label="Chat details">
+      <aside className="ch-sp" aria-label="Chat details" data-review="Chat details">
         <section>
           <h2>Pinned</h2>
           {pins.length === 0 ? (

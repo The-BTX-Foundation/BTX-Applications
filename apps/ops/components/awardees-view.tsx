@@ -82,7 +82,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
       {current ? (
         <div className="s-abody">
           {/* laptop: the awardees table */}
-          <section className="o-card s-panel s-tb o-lg">
+          <section className="o-card s-panel s-tb o-lg" data-review="Awardees table">
             <div className="s-th s-ath">
               <span>Awardee</span>
               <span>Award</span>
@@ -93,7 +93,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
               <span>Follow-up</span>
             </div>
             {rows.map((r) => (
-              <button type="button" key={r.awardId} className={`s-atr${r.awardId === sel?.awardId ? ' pick' : ''}`} onClick={() => setPick(r.awardId)}>
+              <button type="button" key={r.awardId} className={`s-atr${r.awardId === sel?.awardId ? ' pick' : ''}`} data-review-private onClick={() => setPick(r.awardId)}>
                 <span className="c">
                   <b>{r.name}</b>
                   <span>{r.code}</span>
@@ -126,8 +126,8 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
 
           {/* laptop: the awardee detail */}
           {sel ? (
-            <aside className="o-card s-panel s-dt o-lg">
-              <div className="s-dh">
+            <aside className="o-card s-panel s-dt o-lg" data-review="Awardee detail">
+              <div className="s-dh" data-review-private>
                 <p>
                   <OIcon name="scholarships" size={15} />
                   <span>{sel.awardName}</span>
@@ -174,7 +174,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
                 ) : null}
               </div>
               {sel.comment ? (
-                <div className="s-cmt">
+                <div className="s-cmt" data-review-private>
                   <span className="s-av cm">{sel.comment.byInitials}</span>
                   <div>
                     <b>{sel.comment.by}</b>
@@ -188,7 +188,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
           {/* phone: one card per awardee, then the follow-up card */}
           <div className="s-pawd o-ph">
             {rows.map((r) => (
-              <section key={r.awardId} className="o-card s-awc" onClick={() => setPick(r.awardId)}>
+              <section key={r.awardId} className="o-card s-awc" data-review-private onClick={() => setPick(r.awardId)}>
                 <div className="t">
                   <ScoreRing n={r.done} of={5} size={44} />
                   <span>
@@ -238,7 +238,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
           </div>
         </div>
       ) : (
-        <section className="o-card s-panel s-past">
+        <section className="o-card s-panel s-past" data-review="Past awardees">
           <div className="s-th s-pth">
             <span>Awardee</span>
             <span>Award</span>
@@ -247,7 +247,7 @@ export function AwardeesView({ data }: { data: AwardeesData }) {
           </div>
           {pastRows.length === 0 ? <p className="s-ln">No awards entered for this term.</p> : null}
           {pastRows.map((p) => (
-            <div className="s-tr s-ptr" key={p.id}>
+            <div className="s-tr s-ptr" key={p.id} data-review-private>
               <b>{p.label}</b>
               <span>{p.awardName}</span>
               <b>{p.amountLabel}</b>

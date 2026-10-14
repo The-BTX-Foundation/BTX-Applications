@@ -148,7 +148,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
 
       <div className="s-cols">
         {/* queue (laptop) */}
-        <section className="o-card s-panel s-q o-lg">
+        <section className="o-card s-panel s-q o-lg" data-review="Scoring queue">
           <div className="s-ph s-qh">
             <h2>Your queue</h2>
             <span>{data.queueTotal}</span>
@@ -156,7 +156,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
           {todo.map((s) => (
             <button type="button" key={s.code} className={`s-qr${s.code === sheet.code ? ' pick' : ''}`} onClick={() => setCode(s.code)}>
               <ScoreRing n={count(picks[s.code] ?? {})} size={38} />
-              <span className="s-qb">
+              <span className="s-qb" data-review-private>
                 <b>{s.name}</b>
                 <span>
                   {s.code} · {lineFor(s)}
@@ -177,7 +177,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
           {done.map((s) => (
             <button type="button" key={s.code} className={`s-qr${s.code === sheet.code ? ' pick' : ''}`} onClick={() => setCode(s.code)}>
               <ScoreRing n={count(picks[s.code] ?? {})} size={38} />
-              <span className="s-qb">
+              <span className="s-qb" data-review-private>
                 <b>{s.name}</b>
                 <span>
                   {s.code} · {lineFor(s)}
@@ -185,14 +185,14 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
               </span>
             </button>
           ))}
-          <p className="s-qn">
+          <p className="s-qn" data-review-private>
             {sheet.name}&apos;s other interviewer, {sheet.otherName}, {sheet.otherPublished ? "has published. You'll see both scores once you publish." : "has not published yet. You'll see both scores once you both publish."}
           </p>
         </section>
 
         {/* the rubric (laptop) */}
-        <section className="o-card s-panel s-rub o-lg">
-          <div className="s-rh">
+        <section className="o-card s-panel s-rub o-lg" data-review="Score sheet">
+          <div className="s-rh" data-review-private>
             <h2>{sheet.name}</h2>
             <p>
               {sheet.code} · {sheet.cycleLine}
@@ -253,13 +253,13 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
         </section>
 
         {/* interview notes (laptop) */}
-        <aside className="o-card s-panel s-nts o-lg">
+        <aside className="o-card s-panel s-nts o-lg" data-review="Interview notes">
           <div className="s-ph">
             <h2>Interview notes</h2>
           </div>
-          {sheet.summary ? <p className="s-nb">{sheet.summary}</p> : <p className="s-nb muted">Interview notes will show here once they are written.</p>}
+          {sheet.summary ? <p className="s-nb" data-review-private>{sheet.summary}</p> : <p className="s-nb muted">Interview notes will show here once they are written.</p>}
           {sheet.quotes.map((q) => (
-            <div className="s-nq" key={q.criterion}>
+            <div className="s-nq" key={q.criterion} data-review-private>
               <p>
                 <VideoMark size={15} />
                 <b>{q.criterion}</b>
@@ -272,6 +272,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
             Your private notes
           </label>
           <textarea
+            data-review-private
             id="s-private"
             placeholder="Add a note only you can see"
             value={notes[sheet.code] ?? ''}
@@ -282,8 +283,8 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
 
         {/* phone: the scorecard */}
         <div className="s-pcard o-ph">
-          <section className="o-card s-pap">
-            <div>
+          <section className="o-card s-pap" data-review="Score sheet header">
+            <div data-review-private>
               <b>
                 {sheet.name} · {sheet.code}
               </b>

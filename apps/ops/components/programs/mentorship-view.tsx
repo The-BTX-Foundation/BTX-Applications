@@ -44,7 +44,7 @@ export function MentorshipView({ data }: { data: MentorData }) {
         </div>
       </div>
 
-      <section className="ar-panel" aria-labelledby="mn-list">
+      <section className="ar-panel" aria-labelledby="mn-list" data-review="Mentorship">
         <div className="ar-ph ring">
           <Ring frac={total ? done / total : 0} label={`${done}/${total}`} color="gold" size={44} />
           <div>

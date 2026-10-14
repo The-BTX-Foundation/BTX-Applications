@@ -239,7 +239,7 @@ export function AvailabilityView({ data }: { data: AvailabilityPageData }) {
               {conflicts.length === 0 ? (
                 <p className="av-none">No names yet.</p>
               ) : (
-                <ul className="av-names">
+                <ul className="av-names" data-review-private>
                   {conflicts.map((n) => (
                     <li key={n}>
                       <b>{n}</b>
@@ -265,7 +265,7 @@ export function AvailabilityView({ data }: { data: AvailabilityPageData }) {
                   addName();
                 }}
               >
-                <input className="av-in" value={nameInput} maxLength={120} placeholder="Add a name" aria-label="Add a name" autoComplete="off" onChange={(e) => setNameInput(e.target.value)} />
+                <input className="av-in" data-review-private value={nameInput} maxLength={120} placeholder="Add a name" aria-label="Add a name" autoComplete="off" onChange={(e) => setNameInput(e.target.value)} />
                 <button type="submit" className="o-btn s xl">
                   Add
                 </button>
