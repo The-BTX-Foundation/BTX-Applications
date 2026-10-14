@@ -8,7 +8,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { OIcon } from '@/components/icons';
 import { dateOnlyLabel, timeLabel } from '@/lib/format';
-import { canUseMoney, totals, usd, type BudgetData } from '@/lib/money-shared';
+import { canUseMoney, totals, usd, type BudgetData, type PlanState } from '@/lib/money-shared';
 import type { StaffRole } from '@/lib/role';
 import { DeclineForm } from './budget-view';
 import { Bar } from './ui';
@@ -34,12 +34,29 @@ const LINE_ORDER = ['Scholarships', 'Certification program', 'Operations', 'Spon
 const order = (name: string) => (LINE_ORDER.includes(name) ? LINE_ORDER.indexOf(name) : LINE_ORDER.length);
 
 export function ApprovalView({ data, demo, role, initials }: { data: BudgetData; demo?: string; role: StaffRole; initials: string }) {
+  // Live mode before anyone starts the Q4 plan: nothing to approve yet.
+  if (!data.plan) {
+    return (
+      <div className="mn-ap">
+        <ApprovalTop initials={initials} />
+        <div className="mn-ap-body">
+          <div className="mn-ap-h">
+            <h1>Approve Q4 budget</h1>
+            <p>No Q4 plan yet.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return <ApprovalPlan data={data} plan={data.plan} demo={demo} role={role} initials={initials} />;
+}
+
+function ApprovalPlan({ data, plan, demo, role, initials }: { data: BudgetData; plan: PlanState; demo?: string; role: StaffRole; initials: string }) {
   const b = useBudget(data, demo);
   const { state: s } = b;
   const [declining, setDeclining] = useState(false);
   const can = canUseMoney(role);
   const t = totals(s.categories);
-  const plan = data.plan;
   const approved = s.status === 'approved';
   const declined = s.status === 'declined';
   const steps = data.steps.map((x) => (x.kind === 'approval' ? approved : x.done));
@@ -56,7 +73,7 @@ export function ApprovalView({ data, demo, role, initials }: { data: BudgetData;
         <div className="mn-ap-h">
           <h1>Approve Q{plan.quarter} budget</h1>
           <p>
-            Due {dateOnlyLabel(plan.due_on)} · from {plan.submitter}
+            {plan.due_on ? `Due ${dateOnlyLabel(plan.due_on)} · ` : ''}from {plan.submitter}
           </p>
           <p>{`Q${plan.quarter} budget · ${doneN} of ${steps.length} done${declined ? ', now Approve' : next ? `, now ${next.now}` : ''}`}</p>
         </div>
@@ -105,7 +122,7 @@ export function ApprovalView({ data, demo, role, initials }: { data: BudgetData;
         <div className="mn-apbar">
           {approved ? (
             <p>
-              Approved by you, {timeLabel(s.decided_at ?? new Date().toISOString())}
+              Approved by {plan.decided_by && plan.decided_by !== data.me ? (plan.decided_by_name ?? 'someone else') : 'you'}, {timeLabel(s.decided_at ?? new Date().toISOString())}
               {' · '}
               <button type="button" className="mn-link" onClick={() => void b.reopen()}>
                 Undo

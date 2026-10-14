@@ -2,7 +2,8 @@
 
 // Money > Fundraising (Figma laptop and phone): the five numbers, recent gifts, where the money came from, and the
 // Year-end giving checklist. "Log a gift" shows only for admin and board. Data: lib/fundraising.ts; a logged gift in mock
-// mode updates this page's numbers (lib/mock-store.ts); live mode writes with lib/money-writes.ts (NOT TESTED).
+// mode updates this page's numbers (lib/mock-store.ts); live mode writes with lib/money-writes.ts. Live mode with no goal
+// set or no checklist yet: the numbers say "No goal set yet" and the checklist panel is left out.
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,7 +12,7 @@ import { MOCK_NOW } from '@/mock/applicants';
 import { PageHeader } from '@/components/page-header';
 import { dateOnlyLabel } from '@/lib/format';
 import { useMockState } from '@/lib/mock-store';
-import { canUseMoney, GIFT_SOURCES, pct, usd, type FundraisingData } from '@/lib/money-shared';
+import { canUseMoney, GIFT_SOURCE_SHORT, pct, usd, type FundraisingData, type GiftSource } from '@/lib/money-shared';
 import { logGift, type GiftInput } from '@/lib/money-writes';
 import type { StaffRole } from '@/lib/role';
 import { GiftDialog } from './money-dialogs';
@@ -58,8 +59,8 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
     setOpen(false);
   }
 
-  const toGo = Math.max(0, goal - s.raised_cents);
-  const sourceName = (k: string | null) => GIFT_SOURCES.find((x) => x.key === k)?.label ?? '[source]';
+  const toGo = goal === null ? null : Math.max(0, goal - s.raised_cents);
+  const sourceName = (k: GiftSource | null) => (k ? GIFT_SOURCE_SHORT[k] : '[source]');
 
   return (
     <>
@@ -67,8 +68,8 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         title="Fundraising"
         sub={
           <>
-            <span className="o-lg">{`Q3 brought in ${usd(data.q3_cents)} · ${usd(toGo)} to go by Dec 31`}</span>
-            <span className="o-ph">{`Money · ${usd(s.raised_cents)} of ${usd(goal)} raised`}</span>
+            <span className="o-lg">{`Q3 brought in ${usd(data.q3_cents)}${toGo === null ? ' · No goal set yet' : ` · ${usd(toGo)} to go by Dec 31`}`}</span>
+            <span className="o-ph">{goal === null ? `Money · ${usd(s.raised_cents)} raised` : `Money · ${usd(s.raised_cents)} of ${usd(goal)} raised`}</span>
           </>
         }
         actionsClass="mn-acts"
@@ -101,13 +102,19 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         <div className="o-card mn-stat">
           <p className="mn-sl">Raised</p>
           <p className="mn-sv">{usd(s.raised_cents)}</p>
-          <p className="mn-ss">
-            <span className="o-lg">of {usd(goal)}</span>
-            <span className="o-ph">
-              {pct(s.raised_cents, goal)}% of {usd(goal)}
-            </span>
-          </p>
-          <span className="mn-pct o-lg">{pct(s.raised_cents, goal)}%</span>
+          {goal === null ? (
+            <p className="mn-ss">No goal set yet</p>
+          ) : (
+            <>
+              <p className="mn-ss">
+                <span className="o-lg">of {usd(goal)}</span>
+                <span className="o-ph">
+                  {pct(s.raised_cents, goal)}% of {usd(goal)}
+                </span>
+              </p>
+              <span className="mn-pct o-lg">{pct(s.raised_cents, goal)}%</span>
+            </>
+          )}
         </div>
         <div className="o-card mn-stat">
           <p className="mn-sl">Donors</p>
@@ -116,7 +123,7 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         </div>
         <div className="o-card mn-stat">
           <p className="mn-sl">Average gift</p>
-          <p className="mn-sv">about {usd(data.avg_gift_cents)}</p>
+          <p className="mn-sv">about {usd(Math.round(data.avg_gift_cents / 100) * 100)}</p>
           <p className="mn-ss">Across all gifts</p>
         </div>
         <div className="o-card mn-stat">
@@ -134,7 +141,7 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         </div>
       </section>
 
-      <WideChecklistPanel list={data.checklist} only="ph" now={data.mode === 'live' ? new Date().toISOString() : MOCK_NOW} />
+      {data.checklist ? <WideChecklistPanel list={data.checklist} only="ph" now={data.mode === 'live' ? new Date().toISOString() : MOCK_NOW} /> : null}
 
       <div className="mn-two">
         <section className="o-card mn-panel mn-gifts" aria-labelledby="mn-g-h">
@@ -151,6 +158,7 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
             <span>Source</span>
             <span className="r">Amount</span>
           </div>
+          {s.recent.length === 0 ? <p className="mn-none">No gifts logged yet.</p> : null}
           {s.recent.map((g) => (
             <div key={g.id} className="mn-tr mn-grow">
               <span className="o-lg">{g.gift_on ? dateOnlyLabel(g.gift_on) : '[date]'}</span>
@@ -191,7 +199,7 @@ export function FundraisingView({ data, demo, role }: { data: FundraisingData; d
         </section>
       </div>
 
-      <WideChecklistPanel list={data.checklist} only="lg" />
+      {data.checklist ? <WideChecklistPanel list={data.checklist} only="lg" /> : null}
 
       {open ? <GiftDialog onClose={() => setOpen(false)} onSave={save} /> : null}
     </>

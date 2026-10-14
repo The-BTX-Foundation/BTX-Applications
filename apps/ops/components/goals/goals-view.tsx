@@ -1,10 +1,12 @@
 'use client';
 
 // The Goals screen (Figma "Goals", laptop and phone): year switch, four goal cards, scholars funded by award cycle, and
-// (laptop) the Year over year table where past years are typed in once. MOCK today: the year switch only has 2026 data,
-// "Edit goals" has no frame so it does nothing yet, and a saved figure lives in this component's state (resets on reload).
-// In live mode "Save" will upsert `year_figures` (year, metric, value, entered_by).
+// (laptop) the Year over year table where past years are typed in once. The year switch only has the current year's data.
+// "Edit goals" is hidden for now (O5). Mock mode: a saved figure lives in this component's state (resets on reload). Live
+// mode: "Save" upserts `year_figures` (year, metric, value; entered_by defaults to the signed-in person), tested live as
+// admin and board on the local database (2026-10-12); money is saved in cents.
 import { useState } from 'react';
+import { getBrowserClient } from '@btx/data';
 import { PageHeader } from '../page-header';
 import type { GoalCard, GoalStatus, GoalsData } from '@/mock/goals';
 import './goals.css';
@@ -83,8 +85,29 @@ function YoyCell({ metric, saved, open, onOpen, onSave }: { metric: Metric; save
 
 export function GoalsView({ data }: { data: GoalsData }) {
   const [year, setYear] = useState(data.year);
-  // MOCK: in-memory only. NOT TESTED in live mode: needs the Ops Hub tables (draft schema, not applied).
   const [saved, setSaved] = useState<Record<string, number>>({});
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  // Saves one Year over year figure: on the page at once, and in live mode in year_figures (undone if that fails).
+  const save = (key: string, metric: Metric, y: number, n: number) => {
+    setSaved((s) => ({ ...s, [key]: n }));
+    setOpenKey(null);
+    setFailedKey(null);
+    if (!data.live) return;
+    const db = getBrowserClient() as unknown as { from: (t: string) => { upsert: (v: Record<string, unknown>) => PromiseLike<{ error: unknown }> } };
+    void db
+      .from('year_figures')
+      .upsert({ year: y, metric, value: metric === 'money_raised_cents' ? Math.round(n * 100) : n })
+      .then(({ error }) => {
+        if (!error) return;
+        setSaved((s) => {
+          const next = { ...s };
+          delete next[key];
+          return next;
+        });
+        setOpenKey(key);
+        setFailedKey(key);
+      });
+  };
   const [openKey, setOpenKey] = useState<string | null>('money_raised_cents:2025');
   const max = Math.max(1, ...data.cycles.map((c) => c.count ?? 0));
   return (
@@ -97,21 +120,23 @@ export function GoalsView({ data }: { data: GoalsData }) {
             </button>
           ))}
         </div>
-        <button type="button" className="o-btn s lg gl-edit-goals">
-          Edit goals
-        </button>
       </PageHeader>
 
       {year === data.year ? (
         <>
-          <section className="gl-cards" aria-label="This year's goals">
-            {data.cards.map((g) => (
-              <Card key={g.id} g={g} />
-            ))}
-          </section>
+          {data.cards.length ? (
+            <section className="gl-cards" aria-label="This year's goals">
+              {data.cards.map((g) => (
+                <Card key={g.id} g={g} />
+              ))}
+            </section>
+          ) : (
+            <p className="gl-none">No goals set for {year} yet.</p>
+          )}
 
           <section className="gl-panel gl-chart">
             <h2>Scholars funded, by award cycle</h2>
+            {data.cycles.length === 0 ? <p className="gl-none">No awards recorded yet.</p> : null}
             <div className="gl-cols">
               {data.cycles.map((c, i) => (
                 <div key={i} className={`gl-col${c.count === null ? ' next' : ''}`}>
@@ -158,11 +183,9 @@ export function GoalsView({ data }: { data: GoalsData }) {
                         saved={stored}
                         open={openKey === key && stored === undefined}
                         onOpen={() => setOpenKey(key)}
-                        onSave={(n) => {
-                          setSaved((s) => ({ ...s, [key]: n }));
-                          setOpenKey(null);
-                        }}
+                        onSave={(n) => save(key, r.metric, y, n)}
                       />
+                      {failedKey === key ? <span className="gl-err-line" role="alert">Didn&apos;t save. Try again.</span> : null}
                     </span>
                   );
                 })}

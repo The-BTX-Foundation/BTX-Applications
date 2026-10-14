@@ -1,11 +1,21 @@
-// An area's chat panel beside its page (Figma "aside.chat", e.g. "Programs chat"). MOCK: there is no chat table yet, so
-// the thread is the Figma sample and the composer does not send anything (it is disabled until chat exists). It reuses
-// the cycle page's .o-chat styles.
+// An area's chat panel beside its page (Figma "aside.chat", e.g. "Programs chat"). It reuses the cycle page's .o-chat
+// styles. MOCK mode (no Supabase env): the thread is the `chat` sample passed in and the composer is a drawing that sends
+// nothing. LIVE mode: the area's channel (`area`, or the area named in "Message <Area>") with its latest messages and a
+// working composer (area-thread.tsx); the `chat` prop is not used. Nothing for someone who can't see the chat.
+import { hasSupabaseEnv } from '@btx/data';
+import { loadAreaChat } from '@/lib/chat';
 import type { AreaChat } from '@/mock/area';
 import { OIcon } from '../icons';
+import { AreaThread } from './area-thread';
 import './area.css';
 
-export function AreaChatPanel({ chat, composerLabel }: { chat: AreaChat; composerLabel: string }) {
+export async function AreaChatPanel({ chat, composerLabel, area }: { chat: AreaChat; composerLabel: string; area?: string }) {
+  if (hasSupabaseEnv()) {
+    const slug = area ?? composerLabel.replace(/^Message\s+/, '').trim().toLowerCase();
+    const live = await loadAreaChat(slug);
+    if (!live) return null;
+    return <AreaThread channelId={live.channelId} title={live.title} people={live.people} messages={live.messages} composerLabel={composerLabel} className="ar-chat" />;
+  }
   const days = Array.from(new Set(chat.messages.map((m) => m.day)));
   return (
     <aside className="o-chat ar-chat" aria-label={chat.title}>

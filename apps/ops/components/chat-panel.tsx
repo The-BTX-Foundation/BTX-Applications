@@ -1,6 +1,10 @@
-// The Scholarships chat panel beside the cycle page (Figma "aside.chat"). MOCK: there is no chat table yet, so the thread
-// is the Figma sample (mock/cycle.ts) and the composer does not send anything (it is disabled until chat exists).
+// The Scholarships chat panel beside the cycle page (Figma "aside.chat"). MOCK mode (no Supabase env): the thread is the
+// Figma sample (mock/cycle.ts) and the composer is a drawing that sends nothing. LIVE mode: the Scholarships channel's
+// latest messages and a working composer (components/area/area-thread.tsx); nothing for someone who can't see the chat.
+import { hasSupabaseEnv } from '@btx/data';
+import { loadAreaChat } from '@/lib/chat';
 import { MOCK_CHAT } from '@/mock/cycle';
+import { AreaThread } from './area/area-thread';
 import { OIcon } from './icons';
 
 // Keeps an applicant code ("APP-2026-00004") on one line, as the design does.
@@ -16,7 +20,12 @@ function withCodes(text: string) {
   );
 }
 
-export function ChatPanel() {
+export async function ChatPanel() {
+  if (hasSupabaseEnv()) {
+    const chat = await loadAreaChat('scholarships');
+    if (!chat) return null;
+    return <AreaThread channelId={chat.channelId} title={chat.title} people={chat.people} messages={chat.messages} composerLabel="Message Scholarships" />;
+  }
   const days = Array.from(new Set(MOCK_CHAT.messages.map((m) => m.day)));
   return (
     <aside className="o-chat" aria-label={MOCK_CHAT.title}>

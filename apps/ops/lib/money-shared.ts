@@ -65,6 +65,8 @@ export const GIFT_SOURCES = [
   { key: 'grant', label: 'Grants' },
 ] as const;
 export type GiftSource = (typeof GIFT_SOURCES)[number]['key'];
+/** The short source name a gift row shows (the By source panel uses the long one). */
+export const GIFT_SOURCE_SHORT: Record<GiftSource, string> = { individual: 'Individual', corporate: 'Corporate', event: 'Event', grant: 'Grant' };
 
 // ---------------------------------------------------------------- Budget
 export type BudgetCategory = {
@@ -95,15 +97,18 @@ export type PlanState = {
   status: PlanStatus;
   note: string | null;
   decline_note: string | null;
-  due_on: string;
+  /** The approval task's due date (null = none set). */
+  due_on: string | null;
   /** Who drafted the plan (submitted_by's name): where a decline note goes back to. */
   submitter: string;
   /** Who approved or declined it and when (stamped by the database: decided_by, decided_at). */
   decided_by: string | null;
   decided_at: string | null;
+  /** The decider's name (live mode), for "Approved by Kelsey Davis". */
+  decided_by_name?: string | null;
 };
 
-export type BudgetStep = { id: string; title: string; owner: string; due_on: string; done: boolean; now: string; kind: 'step' | 'approval' };
+export type BudgetStep = { id: string; title: string; owner: string; due_on: string | null; done: boolean; now: string; kind: 'step' | 'approval' };
 export type Comment = { id: string; name: string; initials: string; time: string; body: string };
 export type Fund = { cents: number; as_of: string; by: string };
 
@@ -114,15 +119,36 @@ export type BudgetData = {
   me: string;
   year: number;
   q3_spent_cents: number;
-  funds: Fund;
+  /** The latest "Funds on hand" figure; null = never recorded (live mode before the first update). */
+  funds: Fund | null;
   categories: BudgetCategory[];
   recent: SpendRow[];
-  plan: PlanState;
+  /** The year's Q4 plan; null = nobody has started it yet (live mode). */
+  plan: PlanState | null;
   steps: BudgetStep[];
   comments: { count: number; list: Comment[] };
-  chat: { name: string; initials: string; time: string; body: string };
+  /** The latest Money chat message; null = no messages yet. */
+  chat: { name: string; initials: string; time: string; body: string } | null;
 };
 
+
+/** "Sponsorships (NSBE convention)" -> "Sponsorships": the shorter name the phone and the approval screen use. */
+export function shortCategory(name: string): string {
+  return name.replace(/\s*\(.*\)\s*$/, '');
+}
+
+/** The first and last day of a quarter, as ISO dates ("2026-07-01", "2026-09-30"). */
+export function quarterRange(year: number, q: number): [string, string] {
+  const from = `${year}-${String((q - 1) * 3 + 1).padStart(2, '0')}-01`;
+  const last = new Date(Date.UTC(year, q * 3, 0)).getUTCDate();
+  return [from, `${year}-${String(q * 3).padStart(2, '0')}-${last}`];
+}
+
+/** What was spent in a quarter (spending_entries.spent_on inside it). */
+export function spentInQuarter(rows: { spent_on: string; amount_cents: number }[], year: number, q: number): number {
+  const [from, to] = quarterRange(year, q);
+  return rows.filter((r) => r.spent_on >= from && r.spent_on <= to).reduce((t, r) => t + r.amount_cents, 0);
+}
 
 // Totals row: 2026 budget, spent so far, Q4 plan.
 export function totals(cats: BudgetCategory[]) {
@@ -139,7 +165,8 @@ export type SourceRow = { key: GiftSource; label: string; cents: number };
 export type FundraisingData = {
   failed: boolean;
   mode: 'mock' | 'live';
-  goal_cents: number;
+  /** The year's "money raised" goal (goals.target_cents); null = no goal set yet. */
+  goal_cents: number | null;
   raised_cents: number;
   /** What Q3 brought in (the header line). */
   q3_cents: number;
@@ -150,8 +177,37 @@ export type FundraisingData = {
   monthly_donors: number;
   sources: SourceRow[];
   recent: GiftRow[];
-  checklist: WideChecklist;
+  /** "Year-end giving"; null = no such checklist yet (the page leaves the panel out). */
+  checklist: WideChecklist | null;
 };
+
+/** A gifts row as the Fundraising loader reads it. */
+export type GiftFact = { gift_on: string; amount_cents: number; source: GiftSource; monthly: boolean; donor_id: string | null };
+
+/**
+ * Fundraising's numbers for a year, counted from the gifts (all years, so "new" can look back):
+ * raised and the Q3 part, donors who gave this year, the average gift, donors whose first gift is this year, donors with
+ * a monthly gift this year, and the sum per source. Anonymous gifts count in the money, not in the donor numbers.
+ */
+export function giftStats(gifts: GiftFact[], year: number) {
+  const y = String(year);
+  const inYear = gifts.filter((g) => g.gift_on.startsWith(y));
+  const sum = (rows: GiftFact[]) => rows.reduce((t, g) => t + g.amount_cents, 0);
+  const raised = sum(inYear);
+  const donors = new Set(inYear.map((g) => g.donor_id).filter((d): d is string => Boolean(d)));
+  const earlier = new Set(gifts.filter((g) => g.gift_on < `${y}-01-01` && g.donor_id).map((g) => g.donor_id));
+  const monthly = new Set(inYear.filter((g) => g.monthly && g.donor_id).map((g) => g.donor_id));
+  const [q3from, q3to] = quarterRange(year, 3);
+  return {
+    raised_cents: raised,
+    q3_cents: sum(inYear.filter((g) => g.gift_on >= q3from && g.gift_on <= q3to)),
+    donors: donors.size,
+    avg_gift_cents: inYear.length ? Math.round(raised / inYear.length) : 0,
+    new_donors: [...donors].filter((d) => !earlier.has(d)).length,
+    monthly_donors: monthly.size,
+    sources: GIFT_SOURCES.map((s) => ({ key: s.key, label: s.label, cents: sum(inYear.filter((g) => g.source === s.key)) })) as SourceRow[],
+  };
+}
 
 // ---------------------------------------------------------------- Grants
 
@@ -180,7 +236,8 @@ export type GrantsData = {
   /** Grants per stage; can be more than the rows listed (the page shows the first two and "Show all N"). */
   counts: Record<GrantStage, number>;
   grants: GrantRow[];
-  checklist: WideChecklist;
+  /** "Getting started with grants"; null = no such checklist yet (the page leaves the panel out). */
+  checklist: WideChecklist | null;
 };
 
 // ---------------------------------------------------------------- People and roles

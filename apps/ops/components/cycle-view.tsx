@@ -1,12 +1,12 @@
 'use client';
 
 // The Fall 2026 cycle overview (Figma "Scholarships > Fall 2026 cycle"): where the cycle is (six phases), then the cycle
-// checklist. The phase dates are REAL where the `cycles` table has them; the checklist is MOCK (mock/cycle.ts). Groups
-// with "N steps" fold open and shut.
+// checklist. In live mode the dates and the checklist are REAL (lib/cycle.ts; missing dates read "Not set"); in mock mode
+// they are the Figma sample (mock/cycle.ts). Groups with "N steps" fold open and shut.
 import { useState } from 'react';
 import Link from 'next/link';
 import type { CycleOverview } from '@/lib/cycle';
-import { MOCK_CHECKLIST, type ChecklistGroup, type ChecklistRow, type Owner } from '@/mock/cycle';
+import type { ChecklistGroup, ChecklistRow, Owner } from '@/mock/cycle';
 import { OIcon } from './icons';
 import { PageHeader } from './page-header';
 import { Ring } from './ring';
@@ -61,9 +61,9 @@ function Row({ r }: { r: ChecklistRow }) {
           {r.sub}
         </span>
       </span>
-      <span className="o-cl-ow">
+      <span className="o-cl-ow" style={{ minWidth: 0, paddingRight: 8 }}>
         <OwnerMark o={r.owner} />
-        {r.owner.label}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.owner.label}</span>
       </span>
       <span className="o-cl-du">
         {r.due}
@@ -119,7 +119,7 @@ function Group({ g }: { g: ChecklistGroup }) {
 
 // The page body (the chat panel is drawn by the page, beside it).
 export function CycleView({ cycle }: { cycle: CycleOverview }) {
-  const cl = MOCK_CHECKLIST;
+  const cl = cycle.checklist;
   return (
     <>
       <PageHeader
@@ -178,19 +178,23 @@ export function CycleView({ cycle }: { cycle: CycleOverview }) {
 
       <section className="o-card o-panel o-cl" aria-labelledby="cy-list">
         <div className="o-ph2 list">
-          <Ring frac={cl.done / cl.total} label={`${cl.done}/${cl.total}`} color="gold" size={44} />
+          <Ring frac={cl.total ? cl.done / cl.total : 0} label={`${cl.done}/${cl.total}`} color="gold" size={44} />
           <div>
             <h2 className="o-h2" id="cy-list">
               Cycle checklist
             </h2>
-            <p>{`${cl.done} of ${cl.total} done, now ${cycle.nowLabel}`}</p>
+            <p>{cl.total ? `${cl.done} of ${cl.total} done, now ${cycle.nowLabel}` : `No steps yet, now ${cycle.nowLabel}`}</p>
           </div>
         </div>
-        <div className="o-cl-th o-lg" aria-hidden="true">
-          <span>Step</span>
-          <span>Owner</span>
-          <span>Due</span>
-        </div>
+        {cl.total ? (
+          <div className="o-cl-th o-lg" aria-hidden="true">
+            <span>Step</span>
+            <span>Owner</span>
+            <span>Due</span>
+          </div>
+        ) : (
+          <p className="o-cl-empty" style={{ padding: '14px 20px', fontSize: 14, color: 'var(--muted)' }}>This cycle has no checklist yet. Steps added to it show here.</p>
+        )}
         {cl.groups.map((g) => (
           <Group key={g.id} g={g} />
         ))}

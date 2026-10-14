@@ -1,6 +1,6 @@
 // MOCK: the Programs pages' sample data, copied from the Figma frames (Certifications, Sponsorships, Mentorship, normal
-// and stress). The loaders in lib/programs.ts return these in mock mode; going live swaps each loader for the draft
-// tables (programs, certification_ideas, sponsorships, checklists + tasks, chat_messages).
+// and stress). The loaders in lib/programs.ts return these in mock mode; live mode reads the Ops Hub tables (programs,
+// certification_ideas, sponsorships, checklists + tasks; lib/programs-map.ts). The Programs chat is still this sample.
 import { CHARIAH, CILLISHA, DANIA, DARIEN, KELSEY, TOMI, type AreaChat, type Owner } from './area';
 
 export type StepState = 'done' | 'next' | 'todo';

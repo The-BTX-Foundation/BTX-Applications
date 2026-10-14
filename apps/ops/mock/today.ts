@@ -42,6 +42,8 @@ export type TaskRow = {
   phoneLate?: boolean;
   phoneActions?: { label: string; kind: 'p' | 's' }[];
   approval?: boolean;
+  /** Where the title and the action go (live mode); missing = the approval screen for approvals, else /tasks. */
+  href?: string;
 };
 
 export type TaskGroup = { label: string; rows: TaskRow[] };
@@ -52,6 +54,8 @@ export type TodayData = {
   counts: { mine: number; team: number; approvals: number };
   areas: OverviewArea[];
   groups: TaskGroup[];
+  /** Live mode: the Team tab's own list (every open task). Missing = Team shows `groups` (the mock). */
+  teamGroups?: TaskGroup[];
 };
 
 export const TODAY: TodayData = {

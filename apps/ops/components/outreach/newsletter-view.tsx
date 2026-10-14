@@ -2,10 +2,10 @@
 
 // Outreach > Newsletter (Figma "Outreach > Newsletter", laptop and phone): the next issue as a checklist of sections,
 // the email preview, and a strip of facts. Ticking a section writes newsletter_sections.status (in memory in mock
-// mode). Subscriber numbers, the last issue and the email tool are not stored yet (README-ops-hub.md), so they show the
-// design's [placeholders] unless the newsletter channel has an audience_count. "Past issues" is not connected yet.
+// mode). Subscriber numbers and the email tool are not stored yet, so they show the design's [placeholders] unless the
+// newsletter channel has an audience_count; the last issue is the latest sent one. Past issues stay out (O14).
 import { useState } from 'react';
-import { setSectionDone, showPastIssues } from '@/lib/actions/outreach';
+import { setSectionDone } from '@/lib/actions/outreach';
 import type { NewsletterData, Section } from '@/mock/outreach';
 import { Ring } from '../ring';
 import { AreaHeader, Notice, OwnerChip, StepCheck } from '../area/parts';
@@ -32,11 +32,6 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
     });
   }
 
-  async function past() {
-    const r = await showPastIssues();
-    setNote(r.ok ? null : `Past issues: ${r.message.charAt(0).toLowerCase()}${r.message.slice(1)}`);
-  }
-
   const nowTitle = next?.short ?? next?.title;
   const line = `${done} of ${total} done${nowTitle ? `, now ${nowTitle}` : ''}`;
 
@@ -47,11 +42,7 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
         title="Newsletter"
         sub={data.subtitle}
         phoneSub={data.phoneSub}
-      >
-        <button type="button" className="o-btn s lg" onClick={past}>
-          Past issues
-        </button>
-      </AreaHeader>
+      />
       <Notice text={note} />
 
       {/* phone: the facts as cards */}
@@ -76,7 +67,7 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
       <div className="ou-nl">
         <section className="ar-panel ou-issue" aria-labelledby="nl-issue">
           <div className="ou-ih">
-            <Ring frac={done / total} label={`${done}/${total}`} color="gold" size={44} />
+            <Ring frac={total ? done / total : 0} label={`${done}/${total}`} color="gold" size={44} />
             <div>
               <h2 id="nl-issue">{data.issueTitle}</h2>
               <p>
@@ -84,10 +75,12 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
                 <span className="o-ph">{line}</span>
               </p>
             </div>
-            <span className="ou-iown o-lg">
-              <OwnerChip o={data.owner} />
-              <b>Owner: {data.owner.name}</b>
-            </span>
+            {data.owner ? (
+              <span className="ou-iown o-lg">
+                <OwnerChip o={data.owner} />
+                <b>Owner: {data.owner.name}</b>
+              </span>
+            ) : null}
           </div>
           {sections.map((s) => (
             <div key={s.id} className={`ou-sec ${s.state}`}>

@@ -1,18 +1,20 @@
-// Today: what needs the signed-in person (Figma "Today, laptop" and "Today, phone"). Built entirely on MOCK data for now
-// (mock/today.ts): the Ops Hub tables do not exist yet.
+// Today: what needs the signed-in person (Figma "Today, laptop" and "Today, phone"). Mock mode draws the Figma sample
+// (mock/today.ts); live mode reads the Ops Hub tables for the signed-in person (lib/today.ts).
 import Link from 'next/link';
 import { OIcon } from '@/components/icons';
 import { Ring } from '@/components/ring';
 import { TasksCard } from '@/components/tasks-card';
 import { LoadError } from '@/components/load-error';
 import { PageHeader } from '@/components/page-header';
-import { TODAY, TODAY_STRESS } from '@/mock/today';
+import { loadToday } from '@/lib/today';
 
 // The page.
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
-  // ?demo=error draws the "didn't load" state, ?demo=stress the stress frames' data.
-  if (demo === 'error') {
+  // ?demo=error draws the "didn't load" state, ?demo=stress the stress frames' data (mock mode). In live mode a failed
+  // read draws the same card.
+  const TODAY_DATA = await loadToday({ demo });
+  if (!TODAY_DATA) {
     return (
       <>
         <PageHeader title="Today" />
@@ -22,7 +24,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       </>
     );
   }
-  const TODAY_DATA = demo === 'stress' ? TODAY_STRESS : TODAY;
   return (
     <>
       <div className="o-top o-hd">
@@ -68,6 +69,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </section>
 
+      {/* VIDEO-LINKS-PANEL: the "Add the video links" panel (Figma 139:12686, components/interviews/video-links-panel.tsx,
+          built by another stream) renders here, between the Overview and the Tasks card. Nothing is drawn here yet. */}
       <TasksCard data={TODAY_DATA} />
     </>
   );

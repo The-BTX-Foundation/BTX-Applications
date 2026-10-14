@@ -1,9 +1,9 @@
 'use client';
 
 // Programs > Mentorship (Figma "Programs > Mentorship", laptop and phone): the program is planned, not active, so the
-// page is its "Where it stands" checklist. "Share the application" has nothing to call in the draft schema (there is no
-// mentor application table), so it answers "not connected yet". Mentor pairings have no table either, so the page has no
-// pairing list yet.
+// page is its "Where it stands" checklist (ticking a step writes the task). "Share the application" has nothing to call
+// in the schema (there is no mentor application table), so it answers "not connected yet". Mentor pairings stay out of
+// the page (O14).
 import { useState } from 'react';
 import { setStepDone, shareMentorApplication } from '@/lib/actions/programs';
 import type { MentorData, MentorStep } from '@/mock/programs';
@@ -47,12 +47,13 @@ export function MentorshipView({ data }: { data: MentorData }) {
 
       <section className="ar-panel" aria-labelledby="mn-list">
         <div className="ar-ph ring">
-          <Ring frac={done / total} label={`${done}/${total}`} color="gold" size={44} />
+          <Ring frac={total ? done / total : 0} label={`${done}/${total}`} color="gold" size={44} />
           <div>
             <h2 id="mn-list">Where it stands</h2>
             <p>{now ? `${done} of ${total} done, now ${now.title}` : `${done} of ${total} done`}</p>
           </div>
         </div>
+        {total === 0 ? <p className="pg-empty">No steps yet.</p> : null}
         {steps.map((s) => (
           <div key={s.id} className={`pg-mn${s.state === 'done' ? ' done' : ''}`}>
             <StepCheck done={s.state === 'done'} label={s.title} onClick={() => toggle(s.id)} />

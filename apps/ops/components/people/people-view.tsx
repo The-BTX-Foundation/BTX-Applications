@@ -5,7 +5,7 @@
 // server action and the database check the same rules again. Changing a role asks first ("Make Kelsey Davis an Admin?"),
 // then shows "Kelsey Davis is now an Admin · Undo".
 // MOCK mode keeps the roles in lib/mock-store.ts. LIVE mode calls the server action in lib/people-actions.ts, which writes
-// app_metadata with the service key: NOT TESTED: needs the service key.
+// app_metadata with the service key (tested live against the local stack, 2026-10-12).
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hasSupabaseEnv } from '@btx/data';

@@ -1,26 +1,34 @@
 'use client';
 
 // The Money pages' write actions for LIVE mode. Mock mode never calls these (the pages change their own state through
-// lib/mock-store.ts). Every function here is NOT TESTED: needs the Ops Hub tables (draft schema, not applied). The
+// lib/mock-store.ts). Each one was run live against the local stack as an admin and as a board member (2026-10-12). The
 // generated types do not know the tables yet, so the browser client is used through a loose shape. The database rules
-// (admin and board only on every money table) are the real lock; the pages also hide the controls other roles cannot use.
+// (admin and board only on every money table; deleting is admin-only, D3) are the real lock; the pages also hide the
+// controls other roles cannot use. Nothing here deletes, so board members can use all of it.
 import { getBrowserClient } from '@btx/data';
 import type { GiftSource } from './money-shared';
 
 type Result = { error: unknown; data?: { id?: string } | null };
 type Loose = {
   from: (t: string) => {
-    update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => PromiseLike<Result> };
+    update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => PromiseLike<Result> & { select: (c: string) => PromiseLike<{ error: unknown; data: unknown[] | null }> } };
     insert: (v: Record<string, unknown>) => { select: (c: string) => { single: () => PromiseLike<Result> } } & PromiseLike<Result>;
   };
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<Result>;
 };
 const db = () => getBrowserClient() as unknown as Loose;
 
+// Updates one row by id and says whether a row really changed (row-level security turns a forbidden update into "no rows").
+async function updateOne(table: string, id: string, v: Record<string, unknown>): Promise<boolean> {
+  const { error, data } = await db().from(table).update(v).eq('id', id).select('id');
+  return !error && (data?.length ?? 0) === 1;
+}
+
 // Approves a quarter plan. The database stamps decided_by and decided_at (budget_plan_stamp); the approval task is done too.
+// An empty taskId (a plan with no approval step) skips the task.
 export async function approvePlan(planId: string, taskId: string): Promise<boolean> {
-  const a = await db().from('budget_quarter_plans').update({ status: 'approved' }).eq('id', planId);
-  if (a.error) return false;
+  if (!(await updateOne('budget_quarter_plans', planId, { status: 'approved' }))) return false;
+  if (!taskId) return true;
   const b = await db().from('tasks').update({ status: 'done', completed_at: new Date().toISOString() }).eq('id', taskId);
   return !b.error;
 }
@@ -31,6 +39,7 @@ export async function approvePlan(planId: string, taskId: string): Promise<boole
 export async function reopenPlan(planId: string, taskId: string): Promise<boolean> {
   const a = await db().rpc('undo_budget_decision', { p_plan_id: planId });
   if (a.error) return false;
+  if (!taskId) return true;
   const b = await db().from('tasks').update({ status: 'open', completed_at: null }).eq('id', taskId);
   return !b.error;
 }
@@ -38,8 +47,8 @@ export async function reopenPlan(planId: string, taskId: string): Promise<boolea
 // Sends a plan back with a note: the plan is declined (decline_note), the approval task is declined, and the note is
 // added to the task as a comment (task_comments.author_id defaults to auth.uid()).
 export async function declinePlan(planId: string, taskId: string, note: string): Promise<boolean> {
-  const a = await db().from('budget_quarter_plans').update({ status: 'declined', decline_note: note }).eq('id', planId);
-  if (a.error) return false;
+  if (!(await updateOne('budget_quarter_plans', planId, { status: 'declined', decline_note: note }))) return false;
+  if (!taskId) return true;
   const b = await db().from('tasks').update({ status: 'declined', completed_at: null }).eq('id', taskId);
   if (b.error) return false;
   const c = (await db().from('task_comments').insert({ task_id: taskId, body: note })) as unknown as Result;
@@ -56,8 +65,7 @@ export async function logSpending(v: SpendInput): Promise<string | null> {
 
 // Edits a spending row.
 export async function editSpending(id: string, v: SpendInput): Promise<boolean> {
-  const { error } = await db().from('spending_entries').update(v).eq('id', id);
-  return !error;
+  return updateOne('spending_entries', id, v);
 }
 
 // Records "Funds on hand" (a new funds_snapshots row; the page shows the latest).

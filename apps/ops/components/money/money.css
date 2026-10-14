@@ -1578,3 +1578,16 @@
     font-size: 15px;
   }
 }
+
+/* live mode's empty states (no plan, no figure, no rows yet): one short muted line, the Ops Hub's usual style */
+.mn-none {
+  margin: 0;
+  padding: 14px 20px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted);
+}
+.mn-q4card .mn-none,
+.mn-chat-b .mn-none {
+  padding: 0;
+}

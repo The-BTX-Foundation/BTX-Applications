@@ -264,6 +264,11 @@
 .tk2-dn {
   color: var(--muted);
 }
+/* "Done this week 8" stays on one line however long the list of titles after it is */
+.tk2-done > span:first-child > b {
+  white-space: nowrap;
+  flex: none;
+}
 .tk2-done .o-i.up {
   transform: rotate(180deg);
 }

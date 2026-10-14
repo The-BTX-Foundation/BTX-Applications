@@ -1,10 +1,11 @@
 "use client";
 
 // The Calendar screen (Figma "Calendar", laptop and phone). Laptop: month grid with bars across days and chips inside a
-// day (three, then "+N more"), a side panel for the selected day, a legend and filters. Phone: a week strip with dots
-// and the agenda for three days from the selected day. Month is the only view drawn in Figma: Week and List do nothing
-// yet. MOCK today: "Add event" adds to this component's own state (resets on reload); in live mode it inserts into
-// `calendar_events` (title, kind, area, starts_at, all_day). NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
+// day (three, then "+N more"), a side panel listing everything on the selected day (O4), a legend and filters. Phone: a
+// week strip with dots and the agenda for three days from the selected day. Month is the only view: the Week and List
+// buttons are hidden for now (O5). "Add event": mock mode adds to this component's own state (resets on reload); live mode
+// also inserts into `calendar_events` (title, kind, area, starts_at, all_day), tested live as admin and board on the local
+// database (2026-10-12); a failed insert takes the event off the page again. Reviewers (data.canAdd false) get no button.
 import { useMemo, useState } from "react";
 import { getBrowserClient, hasSupabaseEnv } from "@btx/data";
 import { PageHeader } from "../page-header";
@@ -154,7 +155,8 @@ function Ev({
   );
 }
 
-// The side panel: the selected day's heading and its first timed item (what the Figma frame draws).
+// The side panel: the selected day's heading and everything on that day (O4): bars that cover it, then the day's items
+// by time.
 function SidePanel({
   day,
   today,
@@ -166,27 +168,28 @@ function SidePanel({
   items: CalItem[];
   names: Record<string, string>;
 }) {
-  const first = dayItems(items, day)
-    .filter((i) => i.start)
-    .sort((a, b) => minutes(a.start) - minutes(b.start))[0];
+  const spans = items.filter((i) => i.span && i.date <= day && (i.endDate ?? i.date) >= day);
+  const list = [...spans, ...dayItems(items, day).sort((a, b) => minutes(a.start) - minutes(b.start))];
   return (
     <aside className="ca-side" aria-label="Agenda">
       <div className="ca-sd">
         <h2>{panelHeading(day, today)}</h2>
-        {first ? (
-          <div className="ca-ag">
-            <b className="ca-ag-t">{first.start}</b>
-            <p>
-              <b>{first.title}</b>
-              <span>
-                {first.people.map((id) => names[id] ?? id).join(", ")}
-                {first.video ? " · Video" : ""}
-              </span>
-            </p>
-          </div>
-        ) : (
-          <p className="ca-none">Nothing scheduled at a set time.</p>
-        )}
+        {list.length === 0 ? <p className="ca-none">Nothing on this day.</p> : null}
+        {list.map((it) => {
+          const who = it.people.map((id) => names[id] ?? id).join(", ");
+          return (
+            <div key={it.id} className="ca-ag">
+              <b className="ca-ag-t">{it.span ? (it.late ? "Late" : "All day") : whenLabel(it)}</b>
+              <p>
+                <b>{it.title}</b>
+                <span>
+                  {who || AREA_LABEL[it.area]}
+                  {it.video ? " · Video" : ""}
+                </span>
+              </p>
+            </div>
+          );
+        })}
       </div>
       <a className="ca-sub2" href="#" onClick={(e) => e.preventDefault()}>
         Add the BTX calendar to Google Calendar
@@ -258,7 +261,6 @@ export function CalendarView({ data }: { data: CalendarData }) {
   const [month, setMonth] = useState(monthStart(today));
   const [sel, setSel] = useState(addDays(today, 1));
   const [wk, setWk] = useState(weekStart(today));
-  const [view, setView] = useState<"month" | "week" | "list">("month");
   const [who, setWho] = useState("");
 
   const all = useMemo(() => [...data.items, ...added], [data.items, added]);
@@ -292,7 +294,6 @@ export function CalendarView({ data }: { data: CalendarData }) {
     };
     setAdded((a) => [...a, item]);
     if (hasSupabaseEnv()) {
-      // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
       const w = getBrowserClient() as unknown as {
         from: (t: string) => {
           insert: (
@@ -300,13 +301,19 @@ export function CalendarView({ data }: { data: CalendarData }) {
           ) => PromiseLike<{ error: unknown }>;
         };
       };
-      await w.from("calendar_events").insert({
+      // An all-day event: noon UTC keeps it on the selected day in Eastern time.
+      const { error } = await w.from("calendar_events").insert({
         title,
         kind: "event",
         area: "scholarships",
-        starts_at: `${sel}T04:00:00Z`,
+        starts_at: `${sel}T12:00:00Z`,
         all_day: true,
+        owner_id: me,
       });
+      if (error) {
+        setAdded((a) => a.filter((x) => x !== item));
+        window.alert("The event didn't save. Try again.");
+      }
     }
   }
 
@@ -359,10 +366,12 @@ export function CalendarView({ data }: { data: CalendarData }) {
           <button type="button" className="o-btn s lg" onClick={goToday}>
             Today
           </button>
-          <button type="button" className="o-btn s lg" onClick={addEvent}>
-            <OIcon name="plus" size={16} />
-            Add event
-          </button>
+          {data.canAdd !== false ? (
+            <button type="button" className="o-btn s lg" onClick={addEvent}>
+              <OIcon name="plus" size={16} />
+              Add event
+            </button>
+          ) : null}
         </PageHeader>
       </div>
       {/* phone header */}
@@ -390,18 +399,11 @@ export function CalendarView({ data }: { data: CalendarData }) {
       </div>
 
       <div className="ca-bar o-lg">
+        {/* Week and List are hidden for now (O5): month is the only view. */}
         <div className="o-seg" role="group" aria-label="View">
-          {(["month", "week", "list"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={view === v ? "on" : ""}
-              aria-pressed={view === v}
-              onClick={() => setView(v)}
-            >
-              {v[0].toUpperCase() + v.slice(1)}
-            </button>
-          ))}
+          <button type="button" className="on" aria-pressed="true">
+            Month
+          </button>
         </div>
         <label className="o-chip">
           <span>Person</span>

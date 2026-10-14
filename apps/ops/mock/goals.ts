@@ -30,6 +30,8 @@ export type GoalsData = {
   /** Past years shown in the "Year over year" table (laptop). */
   yoyYears: number[];
   figures: YearFigure[];
+  /** Live mode: "Save" in Year over year writes year_figures. Missing = mock (the page's own state only). */
+  live?: boolean;
 };
 
 const CYCLES: CycleBar[] = [

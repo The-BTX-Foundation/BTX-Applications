@@ -1,7 +1,7 @@
 // Shared bits for the Programs and Outreach write actions. In mock mode (no Supabase env) every action succeeds in
 // memory: the component keeps the new row in its own state and nothing is saved. In live mode the action calls the
-// draft Ops Hub tables or functions, marked "NOT TESTED: needs the Ops Hub tables". Where the draft has no table or
-// function for an action, it answers "not connected yet" instead of guessing.
+// Ops Hub tables or functions as the signed-in person (admin and board may write; reviewers can't reach these pages).
+// Where the schema has no table or function for an action, it answers "not connected yet" instead of guessing.
 import { getBrowserClient, hasSupabaseEnv } from '@btx/data';
 
 export type ActionResult<T extends object = object> = ({ ok: true } & T) | { ok: false; message: string };
@@ -16,9 +16,15 @@ export function notConnected(): { ok: false; message: string } {
   return { ok: false, message: NOT_CONNECTED };
 }
 
-// The draft tables are not in the generated database types yet, so writes go through this loose shape.
+// The Ops Hub tables are not in the generated database types yet, so writes go through this loose shape.
+type Read = PromiseLike<{ data: unknown; error: unknown }> & {
+  eq: (c: string, v: unknown) => Read;
+  order: (c: string, o?: { ascending: boolean }) => Read;
+  limit: (n: number) => Read;
+};
 export type Loose = {
   from: (t: string) => {
+    select: (cols: string) => Read;
     insert: (row: Record<string, unknown>) => {
       select: (cols: string) => { single: () => PromiseLike<{ data: Record<string, unknown> | null; error: unknown }> };
     } & PromiseLike<{ error: unknown }>;

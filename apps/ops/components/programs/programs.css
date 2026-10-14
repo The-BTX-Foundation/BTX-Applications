@@ -195,7 +195,20 @@
   }
   .pg-ow {
     display: flex;
+    min-width: 0;
+    padding-right: 8px;
     font-size: 14px;
+  }
+  /* A long owner name ends in "..." instead of running into the Due column. */
+  .pg-ow .ar-own {
+    min-width: 0;
+  }
+  .pg-ow .ar-av {
+    flex-shrink: 0;
+  }
+  .pg-ow .ar-own > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .pg-du {
     display: flex;

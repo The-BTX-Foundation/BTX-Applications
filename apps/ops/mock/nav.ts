@@ -1,5 +1,5 @@
-// MOCK: the numbers beside sidebar entries (what needs the signed-in person). The real counts come from the Ops Hub
-// tables (tasks, approvals, unread chat, scoring queue) once they exist; until then these are the Figma frames' values.
+// MOCK: the numbers beside sidebar entries (what needs the signed-in person), the Figma frames' values. Live mode counts
+// them from the tables instead (lib/nav-counts.ts).
 export const NAV_COUNTS: Record<string, number> = {
   today: 6,
   chat: 4,

@@ -1,10 +1,11 @@
-// Money > Fundraising: the data. Types mirror the draft Ops Hub schema (gifts, donors, goals, checklists + tasks).
-// MOCK (mock/money.ts): everything in mock mode, including ?demo=stress. LIVE: the gifts read and the sums are written but
-// NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
+// Money > Fundraising: the data. Types mirror the Ops Hub schema (gifts, donors, goals, checklists + tasks).
+// MOCK (mock/money.ts): everything in mock mode, including ?demo=stress. LIVE: gifts, the year's "money raised" goal and the
+// "Year-end giving" checklist are read as the signed-in person (tested against the local stack, 2026-10-12); the sums are
+// giftStats() in money-shared.ts. No goal or no checklist yet: goal_cents / checklist are null and the page says so.
 import { hasSupabaseEnv } from '@btx/data';
 import { FUNDRAISING_MOCK, FUNDRAISING_STRESS } from '@/mock/money';
 import { checklistByTitle, read } from './money-db';
-import { GIFT_SOURCES, type FundraisingData, type GiftRow, type GiftSource } from './money-shared';
+import { giftStats, type FundraisingData, type GiftRow, type GiftSource } from './money-shared';
 
 const FAILED: FundraisingData = { ...FUNDRAISING_MOCK, failed: true, mode: 'mock' };
 
@@ -14,33 +15,27 @@ export async function loadFundraising({ demo }: { demo?: string } = {}): Promise
   const mock: FundraisingData = { ...(demo === 'stress' ? FUNDRAISING_STRESS : FUNDRAISING_MOCK), failed: false, mode: 'mock' };
   if (!hasSupabaseEnv()) return mock;
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
-    const year = '2026';
-    const gifts = await read('gifts', 'id, gift_on, amount_cents, source, monthly, donor_id, donors(name)', { order: ['gift_on', false] });
-    const inYear = gifts.filter((g) => String(g.gift_on).startsWith(year));
-    const sum = (rows: typeof gifts) => rows.reduce((t, g) => t + Number(g.amount_cents), 0);
-    const raised = sum(inYear);
-    const donorIds = new Set(inYear.map((g) => g.donor_id).filter(Boolean));
-    // A donor is new this year when none of their gifts is dated before the year.
-    const earlier = new Set(gifts.filter((g) => String(g.gift_on) < year).map((g) => g.donor_id));
-    const monthly = new Set(inYear.filter((g) => g.monthly).map((g) => g.donor_id).filter(Boolean));
-    const q3 = sum(inYear.filter((g) => String(g.gift_on) >= `${year}-07-01` && String(g.gift_on) <= `${year}-09-30`));
-    const checklist = (await checklistByTitle('Year-end giving')) ?? mock.checklist;
+    const year = new Date().getFullYear();
+    const [gifts, goals, checklist] = await Promise.all([
+      read('gifts', 'id, gift_on, amount_cents, source, monthly, donor_id, created_at, donors(name)', { order: ['gift_on', false] }),
+      read('goals', 'target_cents, position', { eq: { year, metric: 'money_raised' }, order: ['position', true], limit: 1 }),
+      checklistByTitle('Year-end giving'),
+    ]);
+    const stats = giftStats(
+      gifts.map((g) => ({ gift_on: String(g.gift_on), amount_cents: Number(g.amount_cents), source: g.source as GiftSource, monthly: Boolean(g.monthly), donor_id: g.donor_id ? String(g.donor_id) : null })),
+      year,
+    );
+    const recent = [...gifts].sort((a, b) => String(b.gift_on).localeCompare(String(a.gift_on)) || String(b.created_at).localeCompare(String(a.created_at))).slice(0, 5);
+    const goal = goals[0]?.target_cents;
     return {
-      ...mock,
+      failed: false,
       mode: 'live',
-      raised_cents: raised,
-      q3_cents: q3,
-      donors: donorIds.size,
-      avg_gift_cents: inYear.length ? Math.round(raised / inYear.length) : 0,
-      new_donors: [...donorIds].filter((d) => !earlier.has(d)).length,
-      monthly_donors: monthly.size,
-      sources: GIFT_SOURCES.map((s) => ({ key: s.key, label: s.label, cents: sum(inYear.filter((g) => g.source === s.key)) })),
-      recent: gifts.slice(0, 5).map(
+      goal_cents: goal == null ? null : Number(goal),
+      ...stats,
+      recent: recent.map(
         (g): GiftRow => ({ id: String(g.id), gift_on: String(g.gift_on), donor: String((g.donors as { name?: string } | null)?.name ?? 'Anonymous'), source: g.source as GiftSource, amount_cents: Number(g.amount_cents) }),
       ),
       checklist,
-      // TODO (live): goal_cents comes from the year's goals row (goals table); the mock's $15,000 stays until that read exists.
     };
   } catch {
     return FAILED;

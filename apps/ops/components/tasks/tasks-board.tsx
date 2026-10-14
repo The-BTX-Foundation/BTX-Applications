@@ -4,7 +4,8 @@
 // Person and Area filters, the tasks grouped by due date, and on a laptop the selected task's details beside them.
 // Phone: the same list, a "+" instead of the search box, and the details open under the header when "Open" is tapped
 // (a guess: the design has no phone details frame). In mock mode actions change this page's state only (reset on reload);
-// in live mode the same handlers write through ./tasks-writes (NOT TESTED: needs the Ops Hub tables, draft schema).
+// in live mode the same handlers also write through ./tasks-writes, and undo the change on the page if the write fails.
+// Reviewers (data.canEdit false) see no comment box and no "Add a task".
 import { useMemo, useRef, useState } from 'react';
 import './tasks.css';
 import { OIcon, type OpsIconName } from '../icons';
@@ -174,6 +175,7 @@ function Details({
   onDone,
   onComment,
   onClose,
+  canEdit,
 }: {
   t: TaskItem | undefined;
   people: Person[];
@@ -183,6 +185,7 @@ function Details({
   onDone: () => void;
   onComment: (body: string) => void;
   onClose: () => void;
+  canEdit: boolean;
 }) {
   const [text, setText] = useState('');
   if (!t) {
@@ -294,6 +297,7 @@ function Details({
           );
         })}
       </div>
+      {canEdit ? (
       <form
         className="tk2-cmp"
         onSubmit={(e) => {
@@ -306,12 +310,14 @@ function Details({
           <OIcon name="send" size={20} />
         </button>
       </form>
+      ) : null}
     </>
   );
 }
 
 export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab }) {
   const { people, areas, me, mode } = data;
+  const canEdit = data.canEdit !== false;
   const [tasks, setTasks] = useState<TaskItem[]>(data.tasks);
   const [comments, setComments] = useState<Record<string, TaskComment[]>>(data.comments);
   const [tab, setTab] = useState<Tab>(startTab);
@@ -332,7 +338,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
 
   const orig = useMemo(() => new Map(data.tasks.map((t) => [t.id, t])), [data.tasks]);
   const finished = tasks.filter((t) => t.status === 'done' || t.status === 'declined');
-  const added = tasks.filter((t) => t.id.startsWith('new'));
+  const added = tasks.filter((t) => !orig.has(t.id));
   // Counts move with what was done or added on this page.
   const counts = {
     mine: data.counts.mine - finished.filter((t) => t.mine).length + added.length,
@@ -357,14 +363,25 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
 
   const patch = (id: string, f: (t: TaskItem) => TaskItem) => setTasks((ts) => ts.map((t) => (t.id === id ? f(t) : t)));
   const finish = (id: string, status: 'done' | 'declined') => {
+    const before = tasks.find((t) => t.id === id);
     patch(id, (t) => ({ ...t, status }));
-    if (mode === 'live') void writeStatus(id, status);
+    if (mode === 'live' && before) {
+      void writeStatus(id, status, before.approval?.planId).then((ok) => {
+        if (!ok) patch(id, (t) => ({ ...t, status: before.status }));
+      });
+    }
   };
   const addComment = (id: string, body: string) => {
     const c: TaskComment = { id: `c${++seq.current}-${id}`, task_id: id, author_id: me, body, created_at: new Date().toISOString() };
     setComments((m) => ({ ...m, [id]: [...(m[id] ?? []), c] }));
     patch(id, (t) => ({ ...t, comment_count: t.comment_count + 1 }));
-    if (mode === 'live') void writeComment(id, body);
+    if (mode === 'live') {
+      void writeComment(id, body).then((newId) => {
+        if (newId) return;
+        setComments((m) => ({ ...m, [id]: (m[id] ?? []).filter((x) => x.id !== c.id) }));
+        patch(id, (t) => ({ ...t, comment_count: t.comment_count - 1 }));
+      });
+    }
   };
   const addTask = () => {
     const title = draft.trim();
@@ -396,7 +413,15 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
     setSelected(id);
     setDraft('');
     setAdding(false);
-    if (mode === 'live') void writeTask(title, a.slug, me);
+    if (mode === 'live') {
+      // The page shows the task at once; the database's id replaces the temporary one (so comments on it save).
+      void writeTask(title, a.slug, me).then((realId) => {
+        if (realId) {
+          setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, id: realId } : x)));
+          setSelected((s) => (s === id ? realId : s));
+        } else setTasks((ts) => ts.filter((x) => x.id !== id));
+      });
+    }
   };
   const open = (id: string) => {
     setSelected(id);
@@ -422,13 +447,17 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
           <OIcon name="search" size={20} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tasks" aria-label="Search tasks" />
         </label>
-        <button type="button" className="o-btn s lg tk2-lg" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
-          <OIcon name="plus" size={16} />
-          Add a task
-        </button>
-        <button type="button" className="tk2-sq tk2-ph" aria-label="Add a task" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
-          <OIcon name="plus" size={22} />
-        </button>
+        {canEdit ? (
+          <>
+            <button type="button" className="o-btn s lg tk2-lg" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+              <OIcon name="plus" size={16} />
+              Add a task
+            </button>
+            <button type="button" className="tk2-sq tk2-ph" aria-label="Add a task" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+              <OIcon name="plus" size={22} />
+            </button>
+          </>
+        ) : null}
       </PageHeader>
 
       <div className="tk2-bar">
@@ -545,6 +574,7 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
             onDone={() => sel && finish(sel.id, 'done')}
             onComment={(b) => sel && addComment(sel.id, b)}
             onClose={() => setPhoneOpen(false)}
+            canEdit={canEdit}
           />
         </aside>
       </div>

@@ -1,7 +1,7 @@
 // MOCK: the Outreach pages' sample data, copied from the Figma frames (Plan, Instagram, Newsletter, normal and stress).
-// The loaders in lib/outreach.ts return these in mock mode; going live swaps each loader for the draft tables
-// (outreach_channels, posts, newsletter_issues, newsletter_sections, checklists + tasks). Post images, newsletter
-// subscriber numbers and newsletter sending are not stored yet (README-ops-hub.md), so they stay on this mock.
+// The loaders in lib/outreach.ts return these in mock mode; live mode reads the Ops Hub tables
+// (outreach_channels, posts, newsletter_issues, newsletter_sections; lib/outreach-map.ts). Post images, newsletter
+// subscriber numbers and newsletter sending are not stored yet, so live mode keeps the design's [placeholders] for them.
 import { CILLISHA, DANIA, DARIEN, KELSEY, TOMI, type Owner, type Person } from './area';
 
 export type ChannelKind = 'instagram' | 'newsletter' | 'linkedin' | 'campus_events' | 'other';
@@ -42,6 +42,8 @@ export type PlanData = {
   instagramChannelId?: string;
   cards: ChannelCard[];
   month: string;
+  /** The month after (the "Plan November" button); the design's November when missing. */
+  nextMonth?: string;
   rows: PlanRow[];
   staff: Person[];
 };
@@ -187,7 +189,8 @@ export type NewsletterData = {
   previewTitle: string;
   intro: string;
   sendOn: string;
-  owner: Person;
+  /** The issue's owner; null when nobody owns it (or there is no issue yet). */
+  owner: Person | null;
   sections: Section[];
   /** The footer strip: subscribers, last issue, email tool. */
   subscribers: string;

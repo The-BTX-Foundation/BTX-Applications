@@ -363,3 +363,55 @@ button.ar-ck:hover {
     padding-left: 264px;
   }
 }
+
+/* the live area chat (components/area/area-thread.tsx): newest at the bottom, a real composer */
+.ar-live .o-chat-m {
+  justify-content: flex-start;
+}
+.ar-live .o-chat-m > :first-child {
+  margin-top: auto;
+}
+.ar-live .o-chat-m > :last-child {
+  padding-bottom: 4px;
+}
+.ar-none {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.ar-comp {
+  position: relative;
+  gap: 8px;
+}
+.ar-comp input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+.ar-comp input::placeholder {
+  color: var(--muted);
+}
+.ar-comp .o-go {
+  border: 0;
+  cursor: pointer;
+}
+.ar-comp .o-go:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ar-comp:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.ar-senderr {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 4px);
+  font-size: 13px;
+  color: var(--muted);
+}

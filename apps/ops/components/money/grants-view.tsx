@@ -3,7 +3,7 @@
 // Money > Grants (Figma laptop and phone): the getting-started checklist, then the pipeline by stage (Researching,
 // Submitted, ...; a stage with no grants is only a count in the line at the bottom). "Add a grant" shows only for admin and
 // board. Data: lib/grants.ts; an added grant in mock mode updates this page (lib/mock-store.ts); live mode writes with
-// lib/money-writes.ts (NOT TESTED).
+// lib/money-writes.ts. Live mode with no "Getting started with grants" checklist leaves that panel out.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { OIcon } from '@/components/icons';
@@ -62,7 +62,7 @@ export function GrantsView({ data, demo, role }: { data: GrantsData; demo?: stri
   const [error, setError] = useState<string | null>(null);
   const can = canUseMoney(role);
   // Who is "building the first list": the owner of the next checklist step.
-  const next = data.checklist.steps.find((x) => x.current);
+  const next = data.checklist?.steps.find((x) => x.current);
   const builder = next?.owner.kind === 'person' ? next.owner.name : null;
 
   async function save(v: GrantInput) {
@@ -120,7 +120,7 @@ export function GrantsView({ data, demo, role }: { data: GrantsData; demo?: stri
       ) : null}
 
       <div className="mn-gstack">
-        <WideChecklistPanel list={data.checklist} only="lg" />
+        {data.checklist ? <WideChecklistPanel list={data.checklist} only="lg" /> : null}
 
         {stages.map((st) => {
           const rows = s.grants.filter((g) => g.stage === st);
@@ -171,7 +171,7 @@ export function GrantsView({ data, demo, role }: { data: GrantsData; demo?: stri
           ))}
         </p>
 
-        <WideChecklistPanel list={data.checklist} only="ph" now={data.mode === 'live' ? new Date().toISOString() : MOCK_NOW} />
+        {data.checklist ? <WideChecklistPanel list={data.checklist} only="ph" now={data.mode === 'live' ? new Date().toISOString() : MOCK_NOW} /> : null}
       </div>
 
       {open ? <GrantDialog onClose={() => setOpen(false)} onSave={save} /> : null}

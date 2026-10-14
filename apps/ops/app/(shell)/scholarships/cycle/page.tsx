@@ -1,5 +1,5 @@
-// Scholarships > Fall 2026 cycle: a read-only overview. The schedule's dates come from the `cycles` row (the three the
-// table lacks are mock); the checklist and the chat are mock. In mock mode ?demo=error draws the "didn't load" state.
+// Scholarships > Fall 2026 cycle: a read-only overview. The dates and the checklist come from the database (lib/cycle.ts;
+// dates it lacks read "Not set"); the chat is drawn by the chat panel. ?demo=error draws the "didn't load" state.
 import type { Metadata } from 'next';
 import { ChatPanel } from '@/components/chat-panel';
 import { CycleView } from '@/components/cycle-view';

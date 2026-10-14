@@ -40,6 +40,8 @@ export type CalendarData = {
   me: string;
   people: CalPerson[];
   items: CalItem[];
+  /** Live mode: only admin and board may add events (calendar_events). Missing = mock (adds to the page only). */
+  canAdd?: boolean;
   failed: boolean;
 };
 

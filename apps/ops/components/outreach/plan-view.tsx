@@ -104,7 +104,7 @@ export function PlanView({ data }: { data: PlanData }) {
         </div>
         <div className="ou-foot">
           <button type="button" className="o-btn s lg" onClick={() => setForm('post')}>
-            Plan November
+            Plan {data.nextMonth ?? 'November'}
           </button>
           <span className="o-lg">Pick a date, a channel and an owner for each item.</span>
         </div>
@@ -126,7 +126,7 @@ export function PlanView({ data }: { data: PlanData }) {
       ) : null}
       {form === 'post' ? (
         <PostForm
-          title="Plan November"
+          title={`Plan ${data.nextMonth ?? 'November'}`}
           staff={data.staff}
           channelId={data.instagramChannelId}
           onClose={() => setForm(null)}

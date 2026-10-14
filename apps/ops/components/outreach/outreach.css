@@ -991,3 +991,50 @@
     font-weight: 700;
   }
 }
+
+/* Long names and lines from live data end in "..." instead of running into the next column. */
+@media (min-width: 900px) {
+  .ou-po {
+    min-width: 0;
+    padding-right: 8px;
+  }
+  .ou-po .ar-own {
+    max-width: 100%;
+  }
+  .ou-po .ar-av {
+    flex-shrink: 0;
+  }
+  .ou-po .ar-own > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ou-ih > div {
+    min-width: 0;
+  }
+  .ou-ih p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ou-iown {
+    flex-shrink: 0;
+  }
+}
+
+/* A channel owner's long name ends in "..." inside the card. */
+.ou-card {
+  min-width: 0;
+}
+.ou-own {
+  min-width: 0;
+  padding-right: 12px;
+}
+.ou-own .ar-own {
+  max-width: 100%;
+}
+.ou-own .ar-av {
+  flex-shrink: 0;
+}
+.ou-own .ar-own > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,34 +1,31 @@
 'use server';
 
-// Changes a staff member's role. Roles live in auth.users.raw_app_meta_data (the field public.app_role() reads), which only
-// the Auth admin API can write, so this runs on the server with the project's service key. NOT TESTED: needs the service key.
-// SUPABASE_SERVICE_ROLE_KEY is read from the server's environment only (never NEXT_PUBLIC_, never committed); it is not set
-// anywhere yet. The rules are checked again here, on top of the database's: only an admin changes roles, nobody changes
-// their own, and only the three staff roles exist.
+// People and roles: the server actions (role changes and adding staff). The logic and its checks are in lib/staff-admin.ts
+// (pure, unit-tested); this file supplies the real caller (the session's user, read from the auth server, never from
+// anything the browser sent) and the service key. SUPABASE_SERVICE_ROLE_KEY is read from the server's environment only
+// (never NEXT_PUBLIC_, never committed). Tested live against the local stack (2026-10-12).
 import { sessionClient } from './supabase-server';
-import { isStaffRole, type StaffRole } from './role';
+import { changeRole, inviteStaffWith, type AdminDeps, type ChangeRoleResult, type InviteInput, type InviteResult } from './staff-admin';
+import type { StaffRole } from './role';
 
-export type ChangeRoleResult = { ok: true } | { ok: false; reason: string };
-
-export async function changeRoleAction(targetUserId: string, role: StaffRole): Promise<ChangeRoleResult> {
-  if (!isStaffRole(role) || typeof targetUserId !== 'string' || !/^[0-9a-f-]{36}$/i.test(targetUserId)) return { ok: false, reason: 'That change is not allowed.' };
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return { ok: false, reason: "Changing roles isn't set up on this server yet." };
-
-  // Who is asking: the session's own user, read from the auth server (not from anything the browser sent).
+async function deps(): Promise<AdminDeps> {
   const client = await sessionClient();
   const { data } = await client.auth.getUser();
-  const caller = data.user;
-  if (!caller || caller.app_metadata?.role !== 'admin') return { ok: false, reason: 'Only admins can change roles.' };
-  if (caller.id === targetUserId) return { ok: false, reason: 'No one can change their own role.' };
+  const user = data.user;
+  return {
+    fetch,
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    caller: user ? { id: user.id, role: user.app_metadata?.role } : null,
+  };
+}
 
-  // Auth admin API: update the user's app_metadata (merged, so other fields stay).
-  const res = await fetch(`${url}/auth/v1/admin/users/${targetUserId}`, {
-    method: 'PUT',
-    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_metadata: { role } }),
-    cache: 'no-store',
-  });
-  return res.ok ? { ok: true } : { ok: false, reason: "The role didn't change. Try again." };
+// Changes a staff member's role: admins only, never your own.
+export async function changeRoleAction(targetUserId: string, role: StaffRole): Promise<ChangeRoleResult> {
+  return changeRole(await deps(), targetUserId, role);
+}
+
+// Adds a staff member (admins only): the account with its role, and the staff_profiles row. Sends no email.
+export async function inviteStaff(input: InviteInput): Promise<InviteResult> {
+  return inviteStaffWith(await deps(), input);
 }

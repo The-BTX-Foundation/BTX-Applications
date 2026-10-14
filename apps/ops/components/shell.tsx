@@ -88,7 +88,8 @@ function useOpenGroups(pathname: string, initial: Record<string, boolean> = {}) 
 }
 
 // The whole shell around a page.
-export function Shell({ user, children }: { user: ShellUser; children: React.ReactNode }) {
+// `counts` are the live counts (lib/nav-counts.ts); missing in mock mode, which draws the sample counts.
+export function Shell({ user, counts, children }: { user: ShellUser; counts?: Counts; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   // The phone menu is open for one page: it remembers the path it was opened on, so going to another page closes it.
@@ -97,9 +98,9 @@ export function Shell({ user, children }: { user: ShellUser; children: React.Rea
   const setMenu = (open: boolean) => setMenuPath(open ? pathname : null);
   // ?demo=stress draws the counts the Figma stress frames show; the normal view keeps the sample counts.
   const stress = useSearchParams().get('demo') === 'stress';
-  const sideCounts: Counts = stress ? NAV_COUNTS_STRESS_SIDE : NAV_COUNTS;
-  const tabCounts: Counts = stress ? NAV_COUNTS_STRESS_TABS : NAV_COUNTS;
-  const menuCounts: Counts = stress ? NAV_COUNTS_STRESS_MENU : NAV_COUNTS;
+  const sideCounts: Counts = counts ?? (stress ? NAV_COUNTS_STRESS_SIDE : NAV_COUNTS);
+  const tabCounts: Counts = counts ?? (stress ? NAV_COUNTS_STRESS_TABS : NAV_COUNTS);
+  const menuCounts: Counts = counts ?? (stress ? NAV_COUNTS_STRESS_MENU : NAV_COUNTS);
   const side = useOpenGroups(pathname);
   // the phone menu opens with Scholarships unfolded (the Figma menu frame)
   const sheet = useOpenGroups(pathname, { scholarships: true });

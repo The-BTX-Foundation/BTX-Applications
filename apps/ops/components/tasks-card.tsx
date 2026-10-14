@@ -2,7 +2,8 @@
 
 // The Tasks panel on Today (Figma "section.tk: Tasks"): Mine / Team / Approvals tabs, then tasks grouped by when they
 // are due. Laptop draws a table (task, area, due, comments, one action); phone draws a list with buttons under the row.
-// MOCK data (mock/today.ts): Team shows the same list and Approvals only the approval rows until the task tables exist.
+// Mock mode (mock/today.ts): Team shows the same list as Mine. Live mode (lib/today.ts): Mine is the signed-in person's
+// tasks, interviews and events, Team every open task (data.teamGroups); Approvals is the approval rows of that list.
 import { useState } from 'react';
 import Link from 'next/link';
 import { OIcon } from './icons';
@@ -22,8 +23,9 @@ function Comments({ n }: { n: number }) {
 
 // One task row, in both layouts (the other layout's parts are hidden by CSS).
 function Row({ row }: { row: TaskRow }) {
-  // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button).
-  const href = row.approval ? '/money/budget/approval' : '/tasks';
+  // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button). Live
+  // rows carry their own target (row.href), and their title links there too.
+  const href = row.href ?? (row.approval ? '/money/budget/approval' : '/tasks');
   const titleParts = (
     <>
           <b>
@@ -56,7 +58,7 @@ function Row({ row }: { row: TaskRow }) {
       <div className="o-tr-main">
         <span className="o-lead o-lg">{row.lead === 'circle' ? <span className="o-ck" /> : <OIcon name={row.typeIcon} size={20} />}</span>
         <span className="o-ck o-ph" />
-        {row.approval ? (
+        {row.approval || row.href ? (
           <Link href={href} className="o-tt" style={{ color: 'inherit', textDecoration: 'none' }}>
             {titleParts}
           </Link>
@@ -97,7 +99,8 @@ function Row({ row }: { row: TaskRow }) {
 export function TasksCard({ data }: { data: TodayData }) {
   const [tab, setTab] = useState<Tab>('mine');
   const { counts, groups } = data;
-  const shown = groups
+  const source = tab === 'mine' ? groups : (data.teamGroups ?? groups);
+  const shown = source
     .map((g) => ({ ...g, rows: tab === 'approvals' ? g.rows.filter((r) => r.approval) : g.rows }))
     .filter((g) => g.rows.length > 0);
   const tabs: { id: Tab; label: string; n: number }[] = [
@@ -129,6 +132,7 @@ export function TasksCard({ data }: { data: TodayData }) {
         <span className="o-th-a">Area</span>
         <span>Due</span>
       </div>
+      {shown.length === 0 ? <p className="o-tg">Nothing here.</p> : null}
       {shown.map((g) => (
         <div key={g.label}>
           <p className="o-tg">

@@ -2,8 +2,8 @@
 
 // Outreach > Instagram (Figma "Outreach > Instagram", laptop and phone): the posts by month with how far each has got,
 // and the selected post's checklist, caption preview and photo. "Add a post" and "Send for approval" write through
-// lib/actions/outreach.ts (in memory in mock mode). Post images are not stored yet (the draft has no bucket), so the
-// photo box is a placeholder in every mode.
+// lib/actions/outreach.ts (in memory in mock mode). Post images are not stored yet (no storage bucket), so the photo
+// box is a placeholder in every mode. In live mode the approver is "the board" (posts have no approver column).
 import { useLayoutEffect, useRef, useState } from 'react';
 import { sendPostForApproval } from '@/lib/actions/outreach';
 import type { InstagramData, Post, PostStep } from '@/mock/outreach';
@@ -15,7 +15,7 @@ import './outreach.css';
 
 // The five steps of a post, from how many are done.
 function stepsOf(p: Post): PostStep[] {
-  const names = ['Draft the caption', 'Pick the photo', `Board approval: ${p.approver}`, 'Schedule it', 'Mark it posted'];
+  const names = ['Draft the caption', 'Pick the photo', p.approver === 'the board' ? 'Board approval' : `Board approval: ${p.approver}`, 'Schedule it', 'Mark it posted'];
   return names.map((title, i) => ({ title, state: i < p.done ? 'done' : i === p.done ? 'now' : 'todo' }));
 }
 
@@ -106,7 +106,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
     const r = await sendPostForApproval(p.id);
     if (!r.ok) return setNote(r.message);
     setNote(null);
-    setPosts((l) => l.map((x) => (x.id === p.id ? { ...x, sent: true, state: `Waiting on ${x.approver.split(' ')[0]}`, phoneState: 'Waiting on the board' } : x)));
+    setPosts((l) => l.map((x) => (x.id === p.id ? { ...x, sent: true, state: x.approver === 'the board' ? 'Waiting on the board' : `Waiting on ${x.approver.split(' ')[0]}`, phoneState: 'Waiting on the board' } : x)));
   }
 
   const row = (p: Post) => (

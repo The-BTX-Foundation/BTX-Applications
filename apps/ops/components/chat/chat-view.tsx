@@ -2,13 +2,14 @@
 
 // Board chat (Figma "Board chat" laptop and phone frames). Laptop: channel list, the thread, a "Pinned" panel. Phone: a
 // channel picker above the thread. "All areas" is every area channel together; each message carries its area tag there.
-// Sending works in mock mode (an in-memory append that marks the channel read). In live mode it calls the draft tables
-// (lib/chat-actions.ts, NOT TESTED).
+// Sending works in mock mode (an in-memory append that marks the channel read). In live mode it writes chat_messages and
+// chat_read_markers and opens direct conversations with open_direct_channel (lib/chat-actions.ts).
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { OIcon, type OpsIconName } from "@/components/icons";
 import { timeLabel } from "@/lib/format";
 import type { ChatChannel, ChatData, ChatMessageRow } from "@/lib/chat";
+import { dayName, unreadSplit } from "@/lib/chat-shared";
 import {
   chatIsLive,
   markRead,
@@ -32,25 +33,6 @@ function clockMs(base: string, startedAt: number): number {
 }
 
 const keyOf = (c: ChatChannel) => c.id ?? `direct:${c.otherUserId}`;
-const eastern = (ts: string | number) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(
-    new Date(ts),
-  );
-
-// "Wed Sep 30" style label for a day that is not today or yesterday.
-function dayName(ts: string, nowMs: number): string {
-  const d = eastern(ts);
-  if (d === eastern(nowMs)) return "Today";
-  if (d === eastern(nowMs - 86_400_000)) return "Yesterday";
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  })
-    .format(new Date(ts))
-    .replace(",", "");
-}
 
 // A message's text: "**bold**" parts, and an applicant code ("APP-2026-00004") kept on one line, as the design does.
 function plain(text: string, key: string) {
@@ -172,7 +154,6 @@ export function ChatView({ data }: { data: ChatData }) {
         c.id && ids.includes(c.id) ? { ...c, unread: null, lastReadAt: at } : c,
       ),
     );
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     if (live) void markRead(ids).catch(() => undefined);
   }
 
@@ -200,7 +181,6 @@ export function ChatView({ data }: { data: ChatData }) {
       let createdAt = new Date(nowMs()).toISOString();
       let msgId = `local-${messages.length + 1}`;
       if (live) {
-        // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
         if (!id && target.otherUserId) {
           id = await openDirect(target.otherUserId);
           const opened = { ...target, id };
@@ -470,22 +450,4 @@ export function ChatView({ data }: { data: ChatData }) {
       </aside>
     </div>
   );
-}
-
-// Which unread messages the channels in `ids` hold for the person: the first one's id and how many.
-function unreadSplit(
-  channels: ChatChannel[],
-  messages: ChatMessageRow[],
-  ids: string[],
-  me: string,
-): { firstId: string; count: number } | null {
-  const last = new Map(channels.map((c) => [c.id, c.lastReadAt]));
-  const unread = messages.filter(
-    (m) =>
-      ids.includes(m.channelId) &&
-      m.authorId !== me &&
-      Date.parse(m.createdAt) >
-        Date.parse(last.get(m.channelId) ?? "1970-01-01T00:00:00Z"),
-  );
-  return unread.length ? { firstId: unread[0].id, count: unread.length } : null;
 }

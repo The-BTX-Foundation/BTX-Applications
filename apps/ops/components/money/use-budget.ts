@@ -1,20 +1,21 @@
 'use client';
 
 // The Budget page and the phone approval screen share one state, so approving on the phone shows as approved on Budget.
-// MOCK mode keeps it in lib/mock-store.ts. LIVE mode writes to the draft tables (lib/money-writes.ts, NOT TESTED: needs the
-// Ops Hub tables) and then asks the server for the page again, so the state below is always what the server sent.
+// MOCK mode keeps it in lib/mock-store.ts. LIVE mode writes to the tables (lib/money-writes.ts) and then asks the server
+// for the page again, so the state below is always what the server sent.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMockState } from '@/lib/mock-store';
 import { approvePlan, declinePlan, editSpending, logSpending, recordFunds, reopenPlan, type SpendInput } from '@/lib/money-writes';
 import type { BudgetCategory, BudgetData, Fund, PlanStatus, SpendRow } from '@/lib/money-shared';
 
-type State = { status: PlanStatus; decline_note: string | null; decided_at: string | null; categories: BudgetCategory[]; recent: SpendRow[]; funds: Fund };
+type State = { status: PlanStatus; decline_note: string | null; decided_at: string | null; categories: BudgetCategory[]; recent: SpendRow[]; funds: Fund | null };
 
 export function useBudget(data: BudgetData, demo: string | undefined) {
   const router = useRouter();
   const live = data.mode === 'live';
-  const initial: State = { status: data.plan.status, decline_note: data.plan.decline_note, decided_at: data.plan.decided_at, categories: data.categories, recent: data.recent, funds: data.funds };
+  const plan = data.plan;
+  const initial: State = { status: plan?.status ?? 'draft', decline_note: plan?.decline_note ?? null, decided_at: plan?.decided_at ?? null, categories: data.categories, recent: data.recent, funds: data.funds };
   const [st, setSt] = useMockState<State>(`budget:${demo ?? ''}`, initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,15 +39,18 @@ export function useBudget(data: BudgetData, demo: string | undefined) {
     busy,
     error,
     approve: async () => {
-      if (live) await liveWrite(() => approvePlan(data.plan.id, data.plan.task_id));
+      if (!plan) return;
+      if (live) await liveWrite(() => approvePlan(plan.id, plan.task_id));
       else patch({ status: 'approved', decided_at: new Date().toISOString(), decline_note: null });
     },
     reopen: async () => {
-      if (live) await liveWrite(() => reopenPlan(data.plan.id, data.plan.task_id));
+      if (!plan) return;
+      if (live) await liveWrite(() => reopenPlan(plan.id, plan.task_id));
       else patch({ status: 'awaiting_approval', decided_at: null, decline_note: null });
     },
     decline: async (note: string) => {
-      if (live) await liveWrite(() => declinePlan(data.plan.id, data.plan.task_id, note));
+      if (!plan) return;
+      if (live) await liveWrite(() => declinePlan(plan.id, plan.task_id, note));
       else patch({ status: 'declined', decline_note: note, decided_at: new Date().toISOString() });
     },
     // Logs a new spending row (id undefined) or edits one.

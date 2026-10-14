@@ -334,7 +334,7 @@
   }
   .ca-wd {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     height: 32px;
     flex: none;
     border-bottom: 1px solid var(--line);
@@ -354,7 +354,7 @@
   .ca-wk {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: 26px;
     grid-auto-rows: 22px;
     row-gap: 4px;
@@ -368,7 +368,7 @@
     position: absolute;
     inset: 0;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   .ca-cells span {
     border-right: 1px solid var(--line);
@@ -487,6 +487,9 @@
   .ca-sd {
     padding: 14px 18px 15px;
     border-bottom: 1px solid var(--line);
+    /* O4: the panel lists everything on the day, so a busy day scrolls inside the panel */
+    min-height: 0;
+    overflow-y: auto;
   }
   .ca-sd h2 {
     font-size: 15px;
@@ -513,6 +516,7 @@
   }
   .ca-ag p b {
     display: block;
+    overflow-wrap: anywhere;
     font-size: 14px;
     font-weight: 700;
   }

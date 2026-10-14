@@ -52,29 +52,35 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
   const can = canUseMoney(role);
   const t = totals(s.categories);
   const plan = data.plan;
-  const approved = s.status === 'approved';
-  const declined = s.status === 'declined';
+  const approved = plan !== null && s.status === 'approved';
+  const declined = plan !== null && s.status === 'declined';
 
   // The checklist: the approval step is done once the plan is approved.
   const steps: (BudgetStep & { isDone: boolean })[] = data.steps.map((x) => ({ ...x, isDone: x.kind === 'approval' ? approved : x.done }));
   const doneN = steps.filter((x) => x.isDone).length;
   const next = steps.find((x) => !x.isDone);
   const nowLabel = declined ? 'Approve' : next?.now;
-  const checkLine = `${doneN} of ${steps.length} done${nowLabel ? `, now ${nowLabel}` : ''}`;
+  const checkLine = plan ? `${doneN} of ${steps.length} done${nowLabel ? `, now ${nowLabel}` : ''}` : 'No Q4 plan yet';
+  const ringFrac = steps.length ? doneN / steps.length : 0;
+  const due = plan?.due_on ? `, due ${dateOnlyLabel(plan.due_on)}` : '';
   const planCents = t.plan;
   const approveLabel = `Approve ${usd(planCents)} for Q4`;
   const approvalHref = `/money/budget/approval${demo ? `?demo=${demo}` : ''}`;
   const planLine = (
     <>
-      Q{plan.quarter} plan: <b>{usd(planCents)}</b> for October to December.{plan.note ? ` ${plan.note}` : ''}
+      Q{plan?.quarter} plan: <b>{usd(planCents)}</b> for October to December.{plan?.note ? ` ${plan.note}` : ''}
     </>
   );
 
-  const sub = approved
-    ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan is approved`
-    : declined
-      ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan went back to ${plan.submitter}`
-      : `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan waits for your approval, due ${dateOnlyLabel(plan.due_on)}`;
+  const sub = !plan
+    ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · No Q4 plan yet`
+    : approved
+      ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan is approved`
+      : declined
+        ? `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan went back to ${plan.submitter}`
+        : `Q3 closed at ${usd(data.q3_spent_cents)} spent · Q4 plan waits for your approval${due}`;
+  // "Approved by you" or by the person who decided.
+  const decider = plan && plan.decided_by && plan.decided_by !== data.me ? (plan.decided_by_name ?? 'someone else') : 'you';
 
   return (
     <>
@@ -115,9 +121,9 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
 
       <section className="o-card mn-funds" aria-label="Funds on hand">
         <p className="mn-funds-l">Funds on hand</p>
-        <p className="mn-funds-v">{usd(s.funds.cents)}</p>
+        <p className="mn-funds-v">{s.funds ? usd(s.funds.cents) : 'Not set'}</p>
         <p className="mn-funds-n">
-          Updated {dateOnlyLabel(s.funds.as_of)} by {s.funds.by}
+          {s.funds ? `Updated ${dateOnlyLabel(s.funds.as_of)} by ${s.funds.by}` : 'No update yet'}
           {can ? (
             <>
               <span className="o-ph"> · </span>
@@ -130,18 +136,27 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
         </p>
       </section>
 
-      <Link href={approvalHref} className="o-card mn-q4card o-ph" aria-label="Q4 budget">
-        <Ring frac={doneN / steps.length} label={`${doneN}/${steps.length}`} color="gold" size={32} />
-        <span className="mn-q4card-t">
-          <b>Q4 budget</b>
-          <span>
-            {checkLine}
-            {!approved && !declined ? ` · due ${dateOnlyLabel(plan.due_on)}` : ''}
+      {plan ? (
+        <Link href={approvalHref} className="o-card mn-q4card o-ph" aria-label="Q4 budget">
+          <Ring frac={ringFrac} label={`${doneN}/${steps.length}`} color="gold" size={32} />
+          <span className="mn-q4card-t">
+            <b>Q4 budget</b>
+            <span>
+              {checkLine}
+              {!approved && !declined && plan.due_on ? ` · due ${dateOnlyLabel(plan.due_on)}` : ''}
+            </span>
           </span>
-        </span>
-        {!approved && !declined ? <span className="mn-need">Needs you</span> : null}
-        <OIcon name="right" size={18} />
-      </Link>
+          {!approved && !declined ? <span className="mn-need">Needs you</span> : null}
+          <OIcon name="right" size={18} />
+        </Link>
+      ) : (
+        <section className="o-card mn-q4card o-ph" aria-label="Q4 budget">
+          <span className="mn-q4card-t">
+            <b>Q4 budget</b>
+            <span>No Q4 plan yet</span>
+          </span>
+        </section>
+      )}
 
       <div className="mn-cols">
         <div className="mn-lc">
@@ -157,6 +172,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
               <span className="r">Q4 plan</span>
               <span>Used</span>
             </div>
+            {s.categories.length === 0 ? <p className="mn-none">No budget categories yet.</p> : null}
             {s.categories.map((c) => {
               const u = used(c.spent_cents, c.budget_cents);
               return (
@@ -189,6 +205,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
               <h2>By category</h2>
               <span>Spent of {data.year} budget</span>
             </div>
+            {s.categories.length === 0 ? <p className="mn-none">No budget categories yet.</p> : null}
             {s.categories.map((c) => {
               const u = used(c.spent_cents, c.budget_cents);
               return (
@@ -219,6 +236,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
               <span>Category</span>
               <span className="r">Amount</span>
             </div>
+            {s.recent.length === 0 ? <p className="mn-none">No spending logged yet.</p> : null}
             {s.recent.map((r) => {
               const cells = (
                 <>
@@ -244,14 +262,15 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
         <div className="mn-rc o-lg">
           <section className="o-card mn-panel mn-q4" aria-labelledby="mn-q4-h">
             <div className="mn-q4h">
-              <Ring frac={doneN / steps.length} label={`${doneN}/${steps.length}`} color="gold" size={44} />
+              {plan ? <Ring frac={ringFrac} label={`${doneN}/${steps.length}`} color="gold" size={44} /> : null}
               <div>
                 <h2 id="mn-q4-h">Q4 budget</h2>
                 <p>{checkLine}</p>
               </div>
             </div>
             {steps.map((x) => {
-              const meta = `${x.owner} · ${dateOnlyLabel(x.due_on)}`;
+              const meta = x.due_on ? `${x.owner} · ${dateOnlyLabel(x.due_on)}` : x.owner;
+              if (!plan) return null;
               if (x.kind === 'approval' && !approved) {
                 return (
                   <div key={x.id} className="mn-qs cur">
@@ -316,7 +335,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
                     <p className="mn-qs-m">
                       {x.kind === 'approval' ? (
                         <>
-                          Approved by {s.decided_at && data.plan.decided_by && data.plan.decided_by !== data.me ? 'someone else' : 'you'}, {timeLabel(s.decided_at ?? new Date().toISOString())}
+                          Approved by {decider}, {timeLabel(s.decided_at ?? new Date().toISOString())}
                           {can ? (
                             <>
                               {' · '}
@@ -344,15 +363,19 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
               </Link>
             </div>
             <div className="mn-chat-b">
-              <div className="mn-msg">
-                <span className="mn-av big">{data.chat.initials}</span>
-                <div>
-                  <p>
-                    <b>{data.chat.name}</b> <span>{data.chat.time}</span>
-                  </p>
-                  <p className="mn-bub">{data.chat.body}</p>
+              {data.chat ? (
+                <div className="mn-msg">
+                  <span className="mn-av big">{data.chat.initials}</span>
+                  <div>
+                    <p>
+                      <b>{data.chat.name}</b> <span>{data.chat.time}</span>
+                    </p>
+                    <p className="mn-bub">{data.chat.body}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="mn-none">No messages yet.</p>
+              )}
             </div>
           </section>
         </div>
@@ -371,7 +394,7 @@ export function BudgetView({ data, demo, role, userName }: { data: BudgetData; d
       ) : null}
       {funds ? (
         <FundsDialog
-          current={s.funds.cents}
+          current={s.funds?.cents ?? 0}
           onClose={() => setFunds(false)}
           onSave={async (cents) => {
             const ok = await b.saveFunds(cents, userName);

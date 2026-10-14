@@ -1,9 +1,12 @@
 // The Board chat page's data. Types mirror the draft Ops Hub schema (chat_channels, chat_messages, chat_read_markers,
 // chat_pins, staff_profiles; see supabase/migrations/20261010120000_ops_hub.sql in the ops-schema worktree).
-// Mock mode (no Supabase env) returns the Figma sample (mock/chat.ts). Live mode reads the draft tables.
+// Mock mode (no Supabase env) returns the Figma sample (mock/chat.ts). Live mode reads the tables as the signed-in person
+// (row-level security: admin and board see the area channels and the direct ones they are in). Tested live 2026-10-12.
 import { hasSupabaseEnv } from "@btx/data";
 import { sessionClient } from "./supabase-server";
 import { CHAT_MOCK, CHAT_STRESS } from "@/mock/chat";
+import { isDirectKeyOf, toAreaMessages, type AreaMsg } from "./chat-shared";
+import { timeLabel } from "./format";
 
 export type ChatPerson = {
   userId: string;
@@ -74,14 +77,13 @@ export async function loadChat({
   if (demo === "error") return EMPTY;
   if (!hasSupabaseEnv()) return demo === "stress" ? CHAT_STRESS : CHAT_MOCK;
   try {
-    // NOT TESTED: needs the Ops Hub tables (draft schema, not applied).
     const client = await sessionClient();
     const { data: auth } = await client.auth.getUser();
     const uid = auth.user?.id;
     if (!uid) return EMPTY;
     // The draft tables are not in the generated types yet, so the client is used through a loose shape.
     const db = client as unknown as LooseClient;
-    const [profiles, channels, unread, markers, pins, areas] =
+    const [profiles, channels, unread, markers, pins, areas, dir] =
       await Promise.all([
         db.from("staff_profiles").select("user_id, display_name, initials"),
         db.from("chat_channels").select("id, kind, area, direct_key"),
@@ -92,14 +94,21 @@ export async function loadChat({
           .eq("user_id", uid),
         db.from("chat_pins").select("id, channel_id, label").order("position"),
         db.from("areas").select("slug, name, position").order("position"),
+        db.rpc("staff_directory"),
       ]);
-    for (const r of [profiles, channels, unread, markers, pins, areas])
+    for (const r of [profiles, channels, unread, markers, pins, areas, dir])
       if (r.error) throw r.error;
     const people: ChatPerson[] = (profiles.data ?? []).map((p) => ({
       userId: String(p.user_id),
       displayName: String(p.display_name),
       initials: String(p.initials),
     }));
+    // Only admins and board members use the chat (reviewers score only), so only they get a direct entry and count.
+    const team = new Set(
+      (dir.data ?? [])
+        .filter((d) => d.role === "admin" || d.role === "board")
+        .map((d) => String(d.user_id)),
+    );
     const me = people.find((p) => p.userId === uid);
     if (!me) return EMPTY;
     const unreadBy = new Map(
@@ -128,15 +137,16 @@ export async function loadChat({
         initials: null,
         unread: unreadBy.get(id) || null,
         lastReadAt: readBy.get(id) ?? null,
-        people: people.length,
+        people: team.size,
       });
     }
     // Every other board member is a direct entry; the channel exists once open_direct_channel has been called.
     for (const p of people) {
-      if (p.userId === uid) continue;
-      const key = [uid, p.userId].sort().join(":");
+      if (p.userId === uid || !team.has(p.userId)) continue;
       const c = (channels.data ?? []).find(
-        (x) => x.kind === "direct" && x.direct_key === key,
+        (x) =>
+          x.kind === "direct" &&
+          isDirectKeyOf(x.direct_key as string | null, uid, p.userId),
       );
       const id = c ? String(c.id) : null;
       out.push({
@@ -200,4 +210,63 @@ type LooseQuery = LooseResult & {
 };
 export type LooseClient = {
   from: (t: string) => { select: (cols: string) => LooseQuery };
+  rpc: (fn: string) => LooseResult;
 };
+
+/** An area's chat panel (the cycle page's Scholarships chat, the Programs chat): its channel and latest messages. */
+export type AreaChatData = {
+  channelId: string;
+  title: string;
+  people: number;
+  messages: AreaMsg[];
+};
+
+// Loads one area's channel for the side panel: the latest 30 messages, oldest first. Live mode only; null when the
+// channel is missing or the person can't see it (the panel then shows nothing to post into).
+export async function loadAreaChat(area: string): Promise<AreaChatData | null> {
+  try {
+    const client = await sessionClient();
+    const { data: auth } = await client.auth.getUser();
+    const uid = auth.user?.id;
+    if (!uid) return null;
+    const db = client as unknown as LooseClient;
+    const [channel, areaRow, profiles, dir] = await Promise.all([
+      db.from("chat_channels").select("id").eq("area", area).limit(1),
+      db.from("areas").select("name").eq("slug", area).limit(1),
+      db.from("staff_profiles").select("user_id, display_name, initials"),
+      db.rpc("staff_directory"),
+    ]);
+    for (const r of [channel, areaRow, profiles, dir]) if (r.error) throw r.error;
+    const id = channel.data?.[0]?.id;
+    if (!id) return null;
+    const msgs = await db
+      .from("chat_messages")
+      .select("id, author_id, is_bot, body, created_at")
+      .eq("channel_id", String(id))
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (msgs.error) throw msgs.error;
+    const people = new Map(
+      (profiles.data ?? []).map((p) => [
+        String(p.user_id),
+        { displayName: String(p.display_name), initials: String(p.initials) },
+      ]),
+    );
+    const rows = (msgs.data ?? []).reverse().map((m) => ({
+      id: String(m.id),
+      authorId: m.author_id ? String(m.author_id) : null,
+      isBot: Boolean(m.is_bot),
+      body: String(m.body),
+      createdAt: String(m.created_at),
+    }));
+    const name = String(areaRow.data?.[0]?.name ?? area);
+    return {
+      channelId: String(id),
+      title: `${name} chat`,
+      people: (dir.data ?? []).filter((d) => d.role === "admin" || d.role === "board").length,
+      messages: toAreaMessages(rows, people, uid, Date.now(), timeLabel),
+    };
+  } catch {
+    return null;
+  }
+}
