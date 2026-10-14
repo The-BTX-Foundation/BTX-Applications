@@ -57,7 +57,7 @@ export function ApprovalView({ data, demo, initials }: { data: BudgetData; demo?
           <p>{`Q${plan.quarter} budget · ${doneN} of ${steps.length} done${declined ? ', now Approve' : next ? `, now ${next.now}` : ''}`}</p>
         </div>
 
-        <section className="o-card mn-apcard" aria-label="The plan">
+        <section className="o-card mn-apcard" aria-label="The plan" data-review="Budget plan" data-review-private>
           <p>
             Q{plan.quarter} plan: <b>{usd(t.plan)}</b> for October to December.
           </p>
@@ -71,7 +71,7 @@ export function ApprovalView({ data, demo, initials }: { data: BudgetData; demo?
             </div>
           ))}
         </section>
-        <p className="mn-apnote">{budgetLine}</p>
+        <p className="mn-apnote" data-review-private>{budgetLine}</p>
 
         <section aria-labelledby="mn-apc">
           <h2 id="mn-apc" className="mn-apch">

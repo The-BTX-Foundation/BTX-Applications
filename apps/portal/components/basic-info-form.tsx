@@ -284,7 +284,7 @@ export function BasicInfoForm({
                   <ErrorSummary items={items} ref={summary} />
                 </div>
               ) : null}
-              <div className={s.grid}>
+              <div className={s.grid} data-review-private>
                 {(wide ? ['fullName', 'phone', 'terpmail', 'secondaryEmail'] : ['fullName', 'terpmail', 'secondaryEmail', 'phone']).map((k) => fieldNodes[k])}
                 <Segmented
                   id="gender"

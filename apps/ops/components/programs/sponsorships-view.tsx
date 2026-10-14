@@ -116,7 +116,7 @@ export function SponsorshipsView({ data }: { data: SponsorshipsData }) {
       </AreaHeader>
 
       <div className="pg-sp">
-        <section className="ar-panel" aria-labelledby="sp-year">
+        <section className="ar-panel" aria-labelledby="sp-year" data-review="Sponsorships this year">
           <div className="ar-ph">
             <h2 id="sp-year">{data.year}</h2>
             <span className="o-lg">{plural(n, 'sponsorship', 'sponsorships')}</span>

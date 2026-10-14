@@ -157,7 +157,7 @@ export function SignInFlow({
             <h1 className={`st ${s.title}`}>Sign in.</h1>
             <p className={s.lead}>New here? Signing in creates your account.</p>
           </div>
-          <section className={s.card}>
+          <section className={s.card} data-review="Sign-in form">
             {stage === 'email' ? (
               <form onSubmit={submitEmail} noValidate className={s.form}>
                 <h2 className={s.cardTitle}>Enter your email</h2>
@@ -177,6 +177,7 @@ export function SignInFlow({
                   autoCapitalize="none"
                   spellCheck={false}
                   placeholder="yourname@terpmail.umd.edu"
+                  data-review-private
                   value={email}
                   error={emailError ?? undefined}
                   onChange={(e) => setEmail(e.target.value)}
@@ -196,7 +197,7 @@ export function SignInFlow({
               <form onSubmit={submitCode} noValidate className={s.form}>
                 <h2 className={s.cardTitle}>Enter your code</h2>
                 <p className={s.sentTo}>
-                  We sent a code to <b>{email}</b>.
+                  We sent a code to <b data-review-private>{email}</b>.
                 </p>
                 <p className={s.label} id="code-label">
                   6-digit code

@@ -49,7 +49,7 @@ export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
   return (
     <div className="app">
       <TopBar variant="signed-in" />
-      <main id="main" className="pm">
+      <main id="main" className="pm" data-review="Opening your application">
         <h1 className="st" style={{ fontSize: 32, lineHeight: 1.08 }}>
           {problem || terpmail ? "We couldn't open your application." : 'Opening your application.'}
         </h1>

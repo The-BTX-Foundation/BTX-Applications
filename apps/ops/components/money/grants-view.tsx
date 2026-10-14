@@ -84,7 +84,7 @@ export function GrantsView({ data, demo }: { data: GrantsData; demo?: string }) 
           const shown = all || rows.length <= SHOWN ? rows : rows.slice(0, SHOWN);
           const hidden = s.counts[st] > shown.length || (!all && rows.length > SHOWN);
           return (
-            <section key={st} className="o-card mn-panel mn-stage" aria-label={STAGE_NAME[st]}>
+            <section key={st} className="o-card mn-panel mn-stage" aria-label={STAGE_NAME[st]} data-review={`Grants: ${STAGE_NAME[st]}`} data-review-private>
               <div className="mn-ph">
                 <h2>{STAGE_NAME[st]}</h2>
                 <span className="mn-cnt">{s.counts[st]}</span>

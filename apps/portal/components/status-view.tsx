@@ -57,13 +57,13 @@ export function StatusView({
     <div className="app">
       <TopBar variant="signed-in" accountName={accountName} />
       <main id="main" className={`pm ${s.page}`}>
-        <div className={s.wrap}>
+        <div className={s.wrap} data-review="Status: application submitted">
           <p className={s.stamp}>
-            {code ? `Application ${code}. ` : ''}Submitted {stamp(submittedAt)}.{copySent ? ` Confirmation sent to ${email}` : ''}
+            <span data-review-private>{code ? `Application ${code}. ` : ''}</span>Submitted {stamp(submittedAt)}.{copySent ? <span data-review-private>{` Confirmation sent to ${email}`}</span> : ''}
           </p>
           <h1 className={s.title}>Application submitted.</h1>
           <p className={s.lead}>We&apos;ll email you after applications close on {closeDay} to schedule your video interview.</p>
-          {copySent ? <p className={s.copy}>Confirmation sent to {email}</p> : null}
+          {copySent ? <p className={s.copy} data-review-private>Confirmation sent to {email}</p> : null}
           <div className={s.drawing}>
             <DatesDrawing {...drawing} />
           </div>
@@ -130,7 +130,7 @@ export function StatusView({
             </div>
           </div>
           {/* phone only: the application number as a small line at the very bottom (laptop shows it in the stamp) */}
-          {code ? <p className={s.appCode}>Application {code}</p> : null}
+          {code ? <p className={s.appCode} data-review-private>Application {code}</p> : null}
         </div>
       </main>
     </div>

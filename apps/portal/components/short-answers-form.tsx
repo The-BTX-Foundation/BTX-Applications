@@ -190,6 +190,7 @@ export function ShortAnswersForm({
               ref={(el) => {
                 boxes.current[i] = el;
               }}
+              data-review-private
               className={msg ? `${s.box} ${s.boxErr}` : s.box}
               value={answers[i]}
               maxLength={4000}

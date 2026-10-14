@@ -28,7 +28,7 @@ type Pending = { id: string; code: string; name: string; kind: 'main' | 'extra';
 // One row of the ranking (laptop): rank, name and code, combined score, who scored what; opens to the details.
 function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle: () => void }) {
   return (
-    <div className={`s-rk${open ? ' open' : ''}`}>
+    <div className={`s-rk${open ? ' open' : ''}`} data-review-private>
       <button type="button" className="s-rkh" aria-expanded={open} onClick={onToggle}>
         <span className="n">{r.rank}</span>
         <span className="who">
@@ -78,7 +78,7 @@ function Picker({ list, label, onPick }: { list: Candidate[]; label: string; onP
   const picked = list.find((c) => c.id === id);
   if (list.length === 0) return <p className="s-pick">No submitted applicants yet.</p>;
   return (
-    <div className="s-pick">
+    <div className="s-pick" data-review-private>
       <select value={id} onChange={(e) => setId(e.target.value)} aria-label={label}>
         <option value="">Choose the applicant</option>
         {list.map((c) => (
@@ -118,7 +118,7 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
       <b>Extra awards · optional</b>
       {extras.length === 0 ? <p>Add as many as the board decides. Each one gets its own name and amount.</p> : null}
       {extras.map((a) => (
-        <p key={a.id} className="s-xr">
+        <p key={a.id} className="s-xr" data-review-private>
           <span>
             {a.awardName} · {dollar(a.amountCents)} · {a.name}
           </span>
@@ -310,13 +310,13 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
           </section>
         ) : null}
         {/* phone: the awards card */}
-        <section className="o-card s-aw o-ph">
+        <section className="o-card s-aw o-ph" data-review="Awards">
           <div>
             <b>
               {leg.name} · {leg.amountLabel} · 1 award
             </b>
             <p>
-              {main ? `${main.name} recorded.` : 'The board discusses and decides.'}
+              <span data-review-private>{main ? `${main.name} recorded.` : 'The board discusses and decides.'}</span>
               {main && !released ? (
                 <>
                   {' '}
@@ -332,7 +332,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
           <div className="opt">{extraAwards}</div>
         </section>
 
-        <section className="o-card s-panel s-rkp">
+        <section className="o-card s-panel s-rkp" data-review="Ranking by combined score">
           <div className="s-ph o-lg s-rkph">
             <h2>Ranking by combined score</h2>
             <span>{data.total} applicants</span>
@@ -348,7 +348,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
               <div className="o-lg">
                 <LaptopRow r={r} open={Boolean(openRows[r.code])} onToggle={() => setOpenRows((o) => ({ ...o, [r.code]: !o[r.code] }))} />
               </div>
-              <div className="o-ph s-prow">
+              <div className="o-ph s-prow" data-review-private>
                 <span className="s-pn">{r.rank}</span>
                 <span className="t">
                   <b>{r.name}</b>
@@ -371,7 +371,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
 
         <div className="s-sr">
           {/* laptop: the meeting agenda */}
-          <section className="o-card s-panel s-ag o-lg">
+          <section className="o-card s-panel s-ag o-lg" data-review="Meeting agenda">
             <div className="s-ph s-agh">
               <h2>Meeting agenda</h2>
               <span>{data.meetingDate}</span>
@@ -390,10 +390,10 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
               <div>
                 {main ? (
                   <>
-                    <b>
+                    <b data-review-private>
                       {main.awardName} award recorded: {main.name}
                     </b>
-                    <span>
+                    <span data-review-private>
                       {main.code} · {dollar(main.amountCents)}
                       {released ? null : (
                         <>

@@ -12,6 +12,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut } from '@btx/data';
 import { GROUPS, PEOPLE, TOP, type NavGroup } from '@/lib/nav';
 import { NAV_COUNTS, NAV_COUNTS_STRESS_MENU, NAV_COUNTS_STRESS_SIDE, NAV_COUNTS_STRESS_TABS, type Counts } from '@/mock/nav';
+import { accountFromRoleText, setReviewAccount } from '@/lib/review-account';
+import { reviewScreen } from '@/lib/review-screens';
 import { OIcon } from './icons';
 
 type ShellUser = { name: string; initials: string; roleText: string };
@@ -85,9 +87,9 @@ function UserCard({ user, phone }: { user: ShellUser; phone?: boolean }) {
         aria-label={`${user.name}, ${user.roleText}. Account menu`}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="o-av">{user.initials}</span>
+        <span className="o-av" data-review-private>{user.initials}</span>
         <span className="o-me-t">
-          <b>{user.name}</b>
+          <b data-review-private>{user.name}</b>
           <span>{user.roleText}</span>
         </span>
       </button>
@@ -147,6 +149,12 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
   const sideCounts: Counts = counts ?? (stress ? NAV_COUNTS_STRESS_SIDE : NAV_COUNTS);
   const tabCounts: Counts = counts ?? (stress ? NAV_COUNTS_STRESS_TABS : NAV_COUNTS);
   const menuCounts: Counts = counts ?? (stress ? NAV_COUNTS_STRESS_MENU : NAV_COUNTS);
+  // Rayken Review (Preview only): tell the feedback widget whether this is an admin or a board member. Never the name.
+  const roleText = user.roleText;
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_RAYKEN_REVIEW !== '1') return;
+    setReviewAccount(accountFromRoleText(roleText));
+  }, [roleText]);
   const side = useOpenGroups(pathname);
   // the phone menu opens with Scholarships unfolded (the Figma menu frame)
   const sheet = useOpenGroups(pathname, { scholarships: true });
@@ -165,7 +173,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
 
   return (
     <div className="o-app">
-      <aside className="o-sb" aria-label="Ops Hub">
+      <aside className="o-sb" aria-label="Ops Hub" data-review="Sidebar navigation">
         <img className="o-logo" src="/btx-logo-on-light.png" alt="The BTX Foundation" width={68} height={30} />
         <nav className="o-nav" aria-label="Main">
           {TOP.map((t) => {
@@ -193,17 +201,19 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
       </aside>
 
       <div className="o-col">
-        <header className="o-pt">
+        <header className="o-pt" data-review="Phone top bar">
           <button type="button" className="o-ib" aria-label="Menu: areas and board members" onClick={() => setMenu(true)}>
             <OIcon name="menu" size={22} />
           </button>
           <img className="o-pt-logo" src="/btx-logo-on-light.png" alt="The BTX Foundation" width={59} height={26} />
-          <span className="o-av o-pt-av" aria-hidden="true">
+          <span className="o-av o-pt-av" aria-hidden="true" data-review-private>
             {user.initials}
           </span>
         </header>
-        <div className="o-page">{children}</div>
-        <nav className="o-tabs" aria-label="Main">
+        <div className="o-page" data-review={reviewScreen(pathname).screen}>
+          {children}
+        </div>
+        <nav className="o-tabs" aria-label="Main" data-review="Phone tabs">
           {TOP.map((t) => {
             const here = isHere(pathname, t.href);
             return (
@@ -222,7 +232,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
       {menu ? (
         <div className="o-mn-wrap">
           <button type="button" className="o-mn-scrim" aria-label="Close menu" onClick={() => setMenu(false)} />
-          <nav className="o-mn" aria-label="Menu">
+          <nav className="o-mn" aria-label="Menu" data-review="Phone menu">
             <div className="o-mn-hd">
               <img src="/btx-logo-on-light.png" alt="The BTX Foundation" width={59} height={26} />
               <button type="button" className="o-ib" aria-label="Close menu" onClick={() => setMenu(false)}>

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import '@btx/ui/tokens.css';
 import '@btx/ui/components.css';
 import { googleSansCode, googleSansFlex } from './fonts';
+import RaykenReview from './RaykenReview';
+import { ReviewContext } from '@/components/review-context';
 
 export const metadata: Metadata = {
   title: {
@@ -21,7 +23,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${googleSansFlex.variable} ${googleSansCode.variable}`}>
+      <head>
+        <RaykenReview />
+      </head>
       <body>
+        <ReviewContext />
         <a href="#main" className="skip">
           Skip to main content
         </a>

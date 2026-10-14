@@ -246,7 +246,7 @@ export function DocumentsForm({
                 <span className={s.icon}>
                   <Icon name="file" />
                 </span>
-                <div className={s.meta}>
+                <div className={s.meta} data-review-private>
                   <b>
                     <FileName>{slot.name}</FileName>
                   </b>
@@ -290,7 +290,7 @@ export function DocumentsForm({
                 <span className={s.icon}>
                   <Icon name="file" />
                 </span>
-                <div className={`${s.meta} ${s.wide}`}>
+                <div className={`${s.meta} ${s.wide}`} data-review-private>
                   <b>
                     <FileName>{slot.name}</FileName>
                   </b>

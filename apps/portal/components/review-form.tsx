@@ -269,14 +269,14 @@ export function ReviewForm({
           <ErrorSummary items={failure.items} ref={alertRef} />
         </div>
       ) : null}
-      <div className={failure ? `${s.list} ${s.listAfter}` : s.list}>
+      <div className={failure ? `${s.list} ${s.listAfter}` : s.list} data-review="Review and submit summary">
         {rows.map((r) => (
           <div className={s.row} key={r.step}>
             <span className={s.n}>
               {done[r.step - 1] ? <Icon name="check" /> : <span className={s.pending} aria-hidden="true" />}
               {r.title}
             </span>
-            <span className={s.a}>{r.text}</span>
+            <span className={s.a} data-review-private>{r.text}</span>
             <span className={r.view ? `${s.e} ${s.eMore}` : s.e}>
               {r.view ? (
                 <button type="button" className="lk" aria-label={`View ${r.title}`} onClick={() => setOpen(open === r.view ? null : r.view!)}>
@@ -288,7 +288,7 @@ export function ReviewForm({
               </a>
             </span>
             {open === 'answers' && r.view === 'answers' ? (
-              <div className={s.panel}>
+              <div className={s.panel} data-review-private>
                 {SHORT_ANSWER_QUESTIONS.map((q, i) => (
                   <div className={s.qa} key={q}>
                     <p className={s.q}>{q}</p>
@@ -298,7 +298,7 @@ export function ReviewForm({
               </div>
             ) : null}
             {open === 'docs' && r.view === 'docs' ? (
-              <p className={s.panel}>
+              <p className={s.panel} data-review-private>
                 {files.map((f) => (
                   <button type="button" key={f.id} className="lk" onClick={() => void openFile(f.storage_path)} style={{ marginRight: 16 }}>
                     {f.kind === 'resume' ? 'Resume' : 'Transcript'}

@@ -100,7 +100,7 @@ export function WonStatus(p: Common & { sent: boolean; storyHref: string }) {
     <div className="app">
       <TopBar variant="signed-in" accountName={p.accountName} />
       <main id="main" className={`pm ${d.page}`}>
-        <div className={d.wn}>
+        <div className={d.wn} data-review="Decision: won">
           <div className={d.wl}>
             <h1 className={d.h1}>Congratulations, {first}.</h1>
             <p className={d.lead}>
@@ -152,9 +152,9 @@ export function WonStatus(p: Common & { sent: boolean; storyHref: string }) {
                       {scholar}, {view.term}
                     </span>
                   </span>
-                  <p className={d.scN}>{p.fullName}</p>
-                  <p className={d.scD}>{award.yearMajor}</p>
-                  <p className={d.scS}>{award.school}</p>
+                  <p className={d.scN} data-review-private>{p.fullName}</p>
+                  <p className={d.scD} data-review-private>{award.yearMajor}</p>
+                  <p className={d.scS} data-review-private>{award.school}</p>
                 </div>
               </div>
               <p className={p.sent ? `${d.scSt} ${d.scStIn}` : d.scSt}>
@@ -199,7 +199,7 @@ export function NotPickedStatus(p: Common) {
     <div className="app">
       <TopBar variant="signed-in" accountName={p.accountName} />
       <main id="main" className={`pm ${d.page}`}>
-        <div className={d.wn}>
+        <div className={d.wn} data-review="Decision: not picked">
           <div className={`${d.wl} ${d.nl}`}>
             <h1 className={`${d.h1} ${d.h1n}`}>Thank you, {first}.</h1>
             <p className={`${d.lead} ${d.leadN}`}>

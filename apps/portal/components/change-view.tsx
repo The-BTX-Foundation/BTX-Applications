@@ -74,7 +74,7 @@ export function ChangeView(p: ChangeProps) {
         </Button>
       }
     >
-      <div className={b.rc}>
+      <div className={b.rc} data-review="Change interview time">
         <Link href={p.statusHref} className={`lk ${b.back}`}>
           <Icon name="left" small />
           <span>Back to your application</span>
@@ -159,7 +159,7 @@ export function ChangeView(p: ChangeProps) {
             <label className="lb" htmlFor="change-note">
               Anything we should know? <i style={{ fontStyle: 'normal', fontWeight: 400, color: 'var(--muted)' }}>(optional)</i>
             </label>
-            <textarea id="change-note" className={b.ta} value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
+            <textarea id="change-note" data-review-private className={b.ta} value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
           </div>
         )}
         <p className={b.rNo}>

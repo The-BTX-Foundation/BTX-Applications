@@ -19,7 +19,7 @@ type Sort = 'attention' | 'applied' | 'code';
 // The two-letter circles for the people who interview.
 function Avatars({ list }: { list: string[] }) {
   return (
-    <span className="o-avs">
+    <span className="o-avs" data-review-private>
       {list.map((i) => (
         <span key={i} className="o-avx">
           {i}
@@ -34,19 +34,19 @@ function ScoreCell({ row }: { row: ApplicantRow }) {
   const s = row.scoring.score;
   if (s.kind === 'draft')
     return (
-      <span className="o-sc">
+      <span className="o-sc" data-review-private>
         <b className="o-sc-1">{s.line1}</b>
         <span className="o-sc-2">{s.line2}</span>
       </span>
     );
   if (s.kind === 'avg' && s.line2)
     return (
-      <span className="o-sc">
+      <span className="o-sc" data-review-private>
         <b className="o-sc-1">{s.line1}</b>
         <span className="o-sc-2">{s.line2}</span>
       </span>
     );
-  if (s.kind === 'avg') return <b className="o-sc-1">{s.line1}</b>;
+  if (s.kind === 'avg') return <b className="o-sc-1" data-review-private>{s.line1}</b>;
   return <span className="o-sc-n">{s.line1}</span>;
 }
 
@@ -72,8 +72,8 @@ function Detail({ row, cycleLabel }: { row: ApplicantRow; cycleLabel: string }) 
   const sc = row.scoring;
   const names = sc.interviewers.map((_, i) => nameOf(sc, i)).join(', ');
   return (
-    <aside className="o-dt" aria-label="Applicant details">
-      <div className="o-dt-h">
+    <aside className="o-dt" aria-label="Applicant details" data-review="Applicant summary">
+      <div className="o-dt-h" data-review-private>
         <span className="o-dt-av">{plainInitials(row.initials) === '—' ? '—' : row.initials}</span>
         <div className="o-dt-hn">
           <h2>{row.name}</h2>
@@ -82,7 +82,7 @@ function Detail({ row, cycleLabel }: { row: ApplicantRow; cycleLabel: string }) 
           </p>
         </div>
       </div>
-      <dl className="o-dt-m">
+      <dl className="o-dt-m" data-review-private>
         <dt>Applied</dt>
         <dd>{row.applied}</dd>
         <dt>Interview</dt>
@@ -114,7 +114,7 @@ function Detail({ row, cycleLabel }: { row: ApplicantRow; cycleLabel: string }) 
       </div>
       <div className="o-dt-sm">
         <h3>Interview summary</h3>
-        <p>{sc.summary ?? 'No interview summary yet.'}</p>
+        <p data-review-private>{sc.summary ?? 'No interview summary yet.'}</p>
         <p className="o-dt-lock">
           <OIcon name="lock" size={20} />
           <span>Scores are private until both interviewers publish.</span>
@@ -210,7 +210,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
     const sc = r.scoring.score;
     return (
       <Link href={`/scholarships/applicants/${r.code}`} className={`o-ar-row${picked?.code === r.code ? ' picked' : ''}`} onClick={(e) => onRow(e, r.code)}>
-        <span className="o-ap-c o-lg">
+        <span className="o-ap-c o-lg" data-review-private>
           <span className="o-ap-av">{r.initials}</span>
           <span className="o-ap-n">
             <b>{r.name}</b>
@@ -218,7 +218,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
           </span>
         </span>
         <span className="o-ph o-ph-t">
-          <b>
+          <b data-review-private>
             {r.name} · {r.code}
           </b>
           <span>
@@ -246,7 +246,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
         <span className="o-ap-d o-lg">
           <StageCell row={r} />
         </span>
-        <span className="o-ph o-ph-r">
+        <span className="o-ph o-ph-r" data-review-private>
           {sc.kind === 'draft' ? <span className="o-out">{sc.line2}</span> : null}
           {sc.kind === 'none' && sc.line1 ? <span className="o-ph-n">{sc.line1}</span> : null}
           {sc.kind === 'avg' ? <b className="o-ph-s">{sc.line1}</b> : null}
@@ -285,7 +285,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
         </div>
       ) : null}
 
-      <div className="o-ap-bar">
+      <div className="o-ap-bar" data-review="Applicant filters">
         <div className="o-seg o-ap-seg" role="group" aria-label="Show">
           {tabs.map((t) => (
             <button key={t.id} type="button" className={tab === t.id ? 'on' : ''} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
@@ -299,7 +299,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
         </div>
         <label className="o-chip o-lg">
           <span>Interviewer</span>
-          <select value={who} onChange={(e) => setWho(e.target.value)}>
+          <select data-review-private value={who} onChange={(e) => setWho(e.target.value)}>
             <option value="">Everyone</option>
             {people.map(([ini, name]) => (
               <option key={ini} value={ini}>
@@ -321,7 +321,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
       </div>
 
       <div className="o-ap-body">
-        <section className="o-ap-tab" aria-label="Applicants">
+        <section className="o-ap-tab" aria-label="Applicants" data-review="Applicants list">
           <div className="o-ap-th o-lg" aria-hidden="true">
             <span>Applicant</span>
             <span>Applied</span>

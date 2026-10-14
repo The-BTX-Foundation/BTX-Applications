@@ -47,7 +47,7 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
       ) : (
         <div className="iv-vl">
           {data.rows.map((r) => (
-            <label className="iv-vl-r" key={r.slotId}>
+            <label className="iv-vl-r" key={r.slotId} data-review-private>
               <b>
                 {r.when} · {r.applicant} · {r.code}
               </b>

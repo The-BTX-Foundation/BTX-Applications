@@ -112,13 +112,13 @@ export function GoalsView({ data }: { data: GoalsData }) {
 
       {year === data.year ? (
         <>
-          <section className="gl-cards" aria-label="This year's goals">
+          <section className="gl-cards" aria-label="This year's goals" data-review="Year goals">
             {data.cards.map((g) => (
               <Card key={g.id} g={g} />
             ))}
           </section>
 
-          <section className="gl-panel gl-chart">
+          <section className="gl-panel gl-chart" data-review="Goals chart">
             <h2>Scholars funded, by award cycle</h2>
             <div className="gl-cols">
               {data.cycles.map((c, i) => (

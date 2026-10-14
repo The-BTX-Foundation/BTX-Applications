@@ -27,11 +27,11 @@ function LaptopRow({ r }: { r: UpcomingInterview }) {
         <b>{r.dayNum}</b>
         <span className="t">{r.time}</span>
       </span>
-      <span className="s-ivc">
+      <span className="s-ivc" data-review-private>
         <b>{r.applicant}</b>
         <span>{r.code}</span>
       </span>
-      <span className="s-ivp">
+      <span className="s-ivp" data-review-private>
         {r.pair.length === 0 ? (
           <span className="s-ivp-i">
             <Avatar initials="?" />
@@ -79,7 +79,7 @@ function PhoneCard({ r }: { r: UpcomingInterview }) {
         <span>{r.weekday}</span>
         <b>{r.dayNum}</b>
       </span>
-      <span className="s-ivt-p">
+      <span className="s-ivt-p" data-review-private>
         <b>
           {r.time} · {r.applicant}
         </b>
@@ -199,7 +199,7 @@ export function InterviewsView({ data, videoLinks }: { data: InterviewsData; vid
           onPair={openRerun}
         />
       ) : data.upcoming.length > 0 ? (
-        <section className="o-card s-panel">
+        <section className="o-card s-panel" data-review="Interviews left this week">
           <div className="s-ph o-lg">
             <h2>Left this week</h2>
             <div className="s-pg">
@@ -230,7 +230,7 @@ export function InterviewsView({ data, videoLinks }: { data: InterviewsData; vid
       ) : null}
 
       {data.pairs.length > 0 ? (
-        <section className="o-card s-panel s-pairs o-lg">
+        <section className="o-card s-panel s-pairs o-lg" data-review="Interviewer pairs">
           <div className="s-ph">
             <h2>Interviewer pairs</h2>
             <div className="s-adm">
@@ -249,7 +249,7 @@ export function InterviewsView({ data, videoLinks }: { data: InterviewsData; vid
             <span>Next</span>
           </div>
           {data.pairs.map((p) => (
-            <div className="s-tr" key={p.key}>
+            <div className="s-tr" key={p.key} data-review-private>
               <b>{p.names}</b>
               <span>{p.done}</span>
               <span>{p.left}</span>

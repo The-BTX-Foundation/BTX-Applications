@@ -126,7 +126,7 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
       ) : null}
 
       <div className="mn-pp">
-        <section className="o-card mn-panel mn-people o-lg" aria-label="Board members">
+        <section className="o-card mn-panel mn-people o-lg" aria-label="Board members" data-review="Board members list">
           <div className="mn-th mn-prow">
             <span>Person</span>
             <span>Title</span>
@@ -134,7 +134,7 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
             <span>Last active</span>
           </div>
           {people.map((p) => (
-            <div key={p.user_id} className="mn-tr mn-prow">
+            <div key={p.user_id} className="mn-tr mn-prow" data-review-private>
               <span className="mn-pn">
                 <span className="mn-av pp">{p.initials}</span>
                 <b>{p.display_name}</b>
@@ -146,16 +146,16 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
           ))}
         </section>
 
-        <section className="o-card mn-panel mn-roles o-lg" aria-labelledby="mn-rl">
+        <section className="o-card mn-panel mn-roles o-lg" aria-labelledby="mn-rl" data-review="What admin rights add">
           <div className="mn-ph">
             <h2 id="mn-rl">What admin rights add</h2>
           </div>
           <p>{EXPLAINER}</p>
         </section>
 
-        <section className="o-card mn-plist o-ph" aria-label="Board members">
+        <section className="o-card mn-plist o-ph" aria-label="Board members" data-review="Board members list">
           {people.map((p) => (
-            <div key={p.user_id} className="mn-pcard">
+            <div key={p.user_id} className="mn-pcard" data-review-private>
               <span className="mn-av pp">{p.initials}</span>
               <span className="mn-pcard-n">
                 <b>{p.display_name}</b>

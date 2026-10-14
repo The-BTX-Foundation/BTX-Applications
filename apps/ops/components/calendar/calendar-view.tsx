@@ -172,7 +172,7 @@ function SidePanel({
 }) {
   const list = dayAgenda(items, day, minutes);
   return (
-    <aside className="ca-side" aria-label="Agenda">
+    <aside className="ca-side" aria-label="Agenda" data-review="Calendar agenda">
       <div className="ca-sd">
         <h2>{panelHeading(day, today)}</h2>
         {list.length === 0 ? <p className="ca-none">Nothing on this day.</p> : null}
@@ -533,7 +533,7 @@ export function CalendarView({ data }: { data: CalendarData }) {
       </div>
 
       <div className="ca-body o-lg">
-        <section className="ca-cal" aria-label={monthTitle(month)}>
+        <section className="ca-cal" aria-label={monthTitle(month)} data-review="Calendar month">
           <div className="ca-wd">
             {WD.map((d) => (
               <span key={d}>{d}</span>

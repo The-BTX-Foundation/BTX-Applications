@@ -145,7 +145,7 @@ export function TimesPanel({ data, isAdmin, mock, onNote }: { data: TimesData; i
 
   return (
     <div className="iv-cols">
-      <section className="o-card s-panel iv-main" aria-label="Interview times">
+      <section className="o-card s-panel iv-main" aria-label="Interview times" data-review="Interview times">
         <div className="iv-ph">
           <h2>Interview times</h2>
           <span>Needs admin rights</span>
@@ -264,7 +264,7 @@ export function TimesPanel({ data, isAdmin, mock, onNote }: { data: TimesData; i
         )}
       </section>
 
-      <section className="o-card s-panel iv-side" aria-label="Board availability">
+      <section className="o-card s-panel iv-side" aria-label="Board availability" data-review="Board availability">
         <div className="iv-ph">
           <h2>Board availability</h2>
           <span>
@@ -272,7 +272,7 @@ export function TimesPanel({ data, isAdmin, mock, onNote }: { data: TimesData; i
           </span>
         </div>
         {data.people.map((p) => (
-          <div className="iv-pr" key={p.userId}>
+          <div className="iv-pr" key={p.userId} data-review-private>
             <b>{p.name}</b>
             {!p.sent ? (
               <span className="no">Not sent</span>

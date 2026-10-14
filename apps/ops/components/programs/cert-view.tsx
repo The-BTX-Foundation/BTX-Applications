@@ -66,7 +66,7 @@ export function CertView({ data }: { data: CertData }) {
       </AreaHeader>
 
       {/* laptop: the plan */}
-      <section className="ar-panel o-lg" aria-labelledby="ce-plan">
+      <section className="ar-panel o-lg" aria-labelledby="ce-plan" data-review="Certification plan">
         <div className="ar-ph">
           <h2 id="ce-plan">The plan</h2>
         </div>
@@ -153,7 +153,7 @@ export function CertView({ data }: { data: CertData }) {
         ))}
       </section>
 
-      <section className="ar-panel" aria-labelledby="ce-ideas">
+      <section className="ar-panel" aria-labelledby="ce-ideas" data-review="Certification ideas">
         <div className="ar-ph">
           <h2 id="ce-ideas">Certification ideas</h2>
           <span>Ideas, not decided</span>
@@ -163,7 +163,7 @@ export function CertView({ data }: { data: CertData }) {
           <div key={i.id} className="pg-idea">
             <span>
               <b>{i.name}</b>
-              <span>Suggested by {i.by}</span>
+              <span data-review-private>Suggested by {i.by}</span>
             </span>
             <em>{i.decision === 'chosen' ? 'Chosen' : i.decision === 'dropped' ? 'Dropped' : 'Not decided'}</em>
           </div>

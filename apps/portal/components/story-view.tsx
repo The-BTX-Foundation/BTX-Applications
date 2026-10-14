@@ -101,7 +101,7 @@ export function StoryView(p: StoryProps) {
 
   return (
     <JourneyPage accountName={p.accountName} primary={<Button onClick={() => void send()} disabled={busy}>Send to BTX</Button>}>
-      <div className={s.wrap}>
+      <div className={s.wrap} data-review="Award story">
         <h1 className={`st ${s.title}`}>Your photo and story.</h1>
         <p className={b.lead}>For your scholar page on the BTX website. It saves as you type.</p>
         {problem ? (
@@ -112,7 +112,7 @@ export function StoryView(p: StoryProps) {
         <div className={s.grid}>
           <div className="f" style={{ marginTop: 20 }}>
             <p className="lb">Photo</p>
-            <div className={s.pk}>
+            <div className={s.pk} data-review-private>
               {photo ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a local preview of the chosen photo
                 <img src={photo.url} alt="Your photo" className={s.ph} />
@@ -140,6 +140,7 @@ export function StoryView(p: StoryProps) {
               A few lines about you
             </label>
             <textarea
+              data-review-private
               id="story"
               className={`${b.ta} ${s.ta}`}
               value={story}

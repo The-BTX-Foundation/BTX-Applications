@@ -171,7 +171,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
 
       <div className="ou-ig">
         {/* laptop: the table */}
-        <section className="ar-panel ou-list o-lg" aria-label="Posts">
+        <section className="ar-panel ou-list o-lg" aria-label="Posts" data-review="Instagram posts">
           <div className="ou-lth" aria-hidden="true">
             <span>Post</span>
             <span>Date</span>
@@ -207,7 +207,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
         </section>
 
         {selected ? (
-          <section className="ar-panel ou-detail" aria-label="The selected post">
+          <section className="ar-panel ou-detail" aria-label="The selected post" data-review="Selected post">
             <Detail post={selected} onSend={() => send(selected)} note={note} />
           </section>
         ) : null}

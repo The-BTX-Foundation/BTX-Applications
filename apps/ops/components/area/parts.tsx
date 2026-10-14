@@ -21,7 +21,7 @@ export function OwnerChip({ o, solid, small }: { o: Owner; solid?: boolean; smal
     );
   }
   return (
-    <span className="ar-own">
+    <span className="ar-own" data-review-private>
       <span className={`ar-av${small ? ' sm' : ''}`}>{o.initials}</span>
       <span>{o.name}</span>
     </span>

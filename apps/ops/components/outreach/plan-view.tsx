@@ -71,7 +71,7 @@ export function PlanView({ data }: { data: PlanData }) {
         ))}
       </div>
 
-      <section className="ar-panel ou-plan" aria-labelledby="pl-month">
+      <section className="ar-panel ou-plan" aria-labelledby="pl-month" data-review="Outreach month plan">
         <div className="ar-ph ou-plan-h">
           <h2 id="pl-month">{data.month} outreach</h2>
           <span>{rows.length} items in date order</span>
