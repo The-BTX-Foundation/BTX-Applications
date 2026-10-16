@@ -1,0 +1,42 @@
+# security-playbook template: Dependabot version updates (area 06 Dependencies, 07 Repo & CI).
+# Final path of this template: ~/.claude/skills/security-playbook/templates/dependabot.yml
+# Copy to <repo>/.github/dependabot.yml. Remove the npm block if the repo has no package.json.
+#
+# cooldown: Dependabot waits N days after a release before opening a version-update PR, so a
+# hijacked or yanked package version has time to be caught. It applies ONLY to version updates.
+# Security updates (alerts) ignore it and arrive immediately. Default when omitted is 0 days;
+# `default-days` applies to every update type, the semver-* keys override it per type.
+# Source: GitHub docs, Dependabot options reference, "cooldown" (checked 2026-10-11).
+# 7 days lets the community catch a hijacked release first (chalk/debug and Shai-Hulud, 2025, were pulled within hours to days).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 7
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "ci"
