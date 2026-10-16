@@ -28,7 +28,7 @@
     "axe-core": "^4.12.1",
     "eslint": "^9",
     "eslint-config-next": "^16.4.0",
-    "typescript": "^5",
+    "typescript": "^7",
     "vitest": "^4.1.10"
   }
 }
