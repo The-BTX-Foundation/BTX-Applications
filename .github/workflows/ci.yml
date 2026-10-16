@@ -1,0 +1,49 @@
+# CI: runs the repo's local gates (lint, typecheck, tests, build) for both apps on every PR and on master.
+# Left out on purpose: the Portal e2e (Playwright) and the pgTAP database tests, because they need a browser
+# install and a local Supabase stack. No secrets are used anywhere in this file.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the older run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Portal
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      # Ops Hub
+      - run: npm run lint:ops
+      - run: npm run typecheck:ops
+      - run: npm run test:ops
+      - run: npm run build:ops
+
+      # Shared AI package
+      - run: npm test -w @btx/ai
