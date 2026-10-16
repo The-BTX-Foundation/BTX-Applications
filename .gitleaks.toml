@@ -1,0 +1,11 @@
+# gitleaks config: the default rules, plus one exception.
+# Supabase publishable keys (sb_publishable_...) are public by design: they ship in every browser
+# bundle and only work within the database's row-level security. The generic-api-key rule flags them
+# in next.config.ts and .env.example, so they are allowlisted here. Secret keys (sb_secret_...) are
+# NOT covered by this exception and still fail the scan.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Supabase publishable keys are public by design"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]{20,}$''']
