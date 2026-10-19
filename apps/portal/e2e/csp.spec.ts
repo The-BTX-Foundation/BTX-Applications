@@ -58,10 +58,13 @@ test('every page carries the report-only policy with a fresh nonce, and Next.js 
   expect(policy).toContain('report-uri /api/csp-report');
   expect(policy).toContain("object-src 'none'");
   expect(policy).not.toContain('report-to');
-  // the enforced framing policy is still there, unchanged
-  expect(a.headers()['content-security-policy']).toBe("frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
+  // the long-standing enforced rules: framing by X-Frame-Options, no-<base> and no-plugins by a meta policy. There is no
+  // enforced CSP response header during the trial (on Vercel it would replace the nonce Next.js reads; lib/csp.ts)
+  expect(a.headers()['content-security-policy']).toBeUndefined();
+  expect(a.headers()['x-frame-options']).toBe('SAMEORIGIN');
   // every inline script in the HTML carries this response's nonce
   const html = await a.text();
+  expect(html).toContain('<meta http-equiv="Content-Security-Policy" content="base-uri &#x27;self&#x27;; object-src &#x27;none&#x27;"/>');
   const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>/g)].map((m) => m[1]);
   expect(inline.length).toBeGreaterThan(0);
   for (const attrs of inline) expect(attrs, 'inline script nonce').toContain(`nonce="${nonce}"`);

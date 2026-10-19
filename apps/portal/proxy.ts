@@ -9,7 +9,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@btx/data/proxy';
 import { REPORT_PATH, buildCsp, makeNonce } from '@/lib/csp';
 
-// Adds the report-only policy to a response.
+// Adds the report-only trial policy to a response. There is deliberately no enforced Content-Security-Policy response
+// header (see META_POLICY in lib/csp.ts): on Vercel it would replace the nonce Next.js reads.
 function withCsp(response: NextResponse, policy: string): NextResponse {
   response.headers.set('Content-Security-Policy-Report-Only', policy);
   return response;
@@ -29,10 +30,12 @@ export async function proxy(request: NextRequest) {
     vercelPreview: process.env.VERCEL_ENV === 'preview',
     review: process.env.NEXT_PUBLIC_RAYKEN_REVIEW === '1',
   });
-  // Next.js takes the nonce for its inline scripts from this request header (and app/layout.tsx reads the same one for
-  // the review loader). Next prefers a `content-security-policy` request header if there is one, so a client-sent one is
-  // removed: otherwise it would choose the nonce Next stamps.
-  request.headers.delete('content-security-policy');
+  // Next.js takes the nonce for its inline scripts from a CSP REQUEST header: `content-security-policy` first, else
+  // `content-security-policy-report-only` (app/layout.tsx reads them the same way for the review loader). Both carry
+  // this policy, which also replaces anything a client sent, so a client can't choose the nonce. Request headers never
+  // reach the browser: it gets only the report-only RESPONSE header below. (On Vercel, response headers are also copied
+  // onto the request, which is why no enforced CSP response header may exist during the trial; see lib/csp.ts.)
+  request.headers.set('content-security-policy', policy);
   request.headers.set('content-security-policy-report-only', policy);
 
   const { response, userId, live } = await updateSession(request);

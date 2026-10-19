@@ -7,16 +7,16 @@ const SUPABASE_URL = 'https://awiaebtqalcmfafvktwh.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_9K1-NijV5lSE_SoY-3_2Tg_bKYHQIuy';
 const onVercel = process.env.VERCEL === '1';
 
-// Security headers sent on every route. The Content-Security-Policy is deliberately small (framing, base tag, plugins
-// only); a full script/style/connect policy needs a Report-Only trial first. Same-origin framing stays allowed because
-// the team checks phone width through a same-origin iframe.
+// Security headers sent on every route. Same-origin framing stays allowed (X-Frame-Options SAMEORIGIN) because the team
+// checks phone width through a same-origin iframe. The Content-Security-Policy is not here: during its Report-Only
+// trial proxy.ts sends the trial policy, and the long-standing no-<base>, no-plugins rules travel in a <meta> tag
+// (lib/csp.ts META_POLICY), because on Vercel an enforced CSP response header would replace the nonce Next.js reads.
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-  { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
 ];
 
 // The shared packages ship TypeScript source, so Next compiles them with the app.

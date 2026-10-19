@@ -7,6 +7,14 @@
 // with a fresh nonce; Next.js reads that nonce from the request header and puts it on its own inline scripts.
 import { cleanPath } from './analytics';
 
+/** The part of the Portal's long-standing enforced policy that a page can carry itself: no <base> to another site, no
+ *  plugins. app/layout.tsx puts it in a <meta http-equiv> tag, which browsers enforce for these two rules exactly like a
+ *  header. It can't be a Content-Security-Policy RESPONSE header during the trial: on Vercel any such header is copied
+ *  onto the request in place of proxy.ts's, and Next.js would then find no nonce (2026-10-19). Framing stays enforced
+ *  by the X-Frame-Options: SAMEORIGIN header (next.config.ts). When the trial policy is enforced it becomes the one
+ *  header, carries its own nonce and these rules, and the meta tag can go. */
+export const META_POLICY = "base-uri 'self'; object-src 'none'";
+
 /** Where browsers send violation reports (app/api/csp-report/route.ts), through the policy's report-uri. The newer
  *  report-to is left out on purpose: Chrome then sends through the Reporting API instead, which batches reports and,
  *  in testing, never delivered them from a headless browser, while every browser sends report-uri reports at once. */

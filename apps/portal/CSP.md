@@ -37,13 +37,16 @@ Extra entries appear only where they are needed:
 **The nonce.**
 - Each page response gets a fresh random code, generated in `proxy.ts`.
 - Next.js reads it from the request and stamps it on every inline script it writes, so those scripts pass. The layout reads the same request header for the review loader.
-- A `Content-Security-Policy` header sent by a client is removed first, because Next.js would otherwise take its nonce from that one.
+- The proxy puts the policy on the request under both CSP header names, replacing anything a client sent, so a client can't choose the nonce. Request headers never reach the browser. The browser gets only the report-only response header.
+- **Vercel copies response headers onto the request.** On Vercel, any `Content-Security-Policy` response header also lands on the request, in place of the proxy's. Next.js reads that name first, so it found no nonce: in production on 2026-10-19 (PR #21) Next's own scripts carried none. That is why, during the trial, there is **no enforced CSP response header** at all. `next start` doesn't copy headers this way, so only a Vercel deployment shows this; check a preview's HTML.
 - No other inline script can, because it would need that response's code.
 - Making every page render per request (the root layout reads the code) is what makes this work. A page built ahead of time can't carry a fresh code.
 
 **Inline styles stay allowed.** React's `style=` attributes need them. They carry far less risk than inline scripts. The style rule never gets a nonce, because browsers then stop honouring `'unsafe-inline'` for styles.
 
-The old enforced header (`frame-ancestors 'self'; base-uri 'self'; object-src 'none'` in `next.config.ts`) is unchanged and still enforced.
+**The rules the Portal has always enforced still are**, carried differently during the trial:
+- **Framing:** `X-Frame-Options: SAMEORIGIN` (`next.config.ts`).
+- **No `<base>` to another site, no plugins:** `base-uri 'self'; object-src 'none'` in a `<meta http-equiv="Content-Security-Policy">` tag, written by `app/layout.tsx` (`META_POLICY` in `lib/csp.ts`). Browsers enforce these two rules from a meta tag exactly as from a header.
 
 ## 2. Reading the reports
 
@@ -76,7 +79,7 @@ The endpoint is public, because browsers send reports without signing in. It rea
    - Each one is either a gap in the list (add the origin in `lib/csp.ts`, with a test) or something that should stay blocked.
    - **Never add an origin because of reports alone.** The endpoint is public, so anyone can post a report that looks like a real gap. Reproduce the load on the live site first (open the page and watch the browser's console), then add it.
    - Zero lines (apart from extensions) means the list is right.
-3. **Switch to enforcing** in a separate PR. In `proxy.ts`, rename the response header to `Content-Security-Policy`, and the request header with it (Next.js reads either), and keep removing a client-sent one. Also:
+3. **Switch to enforcing** in a separate PR. In `proxy.ts`, send the policy as the `Content-Security-Policy` RESPONSE header (and drop the report-only one). That single header carries the nonce, so on Vercel the copy that lands on the request is the right one. The meta tag can then go, since the policy includes `base-uri` and `object-src`. Also:
    - Keep `report-uri`, so blocked loads are still logged.
    - Cover the addresses the proxy skips. Its matcher leaves out `.png`, `.jpg`, `.svg` and `.woff2` addresses for speed, so a 404 page for one of those (say `/x.png`) renders without any policy. Either narrow the matcher to the static folders, or give those responses a policy of their own.
    - **Gate on a production build**, not only the dev server. The dev policy adds eval and websockets, so it would miss those. Build and serve the Portal in mock mode with the analytics id (`NEXT_PUBLIC_AUTH_MODE=mock NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= NEXT_PUBLIC_GA_ID=G-36BN7DJ7DN npx next build && npx next start -p 3298` in `apps/portal`). Then run `PORT=3298 npx playwright test e2e/csp.spec.ts e2e/analytics.spec.ts`. Both must pass with zero violations.

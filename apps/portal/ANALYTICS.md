@@ -98,8 +98,8 @@ Four walls, each tested.
 
 The property-wide settings (retention, filters, Google signals) are set by the website's checklist (Btx-Website `docs/ANALYTICS.md` section 4). Don't change them without Dominick. The Portal adds only these:
 
-- [ ] **Key events:** `sign_up`, `application_begin`, `application_submit`. Admin → Events → Create event → **Create with code**, no default value. This works before any data exists. Don't use "Create without code".
-- [ ] **Custom dimensions (event-scoped):** `method`, `code`, `step_name`, `step_number`. Admin → Custom definitions.
+- [x] **Key events:** `sign_up`, `application_begin`, `application_submit` (done 2026-10-19). Admin → Events → Create event → **Create with code**. This works before any data exists. Don't use "Create without code". The form pre-selects "Set a default key event value: US Dollar 1"; switch it to **Don't set a default key event value**, since these are counts, not money (fixed afterwards on `sign_up` through its row menu → Set default key event value).
+- [x] **Custom dimensions (event-scoped):** done 2026-10-19. "Application step" (`step_name`) and "Application step number" (`step_number`) were added. `code` and `method` already existed from the website, as "Error code" and "Gift method", and GA4 allows one dimension per parameter name, so the Portal's sign-in error codes and sign-up methods appear under those two. Filter by event name (`sign_in_error`, `sign_up`) to see only the Portal's.
 - [ ] **Data redaction:** nothing to add. The Portal strips every query parameter except clean campaign tags before a hit is sent (section 3). The stream's existing redaction (email, `review`, `email`) stays as a backstop.
 - [ ] **Configure your domains** (optional): the shared cookie already carries the visit across. Listing both domains under the stream's tag settings only marks the referral from the website as internal. It is a stream setting, so it is Dominick's call.
 - [ ] **User-provided data collection: keep it off** (Admin → Data collection). The Portal's filter drops those hashed fields anyway; turning it on would only add them to the website's hits.
