@@ -37,6 +37,7 @@ Extra entries appear only where they are needed:
 **The nonce.**
 - Each page response gets a fresh random code, generated in `proxy.ts`.
 - Next.js reads it from the request and stamps it on every inline script it writes, so those scripts pass. The layout reads the same request header for the review loader.
+- The proxy puts the policy on the request under the name `content-security-policy`. On Vercel that is the only name that reaches the page render; under the report-only name, Next's scripts came out without a nonce in production (2026-10-19, fixed the same day). A request header never reaches the browser, so this enforces nothing. The browser gets only the report-only response header.
 - A `Content-Security-Policy` header sent by a client is removed first, because Next.js would otherwise take its nonce from that one.
 - No other inline script can, because it would need that response's code.
 - Making every page render per request (the root layout reads the code) is what makes this work. A page built ahead of time can't carry a fresh code.
@@ -76,7 +77,7 @@ The endpoint is public, because browsers send reports without signing in. It rea
    - Each one is either a gap in the list (add the origin in `lib/csp.ts`, with a test) or something that should stay blocked.
    - **Never add an origin because of reports alone.** The endpoint is public, so anyone can post a report that looks like a real gap. Reproduce the load on the live site first (open the page and watch the browser's console), then add it.
    - Zero lines (apart from extensions) means the list is right.
-3. **Switch to enforcing** in a separate PR. In `proxy.ts`, rename the response header to `Content-Security-Policy`, and the request header with it (Next.js reads either), and keep removing a client-sent one. Also:
+3. **Switch to enforcing** in a separate PR. In `proxy.ts`, rename the RESPONSE header to `Content-Security-Policy`. The request header already uses that name. Also:
    - Keep `report-uri`, so blocked loads are still logged.
    - Cover the addresses the proxy skips. Its matcher leaves out `.png`, `.jpg`, `.svg` and `.woff2` addresses for speed, so a 404 page for one of those (say `/x.png`) renders without any policy. Either narrow the matcher to the static folders, or give those responses a policy of their own.
    - **Gate on a production build**, not only the dev server. The dev policy adds eval and websockets, so it would miss those. Build and serve the Portal in mock mode with the analytics id (`NEXT_PUBLIC_AUTH_MODE=mock NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= NEXT_PUBLIC_GA_ID=G-36BN7DJ7DN npx next build && npx next start -p 3298` in `apps/portal`). Then run `PORT=3298 npx playwright test e2e/csp.spec.ts e2e/analytics.spec.ts`. Both must pass with zero violations.

@@ -29,11 +29,14 @@ export async function proxy(request: NextRequest) {
     vercelPreview: process.env.VERCEL_ENV === 'preview',
     review: process.env.NEXT_PUBLIC_RAYKEN_REVIEW === '1',
   });
-  // Next.js takes the nonce for its inline scripts from this request header (and app/layout.tsx reads the same one for
-  // the review loader). Next prefers a `content-security-policy` request header if there is one, so a client-sent one is
-  // removed: otherwise it would choose the nonce Next stamps.
-  request.headers.delete('content-security-policy');
-  request.headers.set('content-security-policy-report-only', policy);
+  // Next.js takes the nonce for its inline scripts from a CSP REQUEST header (and app/layout.tsx reads the same one for
+  // the review loader). On Vercel only the `content-security-policy` name reaches the page render: under the report-only
+  // name the nonce came out undefined in production (2026-10-19), though `next start` read it fine. A request header is
+  // never sent to the browser, so this name enforces nothing there; the browser gets only the report-only RESPONSE header
+  // set below. Setting it also replaces any client-sent one, so a client can't choose the nonce; a client-sent
+  // report-only one is removed too.
+  request.headers.set('content-security-policy', policy);
+  request.headers.delete('content-security-policy-report-only');
 
   const { response, userId, live } = await updateSession(request);
   if (live && !userId && (pathname === '/apply' || pathname.startsWith('/apply/') || pathname === '/status')) {

@@ -23,11 +23,11 @@ export const viewport: Viewport = {
 
 // The root layout: loads the fonts, the shared styles and analytics (app/Analytics.tsx). Each page draws its own top bar, because the bar's
 // variant (signed out, sign-in, signed in) and the wizard's progress change from screen to screen.
-// It reads this request's script nonce from the policy proxy.ts put on the request (lib/csp.ts), the same header and the
-// same rule Next.js uses, so the review loader always carries the nonce Next stamps on its own scripts. Reading a request
+// It reads this request's script nonce from the policy proxy.ts put on the request (lib/csp.ts; the request header is
+// named content-security-policy, see proxy.ts), the same header and the same rule Next.js uses, so the review loader always carries the nonce Next stamps on its own scripts. Reading a request
 // header makes every page render per request, which a nonce needs: a page built ahead of time can't carry a fresh one.
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const nonce = nonceFromPolicy((await headers()).get('content-security-policy-report-only'));
+  const nonce = nonceFromPolicy((await headers()).get('content-security-policy'));
   return (
     <html lang="en" className={`${googleSansFlex.variable} ${googleSansCode.variable}`}>
       <head>
