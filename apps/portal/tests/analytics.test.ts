@@ -119,8 +119,18 @@ describe('the hit filter', () => {
     // a trailing dot is the same host
     expect(hitKind('https://www.google.com./g/collect?v=2', ORIGIN)).toBe('blocked');
     expect(hitKind('https://region1.google-analytics.com./g/collect?v=2', ORIGIN)).toBe('analytics');
-    // other Google services are not measurement, and relative addresses are this site
-    expect(hitKind('https://accounts.google.com/o/oauth2', ORIGIN)).toBe('other');
+    // every google.com host and the .google and .goog hosts get nothing (ads, debug, Tag Assistant); the Portal calls none
+    expect(hitKind('https://adservice.google.com/ddm/regclk', ORIGIN)).toBe('blocked');
+    expect(hitKind('https://tagassistant.google.com/x', ORIGIN)).toBe('blocked');
+    expect(hitKind('https://cct.google/taggy/agent.js', ORIGIN)).toBe('blocked');
+    expect(hitKind('https://merchant-center-analytics.goog/mc/collect', ORIGIN)).toBe('blocked');
+    // a GA4 hit on a server-side or first-party tagging address is rebuilt like any other
+    expect(hitKind('https://sgtm.thebtxfoundation.org/g/collect?v=2', ORIGIN)).toBe('analytics');
+    expect(hitKind('/ga/g/c?v=2', ORIGIN)).toBe('analytics');
+    // the tag's service-worker frame never loads, wherever it is served from
+    expect(hitKind('https://apply.thebtxfoundation.org/_/service_worker/x/sw_iframe.html', ORIGIN)).toBe('blocked');
+    // Google's static and API hosts are not measurement, and this site's own addresses pass
+    expect(hitKind('https://fonts.gstatic.com/s/x.woff2', ORIGIN)).toBe('other');
     expect(hitKind('/apply/review', ORIGIN)).toBe('other');
   });
 

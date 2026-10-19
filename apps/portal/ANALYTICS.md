@@ -89,7 +89,8 @@ Four walls, each tested.
    - **Nothing else from Google:**
      - The tag's own host serves the tag script (`/gtag/js`) and nothing else.
      - No Google frame or service worker loads.
-     - analytics.google.com, google.com and doubleclick.net get nothing.
+     - Every google.com host (analytics.google.com included), `.google` and `.goog` hosts, and doubleclick.net get nothing.
+   - **Recognized by path, not only by host.** A GA4 hit sent to a server-side or first-party tagging address (`/g/collect`, `/ga/g/c`) is rebuilt the same way. The tag's service-worker frame is blocked wherever it is served from.
    - **A request the filter can't read is dropped.**
 4. **Staff and testers send nothing.** See section 1.
 
@@ -102,6 +103,7 @@ The property-wide settings (retention, filters, Google signals) are set by the w
 - [ ] **Data redaction:** nothing to add. The Portal strips every query parameter except clean campaign tags before a hit is sent (section 3). The stream's existing redaction (email, `review`, `email`) stays as a backstop.
 - [ ] **Configure your domains** (optional): the shared cookie already carries the visit across. Listing both domains under the stream's tag settings only marks the referral from the website as internal. It is a stream setting, so it is Dominick's call.
 - [ ] **User-provided data collection: keep it off** (Admin → Data collection). The Portal's filter drops those hashed fields anyway; turning it on would only add them to the website's hits.
+- [ ] **No server-side tagging, Google tag gateway, first-party mode or `transport_url` on this property without a re-review of the Portal filter.** In those modes Google's tag can send through a hidden frame of its own (see section 8(e)). Run `npm run e2e -w @btx/portal` after any change to the stream's tag settings; it loads the live container.
 - Enhanced measurement can stay as the website needs it. The Portal's filter drops Google's automatic link-click, download, form and history page-view events either way.
 
 ## 5. The funnel report for the board
@@ -143,8 +145,11 @@ Break it down by `session source / medium` to compare Instagram, the newsletter 
 - **(a) Counsel.** Google Analytics is a new vendor on a site used by students, some of them under 18. Security-playbook IN-60 says to talk to counsel before a new vendor touches applicant-facing pages. The Portal sends no applicant data to Google, which keeps the question narrow. The privacy text should still name Google Analytics before launch.
 - **(b) Website side of the switch.** The website does not read the Portal's `btx-analytics-off` switch. Board members' own browsing of the website still counts there.
 - **(c) A new page.** Add every new Portal page to `ROUTES` in `lib/analytics.ts`. Until then it is reported as `/other`, which is safe but less useful. A page with an ID in its path gets a fixed template path such as `/status/interview/:id`, never the real one.
-- **(d) A full Content-Security-Policy.** The filter runs inside the page. A browser-enforced backstop would limit where scripts, images, frames and connections may go. The current policy only covers framing, so this needs a Report-Only trial first (`next.config.ts`).
-- **(e) Residual risk, accepted.** The filter covers every way gtag.js sends today. Two kinds of request would bypass a page-level wrapper: one from a fresh browser realm (a blank same-origin frame's own `fetch`), and one from a future transport Google adds. Neither is used by the tag today, and the e2e test re-checks the real container every run. **The stronger alternative is to load no Google script on the Portal at all.** The Portal would send its six events to its own server, which forwards them to the GA4 Measurement Protocol; the `_ga` visitor cookie can be read there because the Portal is a subdomain. That is a bigger change, worth it only if the board wants zero third-party script on pages that show applicant data.
+- **(d) A full Content-Security-Policy.** The filter runs inside the page. A browser-enforced backstop would limit where scripts, images, frames and connections may go. That matters for channels the tag doesn't use today but the filter doesn't cover: the `srcset` property, `<link rel=preload>`, markup set through `innerHTML`, and `setAttributeNS`. The current policy only covers framing, so this needs a Report-Only trial first (`next.config.ts`).
+- **(e) Residual risk, accepted.** The filter covers every way gtag.js sends with this property's settings (adversarial review, 2026-10-19).
+  - **The dormant path.** gtag.js already contains a service-worker transport. It builds a blank frame and creates the Google frame inside it, in that frame's own copy of the browser objects, where a page-level filter can't see it. It then sends the raw hit and the full page address from there.
+  - **When it would switch on.** Only when server-side tagging, the tag gateway or a `transport_url` is configured. That is why section 4 puts those settings behind a re-review.
+  - **Other bypasses.** A fresh browser realm, or a transport Google adds in a later tag version. The e2e test loads the live container on every run. **The stronger alternative is to load no Google script on the Portal at all.** The Portal would send its six events to its own server, which forwards them to the GA4 Measurement Protocol; the `_ga` visitor cookie can be read there because the Portal is a subdomain. That is a bigger change, worth it only if the board wants zero third-party script on pages that show applicant data.
 
 ## 9. Verification record
 

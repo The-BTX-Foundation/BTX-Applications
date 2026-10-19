@@ -259,7 +259,9 @@ function installHitFilter(): void {
   const toGoogle = new WeakSet<XMLHttpRequest>();
   const realOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, ...args: unknown[]) {
+    // a request re-opened to another address is judged again
     if (kindOf(String(args[1])) !== 'other') toGoogle.add(this);
+    else toGoogle.delete(this);
     return (realOpen as (...a: unknown[]) => void).apply(this, args);
   } as typeof XMLHttpRequest.prototype.open;
   const realSend = XMLHttpRequest.prototype.send;

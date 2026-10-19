@@ -233,20 +233,34 @@ export function cleanParams(event: string, params: Record<string, unknown> = {})
  *  (the tag's own host), or drop it (every other Google measurement or advertising host). */
 export type HitKind = 'other' | 'analytics' | 'tag' | 'blocked';
 
-// Sorts a request address by where it goes. A trailing dot on the host ("www.google.com.") is the same host.
-// analytics.google.com is blocked as well: requests there would carry the student's Google account cookies.
+// GA4 collect paths, on any host: Google's own, a server-side tagging host (sgtm.<domain>/g/collect), the Google tag
+// gateway on a site's own origin (/ga/g/c), Merchant Center (/mc/collect). The Portal serves none of these itself.
+const COLLECT_PATH = /^\/((g|g\/s)\/collect|(ga|ag)\/g\/c|mc\/collect)\/?$/;
+// The tag's service-worker transport (a hidden frame that sends hits itself), on any host.
+const SERVICE_WORKER_PATH = /(\/_\/service_worker|sw_iframe\.html)/;
+
+// Sorts a request address by where it goes, by host and by path, so a hit sent through a server-side or first-party
+// tagging address is still caught. A trailing dot on the host ("www.google.com.") is the same host. Every google.com
+// host is blocked (analytics.google.com would carry the student's Google account cookies; the others are ads, debug
+// and Tag Assistant endpoints), and so are .google and .goog hosts; the Portal calls none of them.
 export function hitKind(rawUrl: string, base: string): HitKind {
   let host: string;
+  let path: string;
   try {
-    host = new URL(rawUrl, base).hostname.toLowerCase().replace(/\.+$/, '');
+    const url = new URL(rawUrl, base);
+    host = url.hostname.toLowerCase().replace(/\.+$/, '');
+    path = url.pathname;
   } catch {
     return 'other';
   }
+  if (SERVICE_WORKER_PATH.test(path)) return 'blocked';
   if (/(^|\.)google-analytics\.com$/.test(host)) return 'analytics';
   if (/(^|\.)googletagmanager\.com$/.test(host)) return 'tag';
-  if (/(^|\.)(analytics\.google\.com|doubleclick\.net|googleadservices\.com|googlesyndication\.com)$/.test(host)) return 'blocked';
-  // google.com and the country sites (www.google.co.uk); other google.com services (docs, meet) are not measurement
+  if (/(^|\.)(google\.com|doubleclick\.net|googleadservices\.com|googlesyndication\.com|google|goog)$/.test(host)) return 'blocked';
+  // the country sites (www.google.co.uk, google.de)
   if (/^(www\.)?google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host)) return 'blocked';
+  // a GA4 hit on any other host (server-side or first-party tagging) is rebuilt like one sent to Google
+  if (COLLECT_PATH.test(path)) return 'analytics';
   return 'other';
 }
 
@@ -258,6 +272,8 @@ const HIT_FIELDS = new Set([
   'v', 'tid', 'gtm', 'tag_exp', '_p', 'gcs', 'gcd', 'npa', 'dma', 'dma_cps', 'pscdl', 'are', 'frm', 'cid', 'ul', 'sr',
   'uaa', 'uab', 'uafvl', 'uamb', 'uam', 'uap', 'uapv', 'uaw', '_s', 'sid', 'sct', 'seg', '_et', '_ee', '_eu', '_c',
   '_fv', '_ss', '_nsi', '_tu', 'tfd', 'ngs', 'gaf', 'rcb', 'ae', 'richsstsse', '_dbg', 'ir', '_z', 'en',
+  // privacy and consent flags: coarser location, device details withheld, a consent update
+  '_geo', '_rdi', 'gcu', 'gcut',
 ]);
 // A technical field's value may not hold an address, a path or an email address.
 const SAFE_VALUE = /^[^@/\\]{0,300}$/;

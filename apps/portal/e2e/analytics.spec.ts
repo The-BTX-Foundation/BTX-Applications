@@ -56,12 +56,16 @@ test.use({
 
 type Sent = { url: string; body: string };
 
-// Records every request the context makes to a Google host (pages, frames and service workers), and answers every one
-// locally (204) except the tag script, which is fetched from Google.
+// A GA4 collect path or the tag's service-worker frame, on any host (server-side and first-party tagging included).
+const MEASUREMENT_PATH = /(\/g\/collect|\/g\/s\/collect|\/ga\/g\/c|\/ag\/g\/c|\/mc\/collect|\/_\/service_worker|sw_iframe)/;
+
+// Records every request the context makes (pages, frames and service workers) to a Google host or to a measurement path
+// on any host, and answers every Google one locally (204) except the tag script, which is fetched from Google.
 async function watchGoogle(context: BrowserContext) {
   const sent: Sent[] = [];
   context.on('request', (req) => {
-    if (/google|doubleclick/i.test(new URL(req.url()).hostname)) sent.push({ url: req.url(), body: req.postData() ?? '' });
+    const url = new URL(req.url());
+    if (/google|doubleclick|\.goog$/i.test(url.hostname) || MEASUREMENT_PATH.test(url.pathname)) sent.push({ url: req.url(), body: req.postData() ?? '' });
   });
   await context.route(/^https:\/\/([^/]*\.)?(google-analytics\.com|analytics\.google\.com|google\.[a-z.]+|doubleclick\.net|googletagmanager\.com)\//, (route) =>
     /^https:\/\/www\.googletagmanager\.com\/gtag\/(js|destination)\?/.test(route.request().url()) ? route.continue() : route.fulfill({ status: 204, body: '' }),
@@ -191,6 +195,8 @@ test('the funnel events fire through the real Google tag and nothing an applican
       new Image(1, 1).setAttribute('src', `${collect}&en=form_submit&ep.form_destination=${encodeURIComponent(location.href)}`);
       navigator.sendBeacon(`${collect}&${dirty}`, `en=click&ep.link_url=${meet}\nen=user_engagement&_et=5&${dirty}\nen=scroll&en=click&ep.link_url=${meet}`);
       void fetch(new Request(`${collect}&en=user_engagement&${dirty}`, { method: 'POST', body: meet }));
+      // a first-party collect path (the Google tag gateway) is rebuilt like a hit to Google
+      void fetch(`/ga/g/c?v=2&tid=G-36BN7DJ7DN&cid=1.1&en=user_engagement&_et=7&${dirty}`, { method: 'POST', body: `en=click&ep.link_url=${meet}` });
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${collect}&en=user_engagement&${dirty}`);
       xhr.send(meet);
@@ -246,6 +252,11 @@ test('the funnel events fire through the real Google tag and nothing an applican
     expect(Object.keys(e).filter((k) => ['em', 'zz', 'uid', 'ep.form_destination', 'ep.link_url'].includes(k)), 'unknown fields').toEqual([]);
   }
   expect(sent.filter((s) => s.body.split(/\r?\n/).some((l) => new URLSearchParams(l).getAll('en').length > 1))).toEqual([]);
+  // the first-party collect hit went out rebuilt, to this site, with the click line removed
+  const gateway = sent.filter((s) => new URL(s.url).pathname === '/ga/g/c');
+  expect(gateway.length).toBe(1);
+  expect(Object.fromEntries(new URL(gateway[0].url).searchParams)).toMatchObject({ en: 'user_engagement', _et: '7' });
+  expect(gateway[0].body).toBe('');
   // nothing went to the tag's host but the tag script
   expect(sent.filter((s) => /googletagmanager\.com/.test(s.url) && !/\/gtag\/(js|destination)\?/.test(s.url))).toEqual([]);
   // the page-view mark is removed before a hit leaves
