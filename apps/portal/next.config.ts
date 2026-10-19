@@ -16,7 +16,6 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-  { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
 ];
 
 // The shared packages ship TypeScript source, so Next compiles them with the app.

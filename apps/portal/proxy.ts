@@ -7,10 +7,11 @@
 // goes on the response, so the browser reports anything the policy would refuse.
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@btx/data/proxy';
-import { REPORT_PATH, buildCsp, makeNonce } from '@/lib/csp';
+import { ENFORCED_POLICY, REPORT_PATH, buildCsp, makeNonce } from '@/lib/csp';
 
-// Adds the report-only policy to a response.
+// Adds the enforced framing policy and the report-only trial policy to a response.
 function withCsp(response: NextResponse, policy: string): NextResponse {
+  response.headers.set('Content-Security-Policy', ENFORCED_POLICY);
   response.headers.set('Content-Security-Policy-Report-Only', policy);
   return response;
 }

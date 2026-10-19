@@ -7,6 +7,9 @@
 // with a fresh nonce; Next.js reads that nonce from the request header and puts it on its own inline scripts.
 import { cleanPath } from './analytics';
 
+/** The small policy the Portal has always ENFORCED (framing, base tag, plugins). proxy.ts sends it on every page. */
+export const ENFORCED_POLICY = "frame-ancestors 'self'; base-uri 'self'; object-src 'none'";
+
 /** Where browsers send violation reports (app/api/csp-report/route.ts), through the policy's report-uri. The newer
  *  report-to is left out on purpose: Chrome then sends through the Reporting API instead, which batches reports and,
  *  in testing, never delivered them from a headless browser, while every browser sends report-uri reports at once. */
