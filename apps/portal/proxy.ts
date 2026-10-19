@@ -37,6 +37,7 @@ export async function proxy(request: NextRequest) {
   // report-only one is removed too.
   request.headers.set('content-security-policy', policy);
   request.headers.delete('content-security-policy-report-only');
+  request.headers.set('x-btx-probe', '1'); // TEMPORARY preview probe
 
   const { response, userId, live } = await updateSession(request);
   if (live && !userId && (pathname === '/apply' || pathname.startsWith('/apply/') || pathname === '/status')) {
