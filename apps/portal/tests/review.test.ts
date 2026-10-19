@@ -20,6 +20,11 @@ describe('RaykenReview', () => {
     vi.stubEnv('NEXT_PUBLIC_RAYKEN_REVIEW', '1');
     expect(RaykenReview()).not.toBeNull();
   });
+
+  it("stamps the loader with the request's script nonce (Content-Security-Policy)", () => {
+    vi.stubEnv('NEXT_PUBLIC_RAYKEN_REVIEW', '1');
+    expect(RaykenReview({ nonce: 'abc123==' })?.props.nonce).toBe('abc123==');
+  });
 });
 
 describe('reviewScreen', () => {
