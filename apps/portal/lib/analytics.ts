@@ -9,18 +9,20 @@
 /** The one host where the Google tag loads. Previews and local runs record events in dataLayer and send nothing. */
 export const PRODUCTION_HOST = 'apply.thebtxfoundation.org';
 
-/** The website and the Portal share one GA4 property and one visit (cross-domain measurement). */
-export const LINKED_DOMAINS = ['thebtxfoundation.org', 'apply.thebtxfoundation.org'] as const;
-
-// The website's GA4 measurement id (the WordPress option btx_ga_id). Empty until the property exists; while it is
-// empty nothing loads anywhere. NEXT_PUBLIC_GA_ID overrides it (the end-to-end tests use that).
-const GA_ID = '';
+// The website's GA4 measurement id (the WordPress option btx_ga_id on the website; property "The BTX Foundation",
+// stream "BTX website", owned by info@thebtxfoundation.org). The website and the Portal share it, so one visit carries
+// across both: the Portal is a subdomain, and the tag's visitor cookie sits on .thebtxfoundation.org for both sites.
+// NEXT_PUBLIC_GA_ID overrides it (the end-to-end tests use a made-up one). '' turns analytics off everywhere.
+const GA_ID = 'G-36BN7DJ7DN';
 
 const ID_PATTERN = /^G-[A-Z0-9]{4,12}$/;
 
 /** The short-lived cookie the sign-in link route (app/auth/callback) sets when the link created the account. It holds
- *  only "1"; the browser side counts one sign_up from it, then deletes it. */
-export const SIGNUP_COOKIE = 'btx-signup';
+ *  only "1"; the browser side counts one sign_up from it, then deletes it. On https it carries the __Host- prefix, so
+ *  no other subdomain of thebtxfoundation.org can plant it; plain http (local runs, the e2e) can't use the prefix. */
+export function signupCookieName(https: boolean): string {
+  return https ? '__Host-btx-signup' : 'btx-signup';
+}
 
 // The measurement id, or '' when none is set. A badly formed id counts as none, so a typo never loads a broken tag.
 export function measurementId(raw: string | undefined = process.env.NEXT_PUBLIC_GA_ID || GA_ID): string {
@@ -60,9 +62,12 @@ export const STEP_KEYS = ['basic_info', 'scholarship', 'short_answers', 'documen
 const STEP_ROUTES = ['/apply/basic-info', '/apply/scholarship', '/apply/short-answers', '/apply/documents', '/apply/review'];
 
 // Campaign tags BTX puts on its own links (newsletter, Instagram). Only source, medium and campaign are kept:
-// utm_content and utm_term are where email tools put per-recipient ids. A value is kept only when it is short
-// lowercase words, numbers and hyphens, like "instagram" or "fall-2026-legacy", and has no part shaped like an id.
+// utm_content and utm_term are where email tools put per-recipient ids. Source and medium must be one of BTX's own
+// values (Btx-Website docs/ANALYTICS.md section 7). A campaign is kept only when it is short lowercase words, numbers
+// and hyphens, like "fall-2026-legacy" or "2026-11", with no part shaped like an id.
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign'];
+const UTM_SOURCES = ['instagram', 'newsletter', 'linkedin', 'facebook', 'tiktok', 'youtube', 'board', 'website', 'email', 'umd', 'flyer', 'qr'];
+const UTM_MEDIUMS = ['social', 'email', 'referral', 'print', 'qr', 'website', 'organic'];
 const UTM_VALUE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 
 // True when a campaign value has a part that looks like an id: six or more digits in a row, a hex string of eight or
@@ -99,7 +104,9 @@ export function cleanLocation(href: string): string {
   const kept = new URLSearchParams();
   for (const key of UTM_KEYS) {
     const value = (url.searchParams.get(key) ?? '').toLowerCase();
-    if (UTM_VALUE.test(value) && !looksLikeId(value)) kept.set(key, value);
+    const allowed =
+      key === 'utm_source' ? UTM_SOURCES.includes(value) : key === 'utm_medium' ? UTM_MEDIUMS.includes(value) : UTM_VALUE.test(value) && !looksLikeId(value);
+    if (allowed) kept.set(key, value);
   }
   const query = kept.toString();
   return `${url.origin}${cleanPath(url.pathname)}${query ? `?${query}` : ''}`;
@@ -169,7 +176,7 @@ const GOOGLE_EVENTS: Record<string, Record<string, Rule>> = {
 };
 
 // Parameters any event may carry: the report group set on every page, and Google's flag that a visit continued
-// from the website (cross-domain measurement).
+// from another of the property's own domains (set when the stream lists both domains).
 const ANY_EVENT: Record<string, Rule> = {
   content_group: [...new Set(Object.values(ROUTES).map((r) => r.group)), OTHER_ROUTE.group],
   ignore_referrer: ['true'],
@@ -222,64 +229,70 @@ export function cleanParams(event: string, params: Record<string, unknown> = {})
 
 /* ---- the filter on every hit ------------------------------------------------------------------------------------ */
 
-// Where GA4 hits go. Only these hosts receive anything; their hits are cleaned first.
-const ANALYTICS_HOST = /(^|\.)(google-analytics\.com|analytics\.google\.com)$/;
-// Advertising and audience endpoints the tag may also call. The Portal has no ads, so these get nothing at all.
-const ADS_HOST = /(^|\.)(doubleclick\.net|googleadservices\.com|googlesyndication\.com|google\.com|google\.[a-z]{2,3}(\.[a-z]{2})?)$/;
-// The tag's own host (the script, diagnostics). Passed through with any page address cleaned.
-const TAG_HOST = /(^|\.)googletagmanager\.com$/;
+/** What the filter does with a request: leave it alone (not Google), rebuild it (a GA4 hit), allow only the tag script
+ *  (the tag's own host), or drop it (every other Google measurement or advertising host). */
+export type HitKind = 'other' | 'analytics' | 'tag' | 'blocked';
 
-/** What the filter does with a request: leave it alone (not Google), clean it, or drop it. */
-export type HitKind = 'other' | 'analytics' | 'ads' | 'tag';
-
-// Sorts a request address by where it goes.
+// Sorts a request address by where it goes. A trailing dot on the host ("www.google.com.") is the same host.
+// analytics.google.com is blocked as well: requests there would carry the student's Google account cookies.
 export function hitKind(rawUrl: string, base: string): HitKind {
   let host: string;
   try {
-    host = new URL(rawUrl, base).hostname.toLowerCase();
+    host = new URL(rawUrl, base).hostname.toLowerCase().replace(/\.+$/, '');
   } catch {
     return 'other';
   }
-  if (ANALYTICS_HOST.test(host)) return 'analytics';
-  if (TAG_HOST.test(host)) return 'tag';
-  if (ADS_HOST.test(host)) return 'ads';
+  if (/(^|\.)google-analytics\.com$/.test(host)) return 'analytics';
+  if (/(^|\.)googletagmanager\.com$/.test(host)) return 'tag';
+  if (/(^|\.)(analytics\.google\.com|doubleclick\.net|googleadservices\.com|googlesyndication\.com)$/.test(host)) return 'blocked';
+  // google.com and the country sites (www.google.co.uk); other google.com services (docs, meet) are not measurement
+  if (/^(www\.)?google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host)) return 'blocked';
   return 'other';
 }
 
-// Cleans the fields of one hit (the shared part in the address, or one event line in the body) in place:
-// - the page address (dl), referrer (dr) and title (dt) are replaced by their clean forms;
-// - user id and user properties are removed (the Portal sets none, so any that appear are not ours);
-// - event parameters (ep. text, epn. number) are kept only when the event's rules allow the name and the value;
-// - any other field whose value is an address on this site is cleaned like a page address.
-// Fields with no event name (the shared part of a batch) may carry only the parameters every event may carry.
-// `pageDl` is the hit's page address, used to look up the title when these fields carry a title but no address.
-// Returns false when the fields name an event that is not on the allow-list.
-function scrubFields(fields: URLSearchParams, selfOrigin: string, pageDl: string | null): boolean {
-  const event = fields.get('en');
+// The GA4 hit fields that carry only technical values: protocol and tag ids, consent state, visitor and session
+// counters, timing, screen size, language and browser brand. Every hit is REBUILT from these, the three page fields
+// (dl, dr, dt, always rewritten) and the event parameters its rules allow. Anything else is dropped, whatever a future
+// tag version or a data stream setting adds (for example `em`, hashed user-provided data, or `uid`).
+const HIT_FIELDS = new Set([
+  'v', 'tid', 'gtm', 'tag_exp', '_p', 'gcs', 'gcd', 'npa', 'dma', 'dma_cps', 'pscdl', 'are', 'frm', 'cid', 'ul', 'sr',
+  'uaa', 'uab', 'uafvl', 'uamb', 'uam', 'uap', 'uapv', 'uaw', '_s', 'sid', 'sct', 'seg', '_et', '_ee', '_eu', '_c',
+  '_fv', '_ss', '_nsi', '_tu', 'tfd', 'ngs', 'gaf', 'rcb', 'ae', 'richsstsse', '_dbg', 'ir', '_z', 'en',
+]);
+// A technical field's value may not hold an address, a path or an email address.
+const SAFE_VALUE = /^[^@/\\]{0,300}$/;
+
+// Rebuilds one set of hit fields (the shared part in the address, or one event line in the body) from the allow-lists
+// above. Only the first value of a repeated field counts, and a field set may name one event at most. Fields with no
+// event name may carry only the parameters every event may carry. `pageDl` is the hit's page address, used for the
+// title when these fields carry a title but no address. Returns null when the event is not allowed.
+function rebuildFields(fields: URLSearchParams, selfOrigin: string, pageDl: string | null): URLSearchParams | null {
+  const names = fields.getAll('en');
+  if (names.length > 1) return null;
+  const event = names[0] ?? null;
   const rules = event === null ? ANY_EVENT : rulesFor(event, false);
-  if (!rules) return false;
-  // only the Portal's own page views (see PAGE_VIEW_MARK); the mark itself has no rule, so it is removed below
-  if (event === 'page_view' && fields.get(`ep.${PAGE_VIEW_MARK}`) !== '1') return false;
-  for (const key of [...fields.keys()]) {
-    const value = fields.get(key) ?? '';
+  if (!rules) return null;
+  // only the Portal's own page views (see PAGE_VIEW_MARK); the mark has no rule, so it is not copied
+  if (event === 'page_view' && fields.get(`ep.${PAGE_VIEW_MARK}`) !== '1') return null;
+  const out = new URLSearchParams();
+  for (const [key, value] of fields) {
+    if (out.has(key)) continue;
     if (key === 'dl') {
-      fields.set(key, cleanLocation(value));
+      out.set(key, cleanLocation(value));
     } else if (key === 'dr') {
-      fields.set(key, cleanReferrer(value, selfOrigin));
+      out.set(key, cleanReferrer(value, selfOrigin));
     } else if (key === 'dt') {
       // the title is looked up from the cleaned page address, never taken from the page
-      fields.set(key, routeInfo(pathOf(fields.get('dl') ?? pageDl)).title);
-    } else if (key === 'uid' || key.startsWith('up.') || key.startsWith('upn.') || /^pr\d+$/.test(key)) {
-      fields.delete(key);
+      out.set(key, routeInfo(pathOf(fields.get('dl') ?? pageDl)).title);
     } else if (key.startsWith('ep.') || key.startsWith('epn.')) {
       const name = key.slice(key.indexOf('.') + 1);
-      const rule = rules?.[name];
-      if ((DENIED_PARAMS as readonly string[]).includes(name) || !rule || !passes(rule, value)) fields.delete(key);
-    } else if (value.startsWith(selfOrigin)) {
-      fields.set(key, cleanLocation(value));
+      const rule = rules[name];
+      if (!(DENIED_PARAMS as readonly string[]).includes(name) && rule && passes(rule, value)) out.set(key, value);
+    } else if (HIT_FIELDS.has(key) && SAFE_VALUE.test(value)) {
+      out.set(key, value);
     }
   }
-  return true;
+  return out;
 }
 
 // The reported path of a page address (raw or already cleaned), or /other when there is none.
@@ -288,10 +301,28 @@ function pathOf(href: string | null): string {
   return clean ? new URL(clean).pathname : OTHER;
 }
 
-// The filter for one request to Google. Returns the cleaned address and body, or null to drop the request.
+// The tag's own host may serve the tag script and nothing else: /gtag/js (and /gtag/destination, which the script
+// may load), with only its id and loader fields, and no body. Diagnostics pings and frames there are dropped.
+const TAG_PATHS = ['/gtag/js', '/gtag/destination'];
+const TAG_FIELDS = ['id', 'l', 'cx', 'gtm', 'tag_exp'];
+
+// The tag-host request rebuilt from those fields, or null to drop it.
+function tagRequest(url: URL, body: string | null | undefined): { url: string; body: string | null } | null {
+  if (body || !TAG_PATHS.includes(url.pathname)) return null;
+  const out = new URLSearchParams();
+  for (const key of TAG_FIELDS) {
+    const value = url.searchParams.get(key);
+    if (value !== null && SAFE_VALUE.test(value)) out.set(key, value);
+  }
+  url.search = out.toString();
+  url.hash = '';
+  return { url: url.toString(), body: null };
+}
+
+// The filter for one request to Google. Returns the rebuilt address and body, or null to drop the request.
 // A GA4 hit names one event in its address, or carries a batch with one event per body line and the shared fields in
-// the address. Events not on the allow-list are removed; a hit left with no event is dropped. A body that is not text
-// can't be read, so that request is dropped (fail closed).
+// the address. Events not on the allow-list are removed; a hit left with no event is dropped. Callers drop a request
+// whose body can't be read as text (fail closed).
 export function scrubHit(
   rawUrl: string,
   body: string | null | undefined,
@@ -299,37 +330,42 @@ export function scrubHit(
 ): { url: string; body: string | null } | null {
   const kind = hitKind(rawUrl, selfOrigin);
   if (kind === 'other') return { url: rawUrl, body: body ?? null };
-  if (kind === 'ads') return null;
+  if (kind === 'blocked') return null;
   let url: URL;
   try {
     url = new URL(rawUrl, selfOrigin);
   } catch {
     return null;
   }
-  const shared = url.searchParams;
-  const pageDl = shared.get('dl');
-  const sharedEvent = shared.get('en');
-  const sharedOk = scrubFields(shared, selfOrigin, pageDl);
-  if (!sharedOk) {
-    // the event named in the address is not allowed: strip it and its parameters, keep any allowed body events
-    shared.delete('en');
-    for (const key of [...shared.keys()]) if (key.startsWith('ep.') || key.startsWith('epn.')) shared.delete(key);
-    scrubFields(shared, selfOrigin, pageDl);
+  if (kind === 'tag') return tagRequest(url, body);
+
+  const pageDl = url.searchParams.get('dl');
+  let shared = rebuildFields(url.searchParams, selfOrigin, pageDl);
+  let sharedEvent = shared !== null && shared.has('en');
+  if (!shared) {
+    // the event named in the address is not allowed: keep the technical and page fields, without the event and its
+    // parameters, so allowed events in the body can still go
+    const stripped = new URLSearchParams([...url.searchParams].filter(([k]) => k !== 'en' && !k.startsWith('ep.') && !k.startsWith('epn.')));
+    shared = rebuildFields(stripped, selfOrigin, pageDl);
+    sharedEvent = false;
   }
+  if (!shared) return null;
 
   const lines: string[] = [];
   const separator = body && body.includes('\r\n') ? '\r\n' : '\n';
   for (const line of (body ?? '').split(/\r?\n/)) {
     if (!line) continue;
     const fields = new URLSearchParams(line);
-    // a body line without an event name is not a format we know: leave it out
-    if (!fields.get('en')) continue;
-    if (scrubFields(fields, selfOrigin, pageDl)) lines.push(fields.toString());
+    // a body line must name exactly one event; anything else is not a format we know
+    if (fields.getAll('en').length !== 1) continue;
+    const clean = rebuildFields(fields, selfOrigin, pageDl);
+    if (clean) lines.push(clean.toString());
   }
 
   // an analytics hit left with no allowed event is not sent at all
-  const events = (sharedOk && sharedEvent !== null ? 1 : 0) + lines.length;
-  if (kind === 'analytics' && events === 0) return null;
+  if (!sharedEvent && lines.length === 0) return null;
+  url.search = shared.toString();
+  url.hash = '';
   return { url: url.toString(), body: lines.length ? lines.join(separator) : null };
 }
 

@@ -33,6 +33,10 @@ describe('measurementId', () => {
     expect(measurementId('G-abc')).toBe('');
     expect(measurementId('')).toBe('');
   });
+
+  it("defaults to the website's property", () => {
+    expect(measurementId()).toBe(process.env.NEXT_PUBLIC_GA_ID || 'G-36BN7DJ7DN');
+  });
 });
 
 describe('page addresses', () => {
@@ -57,6 +61,9 @@ describe('page addresses', () => {
     expect(cleanLocation(`${ORIGIN}/?utm_source=list-8f14e45fceea&utm_medium=u-12345678&utm_campaign=2026-11`)).toBe(
       `${ORIGIN}/?utm_campaign=2026-11`,
     );
+    // source and medium must be one of BTX's own values
+    expect(cleanLocation(`${ORIGIN}/?utm_source=janedoe&utm_medium=jane-doe-2027&utm_campaign=bio`)).toBe(`${ORIGIN}/?utm_campaign=bio`);
+    expect(cleanLocation(`${ORIGIN}/?utm_source=newsletter&utm_medium=email`)).toBe(`${ORIGIN}/?utm_source=newsletter&utm_medium=email`);
     expect(cleanLocation('data:text/calendar,UID:slot-1')).toBe('');
     expect(cleanLocation('not a url')).toBe('');
   });
@@ -103,11 +110,56 @@ describe('the hit filter', () => {
       url: 'https://awiaebtqalcmfafvktwh.supabase.co/rest/v1/applications?id=eq.1',
       body: null,
     });
-    expect(hitKind('https://www.google.com/g/collect?en=page_view', ORIGIN)).toBe('ads');
+    expect(hitKind('https://www.google.com/g/collect?en=page_view', ORIGIN)).toBe('blocked');
     expect(scrubHit('https://www.google.com/g/collect?en=page_view', null, ORIGIN)).toBeNull();
     expect(scrubHit('https://stats.g.doubleclick.net/g/collect?v=2', null, ORIGIN)).toBeNull();
     expect(hitKind(`${COLLECT}?v=2`, ORIGIN)).toBe('analytics');
-    expect(hitKind('https://analytics.google.com/g/collect?v=2', ORIGIN)).toBe('analytics');
+    // analytics.google.com would carry the student's Google account cookies
+    expect(hitKind('https://region1.analytics.google.com/g/collect?v=2', ORIGIN)).toBe('blocked');
+    // a trailing dot is the same host
+    expect(hitKind('https://www.google.com./g/collect?v=2', ORIGIN)).toBe('blocked');
+    expect(hitKind('https://region1.google-analytics.com./g/collect?v=2', ORIGIN)).toBe('analytics');
+    // other Google services are not measurement, and relative addresses are this site
+    expect(hitKind('https://accounts.google.com/o/oauth2', ORIGIN)).toBe('other');
+    expect(hitKind('/apply/review', ORIGIN)).toBe('other');
+  });
+
+  it('lets only the tag script through on the tag host, with its id and loader fields', () => {
+    expect(scrubHit('https://www.googletagmanager.com/gtag/js?id=G-36BN7DJ7DN&l=dataLayer&dl=https%3A%2F%2Fx', null, ORIGIN)).toEqual({
+      url: 'https://www.googletagmanager.com/gtag/js?id=G-36BN7DJ7DN&l=dataLayer',
+      body: null,
+    });
+    expect(scrubHit(`https://www.googletagmanager.com/a?id=G-1&dl=${encodeURIComponent(ORIGIN)}%2Fstatus&u=x`, null, ORIGIN)).toBeNull();
+    expect(scrubHit('https://www.googletagmanager.com/static/service_worker/x/sw_iframe.html', null, ORIGIN)).toBeNull();
+    expect(scrubHit('https://www.googletagmanager.com/gtag/js?id=G-1', 'body', ORIGIN)).toBeNull();
+  });
+
+  it('rebuilds every hit from known fields: hashed user data, unknown fields and repeated event names never pass', () => {
+    const out = read(
+      scrubHit(
+        hit({
+          en: 'user_engagement',
+          cid: '1.2',
+          sid: '3',
+          _et: '5',
+          dl: `${ORIGIN}/apply/review`,
+          em: 'tv.1~em.0a1b2c',
+          zz: 'apply.thebtxfoundation.org/status?email=jane@terpmail.umd.edu',
+          gtm: 'a/b',
+        }),
+        'en=page_view&ep.btx_page_view=1&em=tv.1~em.0a1b2c&ep.content_group=portal_apply\nen=scroll&en=click&ep.link_url=x\nen=user_engagement&_et=1&ul=jane%40x.com',
+        ORIGIN,
+      ),
+    );
+    expect(out.url).toEqual({ v: '2', tid: 'G-TEST0PORTAL', en: 'user_engagement', cid: '1.2', sid: '3', _et: '5', dl: `${ORIGIN}/apply/review` });
+    expect(out.lines).toEqual([{ en: 'page_view', 'ep.content_group': 'portal_apply' }, { en: 'user_engagement', _et: '1' }]);
+    // only the first value of a repeated field counts
+    expect(read(scrubHit(`${COLLECT}?v=2&en=user_engagement&cid=1.2&cid=jane%40x.com`, null, ORIGIN)).url).toEqual({
+      v: '2',
+      en: 'user_engagement',
+      cid: '1.2',
+    });
+    expect(scrubHit(`${COLLECT}?v=2&en=user_engagement&en=click&ep.link_url=x`, null, ORIGIN)).toBeNull();
   });
 
   it("drops Google's automatic link, download and form events", () => {
@@ -182,10 +234,19 @@ describe('who is measured', () => {
     expect(isStaffOrTester(null)).toBe(false);
   });
 
-  it('counts a sign-in as a new account only when it is the first one', () => {
-    expect(isFirstSignIn({ email_confirmed_at: '2026-10-19T14:00:00.120Z', last_sign_in_at: '2026-10-19T14:00:00.130Z' })).toBe(true);
-    expect(isFirstSignIn({ email_confirmed_at: '2026-09-01T10:00:00Z', last_sign_in_at: '2026-10-19T14:00:00Z' })).toBe(false);
-    expect(isFirstSignIn({ email_confirmed_at: null, last_sign_in_at: '2026-10-19T14:00:00Z' })).toBe(false);
+  it('counts a sign-in as a new account only when it is the first one (confirmation at first sign-in, as in production)', () => {
+    // asked for a code at 13:55, typed it at 14:00: confirmed and signed in at the same moment
+    const first = { created_at: '2026-10-19T13:55:00Z', email_confirmed_at: '2026-10-19T14:00:00.120Z', last_sign_in_at: '2026-10-19T14:00:00.130Z' };
+    expect(isFirstSignIn(first)).toBe(true);
+    expect(isFirstSignIn({ ...first, email_confirmed_at: '2026-09-01T10:00:00Z' })).toBe(false);
+    expect(isFirstSignIn({ ...first, email_confirmed_at: null })).toBe(false);
     expect(isFirstSignIn(null)).toBe(false);
+  });
+
+  it('counts a slow first sign-in when the project confirms emails automatically (the local stack)', () => {
+    // auto-confirmed when the code was asked for, at 13:55; signed in four minutes later
+    const auto = { created_at: '2026-10-19T13:55:00Z', email_confirmed_at: '2026-10-19T13:55:00.400Z', last_sign_in_at: '2026-10-19T13:59:10Z' };
+    expect(isFirstSignIn(auto)).toBe(true);
+    expect(isFirstSignIn({ ...auto, last_sign_in_at: '2026-10-21T09:00:00Z' })).toBe(false);
   });
 });

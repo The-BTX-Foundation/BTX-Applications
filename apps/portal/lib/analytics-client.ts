@@ -8,19 +8,19 @@
 // own dataLayer, which is how tests and previews check them, and nothing leaves the browser.
 import { getAuthMode, getBrowserClient } from '@btx/data';
 import {
-  LINKED_DOMAINS,
   PAGE_VIEW_MARK,
   PRODUCTION_HOST,
-  SIGNUP_COOKIE,
   STEP_KEYS,
   cleanLocation,
   cleanParams,
   cleanPath,
   cleanReferrer,
+  hitKind,
   isStaffOrTester,
   measurementId,
   routeInfo,
   scrubHit,
+  signupCookieName,
   stepNumber,
   type ParamValue,
 } from './analytics';
@@ -157,74 +157,166 @@ function watchSignIns(): void {
   });
 }
 
-// Reads and deletes the cookie the sign-in link route leaves when the link created the account, and counts it.
+// Reads and deletes the cookie the sign-in link route leaves when the link created the account, and counts it. On
+// https only the __Host- name counts, so a cookie planted by another subdomain is ignored.
 function consumeSignupCookie(): void {
-  const found = document.cookie.split('; ').some((c) => c === `${SIGNUP_COOKIE}=1`);
+  const https = window.location.protocol === 'https:';
+  const name = signupCookieName(https);
+  const found = document.cookie.split('; ').some((c) => c === `${name}=1`);
   if (!found) return;
-  document.cookie = `${SIGNUP_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax${https ? '; Secure' : ''}`;
   track('sign_up', { method: 'email_link' });
 }
 
-// Wraps fetch and sendBeacon (the two ways gtag.js sends) so every request to Google passes scrubHit first. This is the
-// last wall: whatever Google's own tag adds (automatic link-click, download and history events, the real page address),
-// only allowed events with clean fields leave the browser. Requests to anyone else pass through untouched. A request
-// to Google whose body can't be read as text is dropped.
+// The last wall. Every way gtag.js can send is wrapped so that each request to Google passes scrubHit
+// (lib/analytics.ts) first: whatever Google's own tag adds (automatic link-click, form, download and history events,
+// the real page address, hashed user data), only allowed events with rebuilt fields leave the browser.
+// - fetch and sendBeacon: a GA4 hit is rebuilt and re-sent through one path (sendClean) with cookies left off, and the
+//   tag is always told it went, so it never retries the original hit another way;
+// - images: the tag's retry when a beacon is refused, and its fallback without fetch; a GA4 image hit is rebuilt and
+//   sent through the same path instead, and the image never loads;
+// - scripts: only the tag script itself loads from Google; frames and service workers from Google never load;
+// - XMLHttpRequest to Google is never sent.
+// Requests to anyone else pass through untouched. A request to Google that can't be read (a Request object, a body that
+// is not text) is dropped.
 function installHitFilter(): void {
   const w = window as AnalyticsWindow;
   if (w.__btxAnalyticsGuard) return;
   w.__btxAnalyticsGuard = true;
   const origin = window.location.origin;
+  const kindOf = (url: string) => hitKind(url, origin);
+  const realFetch = window.fetch.bind(window);
 
-  // The cleaned request, or null to drop it. While switched off, every Google request is dropped.
+  // The rebuilt request, or null to drop it. While switched off, every Google request is dropped.
   const filter = (url: string, body: unknown): { url: string; body: string | null } | null => {
     if (state.off) return null;
     if (body !== undefined && body !== null && typeof body !== 'string') return null;
-    return scrubHit(url, body as string | null | undefined, origin);
-  };
-  // True when the address is Google's (scrubHit leaves everything else as it was).
-  const isGoogle = (url: string): boolean => {
     try {
-      return /(^|\.)(google-analytics\.com|analytics\.google\.com|googletagmanager\.com|doubleclick\.net|googleadservices\.com|googlesyndication\.com|google\.[a-z.]+)$/i.test(
-        new URL(url, origin).hostname,
-      );
+      return scrubHit(url, body as string | null | undefined, origin);
     } catch {
-      return false;
+      return null;
     }
   };
 
-  const realFetch = window.fetch.bind(window);
+  // The one way a rebuilt GA4 hit leaves: a keepalive POST without cookies, so the student's Google cookies never ride
+  // along. A failure is not retried (the hit is lost, never sent raw).
+  const sendClean = (hit: { url: string; body: string | null }): void => {
+    realFetch(hit.url, { method: 'POST', body: hit.body ?? undefined, keepalive: true, credentials: 'omit', mode: 'no-cors', cache: 'no-store' }).catch(
+      () => {},
+    );
+  };
+  const sent = () => Promise.resolve(new Response(null, { status: 204 }));
+
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    if (!isGoogle(url)) return realFetch(input, init);
+    const kind = kindOf(url);
+    if (kind === 'other') return realFetch(input, init);
     // a Request object carries its own body we can't read synchronously: drop it
-    if (typeof input !== 'string' && !(input instanceof URL)) return Promise.resolve(new Response(null, { status: 204 }));
-    try {
-      const out = filter(url, init?.body);
-      if (!out) return Promise.resolve(new Response(null, { status: 204 }));
-      return realFetch(out.url, { ...init, body: out.body ?? undefined });
-    } catch {
-      return Promise.resolve(new Response(null, { status: 204 }));
-    }
+    if (typeof input !== 'string' && !(input instanceof URL)) return sent();
+    const out = filter(url, init?.body);
+    if (out && kind === 'analytics') sendClean(out);
+    else if (out && kind === 'tag') return realFetch(out.url, { credentials: 'omit' });
+    return sent();
   };
 
   if (typeof navigator.sendBeacon === 'function') {
     const realBeacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = function (url: string | URL, data?: BodyInit | null): boolean {
       const href = typeof url === 'string' ? url : url.href;
-      if (!isGoogle(href)) return realBeacon(url, data);
-      try {
-        const out = filter(href, data);
-        // report success for a dropped hit, so the tag does not retry it another way
-        return out ? realBeacon(out.url, out.body ?? undefined) : true;
-      } catch {
-        return true;
-      }
+      if (kindOf(href) === 'other') return realBeacon(url, data);
+      const out = filter(href, data);
+      if (out && kindOf(href) === 'analytics') sendClean(out);
+      // always "sent": a refused beacon would make the tag retry the original hit as an image
+      return true;
     };
+  }
+
+  // Images: a GA4 hit goes out through sendClean instead and the image itself never loads; nothing else from Google loads.
+  guardSrc(HTMLImageElement.prototype, kindOf, (href, kind) => {
+    const out = kind === 'analytics' ? filter(href, null) : null;
+    if (out) sendClean(out);
+    return null;
+  });
+  // Scripts: only the tag script (rebuilt to its id and loader fields).
+  guardSrc(HTMLScriptElement.prototype, kindOf, (href, kind) => (kind === 'tag' ? (filter(href, null)?.url ?? null) : null));
+  // Frames: none from Google (the Portal embeds none; the tag would use one for a service-worker transport).
+  guardSrc(HTMLIFrameElement.prototype, kindOf, () => null);
+
+  // setAttribute('src') on those elements goes through the same guarded property; a Google srcset is never set.
+  const realSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (name: string, value: string): void {
+    const attr = String(name).toLowerCase();
+    const guarded = this instanceof HTMLImageElement || this instanceof HTMLScriptElement || this instanceof HTMLIFrameElement;
+    if (guarded && attr === 'src') {
+      (this as HTMLImageElement).src = value;
+      return;
+    }
+    if (guarded && attr === 'srcset' && String(value).split(',').some((part) => kindOf(part.trim().split(/\s+/)[0] ?? '') !== 'other')) return;
+    realSetAttribute.call(this, name, value);
+  };
+
+  // XMLHttpRequest: the tag doesn't use it to send, so a request to Google that way is never sent.
+  const toGoogle = new WeakSet<XMLHttpRequest>();
+  const realOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, ...args: unknown[]) {
+    if (kindOf(String(args[1])) !== 'other') toGoogle.add(this);
+    return (realOpen as (...a: unknown[]) => void).apply(this, args);
+  } as typeof XMLHttpRequest.prototype.open;
+  const realSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+    if (toGoogle.has(this)) return;
+    realSend.call(this, body);
+  };
+
+  // Service workers: none from Google (the Portal registers none).
+  if (navigator.serviceWorker && typeof navigator.serviceWorker.register === 'function') {
+    const container = navigator.serviceWorker;
+    const realRegister = container.register.bind(container);
+    container.register = function (scriptURL: string | URL, options?: RegistrationOptions) {
+      const href = String(scriptURL);
+      if (kindOf(href) !== 'other' || href.includes('/_/service_worker')) return Promise.reject(new Error('blocked'));
+      return realRegister(scriptURL, options);
+    } as typeof container.register;
   }
 }
 
+// Replaces the `src` setter on image, script or frame elements: a Google address is passed to `decide` with its kind,
+// which returns the address to load instead, or null to load nothing. Every other address is set exactly as before.
+function guardSrc(
+  proto: HTMLImageElement | HTMLScriptElement | HTMLIFrameElement,
+  kindOf: (href: string) => string,
+  decide: (href: string, kind: string) => string | null,
+): void {
+  const real = Object.getOwnPropertyDescriptor(proto, 'src');
+  if (!real?.get || !real.set) return;
+  const { get, set } = real;
+  Object.defineProperty(proto, 'src', {
+    configurable: true,
+    enumerable: real.enumerable,
+    get() {
+      return get.call(this);
+    },
+    set(value: unknown) {
+      const href = String(value);
+      const kind = kindOf(href);
+      if (kind === 'other') {
+        set.call(this, value);
+        return;
+      }
+      let allowed: string | null = null;
+      try {
+        allowed = decide(href, kind);
+      } catch {
+        allowed = null;
+      }
+      if (allowed !== null) set.call(this, allowed);
+    },
+  });
+}
+
 // Loads gtag.js with Consent Mode (analytics only, every ad signal denied), Google signals and ad personalization off,
-// no automatic page view (pageView() sends clean ones), and cross-domain measurement with the website.
+// and no automatic page view (pageView() sends clean ones). No link decorator (linker) is needed: the visitor cookie is
+// set on .thebtxfoundation.org, which the website and the Portal share, so a visit carries across without one.
 function loadTag(id: string): void {
   installHitFilter();
   gtag('consent', 'default', {
@@ -242,7 +334,6 @@ function loadTag(id: string): void {
     // the live site is https only; the Secure flag is left off on plain http (the e2e run), where the tag could not
     // store its visitor cookie and would send nothing
     cookie_flags: window.location.protocol === 'https:' ? 'SameSite=Lax;Secure' : 'SameSite=Lax',
-    linker: { domains: [...LINKED_DOMAINS] },
   });
   const script = document.createElement('script');
   script.async = true;

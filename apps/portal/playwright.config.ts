@@ -20,9 +20,12 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: '',
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: '',
       NEXT_PUBLIC_PORTAL_TEST_EMAILS: '',
-      // a made-up GA4 id, so e2e/analytics.spec.ts can load the real Google tag on the mapped production address (its
-      // hits are answered locally and never reach Google); at localhost the tag never loads, whatever the id
-      NEXT_PUBLIC_GA_ID: 'G-TEST0PORTAL',
+      // the real GA4 id (lib/analytics.ts GA_ID), so e2e/analytics.spec.ts runs the property's real tag configuration
+      // (its automatic events included) on the mapped production address; every hit it makes is answered locally and
+      // Google's collect hosts don't resolve, so nothing reaches the property. At localhost the tag never loads.
+      NEXT_PUBLIC_GA_ID: 'G-36BN7DJ7DN',
+      // lets the dev server serve its scripts under the mapped production name (next.config.ts allowedDevOrigins)
+      BTX_E2E_PROD_HOST: '1',
       // the stand-in reader (dev server only), so typed times can be read without an API key
       BTX_AI_FAKE: '1',
     },

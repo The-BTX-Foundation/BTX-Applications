@@ -1,15 +1,20 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
-// Analytics end to end, with the real Google tag (gtag.js is fetched from Google) on the production address.
+// Analytics end to end, with the real Google tag on the production address: gtag.js for the real property
+// (G-36BN7DJ7DN, set in playwright.config.ts) is fetched from Google, so the property's own automatic events (link
+// clicks, forms, downloads, history page views, scroll) run as they will live.
 //
 // The browser resolves apply.thebtxfoundation.org to this machine, so the Portal's own production-host rule decides
-// to load the tag, exactly as it will live. Every request to Google's analytics and advertising hosts is answered
-// here with an empty 204 and never leaves the machine; as a second wall those hosts don't resolve at all. What the
-// tests read is what the page tried to send: the dataLayer, and every request to a Google host.
+// to load the tag. Every request to Google's analytics and advertising hosts is answered here with an empty 204 and
+// never leaves the machine, and so is every request to the tag's host except the tag script itself; as a second wall
+// the collect and ad hosts don't resolve at all. What the tests read is what the browser tried to send: the dataLayer,
+// and every request to a Google host from any page, frame or worker of the context.
 //
 // Marker values (CANARY) are typed into every field and put into addresses and referrers. None may appear anywhere
-// Google could see it (security-playbook IN-51). The rules themselves are unit-tested in tests/analytics.test.ts.
+// Google could see it, plain, encoded or hashed (security-playbook IN-51). The rules themselves are unit-tested in
+// tests/analytics.test.ts.
 
 const PORT = process.env.PORT ?? '3210';
 const PROD = `http://apply.thebtxfoundation.org:${PORT}`;
@@ -26,7 +31,18 @@ const CANARY = {
   meet: 'zqcanarymeet',
   ref: 'zqcanaryref',
 };
-const MARKERS = ['zqcanary', '3015550199', '301-555-0199'];
+// What GA4's user-provided data would send: SHA-256 of the normalized email and phone. Base64 of the email too.
+const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
+const MARKERS = [
+  'zqcanary',
+  '3015550199',
+  '301-555-0199',
+  sha256(CANARY.email),
+  sha256(CANARY.badEmail),
+  sha256(`+1${CANARY.phone}`),
+  sha256(CANARY.phone),
+  Buffer.from(CANARY.email).toString('base64').replace(/=+$/, '').toLowerCase(),
+];
 
 test.use({
   baseURL: PROD,
@@ -40,14 +56,15 @@ test.use({
 
 type Sent = { url: string; body: string };
 
-// Records every request the page makes to a Google host, and answers the collect and ad hosts locally (204).
-async function watchGoogle(page: Page) {
+// Records every request the context makes to a Google host (pages, frames and service workers), and answers every one
+// locally (204) except the tag script, which is fetched from Google.
+async function watchGoogle(context: BrowserContext) {
   const sent: Sent[] = [];
-  page.on('request', (req) => {
+  context.on('request', (req) => {
     if (/google|doubleclick/i.test(new URL(req.url()).hostname)) sent.push({ url: req.url(), body: req.postData() ?? '' });
   });
-  await page.route(/^https:\/\/([^/]*\.)?(google-analytics\.com|analytics\.google\.com|google\.com|doubleclick\.net)\//, (route) =>
-    route.fulfill({ status: 204, body: '' }),
+  await context.route(/^https:\/\/([^/]*\.)?(google-analytics\.com|analytics\.google\.com|google\.[a-z.]+|doubleclick\.net|googletagmanager\.com)\//, (route) =>
+    /^https:\/\/www\.googletagmanager\.com\/gtag\/(js|destination)\?/.test(route.request().url()) ? route.continue() : route.fulfill({ status: 204, body: '' }),
   );
   return sent;
 }
@@ -96,8 +113,8 @@ function expectNoMarkers(where: string, text: string) {
   }
 }
 
-test('the funnel events fire through the real Google tag and nothing an applicant typed leaves the browser', async ({ page }) => {
-  const sent = await watchGoogle(page);
+test('the funnel events fire through the real Google tag and nothing an applicant typed leaves the browser', async ({ page, context }) => {
+  const sent = await watchGoogle(context);
 
   // arrive from the website with markers in the referrer and the address
   await page.goto(`/?utm_source=newsletter&utm_campaign=fall-2026-legacy&utm_term=${CANARY.id}&id=${CANARY.id}`, {
@@ -158,14 +175,33 @@ test('the funnel events fire through the real Google tag and nothing an applican
   // Google's own automatic events, sent straight to gtag the way the tag's enhanced measurement would: an outbound
   // click on a meeting link, and a history-change page view on an address with an id in it
   await page.evaluate(
-    ({ id, meet }) => {
+    ({ id, meet, emHash }) => {
       history.pushState({}, '', `/status/interview/${id}?slot=${id}`);
       const g = (window as unknown as { gtag: (...a: unknown[]) => void }).gtag;
       g('event', 'click', { link_url: `https://meet.example.com/${meet}`, link_domain: 'meet.example.com', outbound: true });
       g('event', 'page_view', { page_location: location.href, page_title: `${id} interview` });
       g('event', 'file_download', { link_url: `https://files.example.com/${id}/transcript.pdf`, file_name: `${meet}.pdf` });
+      // every other way out the tag has, each with a raw hit: a 1x1 image (its retry when a beacon is refused, by
+      // property and by attribute), a beacon, a Request object, XMLHttpRequest, a hidden Google frame, and fields no
+      // rule knows: hashed user-provided data (em), an unknown field, a repeated event name
+      const collect = 'https://www.google-analytics.com/g/collect?v=2&tid=G-36BN7DJ7DN&cid=1.1';
+      const dirty = `dl=${encodeURIComponent(location.href)}&dt=${id}&em=tv.1~em.${emHash}&zz=${meet}`;
+      new Image(1, 1).src = `${collect}&en=click&ep.link_url=https%3A%2F%2Fmeet.example.com%2F${meet}`;
+      new Image(1, 1).src = `${collect}&en=scroll&epn.percent_scrolled=90&${dirty}`;
+      new Image(1, 1).setAttribute('src', `${collect}&en=form_submit&ep.form_destination=${encodeURIComponent(location.href)}`);
+      navigator.sendBeacon(`${collect}&${dirty}`, `en=click&ep.link_url=${meet}\nen=user_engagement&_et=5&${dirty}\nen=scroll&en=click&ep.link_url=${meet}`);
+      void fetch(new Request(`${collect}&en=user_engagement&${dirty}`, { method: 'POST', body: meet }));
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${collect}&en=user_engagement&${dirty}`);
+      xhr.send(meet);
+      const frame = document.createElement('iframe');
+      frame.src = `https://www.googletagmanager.com/static/service_worker/x/sw_iframe.html?origin=${encodeURIComponent(location.href)}`;
+      document.body.appendChild(frame);
+      const frame2 = document.createElement('iframe');
+      frame2.setAttribute('src', `https://www.googletagmanager.com/static/service_worker/y/sw_iframe.html?id=${id}`);
+      document.body.appendChild(frame2);
     },
-    { id: CANARY.id, meet: CANARY.meet },
+    { id: CANARY.id, meet: CANARY.meet, emHash: sha256(CANARY.email) },
   );
   // the Portal's own page view for that address (Next follows pushState), reported as /other
   const ownViews = () =>
@@ -201,6 +237,17 @@ test('the funnel events fire through the real Google tag and nothing an applican
   // Google's automatic link and download events never left
   expect(names).not.toContain('click');
   expect(names).not.toContain('file_download');
+  // the image retry and the beacon went out rebuilt (not dropped), and no Google frame loaded
+  expect(events.some((e) => e.en === 'scroll' && new URL(e.dl).pathname === '/other' && e.dt === 'Other page')).toBe(true);
+  expect(events.some((e) => e.en === 'user_engagement' && e._et === '5' && new URL(e.dl).pathname === '/other')).toBe(true);
+  expect(sent.some((s) => s.url.includes('sw_iframe'))).toBe(false);
+  // only known technical fields left: no hashed user data, no unknown field, no event named twice
+  for (const e of events) {
+    expect(Object.keys(e).filter((k) => ['em', 'zz', 'uid', 'ep.form_destination', 'ep.link_url'].includes(k)), 'unknown fields').toEqual([]);
+  }
+  expect(sent.filter((s) => s.body.split(/\r?\n/).some((l) => new URLSearchParams(l).getAll('en').length > 1))).toEqual([]);
+  // nothing went to the tag's host but the tag script
+  expect(sent.filter((s) => /googletagmanager\.com/.test(s.url) && !/\/gtag\/(js|destination)\?/.test(s.url))).toEqual([]);
   // the page-view mark is removed before a hit leaves
   expect(events.filter((e) => 'ep.btx_page_view' in e)).toEqual([]);
   // nothing went to the advertising hosts
@@ -220,8 +267,8 @@ test('the funnel events fire through the real Google tag and nothing an applican
   for (const s of sent) expectNoMarkers(`request ${new URL(s.url).host}`, `${s.url}\n${s.body}`);
 });
 
-test('a browser that sends Global Privacy Control never loads the tag', async ({ page }) => {
-  const sent = await watchGoogle(page);
+test('a browser that sends Global Privacy Control never loads the tag', async ({ page, context }) => {
+  const sent = await watchGoogle(context);
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'globalPrivacyControl', { get: () => true }));
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Legacy');
@@ -230,8 +277,8 @@ test('a browser that sends Global Privacy Control never loads the tag', async ({
   expect(sent).toEqual([]);
 });
 
-test('?analytics=off switches this browser off for good, and ?analytics=on back on', async ({ page }) => {
-  const sent = await watchGoogle(page);
+test('?analytics=off switches this browser off for good, and ?analytics=on back on', async ({ page, context }) => {
+  const sent = await watchGoogle(context);
   await page.goto('/?analytics=off');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Legacy');
   await page.goto('/sign-in');
@@ -242,8 +289,8 @@ test('?analytics=off switches this browser off for good, and ?analytics=on back 
   await expect.poll(() => sent.some((s) => s.url.includes('googletagmanager.com/gtag/js'))).toBe(true);
 });
 
-test('previews and local runs record events but never load the tag', async ({ page }) => {
-  const sent = await watchGoogle(page);
+test('previews and local runs record events but never load the tag', async ({ page, context }) => {
+  const sent = await watchGoogle(context);
   await page.goto(`${LOCAL}/`);
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Legacy');
   await expect.poll(async () => (await dataLayerEvents(page)).some(([n]) => n === 'page_view')).toBe(true);
@@ -252,7 +299,7 @@ test('previews and local runs record events but never load the tag', async ({ pa
 });
 
 test('an account created from the email link is counted once', async ({ page, context }) => {
-  await watchGoogle(page);
+  await watchGoogle(context);
   await context.addCookies([{ name: 'btx-signup', value: '1', url: PROD }]);
   await page.goto('/sign-in');
   await expect.poll(async () => (await dataLayerEvents(page)).filter(([n]) => n === 'sign_up')).toEqual([['sign_up', { method: 'email_link' }]]);

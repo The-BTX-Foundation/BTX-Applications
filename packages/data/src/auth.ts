@@ -13,16 +13,27 @@ export type VerifyResult =
   | { ok: true; email: string; firstSignIn: boolean }
   | { ok: false; reason: 'wrong' | 'invalid-or-expired' | 'failed' };
 
-type SignInTimes = { email_confirmed_at?: string | null; last_sign_in_at?: string | null } | null | undefined;
+type SignInTimes =
+  | { created_at?: string | null; email_confirmed_at?: string | null; last_sign_in_at?: string | null }
+  | null
+  | undefined;
 
-// True when this sign-in is the account's first (the code or link that just checked out created it). Supabase sets
-// email_confirmed_at once, at the first successful check, and last_sign_in_at on every sign-in, so the two are the
-// same moment only the first time. Used for the Portal's "account created" count; it reads no personal data.
+// True when this sign-in is the account's first (the code or link that just checked out created it). Used for the
+// Portal's "account created" count; it reads only three timestamps. Supabase creates the account when the code is
+// asked for (created_at) and stamps last_sign_in_at on every sign-in. The confirmation time depends on the project's
+// "Confirm email" setting:
+// - on (production, checked 2026-10-19: mailer_autoconfirm false): email_confirmed_at is set once, at the first
+//   successful check, so it equals last_sign_in_at only the first time; exact;
+// - off (the local stack): email_confirmed_at equals created_at, so the first sign-in is the one within an hour of
+//   the account's creation (a code or link lasts at most that long locally).
 export function isFirstSignIn(user: SignInTimes): boolean {
-  if (!user?.email_confirmed_at || !user.last_sign_in_at) return false;
-  const confirmed = Date.parse(user.email_confirmed_at);
-  const signedIn = Date.parse(user.last_sign_in_at);
-  return Number.isFinite(confirmed) && Number.isFinite(signedIn) && Math.abs(signedIn - confirmed) < 60_000;
+  const created = Date.parse(user?.created_at ?? '');
+  const confirmed = Date.parse(user?.email_confirmed_at ?? '');
+  const signedIn = Date.parse(user?.last_sign_in_at ?? '');
+  if (!Number.isFinite(confirmed) || !Number.isFinite(signedIn)) return false;
+  const autoConfirmed = Number.isFinite(created) && Math.abs(confirmed - created) < 5_000;
+  if (autoConfirmed) return signedIn - created >= 0 && signedIn - created < 60 * 60_000;
+  return Math.abs(signedIn - confirmed) < 60_000;
 }
 
 // Which backend sign-in uses right now.

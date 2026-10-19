@@ -8,15 +8,16 @@ import type { EmailOtpType, User } from '@supabase/supabase-js';
 import { isFirstSignIn } from '@btx/data';
 import { sessionClient } from '@/lib/supabase-server';
 import { safeNext } from '@/lib/safe-next';
-import { SIGNUP_COOKIE } from '@/lib/analytics';
+import { signupCookieName } from '@/lib/analytics';
 
 // The redirect after a link that checked out. When the link created the account, a ten-minute cookie holding only "1"
 // tells the browser side to count one "account created" (lib/analytics-client.ts reads it once and deletes it). It
-// carries no personal data; the browser must read it, so it is not httpOnly.
+// carries no personal data; the browser must read it, so it is not httpOnly. On https its name has the __Host- prefix.
 function signedIn(next: string, origin: string, user: User | null): NextResponse {
   const response = NextResponse.redirect(new URL(next, origin));
   if (isFirstSignIn(user)) {
-    response.cookies.set(SIGNUP_COOKIE, '1', { maxAge: 600, path: '/', sameSite: 'lax', secure: origin.startsWith('https:') });
+    const https = origin.startsWith('https:');
+    response.cookies.set(signupCookieName(https), '1', { maxAge: 600, path: '/', sameSite: 'lax', secure: https });
   }
   return response;
 }
