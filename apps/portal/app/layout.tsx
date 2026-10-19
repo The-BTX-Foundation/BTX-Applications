@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import '@btx/ui/tokens.css';
 import '@btx/ui/components.css';
 import { googleSansCode, googleSansFlex } from './fonts';
@@ -21,11 +22,14 @@ export const viewport: Viewport = {
 
 // The root layout: loads the fonts, the shared styles and analytics (app/Analytics.tsx). Each page draws its own top bar, because the bar's
 // variant (signed out, sign-in, signed in) and the wizard's progress change from screen to screen.
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// It reads this request's script nonce (set by proxy.ts for the Content-Security-Policy, lib/csp.ts). Reading a request
+// header makes every page render per request, which a nonce needs: a page built ahead of time can't carry a fresh one.
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="en" className={`${googleSansFlex.variable} ${googleSansCode.variable}`}>
       <head>
-        <RaykenReview />
+        <RaykenReview nonce={nonce} />
       </head>
       <body>
         <Analytics />

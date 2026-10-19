@@ -4,6 +4,7 @@
 // 2. Render <RaykenReview /> as the first child of <head> in app/layout.tsx.
 // 3. Set NEXT_PUBLIC_RAYKEN_REVIEW=1 only on the Preview environment of the review address.
 // The loader still checks the address at runtime, so a production build that includes it stays idle.
+// 4. The inline script carries this request's nonce (proxy.ts, lib/csp.ts), so the Content-Security-Policy allows it.
 
 const LOADER = String.raw`
 /* Rayken Review loader. Idle unless this is a review host and the browser holds a pass. */
@@ -33,9 +34,10 @@ const LOADER = String.raw`
 })(window, document);
 `;
 
-export default function RaykenReview() {
+// The loader script, only on the review build, stamped with the request's nonce.
+export default function RaykenReview({ nonce }: { nonce?: string } = {}) {
   if (process.env.NEXT_PUBLIC_RAYKEN_REVIEW !== '1') {
     return null;
   }
-  return <script id="rayken-review" dangerouslySetInnerHTML={{ __html: LOADER }} />;
+  return <script id="rayken-review" nonce={nonce} dangerouslySetInnerHTML={{ __html: LOADER }} />;
 }
