@@ -1,7 +1,7 @@
 // The Content-Security-Policy trial (lib/csp.ts): the policy text per environment, the nonce, and how violation reports
 // are cleaned before they are logged. The browser check is e2e/csp.spec.ts.
 import { describe, expect, it } from 'vitest';
-import { buildCsp, makeNonce, nonceFromPolicy, portalOrigins, readViolations } from '@/lib/csp';
+import { META_POLICY, buildCsp, makeNonce, nonceFromPolicy, portalOrigins, readViolations } from '@/lib/csp';
 
 const ORIGIN = 'https://apply.thebtxfoundation.org';
 const SUPABASE = 'https://awiaebtqalcmfafvktwh.supabase.co';
@@ -45,6 +45,13 @@ describe('buildCsp', () => {
     const mock = buildCsp({ ...base, supabaseUrl: '' });
     expect(sources(mock, 'connect-src')).toEqual(["'self'", 'https://*.google-analytics.com']);
     expect(mock).not.toMatch(/ {2}|\s;/);
+  });
+});
+
+describe('META_POLICY', () => {
+  it('keeps the long-standing no-<base>, no-plugins rules, and nothing a meta tag would ignore or that could carry a nonce', () => {
+    expect(META_POLICY).toBe("base-uri 'self'; object-src 'none'");
+    expect(nonceFromPolicy(META_POLICY)).toBeUndefined();
   });
 });
 
