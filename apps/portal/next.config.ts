@@ -23,6 +23,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Stop `next dev` from writing an AGENTS.md into the app folder.
   agentRules: false,
+  // `next dev` only, and only when the e2e run asks for it (playwright.config.ts sets BTX_E2E_PROD_HOST=1):
+  // e2e/analytics.spec.ts opens the dev server under the production name (the browser maps it to this machine) so the
+  // analytics production-host rule runs as it will live. Without this the dev server refuses its own scripts to that
+  // name. Production builds ignore the setting.
+  allowedDevOrigins: process.env.BTX_E2E_PROD_HOST === '1' ? ['apply.thebtxfoundation.org'] : [],
   // Don't announce the framework in an X-Powered-By header.
   poweredByHeader: false,
   // Apply the security headers to all routes.

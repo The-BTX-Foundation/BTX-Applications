@@ -9,7 +9,32 @@ import { getBrowserClient, hasSupabaseEnv } from './client';
 export type AuthMode = 'supabase' | 'mock';
 
 export type SendResult = { ok: true } | { ok: false; reason: 'rate-limited' | 'failed' };
-export type VerifyResult = { ok: true; email: string } | { ok: false; reason: 'wrong' | 'invalid-or-expired' | 'failed' };
+export type VerifyResult =
+  | { ok: true; email: string; firstSignIn: boolean }
+  | { ok: false; reason: 'wrong' | 'invalid-or-expired' | 'failed' };
+
+type SignInTimes =
+  | { created_at?: string | null; email_confirmed_at?: string | null; last_sign_in_at?: string | null }
+  | null
+  | undefined;
+
+// True when this sign-in is the account's first (the code or link that just checked out created it). Used for the
+// Portal's "account created" count; it reads only three timestamps. Supabase creates the account when the code is
+// asked for (created_at) and stamps last_sign_in_at on every sign-in. The confirmation time depends on the project's
+// "Confirm email" setting:
+// - on (production, checked 2026-10-19: mailer_autoconfirm false): email_confirmed_at is set once, at the first
+//   successful check, so it equals last_sign_in_at only the first time; exact;
+// - off (the local stack): email_confirmed_at equals created_at, so the first sign-in is the one within an hour of
+//   the account's creation (a code or link lasts at most that long locally).
+export function isFirstSignIn(user: SignInTimes): boolean {
+  const created = Date.parse(user?.created_at ?? '');
+  const confirmed = Date.parse(user?.email_confirmed_at ?? '');
+  const signedIn = Date.parse(user?.last_sign_in_at ?? '');
+  if (!Number.isFinite(confirmed) || !Number.isFinite(signedIn)) return false;
+  const autoConfirmed = Number.isFinite(created) && Math.abs(confirmed - created) < 5_000;
+  if (autoConfirmed) return signedIn - created >= 0 && signedIn - created < 60 * 60_000;
+  return Math.abs(signedIn - confirmed) < 60_000;
+}
 
 // Which backend sign-in uses right now.
 export function getAuthMode(): AuthMode {
@@ -86,12 +111,13 @@ export async function verifySignInCode(email: string, token: string): Promise<Ve
     await pause(250);
     if (token === '123456') {
       rememberMockEmail(email);
-      return { ok: true, email };
+      // the mock keeps no accounts, so every mock sign-in counts as a new account
+      return { ok: true, email, firstSignIn: true };
     }
     return { ok: false, reason: token === '000000' ? 'invalid-or-expired' : 'wrong' };
   }
   const { data, error } = await getBrowserClient().auth.verifyOtp({ email, token, type: 'email' });
-  if (!error && data.user) return { ok: true, email: data.user.email ?? email };
+  if (!error && data.user) return { ok: true, email: data.user.email ?? email, firstSignIn: isFirstSignIn(data.user) };
   if (error?.code === 'otp_expired') return { ok: false, reason: 'invalid-or-expired' };
   if (error && error.status !== undefined && error.status >= 400 && error.status < 500) return { ok: false, reason: 'wrong' };
   return { ok: false, reason: 'failed' };

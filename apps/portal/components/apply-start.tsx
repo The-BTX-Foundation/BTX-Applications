@@ -10,6 +10,7 @@ import { stepPath } from '@/lib/steps';
 import { TerpmailRefusal } from './terpmail-refusal';
 import { ensureApplication, getAuthMode, getBrowserClient, getSignedInEmail } from '@btx/data';
 import { refusalIsTerpmail } from '@/lib/terpmail';
+import { track } from '@/lib/analytics-client';
 
 export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
   const router = useRouter();
@@ -26,6 +27,8 @@ export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
           setTerpmail(true);
           return;
         }
+        // the mock keeps no applications, so every arrival starts one
+        track('application_begin');
         router.replace(next ?? '/apply/basic-info');
         return;
       }
@@ -34,12 +37,18 @@ export function ApplyStart({ next, demo }: { next?: string; demo?: string }) {
       if (r.kind === 'closed') router.replace('/');
       else if (r.kind === 'refused') {
         // a refused insert is the Terpmail rule only when her address fails it; otherwise the cycle closed under her
-        if (refusalIsTerpmail(await getSignedInEmail())) setTerpmail(true);
-        else router.replace('/');
+        if (refusalIsTerpmail(await getSignedInEmail())) {
+          track('sign_in_error', { code: 'terpmail_refused' });
+          setTerpmail(true);
+        } else router.replace('/');
       }
       else if (r.kind === 'error') setProblem(r.message);
       else if (r.application.status === 'submitted') router.replace('/status');
-      else router.replace(next ?? stepPath(r.application.current_step));
+      else {
+        // count "application started" only when this visit created the draft (no id is sent)
+        if (r.created) track('application_begin');
+        router.replace(next ?? stepPath(r.application.current_step));
+      }
     })();
     return () => {
       live = false;
