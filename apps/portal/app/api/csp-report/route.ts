@@ -7,7 +7,7 @@
 // Public by design: browsers send reports without a session. The route reads at most 16 KB, logs at most 20 violations
 // per request, never echoes anything back, and always answers 204.
 import { NextResponse, type NextRequest } from 'next/server';
-import { readViolations } from '@/lib/csp';
+import { portalOrigins, readViolations } from '@/lib/csp';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,21 +17,26 @@ const REPORT_TYPES = ['application/csp-report', 'application/reports+json', 'app
 // An empty "received" answer, the same for every outcome, so the route reveals nothing.
 const received = () => new NextResponse(null, { status: 204 });
 
-// Reads the body as text, stopping (and returning null) once it passes the size cap, whatever Content-Length says.
+// Reads the body as text, stopping (and returning null) once it passes the size cap, whatever Content-Length says. A
+// body cut off mid-way (the sender hung up) also returns null.
 async function readCapped(request: NextRequest): Promise<string | null> {
   if (!request.body) return '';
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > MAX_BYTES) {
-      await reader.cancel();
-      return null;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+  } catch {
+    return null;
   }
   const all = new Uint8Array(size);
   let at = 0;
@@ -55,6 +60,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return received();
   }
-  for (const v of readViolations(body, request.nextUrl.origin)) console.warn(`[csp-report] ${JSON.stringify(v)}`);
+  // the e2e run serves the Portal under its production name on a local port; count that address as the Portal's too
+  const origins = portalOrigins(request.nextUrl.origin, process.env);
+  if (process.env.BTX_E2E_PROD_HOST === '1') origins.push(`http://apply.thebtxfoundation.org:${request.nextUrl.port}`);
+  for (const v of readViolations(body, origins)) console.warn(`[csp-report] ${JSON.stringify(v)}`);
   return received();
 }

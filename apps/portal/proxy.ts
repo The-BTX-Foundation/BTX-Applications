@@ -29,10 +29,11 @@ export async function proxy(request: NextRequest) {
     vercelPreview: process.env.VERCEL_ENV === 'preview',
     review: process.env.NEXT_PUBLIC_RAYKEN_REVIEW === '1',
   });
-  // Next.js takes the nonce for its inline scripts from this request header; x-nonce is for our own inline script
-  // (app/RaykenReview.tsx, read in app/layout.tsx)
+  // Next.js takes the nonce for its inline scripts from this request header (and app/layout.tsx reads the same one for
+  // the review loader). Next prefers a `content-security-policy` request header if there is one, so a client-sent one is
+  // removed: otherwise it would choose the nonce Next stamps.
+  request.headers.delete('content-security-policy');
   request.headers.set('content-security-policy-report-only', policy);
-  request.headers.set('x-nonce', nonce);
 
   const { response, userId, live } = await updateSession(request);
   if (live && !userId && (pathname === '/apply' || pathname.startsWith('/apply/') || pathname === '/status')) {

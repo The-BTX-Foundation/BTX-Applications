@@ -17,7 +17,7 @@ The code:
 
 | Kind of load | Allowed from |
 | --- | --- |
-| Scripts | The Portal itself; the page's own inline scripts, which carry a one-time code (the nonce); Google's tag script (`www.googletagmanager.com`) |
+| Scripts | The Portal itself; the page's own inline scripts, which carry a one-time code (the nonce); Google's tag script, by path (`www.googletagmanager.com/gtag/`), so a Tag Manager container (`gtm.js`) is not allowed |
 | Connections (fetch, uploads) | The Portal; the Supabase project (and its websocket address); Google Analytics (`*.google-analytics.com`) |
 | Images | The Portal; `data:` and `blob:` (photo previews before upload); the Supabase project (stored photos) |
 | Styles | The Portal; inline styles |
@@ -36,7 +36,8 @@ Extra entries appear only where they are needed:
 
 **The nonce.**
 - Each page response gets a fresh random code, generated in `proxy.ts`.
-- Next.js reads it from the request and stamps it on every inline script it writes, so those scripts pass.
+- Next.js reads it from the request and stamps it on every inline script it writes, so those scripts pass. The layout reads the same request header for the review loader.
+- A `Content-Security-Policy` header sent by a client is removed first, because Next.js would otherwise take its nonce from that one.
 - No other inline script can, because it would need that response's code.
 - Making every page render per request (the root layout reads the code) is what makes this work. A page built ahead of time can't carry a fresh code.
 
@@ -61,7 +62,10 @@ Each violation becomes one line in the Vercel runtime logs (project `btx-portal`
 
 Nothing else from a report is kept. Reports can carry page addresses with query strings, signed storage links with tokens, and snippets of page text, so the endpoint drops all of that.
 
-Some reports come from browser extensions (password managers, ad blockers) injecting their own scripts into the page. Those show as an extension origin or as `inline` from an unknown source. Ignore them.
+How to read the reports:
+- **Browser extensions.** Some reports come from extensions (password managers, ad blockers) injecting their own scripts into the page. Those log `chrome-extension` (or `moz-extension`, `safari-web-extension`) as the blocked address or the source. Ignore them.
+- **Vercel's toolbar.** A `vercel.live` report on production comes from a team member's Vercel toolbar. Ignore it.
+- **Counts are low.** Chrome sends one report for repeats of the same violation on a page, so a count in the logs understates how often it happens.
 
 The endpoint is public, because browsers send reports without signing in. It reads at most 16 KB per request, logs at most 20 violations per request, never echoes anything, and always answers 204.
 
@@ -70,10 +74,13 @@ The endpoint is public, because browsers send reports without signing in. It rea
 1. **Run the trial for two weeks** of real traffic (a cycle's application period is ideal).
 2. **Read the `[csp-report]` lines.**
    - Each one is either a gap in the list (add the origin in `lib/csp.ts`, with a test) or something that should stay blocked.
+   - **Never add an origin because of reports alone.** The endpoint is public, so anyone can post a report that looks like a real gap. Reproduce the load on the live site first (open the page and watch the browser's console), then add it.
    - Zero lines (apart from extensions) means the list is right.
-3. **Switch to enforcing** in a separate PR. In `proxy.ts`, rename the response header to `Content-Security-Policy`. Keep the request header name Next.js reads the nonce from in step with it.
-   - Keep `report-uri`/`report-to`, so blocked loads are still logged.
-   - Run `npm run e2e -w @btx/portal` first. `e2e/csp.spec.ts` fails on any violation.
+3. **Switch to enforcing** in a separate PR. In `proxy.ts`, rename the response header to `Content-Security-Policy`, and the request header with it (Next.js reads either), and keep removing a client-sent one. Also:
+   - Keep `report-uri`, so blocked loads are still logged.
+   - Cover the addresses the proxy skips. Its matcher leaves out `.png`, `.jpg`, `.svg` and `.woff2` addresses for speed, so a 404 page for one of those (say `/x.png`) renders without any policy. Either narrow the matcher to the static folders, or give those responses a policy of their own.
+   - **Gate on a production build**, not only the dev server. The dev policy adds eval and websockets, so it would miss those. Build and serve the Portal in mock mode with the analytics id (`NEXT_PUBLIC_AUTH_MODE=mock NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= NEXT_PUBLIC_GA_ID=G-36BN7DJ7DN npx next build && npx next start -p 3298` in `apps/portal`). Then run `PORT=3298 npx playwright test e2e/csp.spec.ts e2e/analytics.spec.ts`. Both must pass with zero violations.
+   - Consider `'strict-dynamic'` then, with care: it trusts any script a trusted script loads.
 
 ## 4. Checks
 
@@ -88,7 +95,10 @@ The endpoint is public, because browsers send reports without signing in. It rea
 - Mutation runs (2026-10-19). Removing Google's tag host from the list, or removing the nonce, makes the test fail with `script-src-elem` violations.
 - The full Portal suite (155 tests) ran with the policy on. Its server log held no browser-sent report apart from the endpoint test's own.
 
-## 5. Not covered
+## 5. Not covered, and what the list can't stop
+
+- **Google Analytics as an exit.** `connect-src` allows `*.google-analytics.com`, which is needed for the tag's hits. A script that has already broken into the page could post data to any Google Analytics property (its own, too). The analytics filter (`ANALYTICS.md`) covers the tag's own requests, not an attacker's fresh one. React's escaping makes such an injection unlikely, so the list is a second wall here, not a guarantee.
+- **The review tool.** What its widget loads after `boot.js` (on the review preview only) hasn't been inventoried. The trial's reports from that preview will show it.
 
 - **Real Supabase traffic.** The tests run in mock mode, with no Supabase project. The Supabase origin is in the list (unit-tested from `NEXT_PUBLIC_SUPABASE_URL`), and the trial's reports on production will confirm it.
 - **Rate limits on the report endpoint.** A flood of fake reports would only fill logs (each request is capped). If that ever happens, put the endpoint behind Vercel's firewall rate limit.

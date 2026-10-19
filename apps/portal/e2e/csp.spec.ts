@@ -65,6 +65,11 @@ test('every page carries the report-only policy with a fresh nonce, and Next.js 
   const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>/g)].map((m) => m[1]);
   expect(inline.length).toBeGreaterThan(0);
   for (const attrs of inline) expect(attrs, 'inline script nonce').toContain(`nonce="${nonce}"`);
+  // a policy header sent by the client can't choose the nonce Next.js stamps
+  const forged = await request.get(`${LOCAL}/sign-in`, { headers: { 'content-security-policy': "script-src 'nonce-ATTACKER'", 'x-nonce': 'ATTACKER' } });
+  const forgedHtml = await forged.text();
+  expect(forgedHtml).not.toContain('ATTACKER');
+  expect(forgedHtml).toContain(`nonce="${nonceOf(forged.headers()['content-security-policy-report-only'] ?? '')}"`);
 });
 
 test('the whole applicant path, with the Google tag loaded, causes no violation', async ({ page, context }) => {
