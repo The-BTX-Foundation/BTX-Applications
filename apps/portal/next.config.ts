@@ -23,6 +23,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Stop `next dev` from writing an AGENTS.md into the app folder.
   agentRules: false,
+  // `next dev` only: e2e/analytics.spec.ts opens the dev server under the production name (the browser maps it to this
+  // machine) so the analytics production-host rule runs as it will live. Without this the dev server refuses its own
+  // scripts to that name. Production builds ignore the setting.
+  allowedDevOrigins: ['apply.thebtxfoundation.org'],
   // Don't announce the framework in an X-Powered-By header.
   poweredByHeader: false,
   // Apply the security headers to all routes.

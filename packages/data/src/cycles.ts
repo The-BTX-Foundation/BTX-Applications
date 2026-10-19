@@ -43,7 +43,8 @@ export function isTerpmailRefusal(error: { code?: string; message?: string }): b
 }
 
 export type EnsureResult =
-  | { kind: 'ok'; cycle: Cycle; application: Application }
+  /** `created` is true when this call started the application (counted as "application started" in analytics). */
+  | { kind: 'ok'; cycle: Cycle; application: Application; created: boolean }
   | { kind: 'closed' }
   | { kind: 'refused' }
   | { kind: 'error'; message: string };
@@ -56,12 +57,12 @@ export async function ensureApplication(client: BtxClient): Promise<EnsureResult
   const found = await client.from('applications').select('*').eq('cycle_id', cycle.id).maybeSingle();
   if (found.error) return { kind: 'error', message: found.error.message };
   // a submitted application stays reachable after the deadline (the status page)
-  if (found.data?.status === 'submitted') return { kind: 'ok', cycle, application: found.data };
+  if (found.data?.status === 'submitted') return { kind: 'ok', cycle, application: found.data, created: false };
   if (cycleVariant(cycle) !== 'open') return { kind: 'closed' };
-  if (found.data) return { kind: 'ok', cycle, application: found.data };
+  if (found.data) return { kind: 'ok', cycle, application: found.data, created: false };
   const made = await client.from('applications').insert({ cycle_id: cycle.id }).select('*').single();
   if (made.error) return isTerpmailRefusal(made.error) ? { kind: 'refused' } : { kind: 'error', message: made.error.message };
-  return { kind: 'ok', cycle, application: made.data };
+  return { kind: 'ok', cycle, application: made.data, created: true };
 }
 
 // Saves some answers on an application and returns the time of the save (the table's own updated_at).

@@ -22,6 +22,7 @@ import { savedTime } from '@/lib/format';
 import { DEMO_SAVED, STEP_PATHS, demoDone, railSteps, stepsDone } from '@/lib/steps';
 import { STRESS } from '@/lib/stress';
 import { useAutosave } from '@/lib/use-autosave';
+import { track } from '@/lib/analytics-client';
 import { countWords } from '@/lib/words';
 import { HELP_EMAIL } from '@btx/ui';
 import { ApplyShell } from './apply-shell';
@@ -166,6 +167,8 @@ export function ReviewForm({
     }
     setBusy(false);
     if (r.ok) {
+      // analytics counts the submission (no application id or code is sent)
+      track('application_submit');
       // the confirmation email is sent by the server (it only logs until the email service is configured)
       if (getAuthMode() !== 'mock') void fetch('/api/application-submitted', { method: 'POST' }).catch(() => {});
       router.push('/status');

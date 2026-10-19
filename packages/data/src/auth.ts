@@ -9,7 +9,21 @@ import { getBrowserClient, hasSupabaseEnv } from './client';
 export type AuthMode = 'supabase' | 'mock';
 
 export type SendResult = { ok: true } | { ok: false; reason: 'rate-limited' | 'failed' };
-export type VerifyResult = { ok: true; email: string } | { ok: false; reason: 'wrong' | 'invalid-or-expired' | 'failed' };
+export type VerifyResult =
+  | { ok: true; email: string; firstSignIn: boolean }
+  | { ok: false; reason: 'wrong' | 'invalid-or-expired' | 'failed' };
+
+type SignInTimes = { email_confirmed_at?: string | null; last_sign_in_at?: string | null } | null | undefined;
+
+// True when this sign-in is the account's first (the code or link that just checked out created it). Supabase sets
+// email_confirmed_at once, at the first successful check, and last_sign_in_at on every sign-in, so the two are the
+// same moment only the first time. Used for the Portal's "account created" count; it reads no personal data.
+export function isFirstSignIn(user: SignInTimes): boolean {
+  if (!user?.email_confirmed_at || !user.last_sign_in_at) return false;
+  const confirmed = Date.parse(user.email_confirmed_at);
+  const signedIn = Date.parse(user.last_sign_in_at);
+  return Number.isFinite(confirmed) && Number.isFinite(signedIn) && Math.abs(signedIn - confirmed) < 60_000;
+}
 
 // Which backend sign-in uses right now.
 export function getAuthMode(): AuthMode {
@@ -86,12 +100,13 @@ export async function verifySignInCode(email: string, token: string): Promise<Ve
     await pause(250);
     if (token === '123456') {
       rememberMockEmail(email);
-      return { ok: true, email };
+      // the mock keeps no accounts, so every mock sign-in counts as a new account
+      return { ok: true, email, firstSignIn: true };
     }
     return { ok: false, reason: token === '000000' ? 'invalid-or-expired' : 'wrong' };
   }
   const { data, error } = await getBrowserClient().auth.verifyOtp({ email, token, type: 'email' });
-  if (!error && data.user) return { ok: true, email: data.user.email ?? email };
+  if (!error && data.user) return { ok: true, email: data.user.email ?? email, firstSignIn: isFirstSignIn(data.user) };
   if (error?.code === 'otp_expired') return { ok: false, reason: 'invalid-or-expired' };
   if (error && error.status !== undefined && error.status >= 400 && error.status < 500) return { ok: false, reason: 'wrong' };
   return { ok: false, reason: 'failed' };

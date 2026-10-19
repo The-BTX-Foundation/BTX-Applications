@@ -14,6 +14,7 @@ import { getAuthMode, requestSignInCode, verifySignInCode } from '@btx/data';
 import { OPS_HUB_URL } from '@/lib/config';
 import { CODE_LIFETIME_MINUTES } from '@/lib/config';
 import { terpmailError } from '@/lib/terpmail';
+import { track } from '@/lib/analytics-client';
 import s from './sign-in-flow.module.css';
 
 export type DemoState = 'email' | 'code' | 'wrong' | 'expired';
@@ -49,6 +50,11 @@ export function SignInFlow({
   // When the current code was sent, to tell "expired" from "wrong" (Supabase uses one error for both).
   const sentAt = useRef<number>(Date.now());
 
+  // Counts one failed email link (she arrived with ?error=link). Analytics gets the code only.
+  useEffect(() => {
+    if (linkError) track('sign_in_error', { code: 'link_failed' });
+  }, [linkError]);
+
   // Counts the resend timer down once a second on the code screen (frozen in demo mode).
   useEffect(() => {
     if (demo || stage !== 'code' || seconds <= 0) return;
@@ -65,6 +71,7 @@ export function SignInFlow({
     );
     setBusy(false);
     if (r.ok) return true;
+    track('sign_in_error', { code: r.reason === 'rate-limited' ? 'send_rate_limited' : 'send_failed' });
     setEmailError(
       r.reason === 'rate-limited'
         ? 'Too many codes requested. Wait a minute, then try again.'
@@ -79,7 +86,11 @@ export function SignInFlow({
     setLinkProblem(false);
     const err = terpmailError(email);
     setEmailError(err);
-    if (err) return;
+    if (err) {
+      // analytics gets which rule failed, never the address
+      track('sign_in_error', { code: email.trim() ? 'email_not_terpmail' : 'email_missing' });
+      return;
+    }
     const clean = email.trim().toLowerCase();
     setEmail(clean);
     if (await send(clean)) {
@@ -97,25 +108,31 @@ export function SignInFlow({
     if (problem === 'expired') return resend();
     if (code.length < CODE_LENGTH) {
       setProblem('incomplete');
+      track('sign_in_error', { code: 'code_incomplete' });
       return;
     }
     setBusy(true);
     const r = await verifySignInCode(email, code);
     setBusy(false);
     if (r.ok) {
+      // the code that just checked out created her account: count it (no address, no code)
+      if (r.firstSignIn) track('sign_up', { method: 'email_code' });
       // /apply/start finds or creates her application and sends her to the right step
       router.push(next ? `/apply/start?next=${encodeURIComponent(next)}` : '/apply/start');
       return;
     }
     setCode('');
     if (r.reason === 'failed') {
+      track('sign_in_error', { code: 'verify_failed' });
       setProblem(null);
       setEmailError("We couldn't check the code. Check your connection and try again.");
       return;
     }
     // "invalid-or-expired" is one error from Supabase: call it expired only when the code is older than its lifetime
     const old = Date.now() - sentAt.current > CODE_LIFETIME_MINUTES * 60_000;
-    setProblem(r.reason === 'invalid-or-expired' && (getAuthMode() === 'mock' || old) ? 'expired' : 'wrong');
+    const expired = r.reason === 'invalid-or-expired' && (getAuthMode() === 'mock' || old);
+    track('sign_in_error', { code: expired ? 'code_expired' : 'code_wrong' });
+    setProblem(expired ? 'expired' : 'wrong');
     codeRef.current?.querySelector('input')?.focus();
   }
 

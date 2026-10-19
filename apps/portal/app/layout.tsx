@@ -3,6 +3,7 @@ import '@btx/ui/tokens.css';
 import '@btx/ui/components.css';
 import { googleSansCode, googleSansFlex } from './fonts';
 import RaykenReview from './RaykenReview';
+import Analytics from './Analytics';
 import { ReviewContext } from '@/components/review-context';
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// The root layout: loads the fonts and the shared styles. Each page draws its own top bar, because the bar's
+// The root layout: loads the fonts, the shared styles and analytics (app/Analytics.tsx). Each page draws its own top bar, because the bar's
 // variant (signed out, sign-in, signed in) and the wizard's progress change from screen to screen.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RaykenReview />
       </head>
       <body>
+        <Analytics />
         <ReviewContext />
         <a href="#main" className="skip">
           Skip to main content
