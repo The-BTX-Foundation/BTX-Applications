@@ -174,7 +174,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
   return (
     <div className="o-app">
       <aside className="o-sb" aria-label="Ops Hub" data-review="Sidebar navigation">
-        <img className="o-logo" src="/btx-logo-on-light.png" alt="The BTX Foundation" width={68} height={30} />
+        <img className="o-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={68} height={30} />
         <nav className="o-nav" aria-label="Main">
           {TOP.map((t) => {
             const here = isHere(pathname, t.href);
@@ -205,7 +205,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
           <button type="button" className="o-ib" aria-label="Menu: areas and board members" onClick={() => setMenu(true)}>
             <OIcon name="menu" size={22} />
           </button>
-          <img className="o-pt-logo" src="/btx-logo-on-light.png" alt="The BTX Foundation" width={59} height={26} />
+          <img className="o-pt-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={59} height={26} />
           <span className="o-av o-pt-av" aria-hidden="true" data-review-private>
             {user.initials}
           </span>
@@ -234,7 +234,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
           <button type="button" className="o-mn-scrim" aria-label="Close menu" onClick={() => setMenu(false)} />
           <nav className="o-mn" aria-label="Menu" data-review="Phone menu">
             <div className="o-mn-hd">
-              <img src="/btx-logo-on-light.png" alt="The BTX Foundation" width={59} height={26} />
+              <img src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={59} height={26} />
               <button type="button" className="o-ib" aria-label="Close menu" onClick={() => setMenu(false)}>
                 <OIcon name="close" size={22} />
               </button>

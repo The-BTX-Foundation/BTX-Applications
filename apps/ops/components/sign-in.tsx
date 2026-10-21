@@ -86,7 +86,7 @@ export function SignIn({ next, notice }: { next?: string; notice?: 'access' | 'l
 
   return (
     <main className={`o-si${stage === 'code' ? ' code' : ''}`}>
-      <img src="/btx-logo-on-light.png" alt="The BTX Foundation" width={77} height={34} className="o-si-logo" />
+      <img src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={77} height={34} className="o-si-logo" />
       {stage === 'email' ? (
         <form className="o-si-box" onSubmit={sendCode} noValidate>
           <h1>Sign in to the Ops Hub</h1>
