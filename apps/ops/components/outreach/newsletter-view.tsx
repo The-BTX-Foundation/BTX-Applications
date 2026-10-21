@@ -120,7 +120,7 @@ export function NewsletterView({ data }: { data: NewsletterData }) {
           </div>
           <div className="ou-mail">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/btx-logo-on-light.png" alt="BTX Foundation" className="ou-logo" />
+            <img src="/btx-logo-on-light.webp" alt="BTX Foundation" className="ou-logo" />
             <h3>{data.previewTitle}</h3>
             <p className="ou-intro">{data.intro}</p>
             <ul>

@@ -25,8 +25,8 @@ type Props = {
 function Brand({ homeHref }: { homeHref: string }) {
   return (
     <a href={homeHref} className="brand">
-      {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size PNG logo, no optimization needed */}
-      <img src="/btx-logo-on-light.png" alt="The BTX Foundation" />
+      {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size WebP logo, no optimization needed */}
+      <img src="/btx-logo-on-light.webp" alt="The BTX Foundation" />
       <span>Scholarship application</span>
     </a>
   );
