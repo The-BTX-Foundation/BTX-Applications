@@ -10,14 +10,13 @@
 // forgotten and the page reloads once, so the review tool never runs over a student's application.
 import { useEffect } from 'react';
 import { getAuthMode, getBrowserClient } from '@btx/data';
-import { isStaffOrTester } from '@/lib/analytics';
-import { forgetReviewPass, holdsReviewPass, safeStorage } from '@/lib/review-pass';
+import { forgetReviewPass, holdsReviewPass, isRealStudent, safeStorage, widgetHasPass } from '@/lib/review-pass';
 import { reviewScreen } from '@/lib/review-screens';
 
 declare global {
   interface Window {
     RaykenReview?: { context?: () => Record<string, string> };
-    __raykenReview?: { onEvent?: unknown } & Record<string, unknown>;
+    __raykenReview?: { onEvent?: unknown; token?: unknown } & Record<string, unknown>;
   }
 }
 
@@ -38,8 +37,12 @@ async function protectStudent(): Promise<void> {
     window.location.reload();
     return;
   }
-  if (window.__raykenReview) window.__raykenReview.onEvent = null;
-  document.querySelectorAll('rayken-review').forEach((el) => el.remove());
+  // No second reload: revoke the widget's pass in place. Its next call to the review tool is refused, and the widget
+  // then forgets the pass and takes itself down.
+  if (window.__raykenReview) {
+    window.__raykenReview.onEvent = null;
+    window.__raykenReview.token = 'revoked';
+  }
 }
 
 export function ReviewContext() {
@@ -50,11 +53,12 @@ export function ReviewContext() {
       ...window.RaykenReview,
       context: () => ({ account: 'Student', ...reviewScreen(window.location.pathname) }),
     };
-    if (getAuthMode() !== 'supabase' || !holdsReviewPass(safeStorage(), document.cookie)) return;
+    if (getAuthMode() !== 'supabase') return;
     let done = false;
     const check = (account: { email?: string | null; app_metadata?: Record<string, unknown> | null } | null | undefined) => {
-      // only a signed-in account that is neither staff nor a test address is a real student
-      if (done || !account || isStaffOrTester(account)) return;
+      if (done || !isRealStudent(account)) return;
+      // the pass is checked here, not once at mount: the loader can restore a pass from IndexedDB after this runs
+      if (!holdsReviewPass(safeStorage(), document.cookie) && !widgetHasPass()) return;
       done = true;
       void protectStudent();
     };

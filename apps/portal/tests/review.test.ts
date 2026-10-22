@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import RaykenReview from '@/app/RaykenReview';
 import { REVIEW_PROJECT } from '@/lib/config';
-import { holdsReviewPass } from '@/lib/review-pass';
+import { holdsReviewPass, isRealStudent } from '@/lib/review-pass';
 import { reviewScreen } from '@/lib/review-screens';
 
 
@@ -78,5 +78,27 @@ describe('the loader without a pass', () => {
     expect(last).toContain('x.name == "rayken-review"');
     // the only indexedDB.open is inside db(), which the last line now calls only when the database exists
     expect(html.match(/indexedDB\.open\(/g)).toHaveLength(1);
+  });
+});
+
+describe('isRealStudent (who the review pass is taken from)', () => {
+  const allow = ['kearle624+apply@gmail.com', '+apply'];
+
+  it('is a signed-in Terpmail applicant', () => {
+    expect(isRealStudent({ email: 'jane@terpmail.umd.edu', app_metadata: { role: 'applicant' } }, allow)).toBe(true);
+    expect(isRealStudent({ email: ' Jane@Terpmail.UMD.edu ' }, allow)).toBe(true);
+  });
+
+  it('is never nobody, staff, a non-Terpmail tester or an allow-listed Terpmail tester', () => {
+    expect(isRealStudent(null, allow)).toBe(false);
+    expect(isRealStudent(undefined, allow)).toBe(false);
+    expect(isRealStudent({ email: 'kearle624+apply@gmail.com' }, allow)).toBe(false);
+    expect(isRealStudent({ email: 'jane@terpmail.umd.edu', app_metadata: { role: 'board' } }, allow)).toBe(false);
+    expect(isRealStudent({ email: 'jane@terpmail.umd.edu', app_metadata: { role: 'admin' } }, allow)).toBe(false);
+    expect(isRealStudent({ email: 'intern+apply@terpmail.umd.edu' }, allow)).toBe(false);
+  });
+
+  it('treats a +tag Terpmail address as a student when the list has no tag entry', () => {
+    expect(isRealStudent({ email: 'intern+apply@terpmail.umd.edu' }, ['kearle624+apply@gmail.com'])).toBe(true);
   });
 });

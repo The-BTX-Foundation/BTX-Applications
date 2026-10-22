@@ -7,7 +7,7 @@
 // account signed in here once), and nobody signed in is staff or a tester. Otherwise events still land in the page's
 // own dataLayer, which is how tests and previews check them, and nothing leaves the browser.
 import { getAuthMode, getBrowserClient } from '@btx/data';
-import { holdsReviewPass, safeStorage } from './review-pass';
+import { holdsReviewPass, safeStorage, widgetHasPass } from './review-pass';
 import {
   PAGE_VIEW_MARK,
   PRODUCTION_HOST,
@@ -353,7 +353,7 @@ export async function startAnalytics(): Promise<void> {
   state.off = state.off || readOff();
   // a board member's review pass (lib/review-pass.ts): not a real visit. Off for this page only, not stored, because the
   // pass is checked on every page anyway and a forgotten pass should not leave the browser switched off.
-  if (holdsReviewPass(safeStorage(), document.cookie)) state.off = true;
+  if (holdsReviewPass(safeStorage(), document.cookie) || widgetHasPass()) state.off = true;
 
   const id = measurementId();
   const host = window.location.hostname.toLowerCase();
