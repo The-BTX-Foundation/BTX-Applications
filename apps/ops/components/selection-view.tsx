@@ -10,6 +10,7 @@
 // decisions"): it asks first, then releases and sends the emails, and the page shows when it went out. Nobody else gets
 // the button. Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until
 // email is set up (O8).
+import { BoardTest } from './board-test-label';
 import { useState } from 'react';
 import type { Candidate, RankRow, Recorded, SelectionData } from '@/lib/selection';
 import { recordAward, releaseAndNotify, undoAward } from '@/lib/actions/selection';
@@ -23,7 +24,7 @@ import { Dialog } from './sch-parts';
 import './scholarships.css';
 
 /** Who gets which award; an extra award carries the name and amount the board typed. */
-type Pending = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; amountLabel: string };
+type Pending = { id: string; code: string; name: string; test?: boolean; kind: 'main' | 'extra'; awardName: string; amountCents: number; amountLabel: string };
 
 // One row of the ranking (laptop): rank, name and code, combined score, who scored what; opens to the details.
 function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle: () => void }) {
@@ -32,7 +33,7 @@ function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle:
       <button type="button" className="s-rkh" aria-expanded={open} onClick={onToggle}>
         <span className="n">{r.rank}</span>
         <span className="who">
-          <b>{r.name}</b>
+          <b>{r.name}<BoardTest test={r.test} /></b>
           <span>{r.code}</span>
         </span>
         <strong>{r.combined}</strong>
@@ -83,7 +84,7 @@ function Picker({ list, label, onPick }: { list: Candidate[]; label: string; onP
         <option value="">Choose the applicant</option>
         {list.map((c) => (
           <option key={c.id} value={c.id}>
-            {`${c.name} · ${c.code}${c.combined ? ` · ${c.combined}` : ' · not scored yet'}`}
+            {`${c.name}${c.test ? ' (Board test)' : ''} · ${c.code}${c.combined ? ` · ${c.combined}` : ' · not scored yet'}`}
           </option>
         ))}
       </select>
@@ -106,7 +107,7 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
     const cents = dollarsToCents(amount);
     const check = checkExtraAward({ awardName: name, amountCents: cents });
     if (!check.ok) return setError(check.message);
-    onPick({ id: c.id, code: c.code, name: c.name, awardName: check.awardName, amountCents: cents, amountLabel: dollar(cents) });
+    onPick({ id: c.id, code: c.code, name: c.name, test: c.test, awardName: check.awardName, amountCents: cents, amountLabel: dollar(cents) });
     setAdding(false);
     setName('');
     setAmount('');
@@ -121,6 +122,7 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
         <p key={a.id} className="s-xr" data-review-private>
           <span>
             {a.awardName} · {dollar(a.amountCents)} · {a.name}
+            <BoardTest test={a.test} />
           </span>
           {released ? null : (
             <>
@@ -222,7 +224,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
     });
     setPending(null);
     if (res.ok && res.id) {
-      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : p.awardName, amountCents: p.amountCents }]);
+      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, test: p.test, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : p.awardName, amountCents: p.amountCents }]);
       setNote('');
     } else setNote(res.message);
   }
@@ -248,7 +250,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
   const dollar = (cents: number) => `$${(cents / 100).toLocaleString('en-US')}`;
 
   // The main award step: the board's choice, from every submitted applicant.
-  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'main', awardName: data.legacy.awardName, amountCents: data.legacy.amount, amountLabel: data.legacy.amountLabel })} />;
+  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, test: c.test, kind: 'main', awardName: data.legacy.awardName, amountCents: data.legacy.amount, amountLabel: data.legacy.amountLabel })} />;
 
   // Extra awards (phone card and laptop agenda): the ones recorded, and a form to add another until decisions go out.
   const extraAwards = (
@@ -316,7 +318,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
               {leg.name} · {leg.amountLabel} · 1 award
             </b>
             <p>
-              <span data-review-private>{main ? `${main.name} recorded.` : 'The board discusses and decides.'}</span>
+              <span data-review-private>{main ? `${main.name} recorded.` : 'The board discusses and decides.'}<BoardTest test={main?.test} /></span>
               {main && !released ? (
                 <>
                   {' '}
@@ -351,7 +353,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
               <div className="o-ph s-prow" data-review-private>
                 <span className="s-pn">{r.rank}</span>
                 <span className="t">
-                  <b>{r.name}</b>
+                  <b>{r.name}<BoardTest test={r.test} /></b>
                   <span>
                     {r.code} · {r.parts}
                   </span>
@@ -392,6 +394,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
                   <>
                     <b data-review-private>
                       {main.awardName} award recorded: {main.name}
+                      <BoardTest test={main.test} />
                     </b>
                     <span data-review-private>
                       {main.code} · {dollar(main.amountCents)}

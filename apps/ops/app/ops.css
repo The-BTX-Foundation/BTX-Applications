@@ -552,6 +552,24 @@ body {
   font-weight: 500;
   padding: 0;
 }
+/* "Board test" label beside an applicant's name (components/board-test-label.tsx) */
+.o-bt {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--gold-tint);
+  color: var(--ink);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 .o-area {
   display: inline-flex;
   align-items: center;
@@ -1466,9 +1484,23 @@ body {
     white-space: nowrap;
   }
   .o-ap-n b {
+    display: flex;
+    align-items: center;
+    min-width: 0;
     font-size: 14px;
     font-weight: 700;
     line-height: 18px;
+  }
+  /* the name shortens with an ellipsis; the "Board test" label beside it never does */
+  .o-ap-nm {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: normal;
+  }
+  .o-ap-n b .o-bt {
+    flex: none;
   }
   .o-ap-n span {
     font-size: 12px;

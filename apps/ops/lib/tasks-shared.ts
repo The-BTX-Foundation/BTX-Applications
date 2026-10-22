@@ -1,5 +1,6 @@
 // Pure types and helpers for the Tasks page (no server imports, so client components may use them).
 import { dateOnlyLabel } from './format';
+import type { TaskRow } from '@/mock/today';
 
 export type TaskStatus = 'open' | 'in_progress' | 'done' | 'declined';
 export type Bucket = 'late' | 'this_week' | 'next_week' | 'later';
@@ -83,6 +84,8 @@ export type TasksData = {
   comments: Record<string, TaskComment[]>;
   counts: Counts;
   done: { id: string; title: string }[];
+  /** The "Give your interview availability" request (lib/availability-today.ts): drawn as a linked row at the top of Mine, already counted in counts.mine. Not a task. */
+  request?: TaskRow | null;
 };
 
 const DAY = 86_400_000;

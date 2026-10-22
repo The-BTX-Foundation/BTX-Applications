@@ -26,7 +26,7 @@ function Comments({ n }: { n: number }) {
 // One task row, in both layouts (the other layout's parts are hidden by CSS).
 function Row({ row, onVideoLinks }: { row: TaskRow; onVideoLinks?: () => void }) {
   const videoTask = Boolean(onVideoLinks) && isVideoLinksTask(row.title);
-  // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button).
+  // The approval row opens the budget approval screen: the laptop button, and the title (the phone has no button). A row with its own href (the availability request) links its title there too, and its phone button.
   const href = row.href ?? (row.approval ? '/finance/budget/approval' : '/tasks');
   const titleParts = (
     <>
@@ -60,7 +60,7 @@ function Row({ row, onVideoLinks }: { row: TaskRow; onVideoLinks?: () => void })
       <div className="o-tr-main">
         <span className="o-lead o-lg">{row.lead === 'circle' ? <span className="o-ck" /> : <OIcon name={row.typeIcon} size={20} />}</span>
         <span className="o-ck o-ph" />
-        {row.approval ? (
+        {row.approval || row.href ? (
           <Link href={href} className="o-tt" style={{ color: 'inherit', textDecoration: 'none' }}>
             {titleParts}
           </Link>
@@ -96,7 +96,7 @@ function Row({ row, onVideoLinks }: { row: TaskRow; onVideoLinks?: () => void })
                 {a.label}
               </button>
             ) : (
-            <Link key={a.label + n} href={n === 0 && a.kind === 'p' ? href : '/tasks'} className={`o-btn ${a.kind}`}>
+            <Link key={a.label + n} href={n === 0 && (row.href || a.kind === 'p') ? href : '/tasks'} className={`o-btn ${a.kind}`}>
               {a.label}
             </Link>
             ),

@@ -4,6 +4,7 @@ import { easternIso } from './cycle-core';
 import { bucketOf } from './daily-tasks';
 import { dateOnlyLabel } from './format';
 import type { TaskGroup, TaskRow } from '@/mock/today';
+import type { TasksData } from './tasks-shared';
 
 export const AVAILABILITY_HREF = '/scholarships/interviews/availability';
 
@@ -35,9 +36,10 @@ export function availabilityRow(a: { cycle: AvailabilityCycle | null; sentAt: st
       action: { label: 'Add times', kind: late ? 'p' : 's' },
       href: AVAILABILITY_HREF,
       phoneSub: 'Scholarships · request',
-      phoneDue: rel ?? dueText ?? 'No date',
+      phoneDue: rel ?? (dueText || 'No date'),
       phoneLate: late || undefined,
-      phoneActions: late ? [{ label: 'Add times', kind: 'p' }] : undefined,
+      // The phone always gets a visible button (a late request's is the main one).
+      phoneActions: [{ label: 'Add times', kind: late ? 'p' : 's' }],
     },
   };
 }
@@ -51,4 +53,10 @@ export function insertRow(groups: TaskGroup[], item: { row: TaskRow; due: string
   const out = groups.map((g) => (g.label === label ? { ...g, rows: [item.row, ...g.rows] } : g));
   if (out.some((g) => g.label === label)) return out;
   return [...out, { label, rows: [item.row] }].sort((x, y) => ORDER.indexOf(x.label as (typeof ORDER)[number]) - ORDER.indexOf(y.label as (typeof ORDER)[number]));
+}
+
+/** The Tasks page's data with the request added to Mine: kept apart from the tasks (it has no details, completion or comments) and counted in the Mine tab. */
+export function withAvailabilityRequest(data: TasksData, item: { row: TaskRow } | null): TasksData {
+  if (!item) return data;
+  return { ...data, request: item.row, counts: { ...data.counts, mine: data.counts.mine + 1 } };
 }

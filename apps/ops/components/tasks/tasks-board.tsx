@@ -7,11 +7,14 @@
 // in live mode the same handlers write through ./tasks-writes and undo the change on the page when the database says no.
 // A live approval is decided on the budget approval screen, so Approve and Decline open it.
 import { useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import './tasks.css';
 import { OIcon, type OpsIconName } from '../icons';
 import { PageHeader } from '../page-header';
 import { timeLabel } from '@/lib/format';
+import { AVAILABILITY_HREF } from '@/lib/availability-today';
+import type { TaskRow } from '@/mock/today';
 import { lateText, type Bucket, type Person, type TaskComment, type TaskItem, type TasksData } from '@/lib/tasks-shared';
 import { writeComment, writeStatus, writeTask } from './tasks-writes';
 
@@ -163,6 +166,60 @@ function Row({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// The "Give your interview availability" request, at the top of Mine. A linked row, not a task: it has no details,
+// completion or comments. Laptop: the "Add times" button sits under Owner (that column is empty for a request).
+// Phone: the due pill, then a full-width "Add times" button under the row. Both go to the availability page.
+function RequestRow({ r }: { r: TaskRow }) {
+  const href = r.href ?? AVAILABILITY_HREF;
+  const late = Boolean(r.phoneLate);
+  return (
+    <div className="tk2-row tk2-req" data-testid="availability-request">
+      <div className="tk2-main">
+        <span className="tk2-lead">
+          <OIcon name={r.typeIcon} size={20} />
+        </span>
+        <span className="tk2-tt">
+          <b>
+            <Link href={href} className="tk2-rl">
+              <span className="tk2-lg">{r.title}</span>
+              <span className="tk2-ph">{r.phoneTitle ?? r.title}</span>
+            </Link>
+          </b>
+          <span className="tk2-ty tk2-lg">
+            <OIcon name={r.typeIcon} size={15} />
+            Scholarships
+            <i className="tk2-dot" />
+            Request
+          </span>
+          <span className="tk2-ty tk2-ph">{r.phoneSub}</span>
+        </span>
+        <span className="tk2-ow tk2-lg">
+          <Link href={href} className="o-btn p">
+            {r.action?.label ?? 'Add times'}
+          </Link>
+        </span>
+        <span className="tk2-ar tk2-lg">
+          <span className="o-area">{r.area}</span>
+        </span>
+        <span className="tk2-du tk2-lg">
+          {r.due}
+          {r.rel ? <span className={r.rel.late ? 'tk2-late' : 'tk2-rel'}>{r.rel.text}</span> : null}
+        </span>
+        <span className="tk2-cc tk2-lg" />
+        <span className="tk2-pd tk2-ph">
+          <span className={late ? 'tk2-pill late' : 'tk2-pill'}>{r.phoneDue}</span>
+          {r.due !== r.phoneDue ? <span className="tk2-pdl">{r.due}</span> : null}
+        </span>
+      </div>
+      <div className="tk2-act tk2-ph">
+        <Link href={href} className={`o-btn ${late ? 'p' : 's'}`}>
+          {r.action?.label ?? 'Add times'}
+        </Link>
+      </div>
     </div>
   );
 }
@@ -355,6 +412,11 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
     if (query.trim() && !t.title.toLowerCase().includes(query.trim().toLowerCase())) return false;
     return true;
   });
+  // The request shows on Mine unless a filter rules it out (it is yours, in Scholarships, titled "Give your interview availability...").
+  const request =
+    tab === 'mine' && data.request && (!who || who === me) && (!area || area === 'scholarships') && (!query.trim() || data.request.title.toLowerCase().includes(query.trim().toLowerCase()))
+      ? data.request
+      : null;
   const groups = BUCKETS.map((b) => ({ ...b, rows: visible.filter((t) => t.bucket === b.id) })).filter((g) => g.rows.length > 0);
   const hidden = tab === 'team' && !who && !area && !query && !showAll && counts.team > visible.length ? counts.team : 0;
   const sel = tasks.find((t) => t.id === selected && (t.status === 'open' || t.status === 'in_progress')) ?? visible.find((t) => t.type === 'approval') ?? visible[0];
@@ -547,7 +609,12 @@ export function TasksBoard({ data, startTab }: { data: TasksData; startTab: Tab 
             <span>Due</span>
           </div>
           <div className="tk2-scroll">
-            {groups.length === 0 ? <p className="tk2-none">Nothing here.</p> : null}
+            {groups.length === 0 && !request ? <p className="tk2-none">Nothing here.</p> : null}
+            {request ? (
+              <div>
+                <RequestRow r={request} />
+              </div>
+            ) : null}
             {groups.map((g) => (
               <div key={g.id}>
                 <p className="tk2-tg">

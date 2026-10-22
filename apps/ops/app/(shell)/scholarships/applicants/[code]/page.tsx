@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { SHORT_ANSWER_QUESTIONS } from '@btx/data';
 import { PageHeader } from '@/components/page-header';
 import { OIcon } from '@/components/icons';
+import { BoardTest } from '@/components/board-test-label';
 import { loadApplication } from '@/lib/application';
 
 type Props = { params: Promise<{ code: string }> };
@@ -23,7 +24,7 @@ export default async function ApplicationPage({ params }: Props) {
   if (!app) notFound();
   return (
     <>
-      <PageHeader title={app.name} sub={`${app.code} · ${app.term} · submitted ${app.submitted}`} reviewPrivate>
+      <PageHeader title={app.name} sub={`${app.code} · ${app.term} · submitted ${app.submitted}`} reviewPrivate titleExtra={<BoardTest test={app.test} />}>
         <Link href="/scholarships/applicants" className="o-btn s lg">
           Back to applicants
         </Link>

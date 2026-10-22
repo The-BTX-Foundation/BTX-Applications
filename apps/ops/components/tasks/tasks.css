@@ -104,6 +104,18 @@
   height: 38px;
 }
 
+/* the availability request row (a link, not a task) */
+.tk2-req .tk2-main {
+  cursor: default;
+}
+.tk2-rl {
+  color: inherit;
+  text-decoration: none;
+}
+.tk2-rl:hover {
+  text-decoration: underline;
+}
+
 /* the list */
 .tk2-tab {
   background: var(--surface);
