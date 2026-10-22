@@ -1,9 +1,10 @@
 'use client';
 
 // Gives the Rayken Review widget the context of the screen being reviewed. Renders nothing, and does nothing unless
-// NEXT_PUBLIC_RAYKEN_REVIEW is '1' (Preview deployments only). Never includes names, emails, ids or codes.
+// NEXT_PUBLIC_RAYKEN_REVIEW is '1' (app/RaykenReview.tsx). Never includes names, emails, ids or codes.
+// The screen is worked out when the widget asks, from the address at that moment: the widget asks right after a screen
+// change, before React has run this component's effect for the new page, so a value saved here would name the old screen.
 import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
 import { reviewScreen } from '@/lib/review-screens';
 
 declare global {
@@ -13,12 +14,13 @@ declare global {
 }
 
 export function ReviewContext() {
-  const pathname = usePathname();
   const on = process.env.NEXT_PUBLIC_RAYKEN_REVIEW === '1';
   useEffect(() => {
     if (!on) return;
-    const { screen, routeKey } = reviewScreen(pathname);
-    window.RaykenReview = { ...window.RaykenReview, context: () => ({ account: 'Student', screen, routeKey }) };
-  }, [on, pathname]);
+    window.RaykenReview = {
+      ...window.RaykenReview,
+      context: () => ({ account: 'Student', ...reviewScreen(window.location.pathname) }),
+    };
+  }, [on]);
   return null;
 }

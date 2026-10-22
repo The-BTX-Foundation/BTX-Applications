@@ -7,6 +7,7 @@
 // account signed in here once), and nobody signed in is staff or a tester. Otherwise events still land in the page's
 // own dataLayer, which is how tests and previews check them, and nothing leaves the browser.
 import { getAuthMode, getBrowserClient } from '@btx/data';
+import { REVIEW_PROJECT } from './config';
 import {
   PAGE_VIEW_MARK,
   PRODUCTION_HOST,
@@ -100,6 +101,26 @@ export function pageView(): void {
   if (step) track('application_step', { step_number: step, step_name: STEP_KEYS[step - 1] });
 }
 
+// True when this browser holds a board member's Rayken Review pass (app/RaykenReview.tsx's loader keeps it in
+// localStorage and in the rr_<project> cookie). The board tests the live Portal with it, so it is not a real visit.
+export function holdsReviewPass(storage: Pick<Storage, 'getItem'> | null, cookie: string): boolean {
+  try {
+    if (storage?.getItem(`rayken-review:${REVIEW_PROJECT}`)) return true;
+  } catch {
+    // storage blocked: the cookie still says
+  }
+  return cookie.split('; ').some((c) => c.startsWith(`rr_${REVIEW_PROJECT}=rr`));
+}
+
+// localStorage, or null when the browser blocks it.
+function safeStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 // Reads this browser's switch. Storage can be blocked (private mode); then the switch is simply not set.
 function readOff(): boolean {
   try {
@@ -111,7 +132,7 @@ function readOff(): boolean {
 
 // Turns measuring off in this browser from now on: no more sends, the filter drops every hit, and the tag is told
 // analytics storage is denied. `reason` is stored so the owner notes can tell a manual switch from a staff account.
-function switchOff(reason: 'manual' | 'account'): void {
+function switchOff(reason: 'manual' | 'account' | 'review'): void {
   state.off = true;
   state.queue = [];
   try {
@@ -350,6 +371,7 @@ export async function startAnalytics(): Promise<void> {
   state.started = true;
   applySwitchFromAddress();
   state.off = state.off || readOff();
+  if (!state.off && holdsReviewPass(safeStorage(), document.cookie)) switchOff('review');
 
   const id = measurementId();
   const host = window.location.hostname.toLowerCase();

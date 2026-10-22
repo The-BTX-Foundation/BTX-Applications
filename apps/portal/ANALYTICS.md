@@ -35,6 +35,7 @@ The Google tag loads only when all of these hold:
 | The browser does not send Global Privacy Control | GPC means "do not sell or share". The tag does not load at all. |
 | Nobody signed in is staff or a tester | A signed-in account with a staff role (`admin`, `board`) sends nothing. Neither does any account that is not a Terpmail address, since only test addresses on the allow-list can sign in that way. Once that happens, this browser stays off for good. |
 | This browser has not been switched off | Open `https://apply.thebtxfoundation.org/?analytics=off` once, in any browser you test with. `?analytics=on` turns it back on. |
+| The browser holds no board review pass | Board members test the live Portal through their Rayken Review start link (project `btx-apply`, since 2026-10-22). A browser that holds that pass stays off for good, even before anyone signs in. |
 
 When the tag is off, events still go into the page's own `dataLayer`, and nothing leaves the browser. That is how previews and the tests check them.
 

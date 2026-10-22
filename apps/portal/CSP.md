@@ -31,7 +31,7 @@ Extra entries appear only where they are needed:
 | Where | Added |
 | --- | --- |
 | Vercel previews | Vercel's toolbar (`vercel.live`, its fonts and its websocket) |
-| The review build (`NEXT_PUBLIC_RAYKEN_REVIEW=1`) | The review tool (`review.raykendigital.com`) |
+| The review build (`NEXT_PUBLIC_RAYKEN_REVIEW=1`; since 2026-10-22 that includes production, for the board's review of the live Portal) | The review tool (`review.raykendigital.com`) |
 | `next dev` on a laptop | `'unsafe-eval'` for React's error overlay, and websockets for hot reload |
 
 **The nonce.**
@@ -101,7 +101,7 @@ The endpoint is public, because browsers send reports without signing in. It rea
 ## 5. Not covered, and what the list can't stop
 
 - **Google Analytics as an exit.** `connect-src` allows `*.google-analytics.com`, which is needed for the tag's hits. A script that has already broken into the page could post data to any Google Analytics property (its own, too). The analytics filter (`ANALYTICS.md`) covers the tag's own requests, not an attacker's fresh one. React's escaping makes such an injection unlikely, so the list is a second wall here, not a guarantee.
-- **The review tool.** What its widget loads after `boot.js` (on the review preview only) hasn't been inventoried. The trial's reports from that preview will show it.
+- **The review tool.** What its widget loads after `boot.js` hasn't been inventoried. It runs only in a board member's browser that holds a review pass, on the live Portal since 2026-10-22, so the trial's reports from those browsers will show it. Turn `NEXT_PUBLIC_RAYKEN_REVIEW` off in production when the board's review ends, and the review tool's address leaves the list again.
 
 - **Real Supabase traffic.** The tests run in mock mode, with no Supabase project. The Supabase origin is in the list (unit-tested from `NEXT_PUBLIC_SUPABASE_URL`), and the trial's reports on production will confirm it.
 - **Rate limits on the report endpoint.** A flood of fake reports would only fill logs (each request is capped). If that ever happens, put the endpoint behind Vercel's firewall rate limit.
