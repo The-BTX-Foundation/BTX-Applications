@@ -8,8 +8,9 @@
 // browser and replaced the session the browser already had before the role check ran, so a link built from another
 // account's sign-in email could sign a board member's browser into that account (login CSRF; security review
 // 2026-10-22). The sign-in emails (Supabase "Magic link or OTP" and "Confirm sign up" templates, shared with the
-// Portal) carry only the 6-digit code; any link added there must be {{ .ConfirmationURL }} (it ends here as ?code=),
-// never a token_hash link. Don't turn verifyOtp back on here.
+// Portal) carry only the 6-digit code; any link added there must be {{ .ConfirmationURL }}, never a token_hash link.
+// Such a link reaches this route as ?code= only once the Ops Hub's address is on Supabase's Redirect URLs list (it
+// isn't on 2026-10-22, so a link would go to the Site URL, the Portal). Don't turn verifyOtp back on here.
 import { NextResponse, type NextRequest } from 'next/server';
 import { sessionClient } from '@/lib/supabase-server';
 import { safeNext } from '@/lib/safe-next';

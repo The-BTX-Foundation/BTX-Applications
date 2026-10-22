@@ -1,7 +1,7 @@
 'use client';
 
 // Ops Hub sign-in (Figma "Sign in, laptop" and "Sign in: code sent"): enter an email, then the 6-digit code from the
-// email (or follow the link in it). "Keep me signed in" off means a new browser session signs out (see shell.tsx).
+// email (the email carries no link). "Keep me signed in" off means a new browser session signs out (see shell.tsx).
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ErrorIcon } from '@btx/ui';

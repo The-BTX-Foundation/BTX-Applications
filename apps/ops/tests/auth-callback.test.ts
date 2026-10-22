@@ -72,9 +72,16 @@ describe('Ops /auth/callback PKCE code links (unchanged)', () => {
   });
 
   it('ignores an unsafe next and goes to Today', async () => {
-    for (const bad of ['https%3A%2F%2Fevil.example', '%2F%2Fevil.example', '%2Fsign-in', '%2Fauth%2Fdenied']) {
+    for (const bad of ['https%3A%2F%2Fevil.example', '%2F%2Fevil.example', '%2F%09%2Fevil.example', '%2Fsign-in', '%2Fauth%2Fdenied']) {
       expect(await open(`?code=c0de&next=${bad}`)).toBe(`${ORIGIN}/`);
     }
+  });
+
+  it('sends the browser to /auth/denied when the auth server returns no user, and fails closed when it errors', async () => {
+    auth.getUser.mockResolvedValue({ data: { user: null }, error: { message: 'no user' } });
+    expect(await open('?code=c0de&next=%2Ffinance')).toBe(`${ORIGIN}/auth/denied`);
+    auth.getUser.mockRejectedValue(new Error('network'));
+    expect(await open('?code=c0de&next=%2Ffinance')).toBe(`${ORIGIN}/sign-in?error=link`);
   });
 
   it('sends a code that fails (expired, used, other browser) or a service failure to the link-failed screen', async () => {

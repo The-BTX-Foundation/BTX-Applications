@@ -15,8 +15,9 @@ export type CheckResult = { ok: true } | { ok: false; reason: 'wrong' | 'expired
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Asks for a sign-in code by email. emailRedirectTo stays so any future {{ .ConfirmationURL }} link in the email
-// template lands on /auth/callback as a PKCE ?code= link (token_hash links are refused there).
+// Asks for a sign-in code by email. emailRedirectTo stays for a future {{ .ConfirmationURL }} link in the email
+// template; it only takes effect once the Ops Hub's address is on Supabase's Redirect URLs list (token_hash links are
+// refused at /auth/callback either way).
 export async function sendStaffCode(email: string, redirectTo: string): Promise<SendResult> {
   if (getAuthMode() === 'mock') {
     await pause(250);
