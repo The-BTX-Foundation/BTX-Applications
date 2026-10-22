@@ -1,7 +1,9 @@
 // Next.js proxy (called "middleware" before Next 16). It keeps the Supabase session fresh on every request and guards
 // every Ops Hub route: a signed-out visitor goes to /sign-in, and a signed-in account whose app_metadata.role is not
-// admin or board is signed out (there are no other staff roles) (through /auth/denied). Only /sign-in, /auth/* and /api/cron/* (which checks its own secret) are open. In mock mode
-// (no Supabase env) there is no server-side session, so nothing is guarded and the pages show the sample data.
+// admin or board is signed out (there are no other staff roles) (through /auth/denied). Only /sign-in, /auth/*,
+// /api/cron/* (which checks its own secret) and /api/calendar-sync (which checks its caller's Google identity token) are
+// open. In mock mode (no Supabase env) there is no server-side session, so nothing is guarded and the pages show the
+// sample data.
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@btx/data';
@@ -41,7 +43,10 @@ export async function proxy(request: NextRequest) {
 
   const { pathname, search } = request.nextUrl;
   // /api/cron/ is open to the guard because Vercel's cron has no session; each cron route checks CRON_SECRET itself.
-  const open = pathname === '/sign-in' || pathname.startsWith('/auth/') || pathname.startsWith('/api/cron/');
+  // /api/calendar-sync (exact path) is open for the same reason: the Google Apps Script has no session, and the route
+  // verifies its own caller (a Google-signed identity token for info@, lib/calendar-sync/verify-caller.ts).
+  const open =
+    pathname === '/sign-in' || pathname.startsWith('/auth/') || pathname.startsWith('/api/cron/') || pathname === '/api/calendar-sync';
 
   if (!signedIn && !open) {
     const url = request.nextUrl.clone();
