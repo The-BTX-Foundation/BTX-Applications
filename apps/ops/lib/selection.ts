@@ -39,7 +39,7 @@ export type Detail = {
   quotes: string[];
 };
 
-export type Recorded = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number };
+export type Recorded = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; test?: boolean };
 
 /** Someone the board may choose: any submitted applicant, ranked ones first. combined is '' when not scored yet. */
 export type Candidate = { id: string; code: string; name: string; combined: string; test?: boolean };
@@ -283,6 +283,7 @@ async function live(): Promise<SelectionData> {
     id: a.id,
     code: byId.get(a.application_id)?.applicant_code ?? '—',
     name: nameOf(byId.get(a.application_id)),
+    test: isTestApplication(byId.get(a.application_id)?.terpmail),
     kind: a.kind,
     // An extra award keeps the name the board gave it; the main award is shortened ("Legacy Scholarship" -> "Legacy").
     awardName: a.kind === 'main' ? shortAwardName(a.award_name) : a.award_name,

@@ -31,6 +31,8 @@ describe('availabilityRow', () => {
   it('still shows when interviews are on and the close date is missing', () => {
     const r = availabilityRow({ cycle: { ...cycle, closesAt: null }, sentAt: null, today: '2026-11-12' })!;
     expect(r.row.title).toBe('Give your interview availability');
+    // No close date: the phone pill says "No date", never an empty pill.
+    expect(r.row.phoneDue).toBe('No date');
   });
 });
 

@@ -24,7 +24,7 @@ import { Dialog } from './sch-parts';
 import './scholarships.css';
 
 /** Who gets which award; an extra award carries the name and amount the board typed. */
-type Pending = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number; amountLabel: string };
+type Pending = { id: string; code: string; name: string; test?: boolean; kind: 'main' | 'extra'; awardName: string; amountCents: number; amountLabel: string };
 
 // One row of the ranking (laptop): rank, name and code, combined score, who scored what; opens to the details.
 function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle: () => void }) {
@@ -107,7 +107,7 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
     const cents = dollarsToCents(amount);
     const check = checkExtraAward({ awardName: name, amountCents: cents });
     if (!check.ok) return setError(check.message);
-    onPick({ id: c.id, code: c.code, name: c.name, awardName: check.awardName, amountCents: cents, amountLabel: dollar(cents) });
+    onPick({ id: c.id, code: c.code, name: c.name, test: c.test, awardName: check.awardName, amountCents: cents, amountLabel: dollar(cents) });
     setAdding(false);
     setName('');
     setAmount('');
@@ -122,6 +122,7 @@ function ExtraAwards({ extras, open, released, dollar, onUndo, onPick }: { extra
         <p key={a.id} className="s-xr" data-review-private>
           <span>
             {a.awardName} · {dollar(a.amountCents)} · {a.name}
+            <BoardTest test={a.test} />
           </span>
           {released ? null : (
             <>
@@ -223,7 +224,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
     });
     setPending(null);
     if (res.ok && res.id) {
-      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : p.awardName, amountCents: p.amountCents }]);
+      setRecorded((r) => [...r, { id: res.id as string, code: p.code, name: p.name, test: p.test, kind: p.kind, awardName: p.kind === 'main' ? data.legacy.name : p.awardName, amountCents: p.amountCents }]);
       setNote('');
     } else setNote(res.message);
   }
@@ -249,7 +250,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
   const dollar = (cents: number) => `$${(cents / 100).toLocaleString('en-US')}`;
 
   // The main award step: the board's choice, from every submitted applicant.
-  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, kind: 'main', awardName: data.legacy.awardName, amountCents: data.legacy.amount, amountLabel: data.legacy.amountLabel })} />;
+  const legacyButtons = <Picker list={open} label={`Who gets the ${leg.name} award`} onPick={(c) => setPending({ id: c.id, code: c.code, name: c.name, test: c.test, kind: 'main', awardName: data.legacy.awardName, amountCents: data.legacy.amount, amountLabel: data.legacy.amountLabel })} />;
 
   // Extra awards (phone card and laptop agenda): the ones recorded, and a form to add another until decisions go out.
   const extraAwards = (
@@ -317,7 +318,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
               {leg.name} · {leg.amountLabel} · 1 award
             </b>
             <p>
-              <span data-review-private>{main ? `${main.name} recorded.` : 'The board discusses and decides.'}</span>
+              <span data-review-private>{main ? `${main.name} recorded.` : 'The board discusses and decides.'}<BoardTest test={main?.test} /></span>
               {main && !released ? (
                 <>
                   {' '}
@@ -393,6 +394,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
                   <>
                     <b data-review-private>
                       {main.awardName} award recorded: {main.name}
+                      <BoardTest test={main.test} />
                     </b>
                     <span data-review-private>
                       {main.code} · {dollar(main.amountCents)}

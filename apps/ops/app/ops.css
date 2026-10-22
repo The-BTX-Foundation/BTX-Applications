@@ -1484,9 +1484,23 @@ body {
     white-space: nowrap;
   }
   .o-ap-n b {
+    display: flex;
+    align-items: center;
+    min-width: 0;
     font-size: 14px;
     font-weight: 700;
     line-height: 18px;
+  }
+  /* the name shortens with an ellipsis; the "Board test" label beside it never does */
+  .o-ap-nm {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: normal;
+  }
+  .o-ap-n b .o-bt {
+    flex: none;
   }
   .o-ap-n span {
     font-size: 12px;

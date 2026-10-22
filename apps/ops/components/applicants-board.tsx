@@ -185,12 +185,12 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
     { id: 'scored', lg: 'Scored', ph: 'Scored' },
   ];
 
-  // Downloads the rows now on screen as a CSV (admins only, O1): code, name, applied, interview, stage, Terpmail, phone.
+  // Downloads the rows now on screen as a CSV (admins only, O1): code, name, applied, interview, stage, Terpmail, phone, board test.
   function exportCsv() {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = [['Code', 'Name', 'Applied', 'Interview', 'Stage', 'Terpmail', 'Phone'].join(',')];
+    const lines = [['Code', 'Name', 'Applied', 'Interview', 'Stage', 'Terpmail', 'Phone', 'Board test'].join(',')];
     for (const r of shown) {
-      lines.push([r.code, r.name, r.applied, r.interviewDay ? `${r.interviewDay} ${r.interviewTime}`.trim() : '', r.scoring.stage.label, r.email ?? '', r.phone ?? ''].map(esc).join(','));
+      lines.push([r.code, r.name, r.applied, r.interviewDay ? `${r.interviewDay} ${r.interviewTime}`.trim() : '', r.scoring.stage.label, r.email ?? '', r.phone ?? '', r.test ? 'yes' : ''].map(esc).join(','));
     }
     const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     const a = document.createElement('a');
@@ -218,7 +218,7 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
           <span className="o-ap-av">{r.initials}</span>
           <span className="o-ap-n">
             <b>
-              {r.name}
+              <i className="o-ap-nm">{r.name}</i>
               <BoardTest test={r.test} />
             </b>
             <span>{r.code}</span>

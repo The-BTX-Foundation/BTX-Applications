@@ -19,7 +19,8 @@ export async function loadNavCounts(): Promise<Record<string, number | string> |
       safe(readRows('interview_pairings', 'slot_id, interviewer_a, interviewer_b')),
       safe(readRows('scores', 'application_id, scorer_id, published', { eq: { scorer_id: who.id } })),
       safe(readRows('cycles', 'id, status, interview_start, interview_end, closes_at, created_at', { order: ['created_at', false] })),
-      safe(readRows('board_interview_prefs', 'cycle_id, availability_sent_at', { eq: { user_id: who.id } })),
+      // Not safe(): a failed read means no availability request (null), the same as Today, and the other counts stay.
+      readRows('board_interview_prefs', 'cycle_id, availability_sent_at', { eq: { user_id: who.id } }).catch(() => null),
       safe(readRows('interview_slots', 'id, starts_at')),
     ]);
     const now = new Date();
@@ -30,8 +31,8 @@ export async function loadNavCounts(): Promise<Record<string, number | string> |
     for (const t of open) mineByArea[String(t.area)] = (mineByArea[String(t.area)] ?? 0) + 1;
     // The Today page's "Give your interview availability" item counts too, so the pill matches the page.
     const cycle = cycles.find((c) => c.status === 'published') ?? cycles[0];
-    const sent = cycle ? prefs.find((p) => String(p.cycle_id) === String(cycle.id)) : undefined;
-    const ask = cycle
+    const sent = cycle && prefs ? prefs.find((p) => String(p.cycle_id) === String(cycle.id)) : undefined;
+    const ask = cycle && prefs
       ? availabilityRow({
           cycle: { id: String(cycle.id), closesAt: (cycle.closes_at as string | null) ?? null, interviewStart: (cycle.interview_start as string | null) ?? null, interviewEnd: (cycle.interview_end as string | null) ?? null },
           sentAt: sent ? ((sent.availability_sent_at as string | null) ?? null) : null,

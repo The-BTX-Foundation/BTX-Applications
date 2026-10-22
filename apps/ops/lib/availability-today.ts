@@ -36,7 +36,7 @@ export function availabilityRow(a: { cycle: AvailabilityCycle | null; sentAt: st
       action: { label: 'Add times', kind: late ? 'p' : 's' },
       href: AVAILABILITY_HREF,
       phoneSub: 'Scholarships · request',
-      phoneDue: rel ?? dueText ?? 'No date',
+      phoneDue: rel ?? (dueText || 'No date'),
       phoneLate: late || undefined,
       // The phone always gets a visible button (a late request's is the main one).
       phoneActions: [{ label: 'Add times', kind: late ? 'p' : 's' }],

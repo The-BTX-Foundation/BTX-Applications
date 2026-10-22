@@ -96,7 +96,7 @@ function Row({ row, onVideoLinks }: { row: TaskRow; onVideoLinks?: () => void })
                 {a.label}
               </button>
             ) : (
-            <Link key={a.label + n} href={row.href || (n === 0 && a.kind === 'p') ? href : '/tasks'} className={`o-btn ${a.kind}`}>
+            <Link key={a.label + n} href={n === 0 && (row.href || a.kind === 'p') ? href : '/tasks'} className={`o-btn ${a.kind}`}>
               {a.label}
             </Link>
             ),

@@ -212,7 +212,7 @@ function RequestRow({ r }: { r: TaskRow }) {
         <span className="tk2-cc tk2-lg" />
         <span className="tk2-pd tk2-ph">
           <span className={late ? 'tk2-pill late' : 'tk2-pill'}>{r.phoneDue}</span>
-          <span className="tk2-pdl">{r.due}</span>
+          {r.due !== r.phoneDue ? <span className="tk2-pdl">{r.due}</span> : null}
         </span>
       </div>
       <div className="tk2-act tk2-ph">

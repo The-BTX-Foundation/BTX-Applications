@@ -5,6 +5,7 @@ import { hasSupabaseEnv } from '@btx/data';
 import { MOCK_APPLICANTS } from '@/mock/applicants';
 import { applicationByCode, db } from './sch-live';
 import { dayLabel } from './format';
+import { isTestApplication } from './test-application';
 
 export type ApplicationDetail = {
   code: string;
@@ -21,6 +22,8 @@ export type ApplicationDetail = {
   shortAnswers: [string, string, string];
   files: { kind: 'resume' | 'transcript'; label: string; filename: string | null }[];
   mock: boolean;
+  /** A board member's Portal test (the email is not a Terpmail address): shown as a "Board test" label. */
+  test?: boolean;
 };
 
 const yesNo = (v: boolean | null | undefined) => (v ? 'Yes' : 'No');
@@ -64,6 +67,7 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
         { kind: 'transcript', label: 'Transcript', filename: 'transcript.pdf' },
       ],
       mock: true,
+      test: isTestApplication(m.email),
     };
   }
   const client = await db();
@@ -93,6 +97,7 @@ export async function loadApplication(code: string): Promise<ApplicationDetail |
       { kind: 'transcript', label: 'Transcript', filename: fileOf('transcript') },
     ],
     mock: false,
+    test: isTestApplication(row.terpmail),
     identity: [
       { label: 'Name', value: text(row.full_name) },
       { label: 'Terpmail', value: text(row.terpmail) },

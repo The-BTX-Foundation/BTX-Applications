@@ -4,6 +4,7 @@
 // with the pure functions in lib/daily-tasks.ts).
 import { hasSupabaseEnv } from '@btx/data';
 import { whoAmI } from './daily-db';
+import { easternDay } from './daily-tasks';
 import { loadLiveTasks } from './daily-load';
 import { loadAvailabilityItem } from './availability-load';
 import { availabilityRow, withAvailabilityRequest } from './availability-today';
@@ -58,10 +59,11 @@ export async function loadTasks({ demo }: { demo?: string } = {}): Promise<Tasks
   try {
     const who = await whoAmI();
     if (!who) return empty;
-    const live = await loadLiveTasks(who.id);
+    // The request is read alongside the tasks; a failed read only drops the request.
+    const [live, item] = await Promise.all([loadLiveTasks(who.id), loadAvailabilityItem(who.id, easternDay(new Date())).catch(() => null)]);
     const data: TasksData = { failed: false, mode: 'live', me: who.id, ...live };
     // The availability request joins Mine (a failed read adds nothing).
-    return withAvailabilityRequest(data, await loadAvailabilityItem(who.id, live.today).catch(() => null));
+    return withAvailabilityRequest(data, item);
   } catch {
     return empty;
   }
