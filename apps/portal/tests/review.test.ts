@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import RaykenReview from '@/app/RaykenReview';
 import { REVIEW_PROJECT } from '@/lib/config';
-import { holdsReviewPass } from '@/lib/analytics-client';
+import { holdsReviewPass } from '@/lib/review-pass';
 import { reviewScreen } from '@/lib/review-screens';
 
 
@@ -66,5 +66,17 @@ describe('reviewScreen', () => {
 
   it('generalizes unknown paths', () => {
     expect(reviewScreen('/something/jane@umd.edu')).toEqual({ screen: 'Other page', routeKey: '/[other]' });
+  });
+});
+
+describe('the loader without a pass', () => {
+  it('only opens IndexedDB when the review database already exists', () => {
+    vi.stubEnv('NEXT_PUBLIC_RAYKEN_REVIEW', '1');
+    const html: string = RaykenReview()?.props.dangerouslySetInnerHTML.__html;
+    const last = html.trim().split('\n').slice(-3).join('\n');
+    expect(last).toContain('indexedDB.databases().then(');
+    expect(last).toContain('x.name == "rayken-review"');
+    // the only indexedDB.open is inside db(), which the last line now calls only when the database exists
+    expect(html.match(/indexedDB\.open\(/g)).toHaveLength(1);
   });
 });

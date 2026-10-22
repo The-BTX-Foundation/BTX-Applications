@@ -7,8 +7,12 @@
 //    students apply. The loader is idle for everyone else: it does nothing unless the address is a review host AND
 //    the browser holds a pass from a board member's start link, so a student's browser never contacts the review tool.
 // 4. The inline script carries this request's nonce (proxy.ts, lib/csp.ts), so the Content-Security-Policy allows it.
-// 5. The project name (P below) is REVIEW_PROJECT in lib/config.ts: lib/analytics-client.ts reads the pass this loader
-//    stores under it, so review visits are not measured. tests/review.test.ts checks the two agree.
+// 5. The project name (P below) is REVIEW_PROJECT in lib/config.ts: lib/review-pass.ts reads and forgets the pass this
+//    loader stores under it (analytics skips review visits; components/review-context.tsx forgets a pass that reached a
+//    real student). tests/review.test.ts checks the two agree.
+// 6. Changed by hand on 2026-10-22, matching RaykenDigital/rayken-review PR #5: the last line only looks in IndexedDB
+//    when the "rayken-review" database already exists, so a visitor without a pass gets no storage at all. Re-paste
+//    `rr snippet btx-apply` once that PR is deployed; it should then be identical.
 
 const LOADER = String.raw`
 /* Rayken Review loader. Idle unless this is a review host and the browser holds a pass. */
@@ -33,7 +37,7 @@ const LOADER = String.raw`
     try { t = L.getItem(K); } catch (x) {}
     t = t || (d.cookie.match("(?:^|; )" + C + "=(rr[pd]_[\\w-]+)") || [])[1];
     if (t) return go(t);
-    db(function (s) { var g = s.get("pass:" + P); g.onsuccess = function () { g.result && go(g.result); }; });
+    try { indexedDB.databases().then(function (l) { l.some(function (x) { return x.name == "rayken-review"; }) && db(function (s) { var g = s.get("pass:" + P); g.onsuccess = function () { g.result && go(g.result); }; }); }, function () {}); } catch (x) {}
   } catch (x) {}
 })(window, document);
 `;
