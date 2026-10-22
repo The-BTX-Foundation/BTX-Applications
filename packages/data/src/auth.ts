@@ -84,7 +84,7 @@ export async function signOut(): Promise<void> {
 // A short pause so the mock feels like a network call.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Asks for a new 6-digit code (and sign-in link) by email. shouldCreateUser is true: signing in creates the account on a first visit.
+// Asks for a new 6-digit code by email. shouldCreateUser is true: signing in creates the account on a first visit.
 export async function requestSignInCode(email: string, redirectTo?: string): Promise<SendResult> {
   if (getAuthMode() === 'mock') {
     await pause(250);
@@ -92,8 +92,9 @@ export async function requestSignInCode(email: string, redirectTo?: string): Pro
   }
   const { error } = await getBrowserClient().auth.signInWithOtp({
     email,
-    // emailRedirectTo: until the email template can carry the 6-digit code, the email holds a link; the link lands on
-    // the app's /auth/callback route, which signs her in and sends her on
+    // emailRedirectTo: the email carries the 6-digit code and no link (production templates, 2026-10-22). It stays so
+    // any future {{ .ConfirmationURL }} link lands on /auth/callback as a PKCE ?code= link; token_hash links are
+    // refused there (see apps/portal/app/auth/callback/route.ts)
     options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
   });
   if (!error) return { ok: true };

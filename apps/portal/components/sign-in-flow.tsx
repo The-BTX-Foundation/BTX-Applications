@@ -231,7 +231,6 @@ export function SignInFlow({
                     describedBy={message ? 'code-err' : undefined}
                   />
                 </div>
-                <p className={s.linkHint}>Or use the link in the email.</p>
                 {message ? (
                   <p className="em" id="code-err" role="alert" style={{ marginTop: 12 }}>
                     <ErrorIcon />
