@@ -12,6 +12,7 @@ import { hasSupabaseEnv } from '@btx/data';
 import { dayLabel, timeLabel } from './format';
 import { combinedLabels, shortAwardName, sortRanking } from './sch-logic';
 import { applicationRows, db, interviewsFor, publishedCycle, rubricFor, selectionMeeting, staffNames, summariesFor, visibleScores, whoAmI } from './sch-live';
+import { isTestApplication } from './test-application';
 import { sheetFixture, RUBRIC } from '@/mock/scores';
 import { CALL_STEP, dollars, MAIN_AWARD, MEETING, RANKING, selectionStore, type RankedRow } from '@/mock/selection';
 
@@ -25,6 +26,8 @@ export type RankRow = {
   combined: string;
   /** "Dania 4.9, Chariah 4.7". */
   parts: string;
+  /** A board member's Portal test application (shown as a "Board test" label). */
+  test?: boolean;
   open?: boolean;
   detail: Detail;
 };
@@ -39,10 +42,10 @@ export type Detail = {
 export type Recorded = { id: string; code: string; name: string; kind: 'main' | 'extra'; awardName: string; amountCents: number };
 
 /** Someone the board may choose: any submitted applicant, ranked ones first. combined is '' when not scored yet. */
-export type Candidate = { id: string; code: string; name: string; combined: string };
+export type Candidate = { id: string; code: string; name: string; combined: string; test?: boolean };
 
 /** A ranked applicant; live rows also carry their application id and their real details. */
-type Ranked = RankedRow & { applicationId?: string; detail?: Detail };
+type Ranked = RankedRow & { applicationId?: string; detail?: Detail; test?: boolean };
 
 /** The live settings that replace the mock constants. */
 type Settings = {
@@ -101,7 +104,7 @@ function detailFor(r: RankedRow): Detail {
 }
 
 const appId = (r: Ranked) => r.applicationId ?? `mock-${r.code}`;
-const cand = (r: Ranked): Candidate => ({ id: appId(r), code: r.code, name: r.name, combined: r.combined });
+const cand = (r: Ranked): Candidate => ({ id: appId(r), code: r.code, name: r.name, combined: r.combined, test: r.test });
 
 function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null, live?: Settings): SelectionData {
   const total = ranked.length;
@@ -114,6 +117,7 @@ function build(ranked: Ranked[], source: 'live' | 'mock', cycleId: string | null
     code: r.code,
     name: r.name,
     combined: r.combined,
+    test: r.test,
     parts: r.parts.map((p) => `${first(p.name)} ${p.score}`).join(', '),
     detail: r.detail ?? detailFor(r),
   });
@@ -249,7 +253,7 @@ async function live(): Promise<SelectionData> {
   const pre = sortRanking(
     scoredRows.map((r) => {
       const a = byId.get(r.application_id);
-      return { r, code: a?.applicant_code ?? '—', initials: a?.initials ?? '—', name: nameOf(a), combined: Number(r.combined_score) };
+      return { r, code: a?.applicant_code ?? '—', initials: a?.initials ?? '—', name: nameOf(a), combined: Number(r.combined_score), test: isTestApplication(a?.terpmail) };
     }),
   );
   const labels = combinedLabels(pre.map((p) => p.combined));
@@ -267,12 +271,12 @@ async function live(): Promise<SelectionData> {
       scores: rubric.map((c) => ({ criterion: c.name, a: of(order[0])?.criteria?.[c.key] ?? 0, b: of(order[1])?.criteria?.[c.key] ?? 0 })),
       quotes: (sm?.quotes ?? []).filter((q) => q.text).map((q) => `${q.text}${q.criterion ? ` · ${q.criterion}${q.at ? ` ${q.at}` : ''}` : ''}`),
     };
-    return { applicationId: p.r.application_id, code: p.code, initials: p.initials, name: p.name, combined: labels[i], parts, detail };
+    return { applicationId: p.r.application_id, code: p.code, initials: p.initials, name: p.name, combined: labels[i], parts, detail, test: p.test };
   });
   const rankedIds = new Set(ranked.map((r) => r.applicationId));
   const unscored: Candidate[] = apps
     .filter((a) => !rankedIds.has(a.id))
-    .map((a) => ({ id: a.id, code: a.applicant_code ?? '—', name: nameOf(a), combined: '' }))
+    .map((a) => ({ id: a.id, code: a.applicant_code ?? '—', name: nameOf(a), combined: '', test: isTestApplication(a.terpmail) }))
     .sort((a, b) => a.code.localeCompare(b.code));
 
   const recorded: Recorded[] = ((awards.data ?? []) as AwardRow[]).map((a) => ({

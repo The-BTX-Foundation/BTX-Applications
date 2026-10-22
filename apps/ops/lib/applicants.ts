@@ -3,6 +3,7 @@
 // `interview_slots`, `interview_pairings`, `staff_profiles`, `interview_summaries`, `scores` and score_progress(). MOCK mode (no Supabase env) uses mock/applicants.ts and mock/scoring.ts.
 import { hasSupabaseEnv } from '@btx/data';
 import { dateOnlyLabel, dayLabel, timeLabel } from './format';
+import { isTestApplication } from './test-application';
 import { shortAwardName, standing, type PairPerson } from './sch-logic';
 import {
   applicationRows,
@@ -40,6 +41,8 @@ export type ApplicantRow = {
   /** The applicant's Terpmail and phone (live mode). */
   email?: string;
   phone?: string;
+  /** True for a board member's Portal test (the email is not a Terpmail address): shown as a "Board test" label. */
+  test?: boolean;
 };
 
 export type ApplicantsResult = {
@@ -71,6 +74,7 @@ function mockRows(): ApplicantRow[] {
     upcoming: a.interviewAt ? new Date(a.interviewAt) > new Date(MOCK_NOW) : false,
     scoring: scoringFor(a.code),
     mock: true,
+    test: isTestApplication(a.email),
   }));
 }
 
@@ -144,6 +148,7 @@ export async function loadApplicants(opts: { forceError?: boolean } = {}): Promi
         mock: false,
         email: a.terpmail ?? undefined,
         phone: a.phone ?? undefined,
+        test: isTestApplication(a.terpmail),
       };
     });
     return { cycleLabel: withCycle(cycle.term), rows, failed: false, source: 'live', cycleSub: `${cycle.term} · ${shortAwardName(cycle.award_name ?? 'Scholarship')} cycle`.replace(/ cycle · /i, ' · '), canExport: me.role === 'admin' };

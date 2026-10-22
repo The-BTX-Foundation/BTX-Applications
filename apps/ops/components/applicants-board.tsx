@@ -5,6 +5,7 @@
 // name beside the code, and the name and contact details in the detail panel.
 // Live mode: every row, score and stage is real (lib/applicants.ts); only an admin may export. Mock mode: mock/applicants.ts and mock/scoring.ts. Clicking a row on a
 // laptop selects it; on a phone it opens the full application.
+import { BoardTest } from './board-test-label';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ApplicantRow } from '@/lib/applicants';
@@ -76,7 +77,10 @@ function Detail({ row, cycleLabel }: { row: ApplicantRow; cycleLabel: string }) 
       <div className="o-dt-h" data-review-private>
         <span className="o-dt-av">{plainInitials(row.initials) === '—' ? '—' : row.initials}</span>
         <div className="o-dt-hn">
-          <h2>{row.name}</h2>
+          <h2>
+            {row.name}
+            <BoardTest test={row.test} />
+          </h2>
           <p>
             {row.code} · {cycleLabel}
           </p>
@@ -213,13 +217,17 @@ export function ApplicantsBoard({ cycleLabel, rows, cycleSub, canExport }: { cyc
         <span className="o-ap-c o-lg" data-review-private>
           <span className="o-ap-av">{r.initials}</span>
           <span className="o-ap-n">
-            <b>{r.name}</b>
+            <b>
+              {r.name}
+              <BoardTest test={r.test} />
+            </b>
             <span>{r.code}</span>
           </span>
         </span>
         <span className="o-ph o-ph-t">
           <b data-review-private>
             {r.name} · {r.code}
+            <BoardTest test={r.test} />
           </b>
           <span>
             {st.label}

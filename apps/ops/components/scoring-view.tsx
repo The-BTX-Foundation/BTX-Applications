@@ -9,6 +9,7 @@ import { PICK_LABELS } from '@/mock/scores';
 import { weightedScore } from '@/lib/sch-logic';
 import { publishScore, saveDraft, savePrivateNote } from '@/lib/actions/scoring';
 import { PageHeader } from './page-header';
+import { BoardTest } from './board-test-label';
 import { Dialog, PhoneBar, ScoreRing, VideoMark } from './sch-parts';
 import './scholarships.css';
 import './interviews/interview-flow.css';
@@ -157,7 +158,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
             <button type="button" key={s.code} className={`s-qr${s.code === sheet.code ? ' pick' : ''}`} onClick={() => setCode(s.code)}>
               <ScoreRing n={count(picks[s.code] ?? {})} size={38} />
               <span className="s-qb" data-review-private>
-                <b>{s.name}</b>
+                <b>{s.name}<BoardTest test={s.test} /></b>
                 <span>
                   {s.code} · {lineFor(s)}
                 </span>
@@ -178,7 +179,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
             <button type="button" key={s.code} className={`s-qr${s.code === sheet.code ? ' pick' : ''}`} onClick={() => setCode(s.code)}>
               <ScoreRing n={count(picks[s.code] ?? {})} size={38} />
               <span className="s-qb" data-review-private>
-                <b>{s.name}</b>
+                <b>{s.name}<BoardTest test={s.test} /></b>
                 <span>
                   {s.code} · {lineFor(s)}
                 </span>
@@ -193,7 +194,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
         {/* the rubric (laptop) */}
         <section className="o-card s-panel s-rub o-lg" data-review="Score sheet">
           <div className="s-rh" data-review-private>
-            <h2>{sheet.name}</h2>
+            <h2>{sheet.name}<BoardTest test={sheet.test} /></h2>
             <p>
               {sheet.code} · {sheet.cycleLine}
             </p>
@@ -287,6 +288,7 @@ export function ScoringView({ data, initials }: { data: ScoringData; initials?: 
             <div data-review-private>
               <b>
                 {sheet.name} · {sheet.code}
+                <BoardTest test={sheet.test} />
               </b>
               <span>{sheet.cycleLine.split('.')[0]}</span>
               <span>{sheet.phoneLine}</span>

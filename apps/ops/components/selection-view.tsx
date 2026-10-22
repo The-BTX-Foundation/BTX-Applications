@@ -10,6 +10,7 @@
 // decisions"): it asks first, then releases and sends the emails, and the page shows when it went out. Nobody else gets
 // the button. Saving goes through lib/actions/selection.ts (in memory in mock mode). "Send the agenda" is hidden until
 // email is set up (O8).
+import { BoardTest } from './board-test-label';
 import { useState } from 'react';
 import type { Candidate, RankRow, Recorded, SelectionData } from '@/lib/selection';
 import { recordAward, releaseAndNotify, undoAward } from '@/lib/actions/selection';
@@ -32,7 +33,7 @@ function LaptopRow({ r, open, onToggle }: { r: RankRow; open: boolean; onToggle:
       <button type="button" className="s-rkh" aria-expanded={open} onClick={onToggle}>
         <span className="n">{r.rank}</span>
         <span className="who">
-          <b>{r.name}</b>
+          <b>{r.name}<BoardTest test={r.test} /></b>
           <span>{r.code}</span>
         </span>
         <strong>{r.combined}</strong>
@@ -83,7 +84,7 @@ function Picker({ list, label, onPick }: { list: Candidate[]; label: string; onP
         <option value="">Choose the applicant</option>
         {list.map((c) => (
           <option key={c.id} value={c.id}>
-            {`${c.name} · ${c.code}${c.combined ? ` · ${c.combined}` : ' · not scored yet'}`}
+            {`${c.name}${c.test ? ' (Board test)' : ''} · ${c.code}${c.combined ? ` · ${c.combined}` : ' · not scored yet'}`}
           </option>
         ))}
       </select>
@@ -351,7 +352,7 @@ export function SelectionView({ data, isAdmin }: { data: SelectionData; isAdmin:
               <div className="o-ph s-prow" data-review-private>
                 <span className="s-pn">{r.rank}</span>
                 <span className="t">
-                  <b>{r.name}</b>
+                  <b>{r.name}<BoardTest test={r.test} /></b>
                   <span>
                     {r.code} · {r.parts}
                   </span>

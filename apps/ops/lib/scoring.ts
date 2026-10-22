@@ -3,6 +3,7 @@
 // (code and name: every staff member sees names, D2; see live() below). MOCK mode (no Supabase env): mock/scores.ts and mock/staff.ts.
 import { hasSupabaseEnv } from '@btx/data';
 import { dateOnlyLabel, dayLabel, timeLabel } from './format';
+import { isTestApplication } from './test-application';
 import { loadApplicants, type ApplicantRow } from './applicants';
 import { shortAwardName, weightedScore } from './sch-logic';
 import { applicationRows, db, interviewsFor, publishedCycle, rubricFor, scoreProgress, staffNames, summariesFor, visibleScores, whoAmI, type Interview } from './sch-live';
@@ -36,6 +37,8 @@ export type Sheet = {
   privateNote: string;
   /** The queue row's second line ("Draft, 4 of 6"). */
   queueLine: string;
+  /** A board member's Portal test application (shown as a "Board test" label). */
+  test?: boolean;
 };
 
 export type ScoringData = {
@@ -63,7 +66,7 @@ function queueLine(picks: Record<string, number>, published: boolean, score: str
 }
 
 // Builds a sheet for an applicant (real row or fixture) in mock or live mode.
-function sheetFor(row: Pick<ApplicantRow, 'id' | 'code' | 'name' | 'applied' | 'interviewLine'>): Sheet {
+function sheetFor(row: Pick<ApplicantRow, 'id' | 'code' | 'name' | 'applied' | 'interviewLine' | 'test'>): Sheet {
   const fx = sheetFixture(row.code);
   const other = fx ? staffById(fx.otherId) : undefined;
   const otherName = other?.display_name ?? 'the other interviewer';
@@ -88,6 +91,7 @@ function sheetFor(row: Pick<ApplicantRow, 'id' | 'code' | 'name' | 'applied' | '
     quotes: fx?.quotes ?? [],
     privateNote: fx?.privateNote ?? '',
     queueLine: queueLine(picks, pub, score, otherName, fx?.otherPublished ?? false),
+    test: row.test,
   };
 }
 
@@ -215,6 +219,7 @@ async function live(): Promise<ScoringData> {
       quotes: (sm?.quotes ?? []).filter((q) => q.text).map((q) => ({ criterion: q.criterion ?? '', at: q.at ?? '', text: q.text ?? '' })),
       privateNote: notes.get(a.id) ?? '',
       queueLine: queueLine(picks, published, score, otherName, otherPublished, total),
+      test: isTestApplication(a.terpmail),
     };
   });
   const open = sheets.filter((s) => !s.published).length;

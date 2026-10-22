@@ -5,6 +5,8 @@
 import { hasSupabaseEnv } from '@btx/data';
 import { whoAmI } from './daily-db';
 import { loadLiveTasks } from './daily-load';
+import { loadAvailabilityItem } from './availability-load';
+import { availabilityRow, withAvailabilityRequest } from './availability-today';
 import { MOCK_NOW } from '@/mock/applicants';
 import { PEOPLE, SEEDS, STRESS_SEEDS, DONE, COUNTS, STRESS_COUNTS, COMMENTS, STRESS_COMMENTS } from '@/mock/tasks';
 
@@ -48,12 +50,18 @@ export async function loadTasks({ demo }: { demo?: string } = {}): Promise<Tasks
     counts: stress ? STRESS_COUNTS : COUNTS,
     done: DONE,
   };
-  if (!hasSupabaseEnv()) return mock;
+  // ?demo=request shows the availability request in mock mode (a board member who has not sent their times yet).
+  if (!hasSupabaseEnv()) {
+    if (demo !== 'request') return mock;
+    return withAvailabilityRequest(mock, availabilityRow({ cycle: { id: 'mock', closesAt: '2026-10-10T03:59:00Z', interviewStart: '2026-10-12', interviewEnd: '2026-10-23' }, sentAt: null, today }));
+  }
   try {
     const who = await whoAmI();
     if (!who) return empty;
     const live = await loadLiveTasks(who.id);
-    return { failed: false, mode: 'live', me: who.id, ...live };
+    const data: TasksData = { failed: false, mode: 'live', me: who.id, ...live };
+    // The availability request joins Mine (a failed read adds nothing).
+    return withAvailabilityRequest(data, await loadAvailabilityItem(who.id, live.today).catch(() => null));
   } catch {
     return empty;
   }
