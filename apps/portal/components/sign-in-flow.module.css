@@ -86,20 +86,6 @@
   color: var(--muted);
   margin-top: 12px;
 }
-.ops :global(.lk) {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-}
-.ops {
-  margin-top: auto;
-  padding-top: 4px;
-  border-top: 1px solid var(--line);
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-  font-size: 15px;
-}
 
 @media (min-width: 1024px) {
   .wrap {

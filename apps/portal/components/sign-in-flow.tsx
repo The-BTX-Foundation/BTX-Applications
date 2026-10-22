@@ -8,10 +8,8 @@
 // Laptop shows a title on the left and a card on the right; phone shows the same content in one column.
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button, CodeBoxes, CODE_LENGTH, ErrorIcon, TextField, TopBar } from '@btx/ui';
 import { getAuthMode, requestSignInCode, verifySignInCode } from '@btx/data';
-import { OPS_HUB_URL } from '@/lib/config';
 import { CODE_LIFETIME_MINUTES } from '@/lib/config';
 import { terpmailError } from '@/lib/terpmail';
 import { track } from '@/lib/analytics-client';
@@ -263,18 +261,6 @@ export function SignInFlow({
                 </div>
               </form>
             )}
-            <p className={s.ops}>
-              BTX board member?&nbsp;
-              {OPS_HUB_URL === '#' ? (
-                <Link href="/sign-in" className="lk">
-                  Go to the Ops Hub
-                </Link>
-              ) : (
-                <a href={OPS_HUB_URL} className="lk">
-                  Go to the Ops Hub
-                </a>
-              )}
-            </p>
           </section>
         </div>
       </main>

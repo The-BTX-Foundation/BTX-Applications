@@ -228,7 +228,7 @@ describe('Code.gs', () => {
     expect(source).not.toMatch(/CalendarApp|setTag|getTag/);
   });
   it('uses the agreed constants', () => {
-    expect(vm.runInContext('FEED_URL', ctx)).toBe('https://btx-ops-azure.vercel.app/api/calendar-sync');
+    expect(vm.runInContext('FEED_URL', ctx)).toBe('https://ops.thebtxfoundation.org/api/calendar-sync');
     expect(vm.runInContext('[CALENDAR_ID, TAG, TAG_ID, TAG_HASH, MAX_DELETES, MAX_WRITES, TIME_BUDGET_MS].join()', ctx)).toBe('info@thebtxfoundation.org,btxSync,btxSyncId,btxSyncHash,40,100,270000');
   });
   it('turns on the Advanced Calendar service without adding scopes', () => {
