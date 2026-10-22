@@ -524,16 +524,6 @@
     color: var(--muted);
     margin-top: 1px;
   }
-  .ca-sub2 {
-    margin-top: auto;
-    border-top: 1px solid var(--line);
-    padding: 12px 18px 12px;
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    white-space: nowrap;
-  }
 }
 
 /* ----- Add event form (Figma "Calendar > Add event", laptop 441:15669, phone 441:15879) ----- */
