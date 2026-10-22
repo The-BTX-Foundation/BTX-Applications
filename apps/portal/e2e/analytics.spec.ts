@@ -21,6 +21,10 @@ const PROD = `http://apply.thebtxfoundation.org:${PORT}`;
 const LOCAL = `http://localhost:${PORT}`;
 const pdf = path.join(__dirname, 'files', 'sample.pdf');
 
+// The landing address's own marker (utm_term and id). Kept apart from the zqcanary family because the Google tag copies
+// the address into its page-change record in the dataLayer (see isGoogleHistoryRecord). It is checked in every request
+// and in every other dataLayer entry, so the Portal's own page views must still carry the cleaned address.
+const LANDING = 'QXLANDID';
 const CANARY = {
   email: 'zqcanary.student@terpmail.umd.edu',
   badEmail: 'zqcanary.person@gmail.com',
@@ -49,12 +53,12 @@ test.use({
   launchOptions: {
     args: [
       // the production address points at the local dev server; Google's collect and ad hosts don't resolve at all
-      `--host-resolver-rules=MAP apply.thebtxfoundation.org 127.0.0.1, MAP *.google-analytics.com ~NOTFOUND, MAP *.analytics.google.com ~NOTFOUND, MAP www.google.com ~NOTFOUND, MAP *.doubleclick.net ~NOTFOUND`,
+      `--host-resolver-rules=MAP apply.thebtxfoundation.org 127.0.0.1, MAP *.google-analytics.com ~NOTFOUND, MAP *.analytics.google.com ~NOTFOUND, MAP www.google.com ~NOTFOUND, MAP *.doubleclick.net ~NOTFOUND, MAP *.googleadservices.com ~NOTFOUND, MAP *.googlesyndication.com ~NOTFOUND`,
     ],
   },
 });
 
-type Sent = { url: string; body: string };
+type Sent = { url: string; body: string; referer: string };
 
 // A GA4 collect path or the tag's service-worker frame, on any host (server-side and first-party tagging included).
 const MEASUREMENT_PATH = /(\/g\/collect|\/g\/s\/collect|\/ga\/g\/c|\/ag\/g\/c|\/mc\/collect|\/_\/service_worker|sw_iframe)/;
@@ -65,9 +69,9 @@ async function watchGoogle(context: BrowserContext) {
   const sent: Sent[] = [];
   context.on('request', (req) => {
     const url = new URL(req.url());
-    if (/google|doubleclick|\.goog$/i.test(url.hostname) || MEASUREMENT_PATH.test(url.pathname)) sent.push({ url: req.url(), body: req.postData() ?? '' });
+    if (/google|doubleclick|\.goog$/i.test(url.hostname) || MEASUREMENT_PATH.test(url.pathname)) sent.push({ url: req.url(), body: req.postData() ?? '', referer: req.headers()['referer'] ?? '' });
   });
-  await context.route(/^https:\/\/([^/]*\.)?(google-analytics\.com|analytics\.google\.com|google\.[a-z.]+|doubleclick\.net|googletagmanager\.com)\//, (route) =>
+  await context.route(/^https:\/\/([^/]*\.)?(google-analytics\.com|analytics\.google\.com|google\.[a-z.]+|doubleclick\.net|googleadservices\.com|googlesyndication\.com|googletagmanager\.com)\//, (route) =>
     /^https:\/\/www\.googletagmanager\.com\/gtag\/(js|destination)\?/.test(route.request().url()) ? route.continue() : route.fulfill({ status: 204, body: '' }),
   );
   return sent;
@@ -92,10 +96,11 @@ async function dataLayerText(page: Page): Promise<string> {
 }
 
 // True for the Google tag's own page-change record (event "gtm.historyChange-v2"). The tag's history listener writes
-// one on every client-side navigation, holding copies of history.state, where Next.js keeps its router state and the
-// address's query string ("renderedSearch"). The record stays in the page: the tag reads it to decide on a history
-// page view, which the hit filter drops, and the request checks below prove no part of it is sent. The location it
-// copies is one the tag can already read from `location`, so skipping it hides nothing new. Seen 2026-10-22.
+// one on every client-side navigation, holding the old and new address and copies of history.state, where Next.js keeps
+// its router state and the address's query string ("renderedSearch"), so the landing address's LANDING marker shows up
+// there (seen 2026-10-22). The record stays in the page; the request checks prove none of it is sent. It is still
+// checked for the zqcanary markers, so an applicant's value put into a Portal address or into history state would
+// fail the test (security-playbook IN-51).
 function isGoogleHistoryRecord(entry: unknown): boolean {
   const event = (entry as { event?: unknown } | null)?.event;
   return typeof event === 'string' && event.startsWith('gtm.historyChange');
@@ -131,14 +136,15 @@ test('the funnel events fire through the real Google tag and nothing an applican
   const sent = await watchGoogle(context);
 
   // arrive from the website with markers in the referrer and the address
-  await page.goto(`/?utm_source=newsletter&utm_campaign=fall-2026-legacy&utm_term=${CANARY.id}&id=${CANARY.id}`, {
+  await page.goto(`/?utm_source=newsletter&utm_campaign=fall-2026-legacy&utm_term=${LANDING}&id=${LANDING}`, {
     referer: `https://thebtxfoundation.org/apply/?email=${CANARY.email}&r=${CANARY.ref}`,
   });
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Legacy');
   await expect.poll(() => sent.some((s) => s.url.includes('googletagmanager.com/gtag/js')), { message: 'gtag.js requested' }).toBe(true);
-  // wait until the tag is running, so its own listeners (history, clicks, forms) watch the whole funnel: the worst
-  // case, every run (before 2026-10-22 the first click raced the tag, so a run sometimes left them out)
-  await page.waitForFunction(() => Boolean((window as unknown as { google_tag_manager?: unknown }).google_tag_manager));
+  // wait until the tag has sent its first page view, so its own listeners (history, clicks, forms) watch the whole
+  // funnel every run (before 2026-10-22 the first click raced the tag, so some runs left them out); the history check
+  // in step 4 proves they did
+  await expect.poll(() => sentEvents(sent).some((e) => e.en === 'page_view'), { message: 'the tag sent its first page view', timeout: 20_000 }).toBe(true);
   await page.getByRole('link', { name: 'Start your application' }).first().click();
   await expect(page).toHaveURL(/\/sign-in/);
 
@@ -286,12 +292,30 @@ test('the funnel events fire through the real Google tag and nothing an applican
   }
   expect(events.map((e) => new URL(e.dl).pathname)).toContain('/other');
 
-  // 4. no marker value anywhere: not in any request to a Google host, and not in the dataLayer outside the Google tag's
-  // own page-change records (isGoogleHistoryRecord: a copy of history.state that stays in the page)
-  for (const s of sent) expectNoMarkers(`request ${new URL(s.url).host}`, `${s.url}\n${s.body}`);
-  (JSON.parse(dataLayer) as unknown[]).forEach((entry, i) => {
-    if (!isGoogleHistoryRecord(entry)) expectNoMarkers(`dataLayer[${i}]`, JSON.stringify(entry));
+  // 4. no marker value anywhere: not in any request to a Google host (address, body or referer header; the landing
+  // marker included), and not in the dataLayer
+  for (const s of sent) {
+    // the referer header counts for requests to Google; a same-origin request (the first-party collect path above) always
+    // carries the page's full address as its referer, and it goes to this site's own server, not to Google. If a tag
+    // gateway ever proxies such a path to Google, this exemption must go (ANALYTICS.md: no gateway without a re-review).
+    const sameOrigin = new URL(s.url).host === new URL(PROD).host;
+    const text = `${s.url}\n${s.body}${sameOrigin ? '' : `\n${s.referer}`}`;
+    expectNoMarkers(`request ${new URL(s.url).host}`, text);
+    expect(text.toLowerCase(), `request ${new URL(s.url).host} carries the landing marker`).not.toContain(LANDING.toLowerCase());
+  }
+  // the referer header really was read: requests to Google carry only the Portal's origin (Referrer-Policy)
+  expect(sent.some((s) => new URL(s.url).host !== new URL(PROD).host && s.referer === `${PROD}/`), 'a request to Google with an origin-only referer').toBe(true);
+  const entries = JSON.parse(dataLayer) as unknown[];
+  entries.forEach((entry, i) => {
+    expectNoMarkers(`dataLayer[${i}]`, JSON.stringify(entry));
+    // only the Google tag's own page-change record may hold the landing address; our own entries carry it cleaned
+    if (!isGoogleHistoryRecord(entry)) expect(JSON.stringify(entry).toLowerCase(), `dataLayer[${i}] carries the landing marker`).not.toContain(LANDING.toLowerCase());
   });
+  // the tag's history listener did watch the first navigation (so the checks above covered its record)
+  expect(
+    entries.some((e) => isGoogleHistoryRecord(e) && JSON.stringify(e).toLowerCase().includes(LANDING.toLowerCase())),
+    "the Google tag's page-change record for the landing address is in the dataLayer",
+  ).toBe(true);
 });
 
 test('a browser that sends Global Privacy Control never loads the tag', async ({ page, context }) => {
