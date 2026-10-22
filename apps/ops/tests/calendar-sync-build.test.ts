@@ -121,8 +121,16 @@ describe('tasks', () => {
       assignees: [{ task_id: 't1', user_id: 'u1' }, { task_id: 't1', user_id: 'u2' }],
     });
     expect(list.map((e) => e.id)).toEqual(['task:t1', 'task:t2']);
-    expect(list[0]).toMatchObject({ title: 'Due: Send packet', allDay: true, start: '2026-10-30', end: '2026-10-31', description: `Assigned to: Kelsey M, Dominick L\n\n${FOOTER}` });
+    expect(list[0]).toMatchObject({ title: 'Due: Send packet', allDay: true, start: '2026-10-30', end: '2026-10-31', description: `Assigned to: Dominick L, Kelsey M\n\n${FOOTER}` });
     expect(list[1].description).toBe(FOOTER);
+  });
+
+  it('lists assignees alphabetically whatever order the rows come in', () => {
+    const tasks = [{ id: 't1', title: 'Send packet', status: 'open', due_on: '2026-10-30', archived: false }];
+    const one = build({ people, tasks, assignees: [{ task_id: 't1', user_id: 'u1' }, { task_id: 't1', user_id: 'u2' }] })[0];
+    const two = build({ people, tasks, assignees: [{ task_id: 't1', user_id: 'u2' }, { task_id: 't1', user_id: 'u1' }] })[0];
+    expect(two.description).toBe(one.description);
+    expect(two.hash).toBe(one.hash);
   });
 });
 

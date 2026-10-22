@@ -18,15 +18,16 @@ beforeAll(async () => {
 });
 
 // Signs an identity token like Google's, with any claim overridden.
-async function token(over: JWTPayload & { iss?: string; aud?: string } = {}, opts: { key?: CryptoKey; exp?: number | string } = {}) {
+async function token(over: JWTPayload & { iss?: string; aud?: string } = {}, opts: { key?: CryptoKey; exp?: number | string | null; iat?: number } = {}) {
   const { iss = 'https://accounts.google.com', aud = CLIENT, ...claims } = over;
-  return new SignJWT({ email: 'info@thebtxfoundation.org', email_verified: true, ...claims })
+  let jwt = new SignJWT({ email: 'info@thebtxfoundation.org', email_verified: true, ...claims })
     .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
     .setIssuer(iss)
     .setAudience(aud)
-    .setIssuedAt()
-    .setExpirationTime(opts.exp ?? '5m')
-    .sign(opts.key ?? privateKey);
+    .setIssuedAt(opts.iat);
+  // exp: null leaves the expiry claim out entirely.
+  if (opts.exp !== null) jwt = jwt.setExpirationTime(opts.exp ?? '5m');
+  return jwt.sign(opts.key ?? privateKey);
 }
 
 const check = (header: string | null, clientId = CLIENT) => verifySyncCaller(header, { keySet, clientId });
@@ -47,6 +48,15 @@ describe('verifySyncCaller', () => {
     expect(await check(`Bearer ${await token({ email: undefined })}`)).toEqual({ ok: false });
     expect(await check(`Bearer ${await token({}, { exp: Math.floor(Date.now() / 1000) - 60 })}`)).toEqual({ ok: false });
     expect(await check(`Bearer ${await token({}, { key: otherKey })}`)).toEqual({ ok: false });
+  });
+
+  it('refuses a token with no expiry, or one issued more than 65 minutes ago', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    expect(await check(`Bearer ${await token({}, { exp: null })}`)).toEqual({ ok: false });
+    // Issued 66 minutes ago but (artificially) still unexpired: refused by the age limit alone.
+    expect(await check(`Bearer ${await token({}, { iat: nowSec - 66 * 60, exp: nowSec + 600 })}`)).toEqual({ ok: false });
+    // Issued 60 minutes ago and unexpired: fine.
+    expect(await check(`Bearer ${await token({}, { iat: nowSec - 60 * 60, exp: nowSec + 600 })}`)).toEqual({ ok: true });
   });
 
   it('refuses a missing or malformed header', async () => {

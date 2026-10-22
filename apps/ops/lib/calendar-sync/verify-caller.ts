@@ -36,6 +36,10 @@ export async function verifySyncCaller(authorizationHeader: string | null | unde
       algorithms: ['RS256'],
       issuer: GOOGLE_ISSUERS,
       audience: clientId,
+      // Google's identity tokens always carry these; a token without them is not one.
+      requiredClaims: ['exp', 'iat', 'email'],
+      // Google issues them for an hour; anything older than that (plus a little clock slack) is refused.
+      maxTokenAge: '65m',
     });
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : '';
     if (email !== SYNC_ACCOUNT || payload.email_verified !== true) return { ok: false };

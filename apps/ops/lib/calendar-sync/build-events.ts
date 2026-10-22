@@ -142,7 +142,8 @@ export function buildSyncEvents(rows: SyncRows, now: Date, opsUrl: string = OPS_
     const title = str(t.title);
     const due = day(t.due_on);
     if (!id || !title || !due) continue;
-    const who = owners.get(id) ?? [];
+    // Alphabetical, so the description (and its hash) does not change with the order the rows arrive in.
+    const who = [...(owners.get(id) ?? [])].sort((a, b) => a.localeCompare(b, 'en'));
     allDay(`task:${id}`, `Due: ${title}`, due, due, who.length ? [`Assigned to: ${who.join(', ')}`] : []);
   }
 
