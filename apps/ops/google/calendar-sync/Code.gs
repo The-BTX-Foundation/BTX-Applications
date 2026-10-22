@@ -8,9 +8,9 @@
 // Setup, pausing and undoing: README.md next to this file. Logs hold counts only, never titles or tokens.
 
 // The Ops Hub's address. Redirects are not followed (the token must only go here), so if the Ops Hub moves to another
-// address (ops.thebtxfoundation.org was being set up on 2026-10-22) or this one starts redirecting, runs fail with
-// "Feed answered HTTP 3xx" and change nothing until this line is updated.
-const FEED_URL = 'https://btx-ops-azure.vercel.app/api/calendar-sync';
+// address or this one starts redirecting, runs fail with "Feed answered HTTP 3xx" and change nothing until this line is
+// updated. Moved here from btx-ops-azure.vercel.app on 2026-10-22 when that address was retired.
+const FEED_URL = 'https://ops.thebtxfoundation.org/api/calendar-sync';
 const CALENDAR_ID = 'info@thebtxfoundation.org';
 const TAG = 'btxSync';
 const TAG_ID = 'btxSyncId';

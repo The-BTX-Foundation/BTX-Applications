@@ -19,7 +19,7 @@ export const SYNC_DAYS_BACK = 30;
 export const SYNC_DAYS_AHEAD = 400;
 
 /** The live Ops Hub, used for the "change it there" link when OPS_HUB_URL is not set. */
-export const OPS_HUB_FALLBACK = 'https://btx-ops-azure.vercel.app';
+export const OPS_HUB_FALLBACK = 'https://ops.thebtxfoundation.org';
 
 /** The Ops Hub's address for links: OPS_HUB_URL when set (as the email code reads it), else the live Ops Hub. */
 export function opsHubUrl(): string {
