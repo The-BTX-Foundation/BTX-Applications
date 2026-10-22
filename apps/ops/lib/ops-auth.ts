@@ -1,5 +1,5 @@
-// Staff sign-in calls (browser side). Same flow as the Portal (an emailed code and a link, verified with Supabase's
-// email one-time-password), with two differences:
+// Staff sign-in calls (browser side). Same flow as the Portal (an emailed 6-digit code, verified with Supabase's
+// email one-time-password; the email carries no link), with two differences:
 //   1. The email may be on any domain, and an address that is not already an account does NOT create one
 //      (shouldCreateUser: false), so a typo cannot make a stray account. The screen answers the same either way, so it
 //      does not reveal who has an account.
@@ -15,7 +15,9 @@ export type CheckResult = { ok: true } | { ok: false; reason: 'wrong' | 'expired
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Asks for a code and a sign-in link by email.
+// Asks for a sign-in code by email. emailRedirectTo stays for a future {{ .ConfirmationURL }} link in the email
+// template; it only takes effect once the Ops Hub's address is on Supabase's Redirect URLs list (token_hash links are
+// refused at /auth/callback either way).
 export async function sendStaffCode(email: string, redirectTo: string): Promise<SendResult> {
   if (getAuthMode() === 'mock') {
     await pause(250);

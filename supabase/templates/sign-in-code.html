@@ -1,0 +1,12 @@
+<!--
+  Copy of the production "Magic link or OTP" and "Confirm sign up" email templates (Supabase project
+  awiaebtqalcmfafvktwh) as of 2026-10-22. Both templates use this body, with the subject
+  "Your BTX sign-in code: {{ .Token }}".
+  Any link added here must be {{ .ConfirmationURL }}, never a token_hash link (the Portal refuses those).
+  This file does not deploy itself: a change here must be made in the Supabase dashboard too.
+-->
+<h2>Your BTX sign-in code</h2>
+<p>Enter this code on the BTX Scholarship Portal to sign in:</p>
+<p style="font-size:32px;font-weight:600;letter-spacing:6px;margin:16px 0">{{ .Token }}</p>
+<p>If it has expired, ask for a new one on the sign-in page. If you didn't ask for a code, you can ignore this email.</p>
+<p>The BTX Foundation</p>
