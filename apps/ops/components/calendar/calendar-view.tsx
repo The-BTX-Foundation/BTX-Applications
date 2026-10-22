@@ -158,7 +158,8 @@ function Ev({
 }
 
 // The side panel: the selected day's heading and everything on that day (owner's decision O4): timed items first, then
-// bars across the day, due dates, posts and all-day items.
+// bars across the day, due dates, posts and all-day items. The frame's "Add the BTX calendar to Google Calendar" link
+// stays out until a real calendar feed exists (no dead controls; owner, 2026-10-22).
 function SidePanel({
   day,
   today,
@@ -190,9 +191,6 @@ function SidePanel({
           </div>
         ))}
       </div>
-      <a className="ca-sub2" href="#" onClick={(e) => e.preventDefault()}>
-        Add the BTX calendar to Google Calendar
-      </a>
     </aside>
   );
 }
