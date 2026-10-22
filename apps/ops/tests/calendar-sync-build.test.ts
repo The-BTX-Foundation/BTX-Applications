@@ -30,14 +30,26 @@ describe('syncWindow and addDays', () => {
 describe('calendar_events', () => {
   it('a timed event keeps its times in UTC and the owner in the description', () => {
     const [e] = build({ people, events: [{ id: 'e1', title: 'Board meeting', starts_at: '2026-10-28T23:00:00+00:00', ends_at: '2026-10-29T00:30:00+00:00', all_day: false, location: null, video_url: 'https://meet.example/abc', owner_id: 'u1' }] });
-    expect(e).toMatchObject({ id: 'event:e1', title: 'Board meeting', allDay: false, start: '2026-10-28T23:00:00.000Z', end: '2026-10-29T00:30:00.000Z', location: 'https://meet.example/abc' });
+    expect(e).toMatchObject({ id: 'event:e1', title: 'Board meeting', allDay: false, start: '2026-10-28T23:00:00Z', end: '2026-10-29T00:30:00Z', location: 'https://meet.example/abc' });
     expect(e.description).toBe(`Owner: Kelsey M\n\n${FOOTER}`);
   });
   it('a timed event with no end lasts an hour; location wins over the video link', () => {
     const [e] = build({ events: [{ id: 'e2', title: 'Call', starts_at: '2026-10-28T14:00:00Z', ends_at: null, all_day: false, location: 'Room 2', video_url: 'https://v' }] });
-    expect(e.end).toBe('2026-10-28T15:00:00.000Z');
+    expect(e.end).toBe('2026-10-28T15:00:00Z');
     expect(e.location).toBe('Room 2');
     expect(e.description).toBe(FOOTER);
+  });
+  it('times are whole seconds, and an end not after the start falls back to an hour', () => {
+    const list = build({
+      events: [
+        { id: 'ms', title: 'x', starts_at: '2026-10-28T14:00:00.750Z', ends_at: '2026-10-28T15:00:00.250+00:00', all_day: false },
+        { id: 'zero', title: 'x', starts_at: '2026-10-28T14:00:00Z', ends_at: '2026-10-28T14:00:00Z', all_day: false },
+        { id: 'back', title: 'x', starts_at: '2026-10-28T14:00:00Z', ends_at: '2026-10-28T13:00:00Z', all_day: false },
+      ],
+    });
+    expect(byId(list, 'event:ms')).toMatchObject({ start: '2026-10-28T14:00:00Z', end: '2026-10-28T15:00:00Z' });
+    expect(byId(list, 'event:zero')?.end).toBe('2026-10-28T15:00:00Z');
+    expect(byId(list, 'event:back')?.end).toBe('2026-10-28T15:00:00Z');
   });
   it('an all-day event sits on its Eastern day, end exclusive', () => {
     // Stored at noon Eastern, as the app saves all-day events.
@@ -85,8 +97,8 @@ describe('interviews', () => {
     expect(list[0]).toMatchObject({
       title: 'BTX interview · APP-2026-00015',
       allDay: false,
-      start: '2026-11-10T15:00:00.000Z',
-      end: '2026-11-10T15:30:00.000Z',
+      start: '2026-11-10T15:00:00Z',
+      end: '2026-11-10T15:30:00Z',
       location: 'https://meet.example/iv',
       description: `Interviewers: Kelsey M, Dominick L\nVideo: https://meet.example/iv\n\n${FOOTER}`,
     });
@@ -97,6 +109,11 @@ describe('interviews', () => {
     expect(text).not.toContain('Zephyrine');
     expect(text).not.toContain('Quillfeather');
     expect(text).not.toContain('terpmail');
+  });
+
+  it('a slot whose end is not after its start lasts half an hour', () => {
+    const [e] = build({ ...part, slots: [{ id: 's1', starts_at: '2026-11-10T15:00:00Z', ends_at: '2026-11-10T15:00:00Z' }] });
+    expect(e.end).toBe('2026-11-10T15:30:00Z');
   });
 
   it('without a pairing: no interviewer line, no location', () => {

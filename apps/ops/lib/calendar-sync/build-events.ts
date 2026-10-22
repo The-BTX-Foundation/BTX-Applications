@@ -44,6 +44,7 @@ export type SyncWindow = { start: string; end: string };
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v).trim());
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const HOUR_MS = 60 * 60 * 1000;
+const HALF_HOUR_MS = 30 * 60 * 1000;
 
 /** "2026-11-01" + 1 -> "2026-11-02" (calendar arithmetic on a plain day, no time zone involved). */
 export function addDays(day: string, n: number): string {
@@ -51,12 +52,21 @@ export function addDays(day: string, n: number): string {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-// A timestamp column -> ISO UTC, or null when it is missing or not a date.
+// Milliseconds -> ISO UTC in whole seconds ("2026-11-10T15:00:00Z"); sub-second parts are dropped.
+const isoSeconds = (ms: number) => new Date(Math.floor(ms / 1000) * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+// A timestamp column -> ISO UTC in whole seconds, or null when it is missing or not a date.
 function iso(v: unknown): string | null {
   const s = str(v);
   if (!s) return null;
-  const t = new Date(s);
-  return Number.isNaN(t.getTime()) ? null : t.toISOString();
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? null : isoSeconds(t);
+}
+
+// The end of a timed event: `end` when it is after `start`, else `start` plus `fallbackMs` (a missing, zero-length or
+// backwards end would make Google reject or hide the event).
+function endAfter(start: string, end: string | null, fallbackMs: number): string {
+  return end && Date.parse(end) > Date.parse(start) ? end : isoSeconds(Date.parse(start) + fallbackMs);
 }
 
 // A date column ("2026-11-02") -> itself, or null when it is missing or malformed.
@@ -103,8 +113,8 @@ export function buildSyncEvents(rows: SyncRows, now: Date, opsUrl: string = OPS_
       const d = nyDay(start);
       allDay(`event:${id}`, title, d, d, lines, location);
     } else {
-      // No end time: an hour long, so Google draws a block rather than a sliver.
-      const end = iso(e.ends_at) ?? new Date(new Date(start).getTime() + HOUR_MS).toISOString();
+      // No end time (or one not after the start): an hour long, so Google draws a block rather than a sliver.
+      const end = endAfter(start, iso(e.ends_at), HOUR_MS);
       out.push({ id: `event:${id}`, title, description: describe(lines), location, allDay: false, start, end });
     }
   }
@@ -119,8 +129,10 @@ export function buildSyncEvents(rows: SyncRows, now: Date, opsUrl: string = OPS_
     const slot = slots.get(str(b.slot_id));
     const code = codes.get(str(b.application_id));
     const start = iso(slot?.starts_at);
-    const end = iso(slot?.ends_at);
-    if (!id || !code || !start || !end) continue;
+    const slotEnd = iso(slot?.ends_at);
+    if (!id || !code || !start || !slotEnd) continue;
+    // The database requires ends_at > starts_at; checked again here so a bad slot still shows as half an hour.
+    const end = endAfter(start, slotEnd, HALF_HOUR_MS);
     const pair = pairs.get(str(b.slot_id));
     const lines: string[] = [];
     const who = [names.get(str(pair?.interviewer_a)), names.get(str(pair?.interviewer_b))].filter((n): n is string => Boolean(n));

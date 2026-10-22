@@ -53,10 +53,17 @@ describe('verifySyncCaller', () => {
   it('refuses a token with no expiry, or one issued more than 65 minutes ago', async () => {
     const nowSec = Math.floor(Date.now() / 1000);
     expect(await check(`Bearer ${await token({}, { exp: null })}`)).toEqual({ ok: false });
-    // Issued 66 minutes ago but (artificially) still unexpired: refused by the age limit alone.
-    expect(await check(`Bearer ${await token({}, { iat: nowSec - 66 * 60, exp: nowSec + 600 })}`)).toEqual({ ok: false });
+    // Issued 67 minutes ago but (artificially) still unexpired: refused by the age limit alone (65 minutes plus the
+    // minute of clock tolerance).
+    expect(await check(`Bearer ${await token({}, { iat: nowSec - 67 * 60, exp: nowSec + 600 })}`)).toEqual({ ok: false });
     // Issued 60 minutes ago and unexpired: fine.
     expect(await check(`Bearer ${await token({}, { iat: nowSec - 60 * 60, exp: nowSec + 600 })}`)).toEqual({ ok: true });
+  });
+
+  it('allows a minute of clock difference: iat 30 s ahead is fine, 5 minutes ahead is refused', async () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    expect(await check(`Bearer ${await token({}, { iat: nowSec + 30, exp: nowSec + 3600 })}`)).toEqual({ ok: true });
+    expect(await check(`Bearer ${await token({}, { iat: nowSec + 300, exp: nowSec + 3600 })}`)).toEqual({ ok: false });
   });
 
   it('refuses a missing or malformed header', async () => {

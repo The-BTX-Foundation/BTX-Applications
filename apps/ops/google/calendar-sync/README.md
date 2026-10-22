@@ -22,9 +22,11 @@ Things to know:
 ## Safety limits
 
 - **Each run makes at most 100 changes, and at most 40 of them are deletions.** It also stops starting new changes after about 4.5 minutes. Anything left over happens on the next run, so the first sync of a long list may take a few runs.
-- **If one change fails, the run stops** and the next run tries again. Nothing is left half done.
+- **If a change fails,** the log shows one line saying which kind of change it was (create, update or delete) and Google's error number, never the event's details. A change Google rejects outright (for example an event that was already removed) is skipped and the run carries on. If Google says to slow down or has a server problem, the run stops writing. A run also stops after 3 failed changes. Either way the next run tries again, and nothing is left half done.
+- **A failed change marks the run as Failed** under **Executions**, and Google emails info@ about it, so a problem never goes unnoticed.
+- **A synced event someone turned into a repeating event** is replaced with a fresh single event at the next run.
 - **It will not empty the calendar.** If the Ops Hub's list ever comes back empty while the calendar has more than five synced events, the run stops with "Refusing to delete every synced event".
-- **It will not delete a large share at once.** If a run would delete more than 10 events and that is more than half of the synced events it is looking at, the run stops with "Refusing to delete … synced events in one run". If those items really were removed in the Ops Hub on purpose, choose **syncNowAllowDeletes** and click **Run** once. It does one sync with this limit lifted (the empty-list limit still applies). The timer then carries on as normal.
+- **It will not delete a large share at once.** If a run would delete more than 10 events and that is more than half of the synced events it is looking at, the run stops with "Refusing to delete … synced events in one run". If those items really were removed in the Ops Hub on purpose, choose **syncNowAllowDeletes** and click **Run**. It syncs with this limit lifted and keeps going until nothing is left to delete (the empty-list limit still applies). If it runs out of time first, the log says "run syncNowAllowDeletes again": run it again. The timer then carries on as normal.
 
 ## One-time setup (in this order)
 
@@ -47,7 +49,7 @@ Choose **removeTrigger** and click **Run**. The sync stops. Events already in th
 ## Undo it completely
 
 1. Run **removeTrigger** (stops the timer).
-2. Run **deleteSyncedEvents**. It deletes every event the script created, whatever its date. Hand-made events are not touched. If the log says it ran out of time, run it again.
+2. Run **deleteSyncedEvents**. It deletes every event the script created, whatever its date. It checks each event's marker itself before deleting, so hand-made events are never touched. If a sync is running at that moment it deletes nothing and says to try again in a minute. If the log says it ran out of time, run it again.
 
 ## If something goes wrong
 

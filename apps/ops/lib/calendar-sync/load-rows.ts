@@ -8,6 +8,8 @@ import type { SyncRows } from './build-events';
 // Rows asked for per request. The server may cap a page lower than this (PostgREST max-rows), so a short page does NOT
 // mean the end: paging stops only when a page comes back empty.
 const PAGE = 1000;
+// A table needing more pages than this is treated as a fault (a server answering the same page forever), not data.
+const MAX_PAGES = 200;
 
 /**
  * Reads every row of one table, page by page, ordered by the `order` columns (a unique key, so pages never overlap or
@@ -16,7 +18,8 @@ const PAGE = 1000;
  */
 export async function readAll(db: ServiceClient, table: string, columns: string, order: string[], eq?: Record<string, string>): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
-  for (;;) {
+  for (let page = 0; ; page++) {
+    if (page >= MAX_PAGES) throw new Error(`calendar sync: too many pages in ${table}`);
     let q = db.from(table).select(columns);
     for (const [col, val] of Object.entries(eq ?? {})) q = q.eq(col, val);
     for (const col of order) q = q.order(col, { ascending: true });

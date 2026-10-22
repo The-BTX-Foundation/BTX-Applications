@@ -52,6 +52,13 @@ describe('readAll', () => {
     await expect(readAll(db, 'tasks', 'id', ['id'])).rejects.toThrow('calendar sync: could not read tasks');
   });
 
+  it('gives up after 200 pages instead of paging forever', async () => {
+    // 250,000 rows would take 250 pages: past the limit, so it stops at 200 and refuses.
+    const { db, calls } = stubClient(250000);
+    await expect(readAll(db, 'tasks', 'id', ['id'])).rejects.toThrow('calendar sync: too many pages in tasks');
+    expect(calls).toHaveLength(200);
+  });
+
   it('applies the filter and every order column on each page', async () => {
     const { db, calls } = stubClient(3);
     await readAll(db, 'task_assignees', 'task_id, user_id', ['task_id', 'user_id'], { status: 'active' });

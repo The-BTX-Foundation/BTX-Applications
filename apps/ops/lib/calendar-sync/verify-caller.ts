@@ -40,6 +40,8 @@ export async function verifySyncCaller(authorizationHeader: string | null | unde
       requiredClaims: ['exp', 'iat', 'email'],
       // Google issues them for an hour; anything older than that (plus a little clock slack) is refused.
       maxTokenAge: '65m',
+      // Allows a minute of clock difference between Google and the server on exp, iat and the age check.
+      clockTolerance: '60s',
     });
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : '';
     if (email !== SYNC_ACCOUNT || payload.email_verified !== true) return { ok: false };
