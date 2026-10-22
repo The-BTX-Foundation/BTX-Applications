@@ -91,6 +91,16 @@ async function dataLayerText(page: Page): Promise<string> {
   return page.evaluate(() => JSON.stringify((window as unknown as { dataLayer?: unknown[] }).dataLayer ?? []));
 }
 
+// True for the Google tag's own page-change record (event "gtm.historyChange-v2"). The tag's history listener writes
+// one on every client-side navigation, holding copies of history.state, where Next.js keeps its router state and the
+// address's query string ("renderedSearch"). The record stays in the page: the tag reads it to decide on a history
+// page view, which the hit filter drops, and the request checks below prove no part of it is sent. The location it
+// copies is one the tag can already read from `location`, so skipping it hides nothing new. Seen 2026-10-22.
+function isGoogleHistoryRecord(entry: unknown): boolean {
+  const event = (entry as { event?: unknown } | null)?.event;
+  return typeof event === 'string' && event.startsWith('gtm.historyChange');
+}
+
 // Our own events in the dataLayer, as [name, params] pairs.
 async function dataLayerEvents(page: Page): Promise<Array<[string, Record<string, unknown>]>> {
   return page.evaluate(() =>
@@ -126,6 +136,9 @@ test('the funnel events fire through the real Google tag and nothing an applican
   });
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Legacy');
   await expect.poll(() => sent.some((s) => s.url.includes('googletagmanager.com/gtag/js')), { message: 'gtag.js requested' }).toBe(true);
+  // wait until the tag is running, so its own listeners (history, clicks, forms) watch the whole funnel: the worst
+  // case, every run (before 2026-10-22 the first click raced the tag, so a run sometimes left them out)
+  await page.waitForFunction(() => Boolean((window as unknown as { google_tag_manager?: unknown }).google_tag_manager));
   await page.getByRole('link', { name: 'Start your application' }).first().click();
   await expect(page).toHaveURL(/\/sign-in/);
 
@@ -273,9 +286,12 @@ test('the funnel events fire through the real Google tag and nothing an applican
   }
   expect(events.map((e) => new URL(e.dl).pathname)).toContain('/other');
 
-  // 4. no marker value anywhere: not in the dataLayer, not in any request to a Google host
-  expectNoMarkers('dataLayer', dataLayer);
+  // 4. no marker value anywhere: not in any request to a Google host, and not in the dataLayer outside the Google tag's
+  // own page-change records (isGoogleHistoryRecord: a copy of history.state that stays in the page)
   for (const s of sent) expectNoMarkers(`request ${new URL(s.url).host}`, `${s.url}\n${s.body}`);
+  (JSON.parse(dataLayer) as unknown[]).forEach((entry, i) => {
+    if (!isGoogleHistoryRecord(entry)) expectNoMarkers(`dataLayer[${i}]`, JSON.stringify(entry));
+  });
 });
 
 test('a browser that sends Global Privacy Control never loads the tag', async ({ page, context }) => {

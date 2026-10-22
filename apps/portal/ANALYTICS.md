@@ -127,7 +127,9 @@ Break it down by `session source / medium` to compare Instagram, the newsletter 
   - Every request to Google's analytics and ad hosts is answered locally and never leaves the machine. As a backstop, those hosts don't resolve at all.
   - It walks sign-in through submit, with marker values typed into every field and put into the addresses and the referrer.
   - It also fires Google-style automatic events (an outbound click on a meeting link, a history page view on an address with an ID, a file download).
-  - It checks four things. The funnel events reach the collect endpoint. The automatic events and the page view Google sent itself never leave. Every address sent is clean. No marker appears in the `dataLayer` or in any request to Google.
+  - It waits until the tag is running before the first click, so Google's own listeners watch the whole funnel.
+  - It checks four things. The funnel events reach the collect endpoint. The automatic events and the page view Google sent itself never leave. Every address sent is clean. No marker appears in any request to Google, or anywhere in the `dataLayer` except Google's own page-change records.
+  - **Google's page-change records (since 2026-10-22).** On every page change inside the Portal, the tag writes a `gtm.historyChange-v2` entry into the `dataLayer`. It holds copies of the browser's history state, where Next.js keeps the address's query string (`renderedSearch`), so a planted value in the landing address shows up there. The entry stays in the page. The tag only reads it to decide on a history page view, which the hit filter drops. With the tag fully loaded, none of the 16 requests to Google carried any planted value. That's why the test skips only those entries.
   - It also tries every other way out with a raw hit: a beacon, an image set by property and by attribute, a Request object, XMLHttpRequest, two Google frames, hashed email data, an unknown field and a repeated event name.
   - It watches the whole browser context, so requests from frames and service workers count.
   - Planted values are checked plain, URL-decoded, SHA-256-hashed and base64-encoded.
