@@ -14,6 +14,13 @@ export function safeNext(next: unknown): string | undefined {
     return undefined;
   }
   if (url.origin !== base) return undefined;
-  if (url.pathname.startsWith('/sign-in') || url.pathname.startsWith('/auth/')) return undefined;
+  // the path is checked decoded too, so "/%61uth/denied" counts as /auth/denied
+  let path = url.pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return undefined;
+  }
+  if (path.startsWith('/sign-in') || path.startsWith('/auth/')) return undefined;
   return next;
 }

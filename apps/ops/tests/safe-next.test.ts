@@ -27,6 +27,11 @@ describe('Ops safeNext', () => {
   it('checks the cleaned-up path, so dot segments cannot reach the sign-in screen or auth routes', () => {
     expect(safeNext('/./sign-in')).toBeUndefined();
     expect(safeNext('/x/../auth/denied')).toBeUndefined();
+    // percent-coded route names count too, and a broken percent code is refused
+    expect(safeNext('/%61uth/denied')).toBeUndefined();
+    expect(safeNext('/%73ign-in')).toBeUndefined();
+    expect(safeNext('/finance%E0%A4%A')).toBeUndefined();
+    expect(safeNext('/scholarships/applicants?q=a%20b')).toBe('/scholarships/applicants?q=a%20b');
   });
 
   it('ignores anything that is not one string (a repeated ?next= arrives as an array)', () => {
