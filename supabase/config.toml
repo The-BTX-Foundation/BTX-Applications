@@ -243,6 +243,15 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Production sends the 6-digit code with no link; the local stack sends the same email. The file is a copy of the
+# production template (see the comment inside it).
+[auth.email.template.magic_link]
+subject = "Your BTX sign-in code: {{ .Token }}"
+content_path = "./supabase/templates/sign-in-code.html"
+[auth.email.template.confirmation]
+subject = "Your BTX sign-in code: {{ .Token }}"
+content_path = "./supabase/templates/sign-in-code.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
