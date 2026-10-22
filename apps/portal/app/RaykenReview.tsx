@@ -2,15 +2,23 @@
 // 1. Run `rr snippet <project>` and paste the code between <script> and </script> (not the tags) between
 //    the backticks below. String.raw keeps the backslashes in the loader intact.
 // 2. Render <RaykenReview /> as the first child of <head> in app/layout.tsx.
-// 3. Set NEXT_PUBLIC_RAYKEN_REVIEW=1 only on the Preview environment of the review address.
-// The loader still checks the address at runtime, so a production build that includes it stays idle.
+// 3. Set NEXT_PUBLIC_RAYKEN_REVIEW=1 where the board reviews. Since 2026-10-22 that is the live Portal (project
+//    btx-apply, host apply.thebtxfoundation.org): the board tests the real application with +apply addresses while
+//    students apply. The loader is idle for everyone else: it does nothing unless the address is a review host AND
+//    the browser holds a pass from a board member's start link, so a student's browser never contacts the review tool.
 // 4. The inline script carries this request's nonce (proxy.ts, lib/csp.ts), so the Content-Security-Policy allows it.
+// 5. The project name (P below) is REVIEW_PROJECT in lib/config.ts: lib/review-pass.ts reads and forgets the pass this
+//    loader stores under it (analytics skips review visits; components/review-context.tsx forgets a pass that reached a
+//    real student). tests/review.test.ts checks the two agree.
+// 6. Changed by hand on 2026-10-22, matching RaykenDigital/rayken-review PR #5: the last line only looks in IndexedDB
+//    when the "rayken-review" database already exists, so a visitor without a pass gets no storage at all. Re-paste
+//    `rr snippet btx-apply` once that PR is deployed; it should then be identical.
 
 const LOADER = String.raw`
 /* Rayken Review loader. Idle unless this is a review host and the browser holds a pass. */
 (function (w, d) {
   try {
-    var P = "btx-portal", S = "https://review.raykendigital.com", H = ["btx-portal-git-review-btx-aps.vercel.app"], h = location.hostname.toLowerCase();
+    var P = "btx-apply", S = "https://review.raykendigital.com", H = ["apply.thebtxfoundation.org"], h = location.hostname.toLowerCase();
     if (!H.some(function (x) { return x == h || (x[0] == "*" && h.length >= x.length && h.slice(1 - x.length) == x.slice(1)); })) return;
     "pointerdown pointerup mousedown mouseup click dblclick auxclick contextmenu touchstart touchend submit keydown keyup keypress beforeinput input focusin focusout dragstart".split(" ").forEach(function (n) {
       w.addEventListener(n, function (e) { var R = w.__raykenReview; if (R && R.onEvent) try { R.onEvent(e); } catch (x) {} }, { capture: true, passive: n[0] == "t" });
@@ -29,7 +37,7 @@ const LOADER = String.raw`
     try { t = L.getItem(K); } catch (x) {}
     t = t || (d.cookie.match("(?:^|; )" + C + "=(rr[pd]_[\\w-]+)") || [])[1];
     if (t) return go(t);
-    db(function (s) { var g = s.get("pass:" + P); g.onsuccess = function () { g.result && go(g.result); }; });
+    try { indexedDB.databases().then(function (l) { l.some(function (x) { return x.name == "rayken-review"; }) && db(function (s) { var g = s.get("pass:" + P); g.onsuccess = function () { g.result && go(g.result); }; }); }, function () {}); } catch (x) {}
   } catch (x) {}
 })(window, document);
 `;

@@ -10,6 +10,11 @@ function allowed(email: string, allow: string[]): boolean {
   return allow.some((a) => a.startsWith('+') && a.length > 1 && local.endsWith(a));
 }
 
+/** True when the address is on the test allow-list (exact, or a "+tag" entry). */
+export function isAllowListed(raw: string | null | undefined, allow: string[] = TEST_EMAILS): boolean {
+  return allowed((raw ?? '').trim().toLowerCase(), allow);
+}
+
 // Returns an error message for the sign-in field, or null when the address may sign in.
 export function terpmailError(raw: string, allow: string[] = TEST_EMAILS): string | null {
   const email = raw.trim().toLowerCase();

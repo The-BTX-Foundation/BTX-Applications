@@ -16,6 +16,9 @@ export function parseTestEmails(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
+/** The Rayken Review project the board reviews the live Portal in (app/RaykenReview.tsx's loader uses the same name). */
+export const REVIEW_PROJECT = 'btx-apply';
+
 /** The two guide pages. Empty until the pages exist; screens show each link only when its address is set. */
 export const PREPARE_GUIDE_URL = process.env.NEXT_PUBLIC_PREPARE_GUIDE_URL || '';
 export const OFFERS_URL = process.env.NEXT_PUBLIC_OFFERS_URL || '';
