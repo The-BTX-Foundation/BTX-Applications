@@ -154,6 +154,16 @@ describe('bookAndNotify pushes', () => {
     expect(items.filter((i) => i.title === 'Interview cancelled').map((i) => i.userId)).toEqual(['u3']);
   });
 
+  it('every booking action is its own push: A, B, A, B all notify, and the key names the student', async () => {
+    const s = setup({ ok: true, result: 'switched' }, 'old', [slot('old', '2026-11-13T00:00:00Z'), slot('new', '2026-11-12T00:00:00Z')]);
+    const push = pushes(s);
+    await bookAndNotify('new', undefined, s.d);
+    await bookAndNotify('new', undefined, s.d);
+    const [first, second] = push.mock.calls.map((c) => c[0].filter((i) => i.title === 'Interview moved').map((i) => i.key));
+    expect(first.every((k) => k.startsWith('interview-moved:new:a1:'))).toBe(true);
+    expect(first.filter((k) => second.includes(k))).toEqual([]);
+  });
+
   it('sends no pushes for unchanged, taken or an error', async () => {
     for (const result of [{ ok: true, result: 'unchanged' }, { ok: false, kind: 'taken' }, { ok: false, kind: 'network' }] as BookResult[]) {
       const s = setup(result, 'old', [slot('new', '2026-11-12T00:00:00Z')]);

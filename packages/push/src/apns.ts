@@ -4,7 +4,7 @@
 //
 // Env (set in Vercel by Dominick; the key is a secret):
 //   APNS_KEY_ID      the 10-character key id Apple shows next to the .p8
-//   APNS_TEAM_ID     the Apple Developer team id (6H2R38WKP3 for Yachtsy, LLC)
+//   APNS_TEAM_ID     the Apple Developer team id
 //   APNS_KEY         the .p8 contents, with real newlines or `\n` escaped
 //   APNS_BUNDLE_ID   defaults to org.thebtxfoundation.opshub
 //   APNS_PRODUCTION  'true' selects api.push.apple.com (TestFlight and App Store builds); anything else the sandbox
@@ -88,16 +88,16 @@ export function getAuthToken(config: Pick<ApnsConfig, 'keyId' | 'teamId' | 'key'
 export type SendOutcome = { result: 'delivered' | 'retry' | 'dead'; detail: string };
 
 /**
- * Apple's answer, as one of three outcomes. Only the two "this phone's token is gone" answers are `dead`; a bad key, a wrong
- * team or clock skew (403) is OUR mistake and stays a retry, so one misconfiguration can never switch off every phone.
+ * Apple's answer, as one of three outcomes. Only 410 ("this phone's token is gone": the app was removed) is `dead`. A bad key,
+ * a wrong team or clock skew (403) is OUR mistake, and BadDeviceToken (400) is also answered for every phone when the
+ * sandbox/production setting does not match the build, so both stay a retry: one misconfiguration can never switch off every phone.
  */
 export function classifyStatus(status: number, reason?: string): SendOutcome {
   const why = String(reason || '');
   if (status === 200) return { result: 'delivered', detail: 'apns accepted' };
   if (status === 410) return { result: 'dead', detail: `apns 410 ${why || 'Unregistered'}` };
   if (status === 400) {
-    if (why === 'BadDeviceToken') return { result: 'dead', detail: 'apns 400 BadDeviceToken' };
-    return { result: 'retry', detail: `apns 400 ${why || 'bad request'}` };
+    return { result: 'retry', detail: `apns 400 ${why || 'bad request'}${why === 'BadDeviceToken' ? ': check APNS_PRODUCTION matches this build' : ''}` };
   }
   if (status === 403) return { result: 'retry', detail: `apns 403 ${why || 'authentication rejected'}: check APNS_KEY_ID, APNS_TEAM_ID and the server clock` };
   return { result: 'retry', detail: `apns ${status} ${why || 'transient failure'}`.trim() };
@@ -206,7 +206,7 @@ export async function sendToDevice(deviceToken: string, n: Notification, options
     authToken = getAuthToken(config, options.now);
   } catch {
     // The .p8 did not parse. Report that, never the key.
-    console.error('[push] could not sign the APNs auth token: check APNS_KEY', { keyId: config.keyId });
+    console.error('[push] could not sign the APNs auth token: check APNS_KEY');
     return { result: 'retry', detail: 'could not sign the apns auth token' };
   }
   let answer: { status: number; reason: string };
@@ -216,6 +216,10 @@ export async function sendToDevice(deviceToken: string, n: Notification, options
     return { result: 'retry', detail: `apns transport failure: ${err instanceof Error ? err.message : 'unknown'}` };
   }
   const outcome = classifyStatus(answer.status, answer.reason);
-  if (answer.status === 403) console.error('[push] APNs rejected our credentials: pushes are failing for every phone', { keyId: config.keyId, teamId: config.teamId, host: config.host, reason: answer.reason || null });
+  if (answer.status === 403) {
+    // A rejected auth token must not be reused for the rest of its 40 minutes: drop it so the next send signs a fresh one.
+    resetTokenCache();
+    console.error('[push] APNs rejected our credentials: pushes are failing for every phone', { host: config.host, reason: answer.reason || null });
+  }
   return outcome;
 }

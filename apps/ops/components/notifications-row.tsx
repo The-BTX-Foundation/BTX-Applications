@@ -20,12 +20,28 @@ export function NotificationsRow() {
     const n = inApp ? nativePush() : null;
     if (!n) return;
     let live = true;
-    n.permission()
-      .then((perm) => {
-        if (!live) return;
-        setState(perm === 'denied' ? 'blocked' : perm === 'granted' && n.isOn() ? 'on' : 'off');
-      })
-      .catch(() => live && setState('none'));
+    (async () => {
+      const perm = await n.permission();
+      if (!live) return;
+      if (perm === 'denied') return setState('blocked');
+      if (perm !== 'granted' || !n.isOn()) return setState('off');
+      // iOS allows it and this phone remembers a registration: ask the server what it holds for the signed-in person, so the
+      // switch shows what will actually happen (someone else may have signed in on this phone since).
+      const held = await n.status();
+      if (!live) return;
+      if (!held) return setState('on'); // the server can't be reached: trust the phone
+      if (held.on) {
+        setState('on');
+        void n.refresh(); // keeps the phone's token current (a restored phone gets a new one)
+      } else if (held.known) {
+        // This person switched it on here and a push error or another sign-in switched it off: register again.
+        const again = await n.refresh();
+        if (live) setState(again ? 'on' : 'off');
+      } else {
+        n.forget(); // the remembered registration is someone else's
+        setState('off');
+      }
+    })().catch(() => live && setState('none'));
     return () => {
       live = false;
     };

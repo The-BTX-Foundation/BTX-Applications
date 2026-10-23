@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { planAvailabilityPushes, planBookedPushes, planCancelledPushes, planChatPushes, planDueTomorrowPushes, planPrepPushes, planTestPush, twoRows, type PushInterview } from '@btx/push';
 
-const row = (over: Partial<PushInterview> = {}): PushInterview => ({ slotId: 's1', code: 'APP-2026-00015', startsAt: '2026-11-10T23:00:00Z', interviewers: [{ userId: 'kd' }, { userId: 'cc' }], ...over });
+const row = (over: Partial<PushInterview> = {}): PushInterview => ({ slotId: 's1', applicationId: 'a1', code: 'APP-2026-00015', startsAt: '2026-11-10T23:00:00Z', interviewers: [{ userId: 'kd' }, { userId: 'cc' }], ...over });
 
 describe('interview pushes', () => {
   it('books: one push per interviewer, applicant number and time, two rows', () => {
     const items = planBookedPushes(row(), 'booked');
     expect(items.map((i) => i.userId)).toEqual(['kd', 'cc']);
-    expect(items[0]).toMatchObject({ title: 'Interview booked', body: 'Applicant 15 · Tue Nov 10, 6:00 PM', url: '/scholarships/interviews', key: 'interview-booked:s1:kd' });
+    expect(items[0]).toMatchObject({ title: 'Interview booked', body: 'Applicant 15 · Tue Nov 10, 6:00 PM', url: '/scholarships/interviews', key: 'interview-booked:s1:a1:kd' });
   });
   it('moves: says "now" with the new time', () => {
     expect(planBookedPushes(row(), 'moved')[0]).toMatchObject({ title: 'Interview moved', body: 'Applicant 15 · now Tue Nov 10, 6:00 PM' });
@@ -18,6 +18,17 @@ describe('interview pushes', () => {
     expect(planCancelledPushes(old, next).map((i) => i.userId)).toEqual(['cc']);
     expect(planCancelledPushes(old).map((i) => i.userId)).toEqual(['kd', 'cc']);
     expect(planCancelledPushes(old)[0]).toMatchObject({ title: 'Interview cancelled', body: 'Applicant 15 · Tue Nov 10, 6:00 PM' });
+  });
+  it('keys carry the student, so the next student in the same slot with the same interviewers still gets a push', () => {
+    const a = planBookedPushes(row({ applicationId: 'a1' }), 'booked').map((i) => i.key);
+    const b = planBookedPushes(row({ applicationId: 'a2' }), 'booked').map((i) => i.key);
+    expect(a.filter((k) => b.includes(k))).toEqual([]);
+    expect(planCancelledPushes(row({ slotId: 'old', applicationId: 'a1' }))[0].key).toBe('interview-cancelled:old:a1:kd');
+  });
+  it('a nonce makes each booking action its own push (A, B, A, B all notify)', () => {
+    expect(planBookedPushes(row(), 'moved', { nonce: 'n1' })[0].key).toBe('interview-moved:s1:a1:n1:kd');
+    expect(planBookedPushes(row(), 'moved', { nonce: 'n1' })[0].key).not.toBe(planBookedPushes(row(), 'moved', { nonce: 'n2' })[0].key);
+    expect(planCancelledPushes(row({ slotId: 'old' }), undefined, { nonce: 'n1' })[0].key).toBe('interview-cancelled:old:a1:n1:kd');
   });
   it('never contains a name, an email or the full code', () => {
     for (const i of [...planBookedPushes(row(), 'booked'), ...planCancelledPushes(row())]) {

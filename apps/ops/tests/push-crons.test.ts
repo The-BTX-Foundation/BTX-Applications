@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { emptySummary, type PushInterview, type PushItem, type PushSummary } from '@btx/push';
 import { sendDueTomorrowPushes, sendPrepPushes } from '@/lib/push/crons';
 
-const iv = (slotId: string, startsAt: string, users: string[]): PushInterview => ({ slotId, code: 'APP-2026-00015', startsAt, interviewers: users.map((userId) => ({ userId })) });
+const iv = (slotId: string, startsAt: string, users: string[]): PushInterview => ({ slotId, applicationId: `app-${slotId}`, code: 'APP-2026-00015', startsAt, interviewers: users.map((userId) => ({ userId })) });
 // 5:00 PM Eastern on Wed Nov 11. Tomorrow, in Eastern time, is Thu Nov 12.
 const now = new Date('2026-11-11T22:00:00Z');
 

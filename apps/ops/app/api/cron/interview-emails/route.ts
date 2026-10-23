@@ -15,6 +15,8 @@ import { sendPrepEmails, sendReminderEmails, type InterviewDeps } from '@/lib/em
 import { sendDueTomorrowPushes, sendPrepPushes } from '@/lib/push/crons';
 
 export const dynamic = 'force-dynamic';
+// The pushes run inside this request (one at a time, each with its own 10 second cap, 40 seconds in all); this keeps the function alive that long.
+export const maxDuration = 60;
 
 async function handleCron(request: Request, deps: InterviewDeps = {}): Promise<Response> {
   const secret = process.env.CRON_SECRET;

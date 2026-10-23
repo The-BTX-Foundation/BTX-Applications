@@ -12,12 +12,18 @@ export type PushDb = { from: (table: string) => any }; // eslint-disable-line @t
 export type PushSummary = { configured: boolean; delivered: number; skipped: number; retry: number; noDevice: number; retired: number; failed: number };
 export const emptySummary = (configured: boolean): PushSummary => ({ configured, delivered: 0, skipped: 0, retry: 0, noDevice: 0, retired: 0, failed: 0 });
 
-export type DeliverOptions = { env?: Env; send?: (token: string, n: { title: string; body?: string; url?: string }) => Promise<SendOutcome>; sendOptions?: SendOptions };
+export type DeliverOptions = { /** Stop starting new sends after this long (ms); the rest count as retry and nothing is reserved for them. Default 40 s. */ deadlineMs?: number; now?: () => number; env?: Env; send?: (token: string, n: { title: string; body?: string; url?: string }) => Promise<SendOutcome>; sendOptions?: SendOptions };
 
 type Device = { id: string; user_id: string; token: string };
 
+// Delivery is at most once per (person, key). The reservation is made before the send and given back when no phone accepted
+// it, so a cron run can try again. Pushes with no later run (chat, a booking, the admin's test) are not retried: a `retry`
+// result there means that push is lost. A function killed between the reservation and the send also loses that push.
 export async function deliverPush(db: PushDb, items: PushItem[], options: DeliverOptions = {}): Promise<PushSummary> {
   const env = options.env ?? process.env;
+  const now = options.now ?? Date.now;
+  const started = now();
+  const deadline = options.deadlineMs ?? 40_000;
   const send = options.send ?? ((token, n) => sendToDevice(token, n, { ...options.sendOptions, env }));
   const summary = emptySummary(options.send ? true : isConfigured(env));
   // Without the Apple key nothing is sent and nothing is reserved, so the same pushes go out once it is set.
@@ -30,6 +36,10 @@ export async function deliverPush(db: PushDb, items: PushItem[], options: Delive
     for (const d of (found.data ?? []) as Device[]) byUser.set(d.user_id, [...(byUser.get(d.user_id) ?? []), d]);
 
     for (const item of items) {
+      if (now() - started > deadline) {
+        summary.retry += 1; // out of time (Apple is slow): not reserved, so a later run sends it
+        continue;
+      }
       const devices = byUser.get(item.userId) ?? [];
       if (devices.length === 0) {
         summary.noDevice += 1;
@@ -53,6 +63,9 @@ export async function deliverPush(db: PushDb, items: PushItem[], options: Delive
           await db.from('ops_push_devices').update({ disabled_at: new Date().toISOString(), last_error: dead[0].o.detail.slice(0, 200) }).in('id', dead.map((x) => x.d.id));
           summary.retired += dead.length;
         }
+        // A BadDeviceToken answer is kept as a note on the phone's row (it usually means APNS_PRODUCTION does not match the build).
+        const bad = outcomes.filter((x) => x.o.result === 'retry' && x.o.detail.includes('BadDeviceToken'));
+        if (bad.length > 0) await db.from('ops_push_devices').update({ last_error: bad[0].o.detail.slice(0, 200) }).in('id', bad.map((x) => x.d.id));
         if (outcomes.some((x) => x.o.result === 'delivered')) {
           summary.delivered += 1;
           await db.from('ops_push_log').update({ result: 'delivered' }).eq('id', claim);

@@ -84,7 +84,7 @@ describe('Apple\'s answers', () => {
   it.each([
     [200, '', 'delivered'],
     [410, 'Unregistered', 'dead'],
-    [400, 'BadDeviceToken', 'dead'],
+    [400, 'BadDeviceToken', 'retry'], // also what a wrong sandbox/production setting answers for every phone
     [400, 'BadTopic', 'retry'],
     [403, 'InvalidProviderToken', 'retry'],
     [429, 'TooManyRequests', 'retry'],
@@ -92,8 +92,9 @@ describe('Apple\'s answers', () => {
   ])('%i %s is %s', (status, reason, result) => {
     expect(classifyStatus(status, reason).result).toBe(result);
   });
-  it('never retires a phone because of our own bad key (403)', () => {
+  it('never retires a phone because of our own bad key (403) or a mismatched environment (BadDeviceToken)', () => {
     expect(classifyStatus(403, 'ExpiredProviderToken').result).not.toBe('dead');
+    expect(classifyStatus(400, 'BadDeviceToken').detail).toContain('APNS_PRODUCTION');
   });
 });
 
@@ -143,5 +144,22 @@ describe('sending', () => {
     } finally {
       console.error = orig;
     }
+  });
+  it('a 403 drops the cached auth token and logs no key id or team id', async () => {
+    const cfg = readConfig(ENV);
+    const t = 1_700_000_000_000;
+    const first = getAuthToken(cfg, t);
+    expect(getAuthToken(cfg, t)).toBe(first); // cached
+    let text = '';
+    const orig = console.error;
+    console.error = (...a: unknown[]) => { text += JSON.stringify(a); };
+    try {
+      const r = await sendToDevice('t'.repeat(64), { title: 'T' }, { env: ENV, now: t, http2: fakeHttp2(403, { reason: 'InvalidProviderToken' }).mod });
+      expect(r.result).toBe('retry');
+    } finally {
+      console.error = orig;
+    }
+    expect(getAuthToken(cfg, t)).not.toBe(first); // a fresh one is signed (ECDSA signatures differ every time)
+    expect(text).not.toMatch(/ABC123DEFG|6H2R38WKP3/);
   });
 });

@@ -15,6 +15,8 @@ import { NAV_COUNTS, NAV_COUNTS_STRESS_MENU, NAV_COUNTS_STRESS_SIDE, NAV_COUNTS_
 import { accountFromRoleText, setReviewAccount } from '@/lib/review-account';
 import { reviewScreen } from '@/lib/review-screens';
 import { NotificationsRow } from './notifications-row';
+import { PushTapHandler } from './push-tap-handler';
+import { nativePush } from '@/lib/native-push';
 import { OIcon } from './icons';
 
 type ShellUser = { name: string; initials: string; roleText: string };
@@ -60,6 +62,7 @@ function UserCard({ user, phone }: { user: ShellUser; phone?: boolean }) {
   // Ends the session (cookies in live mode, the tab's remembered email in mock mode), then goes to sign-in.
   async function leave() {
     setOpen(false);
+    await nativePush()?.disable(); // in the iPhone app: this phone stops getting this person's pushes (needs the session, so first)
     await signOut();
     try {
       sessionStorage.removeItem('btx-ops-alive');
@@ -165,7 +168,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
   useEffect(() => {
     try {
       if (localStorage.getItem('btx-ops-keep') === '0' && !sessionStorage.getItem('btx-ops-alive')) {
-        void signOut().then(() => router.push('/sign-in'));
+        void (nativePush()?.disable() ?? Promise.resolve()).then(() => signOut()).then(() => router.push('/sign-in'));
       }
     } catch {
       // storage blocked: the session simply stays
@@ -174,6 +177,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
 
   return (
     <div className="o-app">
+      <PushTapHandler />
       <aside className="o-sb" aria-label="Ops Hub" data-review="Sidebar navigation">
         <img className="o-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={68} height={30} />
         <nav className="o-nav" aria-label="Main">

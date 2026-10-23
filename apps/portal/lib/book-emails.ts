@@ -55,7 +55,9 @@ export async function bookAndNotify(slotId: string, note: string | undefined, d:
       if (d.push) {
         try {
           const moved = result.result === 'switched';
-          await d.push([...planBookedPushes(after, moved ? 'moved' : 'booked'), ...(moved && before ? planCancelledPushes(before, after) : [])]);
+          // Each booking action is its own push (a student who goes A, B, A, B gets her interviewers four pushes), so the key carries a per-request nonce.
+          const nonce = crypto.randomUUID();
+          await d.push([...planBookedPushes(after, moved ? 'moved' : 'booked', { nonce }), ...(moved && before ? planCancelledPushes(before, after, { nonce }) : [])]);
         } catch (err) {
           console.error('[book] could not send the interview pushes', err instanceof Error ? err.message : 'unknown');
         }

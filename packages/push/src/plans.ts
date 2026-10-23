@@ -5,17 +5,24 @@ import { applicantNumber, clip, dayLabel, whenLabel } from './format';
 export type PushItem = { userId: string; key: string; title: string; body?: string; /** An Ops Hub path; the tap opens it. */ url?: string };
 
 /** The part of an interview the pushes need (structurally an @btx/emails InterviewRow). */
-export type PushInterview = { slotId: string; code: string; startsAt: string; interviewers: { userId: string }[] };
+export type PushInterview = { slotId: string; applicationId: string; code: string; startsAt: string; interviewers: { userId: string }[] };
+
+/** A nonce makes each booking action its own push (the Portal passes one per request); without it the key is stable per student and slot. */
+export type KeyOptions = { nonce?: string };
+const keyPart = (o?: KeyOptions) => (o?.nonce ? `:${o.nonce}` : '');
 
 const INTERVIEWS = '/scholarships/interviews';
 
-/** "Interview booked" or "Interview moved" to each interviewer of the new slot. */
-export function planBookedPushes(row: PushInterview, kind: 'booked' | 'moved'): PushItem[] {
+/**
+ * "Interview booked" or "Interview moved" to each interviewer of the new slot. The key carries the student (like the email's
+ * never-twice key), so a second student booking the same slot, with the same interviewers, still gets her own push.
+ */
+export function planBookedPushes(row: PushInterview, kind: 'booked' | 'moved', options?: KeyOptions): PushItem[] {
   const num = applicantNumber(row.code);
   const when = whenLabel(row.startsAt);
   return row.interviewers.map((p) => ({
     userId: p.userId,
-    key: `interview-${kind}:${row.slotId}:${p.userId}`,
+    key: `interview-${kind}:${row.slotId}:${row.applicationId}${keyPart(options)}:${p.userId}`,
     title: kind === 'moved' ? 'Interview moved' : 'Interview booked',
     body: kind === 'moved' ? `${num} · now ${when}` : `${num} · ${when}`,
     url: INTERVIEWS,
@@ -23,13 +30,13 @@ export function planBookedPushes(row: PushInterview, kind: 'booked' | 'moved'): 
 }
 
 /** "Interview cancelled" to the interviewers of the slot she left, except anyone also on the new pair (they get "moved"). */
-export function planCancelledPushes(oldRow: PushInterview, newRow?: PushInterview): PushItem[] {
+export function planCancelledPushes(oldRow: PushInterview, newRow?: PushInterview, options?: KeyOptions): PushItem[] {
   const staying = new Set((newRow?.interviewers ?? []).map((p) => p.userId));
   const num = applicantNumber(oldRow.code);
   const when = whenLabel(oldRow.startsAt);
   return oldRow.interviewers
     .filter((p) => !staying.has(p.userId))
-    .map((p) => ({ userId: p.userId, key: `interview-cancelled:${oldRow.slotId}:${p.userId}`, title: 'Interview cancelled', body: `${num} · ${when}`, url: INTERVIEWS }));
+    .map((p) => ({ userId: p.userId, key: `interview-cancelled:${oldRow.slotId}:${oldRow.applicationId}${keyPart(options)}:${p.userId}`, title: 'Interview cancelled', body: `${num} · ${when}`, url: INTERVIEWS }));
 }
 
 /** The evening before: one push per interviewer who has interviews tomorrow, with the count. */

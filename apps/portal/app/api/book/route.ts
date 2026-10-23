@@ -11,6 +11,8 @@ import { bookAndNotify } from '@/lib/book-emails';
 import { sessionClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
+// The emails and pushes run after the answer (after()); this keeps the function alive for them.
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const client = await sessionClient();

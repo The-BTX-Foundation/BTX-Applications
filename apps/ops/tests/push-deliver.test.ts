@@ -5,15 +5,17 @@ import { deliverPush, type PushItem } from '@btx/push';
 function fakeDb(devices: { id: string; user_id: string; token: string }[]) {
   const log: { id: number; user_id: string; key: string; title: string; result?: string }[] = [];
   const disabled: string[] = [];
+  const noted: { ids: string[]; error: string }[] = [];
   let next = 1;
   const db = {
     log,
     disabled,
+    noted,
     from(table: string) {
       if (table === 'ops_push_devices') {
         return {
           select: () => ({ in: (_c: string, ids: string[]) => ({ is: async () => ({ data: devices.filter((d) => ids.includes(d.user_id) && !disabled.includes(d.id)), error: null }) }) }),
-          update: () => ({ in: async (_c: string, ids: string[]) => { disabled.push(...ids); return { error: null }; } }),
+          update: (patch: { disabled_at?: string; last_error?: string }) => ({ in: async (_c: string, ids: string[]) => { if (patch.disabled_at) disabled.push(...ids); else noted.push({ ids, error: patch.last_error ?? '' }); return { error: null }; } }),
         };
       }
       return {
@@ -90,5 +92,20 @@ describe('deliverPush', () => {
     const broken = { from: () => ({ select: () => ({ in: () => ({ is: async () => ({ data: null, error: { message: 'boom' } }) }) }) }) };
     const s = await deliverPush(broken, [item()], { send: async () => ({ result: 'delivered', detail: '' }) });
     expect(s.failed).toBe(1);
+  });
+  it('does not switch a phone off for BadDeviceToken (a wrong APNS_PRODUCTION answers it for every phone); it notes it and retries', async () => {
+    const db = fakeDb([phone]);
+    const s = await deliverPush(db, [item()], { send: async () => ({ result: 'retry', detail: 'apns 400 BadDeviceToken: check APNS_PRODUCTION matches this build' }) });
+    expect(s).toMatchObject({ retry: 1, retired: 0 });
+    expect(db.disabled).toEqual([]);
+    expect(db.noted).toEqual([{ ids: ['d1'], error: expect.stringContaining('BadDeviceToken') }]);
+    expect(db.log).toHaveLength(0);
+  });
+  it('stops starting sends once the deadline passes: the rest are retries and are not reserved', async () => {
+    const db = fakeDb([phone, { id: 'd2', user_id: 'u2', token: 'b'.repeat(64) }]);
+    let t = 0;
+    const s = await deliverPush(db, [item(), item({ userId: 'u2', key: 'k2' })], { deadlineMs: 1000, now: () => t, send: async () => { t += 5000; return { result: 'delivered', detail: 'ok' }; } });
+    expect(s).toMatchObject({ delivered: 1, retry: 1 });
+    expect(db.log.map((l) => l.user_id)).toEqual(['u1']);
   });
 });

@@ -32,10 +32,13 @@ export async function POST(request: Request) {
       db.from('chat_channels').select('kind').eq('id', m.channel_id).maybeSingle(),
       db.from('staff_profiles').select('display_name').eq('user_id', caller.id).maybeSingle(),
     ]);
-    const direct = (channel.data as { kind?: string } | null)?.kind === 'direct';
-    const recipients = direct
-      ? (((await db.from('chat_channel_members').select('user_id').eq('channel_id', m.channel_id)).data ?? []) as { user_id: string }[]).map((r) => r.user_id)
-      : await staffUserIds(db);
+    const kind = (channel.data as { kind?: string } | null)?.kind;
+    if (channel.error || (kind !== 'direct' && kind !== 'area')) return NextResponse.json({ ok: true, sent: 0 }); // unknown channel: say nothing rather than tell everyone
+    const staff = await staffUserIds(db);
+    const recipients =
+      kind === 'direct'
+        ? (((await db.from('chat_channel_members').select('user_id').eq('channel_id', m.channel_id)).data ?? []) as { user_id: string }[]).map((r) => r.user_id).filter((id) => staff.includes(id))
+        : staff;
     const items = planChatPushes({ messageId: m.id, authorName: (author.data as { display_name?: string } | null)?.display_name ?? '', recipientIds: recipients.filter((id) => id !== caller.id) });
     const summary = await sendPushes(items, db);
     return NextResponse.json({ ok: true, sent: summary.delivered });

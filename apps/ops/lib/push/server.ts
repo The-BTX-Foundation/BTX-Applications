@@ -18,12 +18,16 @@ export async function sendPushes(items: PushItem[], db: ServiceDb | null = creat
   }
 }
 
-/** Every board member (staff role admin or board). */
+/**
+ * Every board member (staff role admin or board). The roles are read for the people in staff_profiles only, one by one:
+ * the auth project also holds every student, so listing its users would stop seeing board members past the first page.
+ */
 export async function staffUserIds(db: ServiceDb): Promise<string[]> {
-  const [profiles, users] = await Promise.all([db.from('staff_profiles').select('user_id'), db.auth.admin.listUsers({ page: 1, perPage: 1000 })]);
-  if (profiles.error || users.error) throw new Error('staff list');
-  const role = new Map(users.data.users.map((u) => [u.id, u.app_metadata?.role]));
-  return (profiles.data ?? []).map((p: { user_id: string }) => p.user_id).filter((id: string) => isStaffRole(role.get(id)));
+  const profiles = await db.from('staff_profiles').select('user_id');
+  if (profiles.error) throw new Error('staff list');
+  const ids = [...new Set((profiles.data ?? []).map((p: { user_id: string }) => p.user_id))];
+  const roles = await Promise.all(ids.map(async (id) => ((await db.auth.admin.getUserById(id)).data.user?.app_metadata?.role)));
+  return ids.filter((_, i) => isStaffRole(roles[i]));
 }
 
 export type StaffCaller = { id: string; role: StaffRole };
@@ -40,7 +44,20 @@ export async function staffCaller(): Promise<StaffCaller | null> {
   }
 }
 
-/** True for a JSON POST. Refusing other content types stops a form on another site from posting here with the visitor's cookies. */
+/**
+ * True for a same-site JSON POST. The content type must be exactly application/json (a form or a no-cors fetch from another
+ * site can only send simple types, and a lookalike such as "text/plain; x=application/json" is still simple), and when the
+ * browser says which site the request came from (Origin), that site must be this one.
+ */
 export function isJsonRequest(request: Request): boolean {
-  return (request.headers.get('content-type') ?? '').toLowerCase().includes('application/json');
+  const type = (request.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/json') return false;
+  const origin = request.headers.get('origin');
+  if (!origin) return true;
+  try {
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host;
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
 }

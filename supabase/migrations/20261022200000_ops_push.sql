@@ -49,4 +49,4 @@ create policy ops_push_devices_select_own on public.ops_push_devices
 revoke all on public.ops_push_devices from anon;
 revoke insert, update, delete, truncate on public.ops_push_devices from authenticated;
 revoke all on public.ops_push_log from anon, authenticated;
-revoke usage, select on sequence public.ops_push_log_id_seq from anon, authenticated;
+revoke all on sequence public.ops_push_log_id_seq from anon, authenticated;

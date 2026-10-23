@@ -26,6 +26,7 @@ import { POST as register } from '@/app/api/push/register/route';
 import { POST as unregister } from '@/app/api/push/unregister/route';
 import { POST as chatPush } from '@/app/api/push/chat/route';
 import { POST as testPush } from '@/app/api/push/test/route';
+import { POST as status } from '@/app/api/push/status/route';
 
 const TOKEN = 'ab'.repeat(32);
 const post = (url: string, body: unknown, type: string | null = 'application/json') =>
@@ -41,7 +42,7 @@ function world(opts: { user?: { id: string; role?: string } | null; tables?: Rec
       (made[table] ??= []).push(c);
       return c.p;
     },
-    auth: { admin: { listUsers: async () => ({ data: { users: [{ id: 'u1', app_metadata: { role: 'board' } }, { id: 'u2', app_metadata: { role: 'admin' } }, { id: 'u3', app_metadata: { role: 'board' } }, { id: 'ux', app_metadata: {} }] }, error: null }) } },
+    auth: { admin: { getUserById: async (id: string) => ({ data: { user: { id, app_metadata: { role: ({ u1: 'board', u2: 'admin', u3: 'board' } as Record<string, string>)[id] } } }, error: null }) } },
   };
   createServiceClient.mockReturnValue(db);
   const msg = chain({ data: opts.session ?? null, error: null });
@@ -91,6 +92,39 @@ describe('POST /api/push/register', () => {
   });
 });
 
+describe('the same-site JSON check', () => {
+  it('refuses a lookalike content type and a request from another site, and accepts the site itself', async () => {
+    world();
+    const withHeaders = (headers: Record<string, string>) => new Request('https://ops.example.org/api/push/register', { method: 'POST', headers, body: JSON.stringify({ token: TOKEN }) });
+    expect((await register(withHeaders({ 'content-type': 'text/plain; x=application/json' }))).status).toBe(415);
+    expect((await register(withHeaders({ 'content-type': 'application/jsonp' }))).status).toBe(415);
+    expect((await register(withHeaders({ 'content-type': 'application/json', origin: 'https://www.thebtxfoundation.org', host: 'ops.example.org' }))).status).toBe(415);
+    expect((await register(withHeaders({ 'content-type': 'application/json; charset=utf-8', origin: 'https://ops.example.org', host: 'ops.example.org' }))).status).toBe(200);
+    expect((await register(withHeaders({ 'content-type': 'application/json' }))).status).toBe(200); // no Origin: a plain same-origin request
+  });
+});
+
+describe('POST /api/push/status', () => {
+  it('says whether the signed-in person has this phone on, never someone else\'s row', async () => {
+    const w = world({ tables: { ops_push_devices: (c: Call[]) => ({ data: c.some((x) => x[0] === 'eq' && x[1] === 'user_id' && x[2] === 'u1') ? { disabled_at: null } : null, error: null }) } });
+    expect(await (await status(post('/api/push/status', { token: TOKEN }))).json()).toEqual({ known: true, on: true });
+    expect(w.calls('ops_push_devices').filter((c) => c[0] === 'eq')).toEqual([['eq', 'user_id', 'u1'], ['eq', 'token', TOKEN]]);
+  });
+  it('a switched-off row is known but not on; no row is neither', async () => {
+    world({ tables: { ops_push_devices: { data: { disabled_at: '2026-10-22T00:00:00Z' }, error: null } } });
+    expect(await (await status(post('/api/push/status', { token: TOKEN }))).json()).toEqual({ known: true, on: false });
+    world({ tables: { ops_push_devices: { data: null, error: null } } });
+    expect(await (await status(post('/api/push/status', { token: TOKEN }))).json()).toEqual({ known: false, on: false });
+  });
+  it('is refused without a session, for a form post and for a bad token', async () => {
+    world({ user: null });
+    expect((await status(post('/api/push/status', { token: TOKEN }))).status).toBe(401);
+    world();
+    expect((await status(post('/api/push/status', 'x', 'text/plain'))).status).toBe(415);
+    expect((await status(post('/api/push/status', { token: 'nope' }))).status).toBe(400);
+  });
+});
+
 describe('POST /api/push/unregister', () => {
   it('switches off only the signed-in person\'s row for that phone', async () => {
     const w = world();
@@ -117,7 +151,7 @@ describe('POST /api/push/chat', () => {
   const staffTable = (c: Call[]) => (c.some((x) => x[0] === 'maybeSingle') ? { data: { display_name: 'Kelsey Davis' }, error: null } : { data: [{ user_id: 'u1' }, { user_id: 'u2' }, { user_id: 'u3' }, { user_id: 'ux' }], error: null });
 
   it('a channel message pushes "Board chat" to every other board member, with the name and never the message', async () => {
-    world({ session: message(), tables: { chat_channels: { data: { kind: 'channel' } }, staff_profiles: staffTable } });
+    world({ session: message(), tables: { chat_channels: { data: { kind: 'area' } }, staff_profiles: staffTable } });
     const res = await chatPush(post('/api/push/chat', { messageId: MSG }));
     expect(await res.json()).toEqual({ ok: true, sent: 2 });
     const items = deliverPush.mock.calls[0][1] as { userId: string; title: string; body: string; key: string }[];
@@ -125,10 +159,16 @@ describe('POST /api/push/chat', () => {
     expect(items[0]).toMatchObject({ title: 'Board chat', body: 'Kelsey Davis sent a message.', key: `chat:${MSG}:u2` });
   });
 
-  it('a direct message pushes only to the channel\'s other members', async () => {
-    world({ session: message(), tables: { chat_channels: { data: { kind: 'direct' } }, chat_channel_members: { data: [{ user_id: 'u1' }, { user_id: 'u3' }] }, staff_profiles: staffTable } });
+  it('a direct message pushes only to the channel\'s other members who are board members', async () => {
+    world({ session: message(), tables: { chat_channels: { data: { kind: 'direct' } }, chat_channel_members: { data: [{ user_id: 'u1' }, { user_id: 'u3' }, { user_id: 'ux' }] }, staff_profiles: staffTable } });
     await chatPush(post('/api/push/chat', { messageId: MSG }));
     expect((deliverPush.mock.calls[0][1] as { userId: string }[]).map((i) => i.userId)).toEqual(['u3']);
+  });
+
+  it('a channel that cannot be read pushes nothing (it never falls back to telling everyone)', async () => {
+    world({ session: message(), tables: { chat_channels: { data: null, error: { message: 'no' } }, staff_profiles: staffTable } });
+    expect(await (await chatPush(post('/api/push/chat', { messageId: MSG }))).json()).toEqual({ ok: true, sent: 0 });
+    expect(deliverPush).not.toHaveBeenCalled();
   });
 
   it('sends nothing for a message that is not the caller\'s, a bot\'s, too old, or not visible to them', async () => {
@@ -149,7 +189,7 @@ describe('POST /api/push/chat', () => {
   });
 
   it('a failure while sending still answers ok, with nothing sent', async () => {
-    world({ session: message(), tables: { chat_channels: { data: { kind: 'channel' } }, staff_profiles: staffTable } });
+    world({ session: message(), tables: { chat_channels: { data: { kind: 'area' } }, staff_profiles: staffTable } });
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
     deliverPush.mockRejectedValueOnce(new Error('apns'));
     expect(await (await chatPush(post('/api/push/chat', { messageId: MSG }))).json()).toEqual({ ok: true, sent: 0 });
