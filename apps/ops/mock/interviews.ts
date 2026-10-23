@@ -20,29 +20,29 @@ const link = (code: string) => `https://meet.example.org/btx/${code.toLowerCase(
 const p = (code: string, a: string, b: string): [string, MockPairing] => [code, { interviewer_a: a, interviewer_b: b, video_url: link(code) }];
 
 const PAIRINGS = new Map<string, MockPairing>([
-  // Dania Morris + Chariah Ghee: 4 done, 1 left (Wed Oct 7)
+  // Dana Mercer + Charlie Gaines: 4 done, 1 left (Wed Oct 7)
   p('APP-2026-00011', DM, CG),
   p('APP-2026-00012', DM, CG),
   p('APP-2026-00013', DM, CG),
   p('APP-2026-00003', DM, CG),
   p('APP-2026-00017', DM, CG),
-  // Kelsey Davis + Tomi Falodun: 3 done, 1 left (Mon Oct 5)
+  // Keith Dawson + Toby Faraday: 3 done, 1 left (Mon Oct 5)
   p('APP-2026-00014', KD, TF),
   p('APP-2026-00007', KD, TF),
   p('APP-2026-00010', KD, TF),
   p('APP-2026-00015', KD, TF),
-  // Cillisha Knights + Darien Strachan: 2 done, 1 left (Tue Oct 6)
+  // Camila Keane + Dorian Sutton: 2 done, 1 left (Tue Oct 6)
   p('APP-2026-00002', CK, DS),
   p('APP-2026-00006', CK, DS),
   p('APP-2026-00016', CK, DS),
-  // Marcus Davis + Kelsey Davis: 2 done, 1 left (Thu Oct 8)
+  // Miles Donovan + Keith Dawson: 2 done, 1 left (Thu Oct 8)
   p('APP-2026-00005', MD, KD),
   p('APP-2026-00008', MD, KD),
   p('APP-2026-00018', MD, KD),
-  // Tomi Falodun + Darien Strachan: 2 done
+  // Toby Faraday + Dorian Sutton: 2 done
   p('APP-2026-00009', TF, DS),
   p('APP-2026-00001', TF, DS),
-  // Dania Morris + Marcus Davis: 1 done
+  // Dana Mercer + Miles Donovan: 1 done
   p('APP-2026-00004', DM, MD),
 ]);
 

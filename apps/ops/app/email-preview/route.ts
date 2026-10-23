@@ -10,6 +10,6 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const asked = url.searchParams.get('role');
   const role = isStaffRole(asked) ? asked : 'admin';
-  const html = staffInviteHtml({ name: 'Kelsey', to: 'kelsey@example.org', role: roleInEmail(role), opsUrl: url.origin });
+  const html = staffInviteHtml({ name: 'Keith', to: 'keith@example.org', role: roleInEmail(role), opsUrl: url.origin });
   return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }

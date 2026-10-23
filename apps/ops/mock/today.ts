@@ -59,7 +59,7 @@ export type TodayData = {
 };
 
 export const TODAY: TodayData = {
-  headline: 'Video links are 2 days late, Dania.',
+  headline: 'Video links are 2 days late, Dana.',
   dateLine: 'Sunday, October 4',
   counts: { mine: 6, team: 7, approvals: 1 },
   areas: [
@@ -214,7 +214,7 @@ export const TODAY: TodayData = {
 // ?demo=stress: the Figma "Today, stress" frames (laptop 69:5955, phone 69:6278): a long late-task title, 120 team tasks,
 // 120 applicants to score, $190,000 on hand and dates that have already passed.
 export const TODAY_STRESS: TodayData = {
-  headline: 'The Legacy Scholarship announcement is 12 days late, Dania.',
+  headline: 'The Legacy Scholarship announcement is 12 days late, Dana.',
   dateLine: 'Sunday, October 4',
   counts: { mine: 6, team: 120, approvals: 1 },
   areas: [

@@ -24,7 +24,7 @@ export type RankRow = {
   /** The applicant's full name. */
   name: string;
   combined: string;
-  /** "Dania 4.9, Chariah 4.7". */
+  /** "Dana 4.9, Charlie 4.7". */
   parts: string;
   /** A board member's Portal test application (shown as a "Board test" label). */
   test?: boolean;
@@ -174,10 +174,10 @@ function stress(): SelectionData {
     phoneSub: 'Scholarships · all 120 scored · meeting Thu Dec 31, 9:30 PM, video',
     total: 120,
     rows: [
-      { rank: 1, applicationId: 'stress-1', code: 'APP-2026-00003', name: 'Jalen Thomas', combined: '4.8', parts: 'Dania 4.9, Chariah 4.7', detail: d(['Dania Morris', 'Chariah Ghee']) },
-      { rank: 1, applicationId: 'stress-2', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', combined: '4.8', parts: 'Kelsey 4.9, Tomi 4.7', open: true, detail: d(['Kelsey Davis', 'Tomi Falodun']) },
-      { rank: 3, applicationId: 'stress-3', code: 'APP-2026-00002', name: 'Daniel Asante', combined: '4.5', parts: 'Cillisha Knights 4.6, Darien Strachan 4.4', detail: d(['Cillisha Knights', 'Darien Strachan']) },
-      { rank: 4, applicationId: 'stress-4', code: 'APP-2026-00009', name: 'Maya King', combined: '4.4', parts: 'Tomi 4.5, Darien 4.3', detail: d(['Tomi Falodun', 'Darien Strachan']) },
+      { rank: 1, applicationId: 'stress-1', code: 'APP-2026-00003', name: 'Jalen Thomas', combined: '4.8', parts: 'Dana 4.9, Charlie 4.7', detail: d(['Dana Mercer', 'Charlie Gaines']) },
+      { rank: 1, applicationId: 'stress-2', code: 'APP-2026-00120', name: 'Adaeze-Grace Okonkwo-Fitzgerald', combined: '4.8', parts: 'Keith 4.9, Toby 4.7', open: true, detail: d(['Keith Dawson', 'Toby Faraday']) },
+      { rank: 3, applicationId: 'stress-3', code: 'APP-2026-00002', name: 'Daniel Asante', combined: '4.5', parts: 'Camila Keane 4.6, Dorian Sutton 4.4', detail: d(['Camila Keane', 'Dorian Sutton']) },
+      { rank: 4, applicationId: 'stress-4', code: 'APP-2026-00009', name: 'Maya King', combined: '4.4', parts: 'Toby 4.5, Dorian 4.3', detail: d(['Toby Faraday', 'Dorian Sutton']) },
     ],
     more: [],
     moreCount: 116,

@@ -76,7 +76,7 @@ export const AWARDS: MockAward[] = [
     payment_due_on: null,
     paid_on: null,
     steps: steps([1], { 2: '2026-10-25T12:00:00-04:00' }, { 4: '2026-11-06' }),
-    comment: { by: 'Kelsey Davis', byInitials: 'KD', text: 'Glad we opened the Empowerment award for Renee.' },
+    comment: { by: 'Keith Dawson', byInitials: 'KD', text: 'Glad we opened the Empowerment award for Renee.' },
   },
 ];
 

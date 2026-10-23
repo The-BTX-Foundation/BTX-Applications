@@ -8,10 +8,28 @@
 // Mock mode (no Supabase env): any address is sent a code, 123456 signs in, 000000 is the expired-code case, and an
 // address starting "outsider" signs in as an account with no role so the no-access screen can be seen.
 import { getAuthMode, getBrowserClient, signOut, verifySignInCode } from '@btx/data';
+import { reviewRedirect } from './demo';
 import { isStaffRole } from './role';
 
 export type SendResult = { ok: true } | { ok: false; reason: 'rate-limited' | 'failed' };
 export type CheckResult = { ok: true } | { ok: false; reason: 'wrong' | 'expired' | 'failed' | 'no-access' };
+
+export type SignInStart =
+  | { kind: 'demo'; url: string }
+  | { kind: 'invalid' }
+  | { kind: 'sent'; email: string }
+  | { kind: 'error'; reason: 'rate-limited' | 'failed' };
+
+// The first step of sign-in, in the order that matters: App Review's address goes to the sample-data copy before anything
+// is checked or sent (no code, no account); anything else must look like an email; then the code is requested.
+export async function startSignIn(typed: string, redirectTo: string, send: typeof sendStaffCode = sendStaffCode): Promise<SignInStart> {
+  const demo = reviewRedirect(typed);
+  if (demo) return { kind: 'demo', url: demo };
+  const email = typed.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { kind: 'invalid' };
+  const r = await send(email, redirectTo);
+  return r.ok ? { kind: 'sent', email } : { kind: 'error', reason: r.reason };
+}
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

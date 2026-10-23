@@ -8,7 +8,7 @@ import { isStaffRole, roleLabel, type StaffRole } from './role';
 
 export type OpsUser = { id: string; name: string; initials: string; role: StaffRole; roleText: string; email: string; mock: boolean };
 
-// "dania.morris@x.org" -> "Dania Morris".
+// "dana.mercer@x.org" -> "Dana Mercer".
 function nameFromEmail(email: string): string {
   return email
     .split('@')[0]
@@ -27,7 +27,7 @@ export function initialsOf(name: string): string {
 // Loads the signed-in staff member, or redirects.
 export async function requireStaff(): Promise<OpsUser> {
   if (!hasSupabaseEnv()) {
-    return { id: 'dm', name: 'Dania Morris', initials: 'DM', role: 'admin', roleText: roleLabel('admin'), email: 'dania@example.org', mock: true };
+    return { id: 'dm', name: 'Dana Mercer', initials: 'DM', role: 'admin', roleText: roleLabel('admin'), email: 'dana@example.org', mock: true };
   }
   const client = await sessionClient();
   // getUser() asks the auth server, so a removed account or a changed role takes effect at once.

@@ -9,13 +9,13 @@ import type {
 } from "@/components/calendar/types";
 
 export const CAL_PEOPLE: CalPerson[] = [
-  { id: "dania", name: "Dania Morris" },
-  { id: "kelsey", name: "Kelsey Davis" },
-  { id: "tomi", name: "Tomi Falodun" },
-  { id: "cillisha", name: "Cillisha Knights" },
-  { id: "darien", name: "Darien Strachan" },
-  { id: "chariah", name: "Chariah Ghee" },
-  { id: "marcus", name: "Marcus Davis" },
+  { id: "dana", name: "Dana Mercer" },
+  { id: "keith", name: "Keith Dawson" },
+  { id: "toby", name: "Toby Faraday" },
+  { id: "camila", name: "Camila Keane" },
+  { id: "dorian", name: "Dorian Sutton" },
+  { id: "charlie", name: "Charlie Gaines" },
+  { id: "miles", name: "Miles Donovan" },
 ];
 
 const base: CalItem[] = [
@@ -41,7 +41,7 @@ const base: CalItem[] = [
     chip: "Video links, 2 days late",
     title: "Send interview video links",
     start: null,
-    people: ["dania"],
+    people: ["dana"],
     span: true,
     late: true,
   },
@@ -54,7 +54,7 @@ const base: CalItem[] = [
     chip: "10:00 Interview",
     title: "Interview APP-2026-00015",
     start: "10:00 AM",
-    people: ["kelsey", "tomi"],
+    people: ["keith", "toby"],
     video: true,
   },
   {
@@ -65,7 +65,7 @@ const base: CalItem[] = [
     chip: "Availability",
     title: "Give interview availability",
     start: null,
-    people: ["dania"],
+    people: ["dana"],
   },
   // Tue Oct 6
   {
@@ -76,7 +76,7 @@ const base: CalItem[] = [
     chip: "6:00 Interview",
     title: "Interview APP-2026-00016",
     start: "6:00 PM",
-    people: ["cillisha", "darien"],
+    people: ["camila", "dorian"],
     video: true,
   },
   {
@@ -87,7 +87,7 @@ const base: CalItem[] = [
     chip: "Q4 budget",
     title: "Approve Q4 budget",
     start: null,
-    people: ["dania"],
+    people: ["dana"],
     chipRank: -1,
   },
   // Wed Oct 7
@@ -99,7 +99,7 @@ const base: CalItem[] = [
     chip: "Noon interview",
     title: "Interview APP-2026-00017",
     start: "12:00 PM",
-    people: ["dania", "chariah"],
+    people: ["dana", "charlie"],
     video: true,
   },
   {
@@ -110,7 +110,7 @@ const base: CalItem[] = [
     chip: "Instagram",
     title: "Instagram post",
     start: null,
-    people: ["dania"],
+    people: ["dana"],
   },
   // Thu Oct 8, Fri Oct 9
   {
@@ -121,7 +121,7 @@ const base: CalItem[] = [
     chip: "7:00 Interview",
     title: "Interview APP-2026-00018",
     start: "7:00 PM",
-    people: ["marcus", "kelsey"],
+    people: ["miles", "keith"],
     video: true,
   },
   {
@@ -132,7 +132,7 @@ const base: CalItem[] = [
     chip: "Thank-yous",
     title: "Send Q3 donor thank-yous",
     start: null,
-    people: ["dania"],
+    people: ["dana"],
   },
   // The weeks after
   {
@@ -143,7 +143,7 @@ const base: CalItem[] = [
     chip: "Scores due",
     title: "Scores due",
     start: null,
-    people: ["dania"],
+    people: ["dana"],
   },
   {
     id: "grant",
@@ -153,7 +153,7 @@ const base: CalItem[] = [
     chip: "Grant list",
     title: "Shortlist 5 grants to apply for",
     start: null,
-    people: ["kelsey"],
+    people: ["keith"],
   },
   {
     id: "sel",
@@ -222,7 +222,7 @@ const ordered = base.map((i) => (i.id === "q4" ? { ...i, chipRank: -1 } : i));
 
 export const MOCK_CALENDAR: Omit<CalendarData, "failed"> = {
   today: "2026-10-04",
-  me: "dania",
+  me: "dana",
   people: CAL_PEOPLE,
   items: ordered,
 };
@@ -241,7 +241,7 @@ const stress: CalItem[] = [
     chip: "10:00 Interview",
     title: "Interview APP-2026-00120",
     start: "10:00 AM",
-    people: ["kelsey", "tomi"],
+    people: ["keith", "toby"],
     video: true,
     chipRank: 1,
   },
@@ -253,7 +253,7 @@ const stress: CalItem[] = [
     chip: "Availability",
     title: NSBE,
     start: null,
-    people: ["dania"],
+    people: ["dana"],
     chipRank: 2,
   },
   {
@@ -264,7 +264,7 @@ const stress: CalItem[] = [
     chip: "8:00 AM Interview",
     title: "Interview APP-2026-00014",
     start: "8:00 AM",
-    people: ["kelsey", "tomi"],
+    people: ["keith", "toby"],
     chipRank: 0,
   },
   {
@@ -297,7 +297,7 @@ const stress: CalItem[] = [
     chip: "9:30 Interview",
     title: "Interview APP-2026-00119",
     start: "9:30 PM",
-    people: ["cillisha", "darien"],
+    people: ["camila", "dorian"],
     video: true,
     hideInMonth: true,
     listFirst: true,
@@ -305,7 +305,7 @@ const stress: CalItem[] = [
 ];
 export const MOCK_CALENDAR_STRESS: Omit<CalendarData, "failed"> = {
   today: "2026-10-04",
-  me: "dania",
+  me: "dana",
   people: CAL_PEOPLE,
   items: stress,
 };

@@ -19,13 +19,13 @@ export const FLOW_CYCLE = {
 export type MockPerson = { userId: string; name: string; freeHours: number; maxInterviews: number | null; sent: boolean };
 
 export const FLOW_PEOPLE: MockPerson[] = [
-  { userId: 'mock-staff-dm', name: 'Dania Morris', freeHours: 20, maxInterviews: null, sent: true },
-  { userId: 'mock-staff-kd', name: 'Kelsey Davis', freeHours: 32, maxInterviews: null, sent: true },
-  { userId: 'mock-staff-ck', name: 'Cillisha Knights', freeHours: 14, maxInterviews: null, sent: true },
-  { userId: 'mock-staff-md', name: 'Marcus Davis', freeHours: 12, maxInterviews: 4, sent: true },
-  { userId: 'mock-staff-tf', name: 'Tomi Falodun', freeHours: 26, maxInterviews: null, sent: true },
-  { userId: 'mock-staff-cg', name: 'Chariah Ghee', freeHours: 18, maxInterviews: null, sent: true },
-  { userId: 'mock-staff-ds', name: 'Darien Strachan', freeHours: 10, maxInterviews: null, sent: true },
+  { userId: 'mock-staff-dm', name: 'Dana Mercer', freeHours: 20, maxInterviews: null, sent: true },
+  { userId: 'mock-staff-kd', name: 'Keith Dawson', freeHours: 32, maxInterviews: null, sent: true },
+  { userId: 'mock-staff-ck', name: 'Camila Keane', freeHours: 14, maxInterviews: null, sent: true },
+  { userId: 'mock-staff-md', name: 'Miles Donovan', freeHours: 12, maxInterviews: 4, sent: true },
+  { userId: 'mock-staff-tf', name: 'Toby Faraday', freeHours: 26, maxInterviews: null, sent: true },
+  { userId: 'mock-staff-cg', name: 'Charlie Gaines', freeHours: 18, maxInterviews: null, sent: true },
+  { userId: 'mock-staff-ds', name: 'Dorian Sutton', freeHours: 10, maxInterviews: null, sent: true },
 ];
 
 /** The two board members the "waiting on availability" frame is still waiting on. */
@@ -64,13 +64,13 @@ export const MOCK_BOOKED_TIMES = { '2026-11-11 17:00': 'Sade Price', '2026-11-14
 // ---- fairness ----------------------------------------------------------------------------------------------------
 
 export const FLOW_FAIR: { userId: string; name: string; interviews: number; target: number; maxInterviews: number | null }[] = [
-  { userId: 'mock-staff-dm', name: 'Dania Morris', interviews: 5, target: 5, maxInterviews: null },
-  { userId: 'mock-staff-kd', name: 'Kelsey Davis', interviews: 7, target: 5, maxInterviews: null },
-  { userId: 'mock-staff-ck', name: 'Cillisha Knights', interviews: 5, target: 5, maxInterviews: null },
-  { userId: 'mock-staff-md', name: 'Marcus Davis', interviews: 4, target: 4, maxInterviews: 4 },
-  { userId: 'mock-staff-tf', name: 'Tomi Falodun', interviews: 7, target: 5, maxInterviews: null },
-  { userId: 'mock-staff-cg', name: 'Chariah Ghee', interviews: 4, target: 5, maxInterviews: null },
-  { userId: 'mock-staff-ds', name: 'Darien Strachan', interviews: 4, target: 5, maxInterviews: null },
+  { userId: 'mock-staff-dm', name: 'Dana Mercer', interviews: 5, target: 5, maxInterviews: null },
+  { userId: 'mock-staff-kd', name: 'Keith Dawson', interviews: 7, target: 5, maxInterviews: null },
+  { userId: 'mock-staff-ck', name: 'Camila Keane', interviews: 5, target: 5, maxInterviews: null },
+  { userId: 'mock-staff-md', name: 'Miles Donovan', interviews: 4, target: 4, maxInterviews: 4 },
+  { userId: 'mock-staff-tf', name: 'Toby Faraday', interviews: 7, target: 5, maxInterviews: null },
+  { userId: 'mock-staff-cg', name: 'Charlie Gaines', interviews: 4, target: 5, maxInterviews: null },
+  { userId: 'mock-staff-ds', name: 'Dorian Sutton', interviews: 4, target: 5, maxInterviews: null },
 ];
 
 /** The booked interviews ahead in the fairness frames, with their two interviewers (user ids). */
@@ -81,7 +81,7 @@ export const FLOW_BOOKED: { slotId: string; startsAt: string; code: string; appl
   { slotId: 'mock-fair-4', startsAt: toIso('2026-11-17', 18, 0), code: 'APP-2026-00027', applicant: 'Amara Grant', pair: ['mock-staff-kd', 'mock-staff-cg'] },
 ];
 
-/** What a rebalance does to those four (Kelsey and Tomi give interviews to Chariah and Darien). */
+/** What a rebalance does to those four (Keith and Toby give interviews to Charlie and Dorian). */
 export const FLOW_MOVES: { slotId: string; from: string; to: string }[] = [
   { slotId: 'mock-fair-1', from: 'mock-staff-kd', to: 'mock-staff-ds' },
   { slotId: 'mock-fair-2', from: 'mock-staff-kd', to: 'mock-staff-cg' },

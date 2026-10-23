@@ -2471,3 +2471,15 @@ body {
     margin-top: 14px;
   }
 }
+
+/* The sample-data copy for App Review (components/demo-banner.tsx): a thin strip above everything. */
+.o-demo {
+  margin: 0;
+  padding: 6px 12px;
+  background: var(--gold-tint);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+}

@@ -4,13 +4,13 @@ export type Person = { name: string; initials: string; id?: string };
 /** An owner cell: a person, "Unassigned" (a dashed circle with a ?), or nothing. */
 export type Owner = Person | 'unassigned' | null;
 
-export const DANIA: Person = { name: 'Dania Morris', initials: 'DM' };
-export const KELSEY: Person = { name: 'Kelsey Davis', initials: 'KD' };
-export const TOMI: Person = { name: 'Tomi Falodun', initials: 'TF' };
-export const MARCUS: Person = { name: 'Marcus Davis', initials: 'MD' };
-export const CHARIAH: Person = { name: 'Chariah Ghee', initials: 'CG' };
-export const DARIEN: Person = { name: 'Darien Strachan', initials: 'DS' };
-export const CILLISHA: Person = { name: 'Cillisha Knights', initials: 'CK' };
+export const DANIA: Person = { name: 'Dana Mercer', initials: 'DM' };
+export const KELSEY: Person = { name: 'Keith Dawson', initials: 'KD' };
+export const TOMI: Person = { name: 'Toby Faraday', initials: 'TF' };
+export const MARCUS: Person = { name: 'Miles Donovan', initials: 'MD' };
+export const CHARIAH: Person = { name: 'Charlie Gaines', initials: 'CG' };
+export const DARIEN: Person = { name: 'Dorian Sutton', initials: 'DS' };
+export const CILLISHA: Person = { name: 'Camila Keane', initials: 'CK' };
 
 /** Who the "owner" pickers offer in mock mode (live mode reads staff_profiles). */
 export const MOCK_STAFF: Person[] = [DANIA, KELSEY, TOMI, MARCUS, CHARIAH];

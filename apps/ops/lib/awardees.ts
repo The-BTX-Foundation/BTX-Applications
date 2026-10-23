@@ -157,7 +157,7 @@ function stress(): AwardeesData {
     steps: steps('Waiting, reminder sent Wed Sep 30', 'Due Thu Dec 31 · ticking it also logs the payment on Budget', 'Done Wed Sep 30'),
     currentTitle: `${o.name}: acceptance form`,
     currentSub: 'Waiting, reminder sent Wed Sep 30',
-    comment: { by: 'Darien Strachan', byInitials: 'DS', text: 'Glad we opened the Empowerment award for Renee.' },
+    comment: { by: 'Dorian Sutton', byInitials: 'DS', text: 'Glad we opened the Empowerment award for Renee.' },
     stepRowsKind: [],
     ...o,
   });

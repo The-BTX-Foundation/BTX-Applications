@@ -193,6 +193,11 @@ Wrap fire-and-forget sends in Vercel's `waitUntil`, loading `@vercel/functions` 
   - Add a unit test.
   - The demo copy shows a thin banner, "Sample data for App Review. No real information.", only when mock mode is forced.
 - **Security pass (opus):** no path from the demo copy to real data; the redirect can't be abused (fixed URL); the email match is exact.
+- **What the security review changed (2026-10-22):**
+  - The sample data uses fictional board members (same initials as the real ones, so avatars and Figma frames still read the same). The demo page is public and needs no sign-in, so real names beside made-up quotes, budget approvals and admin roles were not acceptable.
+  - `BTX_FORCE_MOCK` accepts `1`, `true` or `yes` (any case, spaces trimmed): a typo must not turn the demo into a second live Ops Hub that asks App Review for a code.
+  - Every route sends `X-Robots-Tag: noindex, nofollow`; the data layer also refuses to build a client when the flag is on.
+- **After the demo project is created and deployed, run:** `node scripts/check-demo-copy.mjs https://demo-ops.thebtxfoundation.org`. It fails unless the banner shows, no database address or key is in any script, and the push and cron endpoints refuse. Also read the project's first build log for a cron limit error (it builds the same `vercel.json`, which registers two daily crons; both answer 401 there).
 - **App Review notes text** (for the listing later): "Sign in with appreview@thebtxfoundation.org. That opens the app with sample data. Real board members sign in with a code sent to their email."
 
 ## After the PRs (later steps; not part of this build)

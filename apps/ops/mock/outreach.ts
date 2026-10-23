@@ -57,10 +57,10 @@ export const MOCK_PLAN: PlanData = {
   ],
   month: 'October',
   rows: [
-    { id: 'p1', date: 'Wed Oct 7', channel: 'instagram', what: 'Meet the board: Kelsey Davis', next: 'Next: Kelsey Davis approves the caption', owner: DANIA, state: { label: 'Waiting on the board', kind: 'text' }, phoneMeta: 'Wed Oct 7 · Instagram', phoneOwner: 'Dania Morris · Kelsey approves the caption' },
+    { id: 'p1', date: 'Wed Oct 7', channel: 'instagram', what: 'Meet the board: Keith Dawson', next: 'Next: Keith Dawson approves the caption', owner: DANIA, state: { label: 'Waiting on the board', kind: 'text' }, phoneMeta: 'Wed Oct 7 · Instagram', phoneOwner: 'Dana Mercer · Keith approves the caption' },
     { id: 'p2', date: 'Sat Oct 17', channel: 'instagram', what: 'Certification program teaser', next: 'Next: pick an owner', owner: 'unassigned', state: { label: 'Not started', kind: 'muted' }, phoneMeta: 'Sat Oct 17 · Instagram', phoneOwner: 'Unassigned · pick an owner' },
-    { id: 'p3', date: 'Fri Oct 23', channel: 'instagram', what: 'Legacy Scholarship winner', next: 'Starts once the winner is announced', owner: DANIA, state: { label: 'Not started', kind: 'muted' }, phoneMeta: 'Fri Oct 23 · Instagram', phoneOwner: 'Dania Morris' },
-    { id: 'p4', date: 'Fri Oct 30', channel: 'newsletter', what: 'October issue', next: 'Next: write the certification section', owner: DANIA, state: { label: 'Drafting', kind: 'pill' }, phoneMeta: 'Fri Oct 30 · Newsletter', phoneOwner: 'Dania Morris' },
+    { id: 'p3', date: 'Fri Oct 23', channel: 'instagram', what: 'Legacy Scholarship winner', next: 'Starts once the winner is announced', owner: DANIA, state: { label: 'Not started', kind: 'muted' }, phoneMeta: 'Fri Oct 23 · Instagram', phoneOwner: 'Dana Mercer' },
+    { id: 'p4', date: 'Fri Oct 30', channel: 'newsletter', what: 'October issue', next: 'Next: write the certification section', owner: DANIA, state: { label: 'Drafting', kind: 'pill' }, phoneMeta: 'Fri Oct 30 · Newsletter', phoneOwner: 'Dana Mercer' },
   ],
   staff: STAFF,
 };
@@ -74,10 +74,10 @@ export const MOCK_PLAN_STRESS: PlanData = {
     MOCK_PLAN.cards[3],
   ],
   rows: [
-    { id: 'p1', date: 'Wed Sep 30', channel: 'instagram', what: 'Meet the board: Kelsey Davis', next: 'Next: Cillisha Knights approves the caption', owner: DARIEN, state: { label: 'Waiting on the board', kind: 'text' }, phoneMeta: 'Wed Sep 30 · Instagram', phoneOwner: 'Darien Strachan · Cillisha K. approves the caption' },
+    { id: 'p1', date: 'Wed Sep 30', channel: 'instagram', what: 'Meet the board: Keith Dawson', next: 'Next: Camila Keane approves the caption', owner: DARIEN, state: { label: 'Waiting on the board', kind: 'text' }, phoneMeta: 'Wed Sep 30 · Instagram', phoneOwner: 'Dorian Sutton · Camila K. approves the caption' },
     { id: 'p2', date: 'Sat Oct 17', channel: 'instagram', what: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour', next: 'Next: pick an owner', owner: 'unassigned', state: { label: 'Not started', kind: 'muted' }, phoneMeta: 'Sat Oct 17 · Instagram', phoneOwner: 'Unassigned · pick an owner' },
-    { id: 'p3', date: 'Fri Oct 23', channel: 'instagram', what: 'Legacy Scholarship winner', next: 'Starts once the winner is announced', owner: DANIA, state: { label: 'Not started', kind: 'muted' }, phoneMeta: 'Fri Oct 23 · Instagram', phoneOwner: 'Dania Morris' },
-    { id: 'p4', date: 'Thu Dec 31', channel: 'newsletter', what: 'October issue', next: 'Next: write the certification section', owner: DANIA, state: { label: 'Drafting', kind: 'pill' }, phoneMeta: 'Thu Dec 31 · Newsletter', phoneOwner: 'Dania Morris' },
+    { id: 'p3', date: 'Fri Oct 23', channel: 'instagram', what: 'Legacy Scholarship winner', next: 'Starts once the winner is announced', owner: DANIA, state: { label: 'Not started', kind: 'muted' }, phoneMeta: 'Fri Oct 23 · Instagram', phoneOwner: 'Dana Mercer' },
+    { id: 'p4', date: 'Thu Dec 31', channel: 'newsletter', what: 'October issue', next: 'Next: write the certification section', owner: DANIA, state: { label: 'Drafting', kind: 'pill' }, phoneMeta: 'Thu Dec 31 · Newsletter', phoneOwner: 'Dana Mercer' },
   ],
   staff: [DARIEN, CILLISHA, DANIA, KELSEY, TOMI],
 };
@@ -94,15 +94,15 @@ export type Post = {
   owner: Owner;
   /** Steps done of 5. */
   done: number;
-  /** "Ready to send to Kelsey", "Not started", "Posted". */
+  /** "Ready to send to Keith", "Not started", "Posted". */
   state: string;
   /** Phone: the state text ("Waiting on the board") and whether it is a pill. */
   phoneState: string;
   group: 'upcoming' | 'posted';
-  /** The board member who approves ("Kelsey Davis"). */
+  /** The board member who approves ("Keith Dawson"). */
   approver: string;
   caption: string | null;
-  /** The placeholder in the photo box ("[Photo of Kelsey]"). */
+  /** The placeholder in the photo box ("[Photo of Keith]"). */
   photo: string;
   sent?: boolean;
 };
@@ -121,22 +121,22 @@ export type InstagramData = {
   staff: Person[];
 };
 
-const CAPTION_KELSEY = 'Meet Kelsey Davis, BTX board president and Clark School engineering alum. Kelsey interviews our scholarship applicants every cycle. Questions for Kelsey? Drop them below.';
+const CAPTION_KELSEY = 'Meet Keith Dawson, BTX board president and Clark School engineering alum. Keith interviews our scholarship applicants every cycle. Questions for Keith? Drop them below.';
 const CAPTION_LEGACY =
   'The Legacy Scholarship is open to Black engineering students at the University of Maryland. Each fall one student receives $2,000 toward tuition, books and fees. Applicants are scored by the BTX board on community engagement, resilience, leadership and academic promise.';
 
 export const MOCK_INSTAGRAM: InstagramData = {
-  subtitle: 'Next post Wed Oct 7 · ready to send to Kelsey',
+  subtitle: 'Next post Wed Oct 7 · ready to send to Keith',
   phoneSub: 'Outreach · October · 3 planned, 0 posted',
   monthLabel: 'October',
   monthCount: 3,
   target: '4 a month',
   posts: [
-    { id: 'p1', title: 'Meet the board: Kelsey Davis', date: 'Wed Oct 7', owner: DANIA, done: 2, state: 'Ready to send to Kelsey', phoneState: 'Waiting on the board', group: 'upcoming', approver: 'Kelsey Davis', caption: CAPTION_KELSEY, photo: '[Photo of Kelsey]' },
-    { id: 'p2', title: 'Certification program teaser', date: 'Sat Oct 17', owner: 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Kelsey Davis', caption: null, photo: '[Photo]' },
-    { id: 'p3', title: 'Legacy Scholarship winner', date: 'Fri Oct 23', owner: DANIA, done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Kelsey Davis', caption: null, photo: '[Photo]' },
-    { id: 'p4', title: 'Applications close Monday', date: 'Sat Sep 12', owner: DANIA, done: 5, state: 'Posted', phoneState: 'Posted', group: 'posted', approver: 'Kelsey Davis', caption: null, photo: '[Photo]' },
-    { id: 'p5', title: 'Interviews start this week', date: 'Tue Sep 15', owner: DANIA, done: 5, state: 'Posted', phoneState: 'Posted', group: 'posted', approver: 'Kelsey Davis', caption: null, photo: '[Photo]' },
+    { id: 'p1', title: 'Meet the board: Keith Dawson', date: 'Wed Oct 7', owner: DANIA, done: 2, state: 'Ready to send to Keith', phoneState: 'Waiting on the board', group: 'upcoming', approver: 'Keith Dawson', caption: CAPTION_KELSEY, photo: '[Photo of Keith]' },
+    { id: 'p2', title: 'Certification program teaser', date: 'Sat Oct 17', owner: 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Keith Dawson', caption: null, photo: '[Photo]' },
+    { id: 'p3', title: 'Legacy Scholarship winner', date: 'Fri Oct 23', owner: DANIA, done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Keith Dawson', caption: null, photo: '[Photo]' },
+    { id: 'p4', title: 'Applications close Monday', date: 'Sat Sep 12', owner: DANIA, done: 5, state: 'Posted', phoneState: 'Posted', group: 'posted', approver: 'Keith Dawson', caption: null, photo: '[Photo]' },
+    { id: 'p5', title: 'Interviews start this week', date: 'Tue Sep 15', owner: DANIA, done: 5, state: 'Posted', phoneState: 'Posted', group: 'posted', approver: 'Keith Dawson', caption: null, photo: '[Photo]' },
   ],
   pastLabel: 'September, posted',
   pastCount: 2,
@@ -145,13 +145,13 @@ export const MOCK_INSTAGRAM: InstagramData = {
 
 export const MOCK_INSTAGRAM_STRESS: InstagramData = {
   ...MOCK_INSTAGRAM,
-  subtitle: 'Next post Wed Sep 30 · ready to send to Darien',
+  subtitle: 'Next post Wed Sep 30 · ready to send to Dorian',
   phoneSub: 'Outreach · October · 12 planned, 0 posted',
   monthCount: 12,
   posts: [
-    { id: 'p1', title: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour', date: 'Wed Sep 30', owner: DANIA, done: 2, state: 'Ready to send to Darien', phoneState: 'Waiting on the board', group: 'upcoming', approver: 'Darien Strachan', caption: CAPTION_LEGACY, photo: '[Photo]' },
-    { id: 'p2', title: 'Certification program teaser', date: 'Sat Oct 17', owner: 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Darien Strachan', caption: null, photo: '[Photo]' },
-    { id: 'p3', title: 'Legacy Scholarship winner', date: 'Fri Oct 23', owner: DARIEN, done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Darien Strachan', caption: null, photo: '[Photo]' },
+    { id: 'p1', title: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour', date: 'Wed Sep 30', owner: DANIA, done: 2, state: 'Ready to send to Dorian', phoneState: 'Waiting on the board', group: 'upcoming', approver: 'Dorian Sutton', caption: CAPTION_LEGACY, photo: '[Photo]' },
+    { id: 'p2', title: 'Certification program teaser', date: 'Sat Oct 17', owner: 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Dorian Sutton', caption: null, photo: '[Photo]' },
+    { id: 'p3', title: 'Legacy Scholarship winner', date: 'Fri Oct 23', owner: DARIEN, done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: 'Dorian Sutton', caption: null, photo: '[Photo]' },
     MOCK_INSTAGRAM.posts[3],
     MOCK_INSTAGRAM.posts[4],
   ],
@@ -170,7 +170,7 @@ export type Section = {
   /** Laptop second line ("Done", "Not started", "Next section to write"). */
   sub: string;
   owner: Owner;
-  /** "Waits for Fri Oct 23" or "Next · Tomi Falodun", shown before the owner. */
+  /** "Waits for Fri Oct 23" or "Next · Toby Faraday", shown before the owner. */
   tag?: string;
   /** Phone: the line under the title and the right-hand label (a pill, or plain text when `phoneText`). */
   phoneSub: string;
@@ -197,7 +197,7 @@ export type NewsletterData = {
 };
 
 export const MOCK_NEWSLETTER: NewsletterData = {
-  subtitle: "Next: Tomi's certification section · sends Fri Oct 30",
+  subtitle: "Next: Toby's certification section · sends Fri Oct 30",
   phoneSub: 'Outreach · monthly email · back Fri Oct 30',
   issueTitle: 'October issue',
   previewTitle: 'BTX news, October 2026',
@@ -205,11 +205,11 @@ export const MOCK_NEWSLETTER: NewsletterData = {
   sendOn: 'Fri Oct 30',
   owner: DANIA,
   sections: [
-    { id: 'n1', title: 'Board spotlight: Kelsey Davis', blurb: 'Meet the board president and Clark School alum.', state: 'done', sub: 'Done', owner: DANIA, phoneSub: 'Dania Morris', phoneLabel: 'Done' },
-    { id: 'n2', title: 'Legacy Scholarship winner', blurb: 'Who won, and what it means for them.', state: 'todo', sub: 'Can be written once the winner is announced', owner: DANIA, tag: 'Waits for Fri Oct 23', phoneSub: 'Dania Morris · waits for Fri Oct 23', phoneLabel: 'Waiting' },
-    { id: 'n3', title: 'Certification program is coming', short: 'Certification program', blurb: 'BTX will pay exam fees for up to 5 students.', state: 'next', sub: 'Next section to write', owner: TOMI, tag: 'Next · Tomi Falodun', phoneSub: 'Tomi Falodun', phoneLabel: 'Next · Tomi', phoneText: true },
-    { id: 'n4', title: 'Ways to give before Giving Tuesday', blurb: 'Three easy ways to help before Dec 1.', state: 'todo', sub: 'Not started', owner: KELSEY, phoneSub: 'Kelsey Davis', phoneLabel: 'Not started' },
-    { id: 'n5', title: 'Dates for November', blurb: 'What is coming up and where to join.', state: 'todo', sub: 'Not started', owner: DANIA, phoneSub: 'Dania Morris', phoneLabel: 'Not started' },
+    { id: 'n1', title: 'Board spotlight: Keith Dawson', blurb: 'Meet the board president and Clark School alum.', state: 'done', sub: 'Done', owner: DANIA, phoneSub: 'Dana Mercer', phoneLabel: 'Done' },
+    { id: 'n2', title: 'Legacy Scholarship winner', blurb: 'Who won, and what it means for them.', state: 'todo', sub: 'Can be written once the winner is announced', owner: DANIA, tag: 'Waits for Fri Oct 23', phoneSub: 'Dana Mercer · waits for Fri Oct 23', phoneLabel: 'Waiting' },
+    { id: 'n3', title: 'Certification program is coming', short: 'Certification program', blurb: 'BTX will pay exam fees for up to 5 students.', state: 'next', sub: 'Next section to write', owner: TOMI, tag: 'Next · Toby Faraday', phoneSub: 'Toby Faraday', phoneLabel: 'Next · Toby', phoneText: true },
+    { id: 'n4', title: 'Ways to give before Giving Tuesday', blurb: 'Three easy ways to help before Dec 1.', state: 'todo', sub: 'Not started', owner: KELSEY, phoneSub: 'Keith Dawson', phoneLabel: 'Not started' },
+    { id: 'n5', title: 'Dates for November', blurb: 'What is coming up and where to join.', state: 'todo', sub: 'Not started', owner: DANIA, phoneSub: 'Dana Mercer', phoneLabel: 'Not started' },
   ],
   subscribers: '[number]',
   lastIssue: '[month year]',
@@ -219,14 +219,14 @@ export const MOCK_NEWSLETTER: NewsletterData = {
 
 export const MOCK_NEWSLETTER_STRESS: NewsletterData = {
   ...MOCK_NEWSLETTER,
-  subtitle: "Next: Darien's certification section · sends Thu Dec 31",
+  subtitle: "Next: Dorian's certification section · sends Thu Dec 31",
   phoneSub: 'Outreach · monthly email · back Thu Dec 31',
   sendOn: 'Thu Dec 31',
   owner: CILLISHA,
   sections: [
     MOCK_NEWSLETTER.sections[0],
-    { ...MOCK_NEWSLETTER.sections[1], tag: 'Waits for Wed Sep 30', phoneSub: 'Dania Morris · waits for Wed Sep 30' },
-    { ...MOCK_NEWSLETTER.sections[2], owner: DARIEN, tag: 'Next · Darien Strachan', phoneSub: 'Darien Strachan', phoneLabel: 'Next · Darien' },
+    { ...MOCK_NEWSLETTER.sections[1], tag: 'Waits for Wed Sep 30', phoneSub: 'Dana Mercer · waits for Wed Sep 30' },
+    { ...MOCK_NEWSLETTER.sections[2], owner: DARIEN, tag: 'Next · Dorian Sutton', phoneSub: 'Dorian Sutton', phoneLabel: 'Next · Dorian' },
     { id: 'n4', title: 'Announce the Legacy Scholarship at the NSBE event and cocktail hour', blurb: 'Three easy ways to help before Dec 1.', state: 'todo', sub: 'Not started', owner: 'unassigned', phoneSub: 'Unassigned', phoneLabel: 'Not started' },
     MOCK_NEWSLETTER.sections[4],
   ],

@@ -5,10 +5,10 @@
 // tables once they exist; swap the import there and the pages do not change.
 import type { BudgetCategory, BudgetStep, Comment, Fund, GiftRow, GrantRow, PersonRow, PlanState, SourceRow, SpendRow, Who, WideChecklist } from '@/lib/money-shared';
 
-const dania: Who = { kind: 'person', user_id: 'dm', name: 'Dania Morris', initials: 'DM' };
-const kelsey: Who = { kind: 'person', user_id: 'kd', name: 'Kelsey Davis', initials: 'KD' };
-const cillisha: Who = { kind: 'person', user_id: 'ck', name: 'Cillisha Knights', initials: 'CK' };
-const darien: Who = { kind: 'person', user_id: 'ds', name: 'Darien Strachan', initials: 'DS' };
+const dania: Who = { kind: 'person', user_id: 'dm', name: 'Dana Mercer', initials: 'DM' };
+const kelsey: Who = { kind: 'person', user_id: 'kd', name: 'Keith Dawson', initials: 'KD' };
+const cillisha: Who = { kind: 'person', user_id: 'ck', name: 'Camila Keane', initials: 'CK' };
+const darien: Who = { kind: 'person', user_id: 'ds', name: 'Dorian Sutton', initials: 'DS' };
 const none: Who = { kind: 'none' };
 const board: Who = { kind: 'group', name: 'Board' };
 
@@ -42,43 +42,43 @@ const PLAN = (due: string, from: string): PlanState => ({
 
 export const BUDGET_MOCK = {
   q3_spent_cents: 46_000,
-  funds: { cents: 1_860_000, as_of: '2026-10-02', by: 'Dania Morris' } satisfies Fund,
+  funds: { cents: 1_860_000, as_of: '2026-10-02', by: 'Dana Mercer' } satisfies Fund,
   categories: CATS(275_000, { sp: 25_000 }),
   recent: SPEND,
-  plan: PLAN('2026-10-06', 'Kelsey Davis'),
+  plan: PLAN('2026-10-06', 'Keith Dawson'),
   steps: [
-    { id: 's1', title: 'Log Q3 spending', owner: 'Dania Morris', due_on: '2026-10-02', done: true, now: 'Log Q3 spending', kind: 'step' },
-    { id: 's2', title: 'Draft the Q4 plan', owner: 'Kelsey Davis', due_on: '2026-10-01', done: true, now: 'Draft the Q4 plan', kind: 'step' },
-    { id: 's3', title: 'Approve Q4 budget', owner: 'Dania Morris', due_on: '2026-10-06', done: false, now: 'Approve', kind: 'approval' },
-    { id: 's4', title: 'Share the Q4 budget with the board', owner: 'Kelsey Davis', due_on: '2026-10-09', done: false, now: 'Share the budget', kind: 'step' },
+    { id: 's1', title: 'Log Q3 spending', owner: 'Dana Mercer', due_on: '2026-10-02', done: true, now: 'Log Q3 spending', kind: 'step' },
+    { id: 's2', title: 'Draft the Q4 plan', owner: 'Keith Dawson', due_on: '2026-10-01', done: true, now: 'Draft the Q4 plan', kind: 'step' },
+    { id: 's3', title: 'Approve Q4 budget', owner: 'Dana Mercer', due_on: '2026-10-06', done: false, now: 'Approve', kind: 'approval' },
+    { id: 's4', title: 'Share the Q4 budget with the board', owner: 'Keith Dawson', due_on: '2026-10-09', done: false, now: 'Share the budget', kind: 'step' },
   ] satisfies BudgetStep[],
   comments: {
     count: 1,
-    list: [{ id: 'cm1', name: 'Kelsey Davis', initials: 'KD', time: '8:02 AM', body: 'Looks right to me. The certification line is the new one.' }],
+    list: [{ id: 'cm1', name: 'Keith Dawson', initials: 'KD', time: '8:02 AM', body: 'Looks right to me. The certification line is the new one.' }],
   } satisfies { count: number; list: Comment[] },
-  chat: { name: 'Kelsey Davis', initials: 'KD', time: '9:20 AM', body: "I'll pull a list of grants we could apply for by the 12th." },
+  chat: { name: 'Keith Dawson', initials: 'KD', time: '9:20 AM', body: "I'll pull a list of grants we could apply for by the 12th." },
 };
 
 export const BUDGET_STRESS: typeof BUDGET_MOCK = {
   q3_spent_cents: 46_000,
-  funds: { cents: 19_000_000, as_of: '2026-10-02', by: 'Dania Morris' },
+  funds: { cents: 19_000_000, as_of: '2026-10-02', by: 'Dana Mercer' },
   categories: CATS(341_000, { sp: 0 }),
   recent: SPEND,
-  plan: PLAN('2026-12-31', 'Darien Strachan'),
+  plan: PLAN('2026-12-31', 'Dorian Sutton'),
   steps: [
-    { id: 's1', title: 'Log Q3 spending', owner: 'Dania Morris', due_on: '2026-09-30', done: true, now: 'Log Q3 spending', kind: 'step' },
-    { id: 's2', title: 'Draft the Q4 plan', owner: 'Darien Strachan', due_on: '2026-09-30', done: true, now: 'Draft the Q4 plan', kind: 'step' },
-    { id: 's3', title: 'Approve Q4 budget', owner: 'Dania Morris', due_on: '2026-12-31', done: false, now: 'Approve', kind: 'approval' },
-    { id: 's4', title: 'Share the Q4 budget with the board', owner: 'Cillisha Knights', due_on: '2026-12-31', done: false, now: 'Share the budget', kind: 'step' },
+    { id: 's1', title: 'Log Q3 spending', owner: 'Dana Mercer', due_on: '2026-09-30', done: true, now: 'Log Q3 spending', kind: 'step' },
+    { id: 's2', title: 'Draft the Q4 plan', owner: 'Dorian Sutton', due_on: '2026-09-30', done: true, now: 'Draft the Q4 plan', kind: 'step' },
+    { id: 's3', title: 'Approve Q4 budget', owner: 'Dana Mercer', due_on: '2026-12-31', done: false, now: 'Approve', kind: 'approval' },
+    { id: 's4', title: 'Share the Q4 budget with the board', owner: 'Camila Keane', due_on: '2026-12-31', done: false, now: 'Share the budget', kind: 'step' },
   ],
   comments: {
     count: 120,
     list: [
-      { id: 'cm1', name: 'Darien Strachan', initials: 'DS', time: '8:00 AM', body: 'Looks right to me. The certification line is the new one.' },
-      { id: 'cm2', name: 'Cillisha Knights', initials: 'CK', time: '9:30 PM', body: 'Approving tonight. Sponsorships is $0 for Q4 because the NSBE line is spent.' },
+      { id: 'cm1', name: 'Dorian Sutton', initials: 'DS', time: '8:00 AM', body: 'Looks right to me. The certification line is the new one.' },
+      { id: 'cm2', name: 'Camila Keane', initials: 'CK', time: '9:30 PM', body: 'Approving tonight. Sponsorships is $0 for Q4 because the NSBE line is spent.' },
     ],
   },
-  chat: { name: 'Cillisha Knights', initials: 'CK', time: '9:30 PM', body: "I'll pull a list of grants we could apply for by the 12th." },
+  chat: { name: 'Camila Keane', initials: 'CK', time: '9:30 PM', body: "I'll pull a list of grants we could apply for by the 12th." },
 };
 
 // ---------------------------------------------------------------- Fundraising
@@ -170,13 +170,13 @@ const P = (user_id: string, display_name: string, initials: string, title: strin
 });
 
 export const PEOPLE_MOCK: PersonRow[] = [
-  P('dm', 'Dania Morris', 'DM', 'Program lead', 'admin', '2026-10-04T10:00:00-04:00'),
-  P('kd', 'Kelsey Davis', 'KD', 'President', 'board', '2026-10-04T09:00:00-04:00'),
-  P('ck', 'Cillisha Knights', 'CK', 'Board member', 'board', '2026-10-02T15:00:00-04:00'),
-  P('md', 'Marcus Davis', 'MD', 'Board member', 'board', '2026-10-04T08:00:00-04:00'),
-  P('tf', 'Tomi Falodun', 'TF', 'Board member', 'board', '2026-10-01T12:00:00-04:00'),
-  P('cg', 'Chariah Ghee', 'CG', 'Board member', 'board', '2026-10-03T12:00:00-04:00'),
-  P('ds', 'Darien Strachan', 'DS', 'Board member', 'board', '2026-09-30T12:00:00-04:00'),
+  P('dm', 'Dana Mercer', 'DM', 'Program lead', 'admin', '2026-10-04T10:00:00-04:00'),
+  P('kd', 'Keith Dawson', 'KD', 'President', 'board', '2026-10-04T09:00:00-04:00'),
+  P('ck', 'Camila Keane', 'CK', 'Board member', 'board', '2026-10-02T15:00:00-04:00'),
+  P('md', 'Miles Donovan', 'MD', 'Board member', 'board', '2026-10-04T08:00:00-04:00'),
+  P('tf', 'Toby Faraday', 'TF', 'Board member', 'board', '2026-10-01T12:00:00-04:00'),
+  P('cg', 'Charlie Gaines', 'CG', 'Board member', 'board', '2026-10-03T12:00:00-04:00'),
+  P('ds', 'Dorian Sutton', 'DS', 'Board member', 'board', '2026-09-30T12:00:00-04:00'),
 ];
 
 export const PEOPLE_STRESS: PersonRow[] = [

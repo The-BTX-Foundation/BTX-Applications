@@ -3,8 +3,8 @@
 // Board members (Figma laptop and phone): the board members, each person's title, whether they have admin rights and last
 // sign-in, and what admin rights add. One staff role, board member; app_metadata.role 'admin' means a board member with admin
 // rights. Only a board member with admin rights sees "Give admin rights" / "Remove admin rights", and nobody gets it on their
-// own row; the server action and the database check the same rules again. The change asks first ("Give Kelsey Davis admin
-// rights?"), then shows "Kelsey Davis now has admin rights · Undo".
+// own row; the server action and the database check the same rules again. The change asks first ("Give Keith Dawson admin
+// rights?"), then shows "Keith Dawson now has admin rights · Undo".
 // MOCK mode keeps the roles in lib/mock-store.ts. LIVE mode calls the server action in lib/people-actions.ts, which writes
 // app_metadata with the service key. There is no invite control (owner, 2026-10-12): accounts are set up server side
 // through inviteStaff() in lib/people-actions.ts.

@@ -51,7 +51,7 @@ export function taskOwner(assigneeIds: string[], group: unknown, staff: StaffMap
 /** An owner column value for an owner_id (null = nobody). */
 export const personOrNull = (id: unknown, staff: StaffMap): Person | null => (id ? (staff.get(s(id)) ?? null) : null);
 
-/** "Dania Morris · Thu Oct 22" for a phone second line. */
+/** "Dana Mercer · Thu Oct 22" for a phone second line. */
 export function ownerDueLine(owner: Owner, due: string | null | undefined, fallback = 'Not scheduled'): string {
   const who = owner === 'unassigned' ? 'Unassigned' : owner ? owner.name : '';
   const when = due ? dateOnlyLabel(due) : '';
