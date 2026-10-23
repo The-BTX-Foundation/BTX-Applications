@@ -1,0 +1,15 @@
+{
+  "name": "@btx/ops-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BTX Ops Hub iPhone app shell (Capacitor). Not a workspace package: see README.md.",
+  "dependencies": {
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/push-notifications": "8.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "typescript": "5.9.3"
+  }
+}

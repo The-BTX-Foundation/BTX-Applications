@@ -25,3 +25,14 @@ supabase/backups/
 # Test output
 test-results
 playwright-report
+
+# BTX Ops Hub iPhone app (apps/ops/mobile): generated or local-only
+apps/ops/mobile/node_modules
+apps/ops/mobile/ios/App/App/public
+apps/ops/mobile/ios/App/App/capacitor.config.json
+apps/ops/mobile/ios/App/App/config.xml
+apps/ops/mobile/ios/App/build
+apps/ops/mobile/ios/App/output
+apps/ops/mobile/ios/capacitor-cordova-ios-plugins
+DerivedData
+xcuserdata
