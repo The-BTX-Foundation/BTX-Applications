@@ -22,13 +22,13 @@ State as of 2026-10-22 night. The listing is a **draft** in App Store Connect (a
 | Review notes | Written (below). Sign-in line: `appreview@thebtxfoundation.org` opens the sample-data copy |
 | Build | **Not attached yet** (see "Build 2") |
 
-## Build 2 also fixes Face ID
+## Build 3 is the one that goes to the App Store (builds 1 and 2 were internal-only)
 
-Build 1 asked for the iPhone passcode instead of Face ID: `Info.plist` had no `NSFaceIDUsageDescription`, so iOS never offered Face ID to the app. Build 2 adds it. Checked in the simulator (enrolled face: the Face ID prompt appears over the lock cover, a simulated match unlocks it); Dominick re-checks on his phone from build 2.
+Build 1 asked for the iPhone passcode instead of Face ID: `Info.plist` had no `NSFaceIDUsageDescription`, so iOS never offered Face ID to the app. Build 2 added it. Checked in the simulator (enrolled face: the Face ID prompt appears over the lock cover, a simulated match unlocks it); Dominick re-checks on his phone from build 2.
 
-## Build 2 (why build 1 can't go to the App Store)
+## Why builds 1 and 2 can't go to the App Store
 
-Build 1 was uploaded as "TestFlight Internal Only", and Apple never lets an internal-only build into the App Store (attaching it fails with "pre-release build could not be added"). Build 2 is the same code with the number bumped (`CURRENT_PROJECT_VERSION = 2`), distributed with **TestFlight & App Store**, then attached to version 1.0. Route: Claude archives and copies the archive into Xcode's Organizer; Dominick clicks Distribute App > TestFlight & App Store > Distribute (Claude's App Manager key can't sign App Store builds; see `apps/ops/mobile/README.md`).
+Builds 1 and 2 were both uploaded as internal-only (`buildAudienceType = INTERNAL_ONLY`), and Apple never lets an internal-only build into the App Store: attaching fails with "pre-release build could not be added". Build 3 is the same code with the number bumped (`CURRENT_PROJECT_VERSION = 3`; each upload needs a new number). In Organizer, **Distribute App > App Store Connect > TestFlight & App Store** (not "TestFlight Internal Only"), then Claude checks `buildAudienceType` is not `INTERNAL_ONLY` before attaching it to version 1.0. Route: Claude archives and copies the archive into Xcode's Organizer; Dominick clicks Distribute App > TestFlight & App Store > Distribute (Claude's App Manager key can't sign App Store builds; see `apps/ops/mobile/README.md`).
 
 ## Review notes (as saved in App Review Information)
 
@@ -69,10 +69,15 @@ Form: https://developer.apple.com/contact/request/unlisted-app/ . Draft answers,
 - **Link or Custom App:** link (Apple Business Manager doesn't fit: personal phones).
 - Traps from the Driver Portal: the people and device fields take digits only; the acknowledgment box is the Account Holder's to tick; **Unlisted is permanent** (never back to public or private). Don't submit the app before Apple's email.
 
+## Unlisted request: Apple wants the app submitted first (corrected 2026-10-23)
+
+The first draft of this plan said to file the Unlisted request before submitting. Apple's own form says: "Unlisted apps must be ready for final distribution and submitted for review. Requests for apps in a beta or pre-release state will be declined." The Driver Portal's request was also filed after its app was in review (rejected 3.2, then request, approved, resubmitted). So the order is: build attached, privacy page live, App Privacy published, **submit for review with release set to manual**, then file the request with "submitted for review: Yes". If Apple rejects the first review under 3.2, that is expected; wait for the Unlisted email, switch Pricing and Availability > App Distribution Methods to Unlisted, and resubmit. Manual release means a public listing can never go live by accident. The form resets if the page reloads, so fill it in one sitting.
+
 ## Order of the remaining steps
 
 1. Dominick: Face ID check on the real phone (build 1).
 2. Btx-Website#71 merged and the privacy page promoted live (Dominick's `promote`).
-3. Claude: archive build 2; Dominick distributes it (TestFlight & App Store); Claude attaches it.
-4. Dominick: App Privacy answers, review contact phone, Unlisted request.
-5. After Apple's Unlisted email: Pricing and Availability > App Distribution Methods > Unlisted; Claude checks the draft; Dominick submits for review.
+3. Claude: archive build 3; Dominick distributes it (TestFlight & App Store); Claude checks the audience and attaches it.
+4. Dominick: App Privacy published (done 2026-10-23); review contact phone is saved.
+5. Dominick submits version 1.0 for review (release: manual), then files the Unlisted request (Claude fills the form; he ticks the box and submits).
+6. After Apple's Unlisted email: Pricing and Availability > App Distribution Methods > Unlisted; resubmit if Apple rejected under 3.2.

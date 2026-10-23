@@ -46,6 +46,7 @@ Capacitor 8 uses Swift Package Manager, so there is no `.xcworkspace`: always pa
 3. TestFlight builds expire after 90 days; the App Store build does not.
 4. Claude's App Store Connect key (App Manager) can register the app ID and archive with `-allowProvisioningUpdates`, but it cannot sign an App Store build (Apple's cloud signing needs an Admin key or a signed-in person). Claude archives and copies the archive into `~/Library/Developer/Xcode/Archives/`; Dominick clicks Distribute App → TestFlight Internal Only in Xcode's Organizer. Build 1 went this way on 2026-10-22.
 5. `NSFaceIDUsageDescription` must stay in `Info.plist`. Without it iOS never offers Face ID to the app and goes straight to the passcode (build 1 shipped without it; found on Dominick's phone, fixed in build 2). Face ID can be checked in a simulator: Features > Face ID > Enrolled, or `xcrun simctl spawn <device> notifyutil -s com.apple.BiometricKit.enrollmentChanged 1` then `-p` it; launch the app, then `notifyutil -p com.apple.BiometricKit_Sim.pearl.match` unlocks it.
-6. `ITSAppUsesNonExemptEncryption` is `false` in `Info.plist` (the app only uses iOS's built-in HTTPS), so TestFlight doesn't stop each build for the encryption question.
+6. Choose **TestFlight & App Store** when distributing. "TestFlight Internal Only" builds can never be attached to an App Store version (builds 1 and 2 of the Ops Hub were uploaded that way), and every upload needs a new `CURRENT_PROJECT_VERSION`.
+7. `ITSAppUsesNonExemptEncryption` is `false` in `Info.plist` (the app only uses iOS's built-in HTTPS), so TestFlight doesn't stop each build for the encryption question.
 
 Archives and uploads need Dominick's named go (for example "upload BTX Ops Hub build 2"); see steps 4 and 5.
