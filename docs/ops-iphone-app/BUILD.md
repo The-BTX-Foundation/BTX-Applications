@@ -45,7 +45,7 @@ Create `apps/ops/mobile/`. This is **not** a workspace package: keep it out of t
   - appId `org.thebtxfoundation.opshub`, appName `BTX Ops Hub`, webDir `native-shell`
   - `server.url` `https://ops.thebtxfoundation.org`, `server.errorPath` `offline.html`, `cleartext` false
   - `server.allowNavigation` `['demo-ops.thebtxfoundation.org']` (for PR C)
-  - `ios.contentInset` `'never'` (the Ops Hub handles safe areas itself; check it in the simulator), `ios.backgroundColor` `#f4f5f2ff`
+  - `ios.contentInset` `'automatic'` (the Ops Hub has no safe-area CSS, so with `'never'` its header sits under the status bar and the tab bar under the home indicator; found in the PR B simulator run), `ios.backgroundColor` `#f4f5f2ff`
   - `plugins.PushNotifications.presentationOptions` `['badge','sound','alert']`
 - **iOS project** (`npx cap add ios`; Capacitor 8 uses SPM, so there is no .xcworkspace and builds use `-project ios/App/App.xcodeproj`):
   - DEVELOPMENT_TEAM `6H2R38WKP3` (Yachtsy, LLC)
