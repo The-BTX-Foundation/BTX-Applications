@@ -6,6 +6,7 @@ import { after, NextResponse } from 'next/server';
 import { bookSlot } from '@btx/data';
 import { createServiceClient } from '@btx/data/server';
 import { readCycleInfo, readInterviews, supabaseMailLog } from '@btx/emails';
+import { deliverPush } from '@btx/push';
 import { bookAndNotify } from '@/lib/book-emails';
 import { sessionClient } from '@/lib/supabase-server';
 
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     interviews: (slotIds) => readInterviews(admin, { slotIds }),
     cycleInfo: (id) => readCycleInfo(admin, id),
     log: supabaseMailLog(admin),
+    push: (items) => deliverPush(admin, items),
     from: process.env.PORTAL_EMAIL_FROM,
     portalUrl: origin,
     later: (work) => {

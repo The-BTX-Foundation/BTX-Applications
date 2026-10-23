@@ -49,6 +49,14 @@ export async function postMessage(
     .select("id, created_at")
     .single();
   if (error || !data) throw error ?? new Error("not saved");
+  // Tell the server a message was posted so it can push "Board chat" to the others. Fire and forget: a push problem
+  // never changes the message the person just sent.
+  void fetch("/api/push/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messageId: String(data.id) }),
+    keepalive: true,
+  }).catch(() => undefined);
   return { id: String(data.id), createdAt: String(data.created_at) };
 }
 

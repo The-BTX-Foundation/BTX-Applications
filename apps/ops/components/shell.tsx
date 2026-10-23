@@ -14,6 +14,7 @@ import { GROUPS, PEOPLE, TOP, type NavGroup } from '@/lib/nav';
 import { NAV_COUNTS, NAV_COUNTS_STRESS_MENU, NAV_COUNTS_STRESS_SIDE, NAV_COUNTS_STRESS_TABS, type Counts } from '@/mock/nav';
 import { accountFromRoleText, setReviewAccount } from '@/lib/review-account';
 import { reviewScreen } from '@/lib/review-screens';
+import { NotificationsRow } from './notifications-row';
 import { OIcon } from './icons';
 
 type ShellUser = { name: string; initials: string; roleText: string };
@@ -257,6 +258,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
               <OIcon name="people" size={22} />
               <span className="o-m-l">{PEOPLE.label}</span>
             </Link>
+            <NotificationsRow />
             <UserCard user={user} phone />
           </nav>
         </div>

@@ -206,3 +206,13 @@ Wrap fire-and-forget sends in Vercel's `waitUntil`, loading `@vercel/functions` 
 - **Submit.**
 
 The Driver Portal's notes (`~/.claude/projects/-Users-dominicklittleton-Yachtsy-DriverPortal/memory/driver-push-ios-app.md`) have every listing and review lesson.
+
+## Status after PR B (push)
+
+Built: interview booked / moved / cancelled (Portal booking route, and the Ops Hub's interviewer swap), interviews tomorrow (prep cron), availability reminder, due tomorrow (reminder cron), Board chat, and the admin's test push. Every push is two rows (title and one short line), applicants appear only as "Applicant 15", and the chat push never carries the message text.
+
+Not built, on purpose:
+- **New task for you.** The Ops Hub only adds a task for the person who is signed in (`apps/ops/components/tasks/tasks-writes.ts`), so there is nobody to tell. Add it where a task gets assigned to someone else when that exists.
+- **Approval waiting.** Nothing in the Ops Hub creates approval requests yet.
+
+Gated, in order, after the merge: apply `supabase/migrations/20261022200000_ops_push.sql` to the production database; Dominick creates the Apple push key and sets `APNS_KEY` and `APNS_KEY_ID` in both Vercel projects; Claude sets `APNS_TEAM_ID`, `APNS_BUNDLE_ID` and `APNS_PRODUCTION`, then redeploys both.

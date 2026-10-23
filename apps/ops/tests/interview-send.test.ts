@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InterviewRow, Mail, MailClaim, MailLog, SendResult } from '@btx/emails';
+import type { PushItem } from '@btx/push';
 import { sendAvailabilityReminders, sendPrepEmails, sendRebalanceEmails, sendReminderEmails, sendVideoLinkEmails, tomorrowEastern, type InterviewDeps, type InterviewMailData } from '@/lib/email/interviews';
 
 type Send = (mail: Mail, from?: string) => Promise<SendResult>;
@@ -175,6 +176,26 @@ describe('sendRebalanceEmails', () => {
     expect(added).toContain('UID:interview-a1@thebtxfoundation.org');
     expect(await sendRebalanceEmails('c1', moves, deps(data, log, send))).toMatchObject({ sent: 0, skipped: 2 });
   });
+  it('also pushes "Interview booked" to the interviewer added and "Interview cancelled" to the one removed', async () => {
+    const { data } = fakeData([row({ interviewers: [kelsey, tomi] })]);
+    const push = vi.fn<(items: PushItem[]) => Promise<unknown>>(async () => ({}));
+    await sendRebalanceEmails('c1', [{ slotId: 's1', from: 'u9', to: 'u2', fromName: 'Old Person' }], deps(data, fakeLog().log, okSend(), { push }));
+    expect(push.mock.calls[0][0].map((i) => [i.userId, i.title, i.body])).toEqual([
+      ['u2', 'Interview booked', 'Applicant 15 · Wed Nov 11, 6:00 PM'],
+      ['u9', 'Interview cancelled', 'Applicant 15 · Wed Nov 11, 6:00 PM'],
+    ]);
+    expect(JSON.stringify(push.mock.calls)).not.toMatch(/Ada|Okafor|APP-2026/);
+  });
+  it('sends no pushes for no moves, and a failing push does not change the result', async () => {
+    const { data } = fakeData([row({ interviewers: [kelsey, tomi] })]);
+    const push = vi.fn<(items: PushItem[]) => Promise<unknown>>(async () => ({}));
+    await sendRebalanceEmails('c1', [], deps(data, fakeLog().log, okSend(), { push }));
+    expect(push).not.toHaveBeenCalled();
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await sendRebalanceEmails('c1', [{ slotId: 's1', from: 'u9', to: 'u2', fromName: 'Old Person' }], deps(data, fakeLog().log, okSend(), { push: async () => Promise.reject(new Error('apns')) }));
+    expect(r).toMatchObject({ ok: true, sent: 2 });
+    quiet.mockRestore();
+  });
   it('is admin only', async () => {
     const { data } = fakeData([row()]);
     const { log } = fakeLog();
@@ -268,5 +289,31 @@ describe('sendAvailabilityReminders', () => {
     const send = okSend();
     await sendAvailabilityReminders('c1', deps(data, log, send, as('u0')));
     expect(send.mock.calls[0][0].subject).toBe('Give your interview availability');
+  });
+
+  it('also pushes the same nudge to the same people, once a day each', async () => {
+    const { data } = fakeData([], board, closes);
+    const { log } = fakeLog();
+    const push = vi.fn<(items: PushItem[]) => Promise<unknown>>(async () => ({}));
+    await sendAvailabilityReminders('c1', deps(data, log, okSend(), as('u0', { push })));
+    const items = push.mock.calls[0][0];
+    expect(items.map((i) => i.userId)).toEqual(['u2', 'u3']); // not Dania (caller), Kelsey (sent) or the one with no address
+    expect(items[0]).toMatchObject({ key: 'availability:c1:2026-11-04:u2', title: 'Give your interview availability', body: 'Add your times by Thu Nov 5' });
+  });
+
+  it('a failing push never changes the emails result', async () => {
+    const { data } = fakeData([], board, closes);
+    const { log } = fakeLog();
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await sendAvailabilityReminders('c1', deps(data, log, okSend(), as('u0', { push: async () => Promise.reject(new Error('apns down')) })));
+    expect(r).toMatchObject({ ok: true, sent: 2, names: ['Marcus Davis', 'Darien Strachan'] });
+    quiet.mockRestore();
+  });
+
+  it('sends no push when nobody is waiting', async () => {
+    const push = vi.fn<(items: PushItem[]) => Promise<unknown>>(async () => ({}));
+    const { data } = fakeData([], [member('u1', 'Kelsey Davis', '2026-11-02T15:00:00Z')], closes);
+    await sendAvailabilityReminders('c1', deps(data, fakeLog().log, okSend(), as('u0', { push })));
+    expect(push).not.toHaveBeenCalled();
   });
 });
