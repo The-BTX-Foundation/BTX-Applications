@@ -15,6 +15,7 @@ import { OIcon } from '@/components/icons';
 import { PageHeader } from '@/components/page-header';
 import { Dialog } from '@/components/money/ui';
 import { Toast } from '@/components/money/ui';
+import { TestPushButton } from './test-push';
 import { dayLabel } from '@/lib/format';
 import { useMockState } from '@/lib/mock-store';
 import { changeRoleAction } from '@/lib/people-actions';
@@ -152,6 +153,8 @@ export function PeopleView({ data, demo, role }: { data: PeopleData; demo?: stri
           </div>
           <p>{EXPLAINER}</p>
         </section>
+
+        {isAdmin ? <TestPushButton /> : null}
 
         <section className="o-card mn-plist o-ph" aria-label="Board members" data-review="Board members list">
           {people.map((p) => (

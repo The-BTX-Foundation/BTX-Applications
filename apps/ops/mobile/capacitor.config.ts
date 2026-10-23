@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
     allowNavigation: ['demo-ops.thebtxfoundation.org'],
   },
   ios: {
-    contentInset: 'never',
+    contentInset: 'automatic',
     backgroundColor: '#f4f5f2ff',
   },
   plugins: {

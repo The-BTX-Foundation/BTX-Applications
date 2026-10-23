@@ -39,9 +39,21 @@ import {
   type SendResult,
 } from '@btx/emails';
 import type { RebalanceMove } from '../interview-flow-db';
+import { easternDay, planAvailabilityPushes, planBookedPushes, planCancelledPushes, type PushItem } from '@btx/push';
 import { defaultIsAdmin } from './send';
+import { sendPushes } from '../push/server';
 
 const DEFAULT_PORTAL_URL = 'https://apply.thebtxfoundation.org';
+
+/** Sends pushes beside the emails. Never throws: a push problem must not change what the emails report. */
+async function pushQuietly(deps: InterviewDeps, items: PushItem[]): Promise<void> {
+  if (items.length === 0) return;
+  try {
+    await (deps.push ?? ((list: PushItem[]) => sendPushes(list)))(items);
+  } catch (err) {
+    console.error('[push] interview pushes failed', err instanceof Error ? err.message : 'unknown');
+  }
+}
 
 export type InterviewMailResult =
   | { ok: true; kind: 'prep' | 'reminder' | 'rebalance' | 'video-link' | 'availability-reminder'; sent: number; skipped: number; failed: number; notConfigured: boolean; at: string; /** availability-reminder only: the full names of who got one. */ names?: string[] }
@@ -68,6 +80,8 @@ export type InterviewDeps = {
   callerId?: () => Promise<string | null>;
   send?: (mail: Mail, from: string | undefined) => Promise<SendResult>;
   now?: () => Date;
+  /** Sends pushes (the availability reminder also goes out as a push). The default uses the service role and the Apple key. */
+  push?: (items: PushItem[]) => Promise<unknown>;
   /** Milliseconds between real sends (Resend allows about two a second). */
   pauseMs?: number;
   portalUrl?: string;
@@ -212,6 +226,14 @@ export async function sendRebalanceEmails(cycleId: string, moves: Pick<Rebalance
     plans.push(...planRebalance(row, { from: { name: m.fromName, email: await s.data.userEmail(m.from) }, toUserId: m.to }, ctxFor(s, info)));
   }
   const t = await run(s, plans);
+  // The interviewer added gets "Interview booked" and the one removed gets "Interview cancelled" on their phones.
+  await pushQuietly(
+    deps,
+    moves.flatMap((m) => {
+      const row = bySlot.get(m.slotId);
+      return row ? [...planBookedPushes({ ...row, interviewers: row.interviewers.filter((p) => p.userId === m.to) }, 'booked'), ...planCancelledPushes({ ...row, interviewers: [{ userId: m.from }] })] : [];
+    }),
+  );
   return { ok: true, kind: 'rebalance', ...t, at: s.now().toISOString() };
 }
 
@@ -239,6 +261,8 @@ export async function sendAvailabilityReminders(cycleId: string, deps: Interview
   const people = waiting.map((m) => ({ name: m.name, email: m.email! }));
   const sentTo: string[] = [];
   const t = await run(s, planAvailabilityReminders(cycleId, people, closes, ctxFor(s, info)), sentTo);
+  // The same nudge as a push, to the same people. A push problem never changes the emails' result.
+  await pushQuietly(deps, planAvailabilityPushes({ cycleId, userIds: waiting.map((m) => m.userId), closesAt: closes, today: easternDay(s.now()) }));
   const got = new Set(sentTo);
   return { ok: true, kind: 'availability-reminder', ...t, names: people.filter((p) => got.has(p.email)).map((p) => p.name), at: s.now().toISOString() };
 }

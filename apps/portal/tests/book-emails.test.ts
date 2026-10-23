@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InterviewRow, Mail, MailClaim, MailLog, SendResult } from '@btx/emails';
 import type { BookResult } from '@btx/data';
+import type { PushItem } from '@btx/push';
 import { bookAndNotify, type BookEmailDeps } from '@/lib/book-emails';
 
 type Send = (mail: Mail, from?: string) => Promise<SendResult>;
@@ -120,6 +121,73 @@ describe('bookAndNotify', () => {
     await bookAndNotify('new', undefined, s.d);
     expect(s.send).not.toHaveBeenCalled();
     await deferred!();
+    expect(s.send).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('bookAndNotify pushes', () => {
+  const pushes = (s: ReturnType<typeof setup>) => {
+    const push = vi.fn<(items: PushItem[]) => Promise<unknown>>(async () => ({}));
+    s.d.push = push;
+    return push;
+  };
+  const sent = (push: ReturnType<typeof pushes>) => push.mock.calls.flatMap((c) => c[0]);
+
+  it('a first booking pushes "Interview booked" to both interviewers, with the applicant number and no name', async () => {
+    const s = setup({ ok: true, result: 'booked' }, null, [slot('new', '2026-11-12T00:00:00Z')]);
+    const push = pushes(s);
+    await bookAndNotify('new', undefined, s.d);
+    const items = sent(push);
+    expect(items.map((i) => i.userId).sort()).toEqual(['u1', 'u2']);
+    expect(items.every((i) => i.title === 'Interview booked')).toBe(true);
+    expect(items.map((i) => `${i.title} ${i.body}`).join(' ')).not.toMatch(/Ada|Okafor|APP-1/);
+    expect(items[0].body).toMatch(/^Applicant /);
+  });
+
+  it('a switch pushes "moved" to the new pair and "cancelled" only to old interviewers who left', async () => {
+    const old = slot('old', '2026-11-13T00:00:00Z', [person('u1', 'Kelsey Davis', 'k@btx.org'), person('u3', 'Old One', 'o1@btx.org')]);
+    const s = setup({ ok: true, result: 'switched' }, 'old', [old, slot('new', '2026-11-12T00:00:00Z')]);
+    const push = pushes(s);
+    await bookAndNotify('new', undefined, s.d);
+    const items = sent(push);
+    expect(items.filter((i) => i.title === 'Interview moved').map((i) => i.userId).sort()).toEqual(['u1', 'u2']);
+    expect(items.filter((i) => i.title === 'Interview cancelled').map((i) => i.userId)).toEqual(['u3']);
+  });
+
+  it('every booking action is its own push: A, B, A, B all notify, and the key names the student', async () => {
+    const s = setup({ ok: true, result: 'switched' }, 'old', [slot('old', '2026-11-13T00:00:00Z'), slot('new', '2026-11-12T00:00:00Z')]);
+    const push = pushes(s);
+    await bookAndNotify('new', undefined, s.d);
+    await bookAndNotify('new', undefined, s.d);
+    const [first, second] = push.mock.calls.map((c) => c[0].filter((i) => i.title === 'Interview moved').map((i) => i.key));
+    expect(first.every((k) => k.startsWith('interview-moved:new:a1:'))).toBe(true);
+    expect(first.filter((k) => second.includes(k))).toEqual([]);
+  });
+
+  it('sends no pushes for unchanged, taken or an error', async () => {
+    for (const result of [{ ok: true, result: 'unchanged' }, { ok: false, kind: 'taken' }, { ok: false, kind: 'network' }] as BookResult[]) {
+      const s = setup(result, 'old', [slot('new', '2026-11-12T00:00:00Z')]);
+      const push = pushes(s);
+      await bookAndNotify('new', undefined, s.d);
+      expect(push).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a failing push never stops the emails or the booking', async () => {
+    const s = setup({ ok: true, result: 'booked' }, null, [slot('new', '2026-11-12T00:00:00Z')]);
+    s.d.push = async () => {
+      throw new Error('apns down');
+    };
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await bookAndNotify('new', undefined, s.d)).toEqual({ ok: true, result: 'booked' });
+    expect(s.send).toHaveBeenCalledTimes(3);
+    quiet.mockRestore();
+  });
+
+  it('works with no push configured (the Portal before the migration)', async () => {
+    const s = setup({ ok: true, result: 'booked' }, null, [slot('new', '2026-11-12T00:00:00Z')]);
+    expect(s.d.push).toBeUndefined();
+    await bookAndNotify('new', undefined, s.d);
     expect(s.send).toHaveBeenCalledTimes(3);
   });
 });

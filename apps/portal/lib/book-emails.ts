@@ -12,6 +12,7 @@
 // 'unchanged' (the same time again, maybe a new note) and 'taken' send nothing. Each email goes out once (email_log).
 import { deliverOnce, planBooked, planCancel, sendMail, type InterviewRow, type MailLog, type Mail, type Planned, type SendResult } from '@btx/emails';
 import type { BookResult } from '@btx/data';
+import { planBookedPushes, planCancelledPushes, type PushItem } from '@btx/push';
 
 export type BookEmailDeps = {
   /** The switch_booking call as the signed-in student. */
@@ -21,6 +22,8 @@ export type BookEmailDeps = {
   interviews: (slotIds: string[]) => Promise<InterviewRow[]>;
   cycleInfo: (cycleId: string) => Promise<{ term: string; award: string }>;
   log: MailLog;
+  /** Sends pushes to the interviewers' phones (the Ops Hub iPhone app). Optional; a push problem never changes the booking. */
+  push?: (items: PushItem[]) => Promise<unknown>;
   send?: (mail: Mail, from: string | undefined) => Promise<SendResult>;
   from: string | undefined;
   portalUrl: string;
@@ -48,6 +51,17 @@ export async function bookAndNotify(slotId: string, note: string | undefined, d:
     try {
       const after = (await d.interviews([slotId]))[0];
       if (!after) return;
+      // Pushes first (they are quick; the emails are paced), in their own try so neither can stop the other.
+      if (d.push) {
+        try {
+          const moved = result.result === 'switched';
+          // Each booking action is its own push (a student who goes A, B, A, B gets her interviewers four pushes), so the key carries a per-request nonce.
+          const nonce = crypto.randomUUID();
+          await d.push([...planBookedPushes(after, moved ? 'moved' : 'booked', { nonce }), ...(moved && before ? planCancelledPushes(before, after, { nonce }) : [])]);
+        } catch (err) {
+          console.error('[book] could not send the interview pushes', err instanceof Error ? err.message : 'unknown');
+        }
+      }
       const info = await d.cycleInfo(after.cycleId);
       const ctx = { ...info, portalUrl: d.portalUrl, now: new Date() };
       const plans: Planned[] = [...planBooked(after, ctx, { moved: result.result === 'switched' }), ...(result.result === 'switched' && before ? planCancel(before, ctx, after) : [])];

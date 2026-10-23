@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
-  transpilePackages: ['@btx/ui', '@btx/data', '@btx/emails', '@btx/ai'],
+  transpilePackages: ['@btx/ui', '@btx/data', '@btx/emails', '@btx/push', '@btx/ai'],
   env: onVercel
     ? {
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL,

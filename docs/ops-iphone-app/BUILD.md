@@ -45,7 +45,7 @@ Create `apps/ops/mobile/`. This is **not** a workspace package: keep it out of t
   - appId `org.thebtxfoundation.opshub`, appName `BTX Ops Hub`, webDir `native-shell`
   - `server.url` `https://ops.thebtxfoundation.org`, `server.errorPath` `offline.html`, `cleartext` false
   - `server.allowNavigation` `['demo-ops.thebtxfoundation.org']` (for PR C)
-  - `ios.contentInset` `'never'` (the Ops Hub handles safe areas itself; check it in the simulator), `ios.backgroundColor` `#f4f5f2ff`
+  - `ios.contentInset` `'automatic'` (the Ops Hub has no safe-area CSS, so with `'never'` its header sits under the status bar and the tab bar under the home indicator; found in the PR B simulator run), `ios.backgroundColor` `#f4f5f2ff`
   - `plugins.PushNotifications.presentationOptions` `['badge','sound','alert']`
 - **iOS project** (`npx cap add ios`; Capacitor 8 uses SPM, so there is no .xcworkspace and builds use `-project ios/App/App.xcodeproj`):
   - DEVELOPMENT_TEAM `6H2R38WKP3` (Yachtsy, LLC)
@@ -206,3 +206,20 @@ Wrap fire-and-forget sends in Vercel's `waitUntil`, loading `@vercel/functions` 
 - **Submit.**
 
 The Driver Portal's notes (`~/.claude/projects/-Users-dominicklittleton-Yachtsy-DriverPortal/memory/driver-push-ios-app.md`) have every listing and review lesson.
+
+## Status after PR B (push)
+
+Built: interview booked / moved / cancelled (Portal booking route, and the Ops Hub's interviewer swap), interviews tomorrow (prep cron), availability reminder, due tomorrow (reminder cron), Board chat, and the admin's test push. Every push is two rows (title and one short line), applicants appear only as "Applicant 15", and the chat push never carries the message text. Tapping a push opens the Ops Hub path it carries (checked: this site only), verified in the simulator with `xcrun simctl push`.
+
+Behaviour worth knowing:
+- **Signing out turns the phone off for that person** (the app calls `/api/push/unregister` before signing out). The Notifications switch asks the server (`/api/push/status`) what it holds, so a phone another person signed in on shows Off, and a phone a push error switched off registers itself again when the menu opens.
+- **BadDeviceToken is a retry, not a retirement.** A wrong `APNS_PRODUCTION` (sandbox vs production) makes Apple answer it for every phone, so only 410 switches a phone off. If pushes stop arriving, check `last_error` on `ops_push_devices` first.
+- **At most once.** A push is reserved before it is sent and given back only when no phone accepted it, so cron pushes retry on the next run; chat, booking, rebalance and test pushes have no later run, so a failure there is a lost push. A function killed between the reservation and the send also loses that push. Each run stops starting sends after 40 seconds.
+- **Interview keys carry the student** and, for Portal bookings, a per-request nonce, so each booking action notifies and a second student in the same slot is not silenced.
+- **The page-side Capacitor bridge hands back plain listener handles, not promises.** Any code that adds a listener must wrap it in `Promise.resolve`. This broke the whole page once in the simulator and no browser test showed it, so check any new native call in the real shell.
+
+Not built, on purpose:
+- **New task for you.** The Ops Hub only adds a task for the person who is signed in (`apps/ops/components/tasks/tasks-writes.ts`), so there is nobody to tell. Add it where a task gets assigned to someone else when that exists.
+- **Approval waiting.** Nothing in the Ops Hub creates approval requests yet.
+
+Gated, in order, after the merge: apply `supabase/migrations/20261022200000_ops_push.sql` to the production database; Dominick creates the Apple push key and sets `APNS_KEY` and `APNS_KEY_ID` in both Vercel projects; Claude sets `APNS_TEAM_ID`, `APNS_BUNDLE_ID` and `APNS_PRODUCTION`, then redeploys both.

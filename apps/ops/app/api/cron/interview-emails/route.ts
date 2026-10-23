@@ -1,6 +1,7 @@
 // Daily cron for the interview emails. GET /api/cron/interview-emails?kind=prep|reminder
 //   prep      the evening before: each interviewer's prep email for tomorrow's interviews
 //   reminder  the morning before: each student's reminder
+// The same run also sends the matching pushes (prep: "Interviews tomorrow"; reminder: "Due tomorrow").
 // Vercel calls it with `Authorization: Bearer ${CRON_SECRET}` (set CRON_SECRET in the project's env); anything else gets
 // 401. Returns the counts as JSON. Safe to run twice: email_log keeps every email to once.
 //
@@ -11,19 +12,30 @@
 // allows daily crons only and may run one any time within its hour.
 import { NextResponse } from 'next/server';
 import { sendPrepEmails, sendReminderEmails, type InterviewDeps } from '@/lib/email/interviews';
+import { sendDueTomorrowPushes, sendPrepPushes } from '@/lib/push/crons';
 
 export const dynamic = 'force-dynamic';
+// The pushes run inside this request (one at a time, each with its own 10 second cap, 40 seconds in all); this keeps the function alive that long.
+export const maxDuration = 60;
 
 async function handleCron(request: Request, deps: InterviewDeps = {}): Promise<Response> {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const kind = new URL(request.url).searchParams.get('kind');
   if (kind !== 'prep' && kind !== 'reminder') return NextResponse.json({ error: 'kind must be prep or reminder' }, { status: 400 });
+  // The pushes run beside the emails and never hold them up or fail them: prep sends "Interviews tomorrow" to each
+  // interviewer, reminder sends "Due tomorrow" to the assignees of tasks due tomorrow (lib/push/crons.ts).
+  const now = new Date();
+  const pushRun = (kind === 'prep' ? sendPrepPushes(now) : sendDueTomorrowPushes(now)).catch((err) => {
+    console.error('[cron] pushes failed', err instanceof Error ? err.message : 'unknown');
+    return null;
+  });
   try {
-    const result = kind === 'prep' ? await sendPrepEmails(new Date(), deps) : await sendReminderEmails(new Date(), deps);
-    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+    const result = kind === 'prep' ? await sendPrepEmails(now, deps) : await sendReminderEmails(now, deps);
+    return NextResponse.json({ ...result, push: await pushRun }, { status: result.ok ? 200 : 500 });
   } catch (err) {
     console.error('[cron] interview emails failed', err);
+    await pushRun;
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
 }
