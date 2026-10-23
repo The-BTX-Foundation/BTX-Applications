@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ErrorIcon } from '@btx/ui';
 import { checkStaffCode, sendStaffCode } from '@/lib/ops-auth';
+import { reviewRedirect } from '@/lib/demo';
 import { NO_ACCESS } from '@/lib/role';
 import { OIcon } from './icons';
 
@@ -25,6 +26,12 @@ export function SignIn({ next, notice }: { next?: string; notice?: 'access' | 'l
   // Sends the code and moves to the code screen.
   async function sendCode(e?: React.FormEvent) {
     e?.preventDefault();
+    // App Review's address opens the sample-data copy: no code is sent and no account is touched (lib/demo.ts).
+    const demo = reviewRedirect(email);
+    if (demo) {
+      window.location.assign(demo);
+      return;
+    }
     const clean = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
       setError('Enter your email address.');

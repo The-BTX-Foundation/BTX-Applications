@@ -6,6 +6,9 @@ import type { NextConfig } from 'next';
 const SUPABASE_URL = 'https://awiaebtqalcmfafvktwh.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_9K1-NijV5lSE_SoY-3_2Tg_bKYHQIuy';
 const onVercel = process.env.VERCEL === '1';
+// The sample-data copy for App Review (Vercel project btx-ops-demo) is built with BTX_FORCE_MOCK=1. That wins over everything:
+// no database address or key is baked in, sign-in is the offline mock, and the pages show sample data with a banner.
+const forceMock = process.env.BTX_FORCE_MOCK === '1';
 
 // Security headers sent on every route. The Content-Security-Policy is deliberately small (framing, base tag, plugins
 // only); a full script/style/connect policy needs a Report-Only trial first. Same-origin framing stays allowed because
@@ -32,12 +35,19 @@ const nextConfig: NextConfig = {
   // The dev-mode badge would sit on top of the sidebar in screenshots.
   devIndicators: false,
   transpilePackages: ['@btx/ui', '@btx/data', '@btx/emails', '@btx/push', '@btx/ai'],
-  env: onVercel
+  env: forceMock
     ? {
-        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL,
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY,
+        NEXT_PUBLIC_BTX_FORCE_MOCK: '1',
+        NEXT_PUBLIC_AUTH_MODE: 'mock',
+        NEXT_PUBLIC_SUPABASE_URL: '',
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: '',
       }
-    : {},
+    : onVercel
+      ? {
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL,
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY,
+        }
+      : {},
 };
 
 export default nextConfig;

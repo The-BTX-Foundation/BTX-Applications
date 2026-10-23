@@ -14,6 +14,8 @@ let cached: BtxClient | null = null;
 // True when both Supabase env vars are set. Next.js inlines NEXT_PUBLIC_ values at build time, so these must stay
 // literal property reads.
 export function hasSupabaseEnv(): boolean {
+  // The sample-data copy of the Ops Hub (built with BTX_FORCE_MOCK=1) never uses Supabase, even if a key is added to it by mistake.
+  if (process.env.NEXT_PUBLIC_BTX_FORCE_MOCK === '1') return false;
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
 

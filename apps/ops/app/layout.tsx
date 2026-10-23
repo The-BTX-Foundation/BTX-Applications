@@ -5,6 +5,7 @@ import './ops.css';
 import { googleSansCode, googleSansFlex } from './fonts';
 import RaykenReview from './RaykenReview';
 import { ReviewContext } from '@/components/review-context';
+import { DemoBanner } from '@/components/demo-banner';
 
 export const metadata: Metadata = {
   title: { default: 'Ops Hub | The BTX Foundation', template: '%s | Ops Hub' },
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ReviewContext />
+        <DemoBanner />
         {children}
       </body>
     </html>
