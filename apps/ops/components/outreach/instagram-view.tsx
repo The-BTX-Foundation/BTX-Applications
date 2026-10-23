@@ -222,7 +222,7 @@ export function InstagramView({ data }: { data: InstagramData }) {
           onSaved={(p) => {
             setPosts((l) => [
               ...l.filter((x) => x.group === 'upcoming'),
-              { id: p.id, title: p.title, date: dayWord(p.postOn), owner: p.owner ?? 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: isMock() ? 'Kelsey Davis' : '', caption: null, photo: '[Photo]' },
+              { id: p.id, title: p.title, date: dayWord(p.postOn), owner: p.owner ?? 'unassigned', done: 0, state: 'Not started', phoneState: 'Not started', group: 'upcoming', approver: isMock() ? 'Keith Dawson' : '', caption: null, photo: '[Photo]' },
               ...l.filter((x) => x.group === 'posted'),
             ]);
             setSel(p.id);

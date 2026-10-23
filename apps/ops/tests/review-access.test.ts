@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { hasSupabaseEnv } from '@btx/data';
-import { DEMO_URL, REVIEW_EMAIL, reviewRedirect } from '@/lib/demo';
+import { DEMO_BANNER_TEXT, DEMO_URL, REVIEW_EMAIL, reviewRedirect } from '@/lib/demo';
+import { sendStaffCode, startSignIn } from '@/lib/ops-auth';
 
 describe('App Review sign-in', () => {
   it('sends exactly the review address to the sample-data copy, whatever its case or spacing', () => {
@@ -33,6 +34,48 @@ describe('App Review sign-in', () => {
   });
 });
 
+describe('startSignIn: the order of the first sign-in step', () => {
+  const okSend = () => vi.fn<typeof sendStaffCode>(async () => ({ ok: true }));
+
+  it('the review address goes to the demo before anything is checked or sent: no code, no account', async () => {
+    const send = okSend();
+    expect(await startSignIn(' AppReview@TheBTXFoundation.org ', '/cb', send)).toEqual({ kind: 'demo', url: DEMO_URL });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('any other address is checked, lower-cased and sent a code as before', async () => {
+    const send = okSend();
+    expect(await startSignIn('  Board@Example.ORG ', '/cb', send)).toEqual({ kind: 'sent', email: 'board@example.org' });
+    expect(send).toHaveBeenCalledWith('board@example.org', '/cb');
+    expect(await startSignIn('not an email', '/cb', send)).toEqual({ kind: 'invalid' });
+    expect(await startSignIn('appreview@thebtxfoundation.org.evil.example', '/cb', send)).toEqual({ kind: 'sent', email: 'appreview@thebtxfoundation.org.evil.example' });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes the sender\'s refusal on', async () => {
+    expect(await startSignIn('a@b.co', '/cb', async () => ({ ok: false, reason: 'rate-limited' }))).toEqual({ kind: 'error', reason: 'rate-limited' });
+  });
+});
+
+describe('the banner', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+  const banner = async (flag: string) => {
+    vi.stubEnv('NEXT_PUBLIC_BTX_FORCE_MOCK', flag);
+    vi.resetModules();
+    return (await import('@/components/demo-banner')).DemoBanner();
+  };
+
+  it('shows the strip on the sample-data copy only', async () => {
+    const on = (await banner('1')) as { props: { children: string; className: string } };
+    expect(on.props.children).toBe(DEMO_BANNER_TEXT);
+    expect(on.props.className).toBe('o-demo');
+    expect(await banner('')).toBeNull();
+  });
+});
+
 describe('the sample-data copy (BTX_FORCE_MOCK=1)', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -59,9 +102,22 @@ describe('the sample-data copy (BTX_FORCE_MOCK=1)', () => {
     expect(env.NEXT_PUBLIC_AUTH_MODE).toBeUndefined();
   });
 
-  it('only the exact value 1 forces it, and a local run stays as it was', async () => {
-    expect(await configEnv({ VERCEL: '1', BTX_FORCE_MOCK: 'true' })).not.toHaveProperty('NEXT_PUBLIC_BTX_FORCE_MOCK');
+  it('1, true and yes (any case, stray spaces) force it; anything else does not; a local run stays as it was', async () => {
+    for (const v of ['1', 'true', 'TRUE', ' 1 ', 'yes']) expect(await configEnv({ VERCEL: '1', BTX_FORCE_MOCK: v })).toHaveProperty('NEXT_PUBLIC_BTX_FORCE_MOCK', '1');
+    for (const v of ['0', 'false', 'maybe', '']) expect(await configEnv({ VERCEL: '1', BTX_FORCE_MOCK: v })).not.toHaveProperty('NEXT_PUBLIC_BTX_FORCE_MOCK');
     expect(await configEnv({ VERCEL: '', BTX_FORCE_MOCK: '' })).toEqual({});
+  });
+
+  it('every route is marked noindex in its headers, and the data layer refuses to build a client', async () => {
+    vi.resetModules();
+    const mod = await import('../next.config');
+    const rules = await mod.default.headers!();
+    expect(rules[0].headers).toContainEqual({ key: 'X-Robots-Tag', value: 'noindex, nofollow' });
+    vi.stubEnv('NEXT_PUBLIC_BTX_FORCE_MOCK', '1');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://real.example');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key-should-never-be-used');
+    const { createServiceClient } = await import('@btx/data/server');
+    expect(createServiceClient()).toBeNull();
   });
 
   it('even a key added to the demo project by mistake cannot switch the data layer on', () => {

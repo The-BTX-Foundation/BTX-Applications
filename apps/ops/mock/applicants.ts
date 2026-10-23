@@ -20,7 +20,7 @@ export const MOCK_NOW = '2026-10-04T12:00:00-04:00';
 
 export const MOCK_APPLICANTS: MockApplicant[] = [
   { code: 'APP-2026-00011', initials: 'A.O.', name: 'Ada Okafor', appliedAt: '2026-09-02T12:00:00-04:00', interviewAt: '2026-09-26T10:00:00-04:00' },
-  { code: 'APP-2026-00012', initials: 'T.W.', name: 'Tariq Wells', appliedAt: '2026-09-04T12:00:00-04:00', interviewAt: '2026-09-23T10:00:00-04:00', email: 'tariq.wells+apply@gmail.com' },
+  { code: 'APP-2026-00012', initials: 'T.W.', name: 'Tariq Wells', appliedAt: '2026-09-04T12:00:00-04:00', interviewAt: '2026-09-23T10:00:00-04:00', email: 'tariq.wells@example.org' },
   { code: 'APP-2026-00013', initials: 'L.M.', name: 'Lena Mensah', appliedAt: '2026-09-13T12:00:00-04:00', interviewAt: '2026-10-03T10:00:00-04:00' },
   { code: 'APP-2026-00004', initials: 'N.B.', name: 'Naomi Brooks', appliedAt: '2026-08-31T12:00:00-04:00', interviewAt: '2026-09-24T10:00:00-04:00' },
   { code: 'APP-2026-00015', initials: 'S.P.', name: 'Sade Price', appliedAt: '2026-09-12T12:00:00-04:00', interviewAt: '2026-10-05T10:00:00-04:00' },

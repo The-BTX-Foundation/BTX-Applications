@@ -1,7 +1,7 @@
 // MOCK: the rubric, the signed-in scorer's scores and the interview notes, shaped like the draft Ops Hub tables
 // `rubric_criteria` (key, name, weight, position), `scores` (criteria jsonb, published), `interview_summaries`
 // (summary, quotes jsonb) and `score_private_notes`. None of these tables exist yet (draft on branch db/ops-schema).
-// Applicants are keyed by applicant code. The sample is Dania Morris's queue in the Figma "Scholarships > Scoring" frame.
+// Applicants are keyed by applicant code. The sample is Dana Mercer's queue in the Figma "Scholarships > Scoring" frame.
 export type RubricCriterion = { key: string; name: string; weight: number; position: number };
 
 export const RUBRIC: RubricCriterion[] = [
@@ -75,7 +75,7 @@ export function sheetFixture(code: string): MockSheet | null {
   return FIXTURES[code] ?? null;
 }
 
-/** The codes in the signed-in person's queue, in order (Dania Morris's four in the Figma frame). */
+/** The codes in the signed-in person's queue, in order (Dana Mercer's four in the Figma frame). */
 export const QUEUE_CODES = ['APP-2026-00011', 'APP-2026-00012', 'APP-2026-00013', 'APP-2026-00004'];
 
 /** Weighted score over the picked criteria, rounded to 2 places: the same rule as the draft schema's scores_check(). */

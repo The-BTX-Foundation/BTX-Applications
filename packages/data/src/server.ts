@@ -12,6 +12,8 @@ export type CookieAdapter = {
 
 // Reads the two public env vars, or throws a clear message.
 function env(): { url: string; key: string } {
+  // The sample-data copy of the Ops Hub (built with BTX_FORCE_MOCK=1) never talks to Supabase.
+  if (process.env.NEXT_PUBLIC_BTX_FORCE_MOCK === '1') throw new Error('Supabase is switched off in the sample-data copy.');
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) throw new Error('Supabase env vars are not set.');
@@ -49,6 +51,7 @@ export function createAnonClient(): BtxClient {
 export type ServiceClient = SupabaseClient<any, 'public', any>;
 
 export function createServiceClient(): ServiceClient | null {
+  if (process.env.NEXT_PUBLIC_BTX_FORCE_MOCK === '1') return null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;

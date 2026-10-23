@@ -35,11 +35,11 @@ export type Scoring = {
 
 /** The people who interview, by initials. Only the names the Figma frames spell out are listed. */
 export const BOARD_NAMES: Record<string, string> = {
-  DM: 'Dania Morris',
-  CG: 'Chariah Ghee',
-  MD: 'Marcus Davis',
-  KD: 'Kelsey Davis',
-  TF: 'Tomi F.',
+  DM: 'Dana Mercer',
+  CG: 'Charlie Gaines',
+  MD: 'Miles Donovan',
+  KD: 'Keith Dawson',
+  TF: 'Toby F.',
   CK: 'C. K.',
   DS: 'D. S.',
 };
@@ -82,7 +82,7 @@ const FIXTURES: Record<string, Scoring> = {
     score: { kind: 'draft', line1: 'Your draft', line2: '4 of 6' },
     stage: { kind: 'needs-score', label: 'Needs your score' },
     summary: SUMMARY_00011,
-    progress: steps('scoring', '1 of 2 published: Chariah published, your draft 4 of 6'),
+    progress: steps('scoring', '1 of 2 published: Charlie published, your draft 4 of 6'),
     action: 'Continue scoring',
   },
   'APP-2026-00012': {
@@ -107,9 +107,9 @@ const FIXTURES: Record<string, Scoring> = {
     group: 'attention',
     interviewers: ['DM', 'MD'],
     score: { kind: 'avg', line1: '3.7', line2: '1 of 2' },
-    stage: { kind: 'waiting', label: 'Waiting on Marcus Davis' },
+    stage: { kind: 'waiting', label: 'Waiting on Miles Donovan' },
     summary: null,
-    progress: steps('scoring', '1 of 2 published: you published, Marcus has not'),
+    progress: steps('scoring', '1 of 2 published: you published, Miles has not'),
     action: 'Open scores',
   },
   'APP-2026-00015': {

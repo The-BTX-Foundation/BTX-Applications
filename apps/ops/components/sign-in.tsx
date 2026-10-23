@@ -5,8 +5,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ErrorIcon } from '@btx/ui';
-import { checkStaffCode, sendStaffCode } from '@/lib/ops-auth';
-import { reviewRedirect } from '@/lib/demo';
+import { checkStaffCode, startSignIn } from '@/lib/ops-auth';
 import { NO_ACCESS } from '@/lib/role';
 import { OIcon } from './icons';
 
@@ -26,21 +25,19 @@ export function SignIn({ next, notice }: { next?: string; notice?: 'access' | 'l
   // Sends the code and moves to the code screen.
   async function sendCode(e?: React.FormEvent) {
     e?.preventDefault();
+    setBusy(true);
+    const r = await startSignIn(email, `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? '/')}`);
     // App Review's address opens the sample-data copy: no code is sent and no account is touched (lib/demo.ts).
-    const demo = reviewRedirect(email);
-    if (demo) {
-      window.location.assign(demo);
+    if (r.kind === 'demo') {
+      window.location.assign(r.url);
       return;
     }
-    const clean = email.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
+    setBusy(false);
+    if (r.kind === 'invalid') {
       setError('Enter your email address.');
       return;
     }
-    setBusy(true);
-    const r = await sendStaffCode(clean, `${window.location.origin}/auth/callback?next=${encodeURIComponent(next ?? '/')}`);
-    setBusy(false);
-    if (!r.ok) {
+    if (r.kind === 'error') {
       setError(
         r.reason === 'rate-limited'
           ? 'Too many codes requested. Wait a minute, then try again.'
@@ -48,7 +45,7 @@ export function SignIn({ next, notice }: { next?: string; notice?: 'access' | 'l
       );
       return;
     }
-    setEmail(clean);
+    setEmail(r.email);
     setCode('');
     setError(null);
     setStage('code');

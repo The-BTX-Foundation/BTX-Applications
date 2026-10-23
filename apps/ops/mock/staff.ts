@@ -10,16 +10,16 @@ export type StaffProfile = {
 };
 
 export const MOCK_STAFF: StaffProfile[] = [
-  { user_id: 'mock-staff-dm', display_name: 'Dania Morris', title: null, initials: 'DM' },
-  { user_id: 'mock-staff-cg', display_name: 'Chariah Ghee', title: null, initials: 'CG' },
-  { user_id: 'mock-staff-md', display_name: 'Marcus Davis', title: null, initials: 'MD' },
-  { user_id: 'mock-staff-kd', display_name: 'Kelsey Davis', title: null, initials: 'KD' },
-  { user_id: 'mock-staff-tf', display_name: 'Tomi Falodun', title: null, initials: 'TF' },
-  { user_id: 'mock-staff-ck', display_name: 'Cillisha Knights', title: null, initials: 'CK' },
-  { user_id: 'mock-staff-ds', display_name: 'Darien Strachan', title: null, initials: 'DS' },
+  { user_id: 'mock-staff-dm', display_name: 'Dana Mercer', title: null, initials: 'DM' },
+  { user_id: 'mock-staff-cg', display_name: 'Charlie Gaines', title: null, initials: 'CG' },
+  { user_id: 'mock-staff-md', display_name: 'Miles Donovan', title: null, initials: 'MD' },
+  { user_id: 'mock-staff-kd', display_name: 'Keith Dawson', title: null, initials: 'KD' },
+  { user_id: 'mock-staff-tf', display_name: 'Toby Faraday', title: null, initials: 'TF' },
+  { user_id: 'mock-staff-ck', display_name: 'Camila Keane', title: null, initials: 'CK' },
+  { user_id: 'mock-staff-ds', display_name: 'Dorian Sutton', title: null, initials: 'DS' },
 ];
 
-/** The signed-in person in mock mode (the same Dania Morris the shell shows). */
+/** The signed-in person in mock mode (the same Dana Mercer the shell shows). */
 export const MOCK_ME = 'mock-staff-dm';
 
 const BY_ID = new Map(MOCK_STAFF.map((s) => [s.user_id, s]));

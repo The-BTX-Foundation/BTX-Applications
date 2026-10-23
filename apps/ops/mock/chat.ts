@@ -11,27 +11,27 @@ import type {
 
 const DM: ChatPerson = {
   userId: "u-dm",
-  displayName: "Dania Morris",
+  displayName: "Dana Mercer",
   initials: "DM",
 };
 const KD: ChatPerson = {
   userId: "u-kd",
-  displayName: "Kelsey Davis",
+  displayName: "Keith Dawson",
   initials: "KD",
 };
 const MD: ChatPerson = {
   userId: "u-md",
-  displayName: "Marcus Davis",
+  displayName: "Miles Donovan",
   initials: "MD",
 };
 const CK: ChatPerson = {
   userId: "u-ck",
-  displayName: "Cillisha Knights",
+  displayName: "Camila Keane",
   initials: "CK",
 };
 const DS: ChatPerson = {
   userId: "u-ds",
-  displayName: "Darien Strachan",
+  displayName: "Dorian Sutton",
   initials: "DS",
 };
 
@@ -139,7 +139,7 @@ export const CHAT_MOCK: ChatData = {
       "m3",
       AREAS.money,
       null,
-      "Kelsey Davis assigned you **Approve Q4 budget**, due Tue Oct 6.",
+      "Keith Dawson assigned you **Approve Q4 budget**, due Tue Oct 6.",
       "2026-10-04T07:55:00-04:00",
       { taskId: "t-q4-budget" },
     ),
@@ -221,7 +221,7 @@ export const CHAT_STRESS: ChatData = {
       "s3",
       AREAS.money,
       null,
-      "Darien Strachan assigned you **Approve Q4 budget**, due Tue Oct 6.",
+      "Dorian Sutton assigned you **Approve Q4 budget**, due Tue Oct 6.",
       "2026-10-04T07:55:00-04:00",
       { taskId: "t-q4-budget" },
     ),

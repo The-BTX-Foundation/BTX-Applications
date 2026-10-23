@@ -5,10 +5,10 @@
 import type { ApprovalDetail, Counts, Person, TaskComment, TaskSeed } from '@/lib/tasks-shared';
 
 export const PEOPLE: Person[] = [
-  { user_id: 'dm', display_name: 'Dania Morris', initials: 'DM' },
-  { user_id: 'kd', display_name: 'Kelsey Davis', initials: 'KD' },
-  { user_id: 'ck', display_name: 'Cillisha Knights', initials: 'CK' },
-  { user_id: 'ds', display_name: 'Darien Strachan', initials: 'DS', table_name: 'Darien S.' },
+  { user_id: 'dm', display_name: 'Dana Mercer', initials: 'DM' },
+  { user_id: 'kd', display_name: 'Keith Dawson', initials: 'KD' },
+  { user_id: 'ck', display_name: 'Camila Keane', initials: 'CK' },
+  { user_id: 'ds', display_name: 'Dorian Sutton', initials: 'DS', table_name: 'Dorian S.' },
 ];
 
 const Q4: ApprovalDetail = {

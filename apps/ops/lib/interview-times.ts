@@ -54,14 +54,14 @@ export function shortName(name: string): string {
   return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
 }
 
-/** "Still waiting on Marcus Davis and Darien Strachan." */
+/** "Still waiting on Miles Donovan and Dorian Sutton." */
 export function waitingLine(names: string[]): string {
   if (names.length === 0) return '';
   if (names.length === 1) return `Still waiting on ${names[0]}.`;
   return `Still waiting on ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 }
 
-/** "Kelsey Davis, Tomi Falodun, Marcus Davis and 2 others": up to three names, then a count. */
+/** "Keith Dawson, Toby Faraday, Miles Donovan and 2 others": up to three names, then a count. */
 export function namesLine(names: string[]): string {
   if (names.length <= 3) return joinNames(names);
   const rest = names.length - 3;
@@ -123,7 +123,7 @@ export function targetLine(people: FairPerson[], interviews: number): { base: nu
   return { base, line: `Target ${base} each: ${interviews} ${interviews === 1 ? 'interview' : 'interviews'} × 2 ÷ ${senders.length}` };
 }
 
-/** "As even as it can be. Marcus Davis is at their limit of 4, so two people have 6." (after a rebalance). */
+/** "As even as it can be. Miles Donovan is at their limit of 4, so two people have 6." (after a rebalance). */
 export function evenNote(people: FairPerson[], base: number): string {
   const capped = people.filter((p) => p.maxInterviews !== null && p.maxInterviews < base && p.interviews >= p.maxInterviews);
   const high = people.filter((p) => p.target !== null && p.interviews > base).length;
@@ -137,7 +137,7 @@ export function evenNote(people: FairPerson[], base: number): string {
 
 export type MoveView = { slotId: string; startsAt: string; applicant: string; fromName: string; toName: string; from: string; to: string };
 
-/** "Thu Nov 12, 7:00 PM · Jordan Wells · Tomi Falodun → Chariah Ghee". */
+/** "Thu Nov 12, 7:00 PM · Jordan Wells · Toby Faraday → Charlie Gaines". */
 export function moveLine(m: MoveView): string {
   return `${whenLine(m.startsAt)} · ${m.applicant} · ${m.fromName} → ${m.toName}`;
 }
@@ -149,7 +149,7 @@ export function affected(moves: MoveView[]): string[] {
   return out;
 }
 
-/** "Kelsey Davis, Tomi Falodun and Darien Strachan". */
+/** "Keith Dawson, Toby Faraday and Dorian Sutton". */
 export function joinNames(names: string[]): string {
   return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }

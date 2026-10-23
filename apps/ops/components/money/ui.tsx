@@ -88,7 +88,7 @@ export function Bar({ pct, className }: { pct: number; className?: string }) {
   );
 }
 
-// The dark message at the bottom of the page ("Kelsey Davis now has admin rights · Undo").
+// The dark message at the bottom of the page ("Keith Dawson now has admin rights · Undo").
 export function Toast({ children, onUndo }: { children: React.ReactNode; onUndo?: () => void }) {
   return (
     <div className="mn-toast" role="status">
