@@ -1,6 +1,6 @@
 # BTX Platform
 
-Monorepo for the BTX Foundation's web apps, backed by one shared Supabase project (`btx-platform`).
+Monorepo for the BTX Foundation's web apps, backed by one shared Supabase project (ref `awiaebtqalcmfafvktwh`, org BTX Foundation). `btx-platform` is BTX's Vercel login, not the database.
 
 The two old Vue apps (the Ops Hub in `btx-frontend/` and the Portal in `btx-frontend-portal/`) were removed when the
 rebuild started. They stay in the git history. The Ops Hub is rebuilt after the Portal launches; the design for both is
