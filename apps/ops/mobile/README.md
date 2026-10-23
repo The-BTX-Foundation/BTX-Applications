@@ -44,5 +44,7 @@ Capacitor 8 uses Swift Package Manager, so there is no `.xcworkspace`: always pa
 1. Bump `CURRENT_PROJECT_VERSION` in the Xcode project (a build number Apple has not seen).
 2. In Xcode: open `ios/App/App.xcodeproj`, choose "Any iOS Device (arm64)", Product → Archive, then Distribute App → TestFlight Internal Only.
 3. TestFlight builds expire after 90 days; the App Store build does not.
+4. Claude's App Store Connect key (App Manager) can register the app ID and archive with `-allowProvisioningUpdates`, but it cannot sign an App Store build (Apple's cloud signing needs an Admin key or a signed-in person). Claude archives and copies the archive into `~/Library/Developer/Xcode/Archives/`; Dominick clicks Distribute App → TestFlight Internal Only in Xcode's Organizer. Build 1 went this way on 2026-10-22.
+5. `ITSAppUsesNonExemptEncryption` is `false` in `Info.plist` (the app only uses iOS's built-in HTTPS), so TestFlight doesn't stop each build for the encryption question.
 
-The safety check in Claude Code blocks `xcodebuild archive` and uploads, so Dominick runs these steps (or uses the App Store Connect key once it exists).
+Archives and uploads need Dominick's named go (for example "upload BTX Ops Hub build 2"); see steps 4 and 5.
