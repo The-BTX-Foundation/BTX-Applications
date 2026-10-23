@@ -66,6 +66,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>BTX Ops Hub uses Face ID to unlock the app, so only you can open the board's records on your phone.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

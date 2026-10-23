@@ -22,6 +22,10 @@ State as of 2026-10-22 night. The listing is a **draft** in App Store Connect (a
 | Review notes | Written (below). Sign-in line: `appreview@thebtxfoundation.org` opens the sample-data copy |
 | Build | **Not attached yet** (see "Build 2") |
 
+## Build 2 also fixes Face ID
+
+Build 1 asked for the iPhone passcode instead of Face ID: `Info.plist` had no `NSFaceIDUsageDescription`, so iOS never offered Face ID to the app. Build 2 adds it. Checked in the simulator (enrolled face: the Face ID prompt appears over the lock cover, a simulated match unlocks it); Dominick re-checks on his phone from build 2.
+
 ## Build 2 (why build 1 can't go to the App Store)
 
 Build 1 was uploaded as "TestFlight Internal Only", and Apple never lets an internal-only build into the App Store (attaching it fails with "pre-release build could not be added"). Build 2 is the same code with the number bumped (`CURRENT_PROJECT_VERSION = 2`), distributed with **TestFlight & App Store**, then attached to version 1.0. Route: Claude archives and copies the archive into Xcode's Organizer; Dominick clicks Distribute App > TestFlight & App Store > Distribute (Claude's App Manager key can't sign App Store builds; see `apps/ops/mobile/README.md`).
