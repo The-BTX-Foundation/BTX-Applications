@@ -28,7 +28,7 @@ Build 1 asked for the iPhone passcode instead of Face ID: `Info.plist` had no `N
 
 ## Why builds 1 and 2 can't go to the App Store
 
-Builds 1 and 2 were both uploaded as internal-only (`buildAudienceType = INTERNAL_ONLY`), and Apple never lets an internal-only build into the App Store: attaching fails with "pre-release build could not be added". Build 3 is the same code with the number bumped (`CURRENT_PROJECT_VERSION = 3`; each upload needs a new number). In Organizer, **Distribute App > App Store Connect** (Xcode's own name for "upload for testing and release"; the choices are App Store Connect, TestFlight Internal Only, Release Testing, Enterprise, Debugging, Custom), never "TestFlight Internal Only", then Claude checks `buildAudienceType` is not `INTERNAL_ONLY` before attaching it to version 1.0. Route: Claude archives and copies the archive into Xcode's Organizer; Dominick clicks Distribute App > TestFlight & App Store > Distribute (Claude's App Manager key can't sign App Store builds; see `apps/ops/mobile/README.md`).
+Builds 1 and 2 were both uploaded as internal-only (`buildAudienceType = INTERNAL_ONLY`), and Apple never lets an internal-only build into the App Store: attaching fails with "pre-release build could not be added". Build 3 is the same code with the number bumped (`CURRENT_PROJECT_VERSION = 3`; each upload needs a new number). In Organizer, **Distribute App > App Store Connect** (Xcode's own name for "upload for testing and release"; the choices are App Store Connect, TestFlight Internal Only, Release Testing, Enterprise, Debugging, Custom), never "TestFlight Internal Only", then Claude checks `buildAudienceType` is not `INTERNAL_ONLY` before attaching it to version 1.0. Route: Claude archives and copies the archive into Xcode's Organizer; Dominick clicks Distribute App > App Store Connect > Upload (Claude's App Manager key can't sign App Store builds; see `apps/ops/mobile/README.md`).
 
 ## Review notes (as saved in App Review Information)
 
@@ -81,3 +81,5 @@ The first draft of this plan said to file the Unlisted request before submitting
 4. Dominick: App Privacy published (done 2026-10-23); review contact phone is saved.
 5. Dominick submits version 1.0 for review (release: manual), then files the Unlisted request (Claude fills the form; he ticks the box and submits).
 6. After Apple's Unlisted email: Pricing and Availability > App Distribution Methods > Unlisted; resubmit if Apple rejected under 3.2.
+
+The app icon and launch screen must be real artwork. Apple rejected 1.0 (3) on 2026-10-27 under guideline 2.3.8 because both were screenshots of a broken image; build 4 (PR #44) uses the gold BTX mark on black for the icon and the full BTX Foundation logo on the app's light background for the launch screen, both from the brand logo suite. Before any upload, open `AppIcon.appiconset` and `Splash.imageset` and look at them.
