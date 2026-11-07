@@ -69,12 +69,32 @@ export function checkNewSlots(opts: { entries: NewSlotInput[]; windowStart: stri
   return { rows, errors };
 }
 
-/** True when the text is an https link the database accepts (https://, up to 500 characters, no spaces). */
-export function isVideoUrl(v: string): boolean {
+// The hosts a BTX interview link may use: Microsoft Teams for work only (teams.microsoft.com and the newer
+// teams.cloud.microsoft address). Consumer Teams (teams.live.com) is refused: BTX meetings come from BTX's own tenant. Google Meet, Zoom and every
+// other host are refused, because BTX interviews are Teams meetings made from BTX's own Teams account.
+export const TEAMS_HOSTS = ['teams.microsoft.com', 'teams.cloud.microsoft'] as const;
+
+/** What an admin is told when a link is not a Teams link. */
+export const TEAMS_ONLY_MESSAGE = 'Use the Teams link for this interview.';
+
+/** True when the text is a Teams meeting link the database accepts: https://, up to 500 characters, no spaces, and a host
+ * that is teams.microsoft.com or teams.cloud.microsoft (or a subdomain of one). The host is read from the parsed address, so a
+ * look-alike such as teams.microsoft.com.evil.com, or a link with a user name in front of the host, is refused. */
+export function isTeamsUrl(v: string): boolean {
   if (v.length > 500 || !/^https:\/\/\S+$/.test(v)) return false;
+  let u: URL;
   try {
-    return new URL(v).hostname.includes('.');
+    u = new URL(v);
   } catch {
     return false;
   }
+  // No "user:password@" part and no unusual port: a real Teams link has neither.
+  if (u.protocol !== 'https:' || u.username !== '' || u.password !== '' || u.port !== '') return false;
+  const host = u.hostname.toLowerCase();
+  return TEAMS_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
+/** True when the text is a video link an interview may use. Since 2026-11-06 that means a Teams link (isTeamsUrl). */
+export function isVideoUrl(v: string): boolean {
+  return isTeamsUrl(v);
 }

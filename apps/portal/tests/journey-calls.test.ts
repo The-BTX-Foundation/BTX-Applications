@@ -61,7 +61,7 @@ describe('open times', () => {
 });
 
 describe('her interview', () => {
-  const json = { slotId: 's1', startsAt: '2026-10-06T22:00:00Z', endsAt: '2026-10-06T22:30:00Z', interviewers: ['Kelsey Davis', 'Tomi Falodun'], videoUrl: 'https://meet.example/x' };
+  const json = { slotId: 's1', startsAt: '2026-10-06T22:00:00Z', endsAt: '2026-10-06T22:30:00Z', interviewers: ['Kelsey Davis', 'Tomi Falodun'], videoUrl: 'https://teams.microsoft.com/l/meetup-join/x' };
   it('reads time, interviewers and video link', async () => {
     const { client, calls } = rpcClient({ data: json });
     expect(await fetchMyInterview(client, 'c1')).toEqual({ failed: false, interview: json });

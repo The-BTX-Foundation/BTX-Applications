@@ -164,19 +164,19 @@ describe.skipIf(!live)('pairing-db against the local database', () => {
   });
 
   it('sets one video link per paired interview and the student sees it through my_interview', async () => {
-    expect(await setVideoLinks(clients.b1, [{ slotId: slotA, url: 'https://meet.example.org/a2' }])).toMatchObject({ ok: false });
+    expect(await setVideoLinks(clients.b1, [{ slotId: slotA, url: 'https://teams.microsoft.com/l/meetup-join/a2' }])).toMatchObject({ ok: false });
     expect(await setVideoLinks(clients.admin, [{ slotId: slotA, url: 'http://insecure.example.org' }])).toMatchObject({ ok: false });
-    expect(await setVideoLinks(clients.admin, [{ slotId: slotA, url: 'https://meet.example.org/a2-one' }, { slotId: slotB, url: 'https://meet.example.org/a2-two' }])).toMatchObject({ ok: true, saved: 2 });
+    expect(await setVideoLinks(clients.admin, [{ slotId: slotA, url: 'https://teams.microsoft.com/l/meetup-join/a2-one' }, { slotId: slotB, url: 'https://teams.microsoft.com/l/meetup-join/a2-two' }])).toMatchObject({ ok: true, saved: 2 });
     const mine = await clients.app1.rpc('my_interview', { p_cycle_id: cycleId });
     expect(mine.error).toBeNull();
-    expect(mine.data.videoUrl).toBe('https://meet.example.org/a2-one');
+    expect(mine.data.videoUrl).toBe('https://teams.microsoft.com/l/meetup-join/a2-one');
     expect(mine.data.interviewers).toHaveLength(2);
     const other = await clients.app2.rpc('my_interview', { p_cycle_id: cycleId });
-    expect(other.data.videoUrl).toBe('https://meet.example.org/a2-two');
+    expect(other.data.videoUrl).toBe('https://teams.microsoft.com/l/meetup-join/a2-two');
     // a slot with no pair cannot take a link
     const s = await svc.from('interview_slots').insert({ cycle_id: cycleId, starts_at: `${day(2)}T11:40:00.000Z`, ends_at: `${day(2)}T12:10:00.000Z` }).select('id').single();
     slotIds.push(s.data!.id);
-    expect(await setVideoLinks(clients.admin, [{ slotId: s.data!.id, url: 'https://meet.example.org/none' }])).toMatchObject({ ok: false });
+    expect(await setVideoLinks(clients.admin, [{ slotId: s.data!.id, url: 'https://teams.microsoft.com/l/meetup-join/none' }])).toMatchObject({ ok: false });
   });
 
   it('adds interview times for admins inside the window and removes unbooked ones only', async () => {

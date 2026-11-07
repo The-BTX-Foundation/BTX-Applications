@@ -53,7 +53,7 @@
   margin-top: 4px;
 }
 
-/* On phone the card is plain flow: headed lists, then the "No nomination needed" note under a hairline. */
+/* On phone the card is plain flow: headed lists, then the virtual interview note under a hairline (.nomination). */
 .card {
   min-width: 0;
 }
@@ -77,9 +77,6 @@
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
-}
-.strong {
-  font-weight: 600;
 }
 .after {
   margin-top: 0;
@@ -178,9 +175,6 @@
     margin-top: 24px;
     padding-top: 24px;
     border-top: 1px solid var(--line);
-  }
-  .after {
-    margin-top: 6px;
   }
 
   .dates {
@@ -296,9 +290,6 @@
   height: 44px;
   font-size: 15px;
   font-weight: 500;
-}
-.closed .nomination {
-  order: 2;
 }
 
 @media (min-width: 1024px) {

@@ -53,7 +53,7 @@ export const RANKING: RankedRow[] = [
 export const MAIN_AWARD = { name: 'Legacy', amountCents: 200000, count: 1 };
 
 /** The selection meeting: when, and the video link (the draft table `calendar_events` has `video_url`). */
-export const MEETING = { dateLabel: 'Fri Oct 16', timeLabel: '7:00 PM', videoUrl: 'https://meet.example.org/btx/selection' };
+export const MEETING = { dateLabel: 'Fri Oct 16', timeLabel: '7:00 PM', videoUrl: 'https://teams.microsoft.com/l/meetup-join/btx-selection' };
 
 /** The third agenda item, from the cycle's meeting checklist (a `checklists` + `tasks` row in the draft schema). */
 export const CALL_STEP = 'Who calls the winners';

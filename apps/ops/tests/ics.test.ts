@@ -7,7 +7,7 @@ const input = {
   startsAt: '2026-11-12T00:00:00Z',
   endsAt: '2026-11-12T00:30:00Z',
   description: 'Interview with Ada, Okafor; APP-1\nVideo call',
-  videoUrl: 'https://meet.google.com/abc-defg-hij',
+  videoUrl: 'https://teams.microsoft.com/l/meetup-join/abc-defg-hij',
   attendees: [{ email: 'ada@terpmail.umd.edu', name: 'Ada Okafor' }],
   now: new Date('2026-11-09T14:00:00Z'),
 };
@@ -32,8 +32,8 @@ describe('buildInterviewIcs', () => {
     expect(ics.replace(/\r\n /g, '')).toContain('ATTENDEE;CN="Ada Okafor";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE:mailto:ada@terpmail.umd.edu');
   });
   it('puts the video link in URL and LOCATION and escapes the description', () => {
-    expect(lines).toContain('URL:https://meet.google.com/abc-defg-hij');
-    expect(ics).toContain('LOCATION:https://meet.google.com/abc-defg-hij');
+    expect(lines).toContain('URL:https://teams.microsoft.com/l/meetup-join/abc-defg-hij');
+    expect(ics).toContain('LOCATION:https://teams.microsoft.com/l/meetup-join/abc-defg-hij');
     expect(ics).toContain('DESCRIPTION:Interview with Ada\\, Okafor\; APP-1\\nVideo call');
   });
   it('leaves out URL and LOCATION without a link', () => {

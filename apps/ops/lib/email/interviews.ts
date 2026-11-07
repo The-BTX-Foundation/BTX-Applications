@@ -239,12 +239,15 @@ export async function sendRebalanceEmails(cycleId: string, moves: Pick<Rebalance
 
 // Admin only. Call it after video links are saved: the student and both interviewers of each slot get the link.
 // A slot with no link, or no booking, is left out. Saving the same link again sends nothing; a changed link sends again.
-export async function sendVideoLinkEmails(cycleId: string, slotIds: string[], deps: InterviewDeps = {}): Promise<InterviewMailResult> {
+// `replaced`: slot ids whose link replaced an earlier one ("Make Teams links" swapping a Meet link); their email adds
+// one line saying so. Emails already logged for the same address and link are never sent again.
+export async function sendVideoLinkEmails(cycleId: string, slotIds: string[], deps: InterviewDeps = {}, replaced: string[] = []): Promise<InterviewMailResult> {
   const s = await setup(deps, { admin: true });
   if (!s.ok) return s;
   const rows = (await s.data.interviews({ slotIds })).filter((r) => r.cycleId === cycleId);
   const info = await s.data.cycleInfo(cycleId);
-  const t = await run(s, rows.flatMap((r) => planVideoLink(r, ctxFor(s, info))));
+  const swapped = new Set(replaced);
+  const t = await run(s, rows.flatMap((r) => planVideoLink(r, ctxFor(s, info), swapped.has(r.slotId))));
   return { ok: true, kind: 'video-link', ...t, at: s.now().toISOString() };
 }
 

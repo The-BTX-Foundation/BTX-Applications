@@ -350,3 +350,24 @@ In one transaction: drop the trigger `bookings_auto_pair` and the functions `boo
 `interview_questions` and `ai_usage`; drop `interview_slots.opened_at`, `interview_free_times.ranges` and `.said`
 (first delete any rows that have no `days` and `windows`, then set those two back to not null). The old blocks table
 comes back only by re-running the Ops Hub file's `board_availability` section.
+
+## Teams sign-in (`20261106120000_teams_token_vault.sql`)
+
+Stores the newest Microsoft refresh token for BTX's Teams meetings account (meetings@btxfoundation.onmicrosoft.com)
+**encrypted in Supabase Vault** (one secret, `btx_teams_refresh_token`), so the Ops Hub can make a Teams meeting for
+each interview (BTX interviews are Teams only). No table. Two functions reach it:
+`public.teams_token_get()` (the token and when it was saved) and `public.teams_token_set(text)` (create or replace;
+refuses anything that is not 20 to 8000 characters without spaces, error 22023). Both are `security definer` with
+`search_path` pinned to empty, and EXECUTE is granted to `service_role` only (revoked from public, anon and
+authenticated). The server seeds it from the env var `BTX_TEAMS_REFRESH_TOKEN` and writes every rotated token back.
+Nothing else changes; `interview_pairings.video_url` keeps its https / 500-character check (the Teams-only rule is in
+the app). Needs the `supabase_vault` extension (on by default on Supabase; the file creates it if missing). Safe to run
+twice.
+
+**Apply it before the code deploys.** Without it the "Make Teams links" button says "Couldn't reach Teams. Try again.",
+which is misleading: the cause is the missing functions, not Microsoft.
+
+Tests: `supabase/tests/database/06_teams_token.test.sql` (who can run the functions, rotation, bad input).
+Roll back: `drop function public.teams_token_get(); drop function public.teams_token_set(text);` and
+`delete from vault.secrets where name = 'btx_teams_refresh_token';` (the feature then says "Teams isn't connected yet"). Details, re-seeding and
+"Rotate after a leak": `apps/ops/README.md`, "Teams interview links".

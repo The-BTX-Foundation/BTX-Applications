@@ -218,10 +218,12 @@ export function Landing({ variant, view, notified }: { variant: CycleVariant; vi
               </div>
             )}
             {closed ? <WhileYouWait /> : null}
-            <div className={`${s.block} ${s.nomination}`}>
-              <p className={s.strong}>No nomination needed.</p>
-              {closed ? null : <p className={s.after}>After you apply, you&apos;ll have a virtual interview.</p>}
-            </div>
+            {/* The interview note under a hairline. Only while applications are open: when closed there is nothing to say. */}
+            {closed ? null : (
+              <div className={`${s.block} ${s.nomination}`}>
+                <p className={s.after}>After you apply, you&apos;ll have a virtual interview.</p>
+              </div>
+            )}
           </aside>
         </div>
         {closed ? null : (

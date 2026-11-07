@@ -306,13 +306,17 @@ export type VideoLinkInput = Who & {
   term: string;
   award: string;
   origin: string;
+  /** True when this link replaces an earlier one (for example a Meet link swapped for Teams): adds one short line. */
+  replaces?: boolean;
 };
 
+// The "Your video link is ready" email. With `replaces`, one sentence says the earlier link no longer applies.
 export function videoLinkEmail(i: VideoLinkInput): Rendered {
   const student = i.audience === 'student';
   const when = easternWhen(i.startsAt);
   const subject = `Video link for ${when}`;
-  const lead = student ? `Hi ${firstOf(i.firstName)}. Here is the link for your interview on ${when}.` : `Hi ${firstOf(i.firstName)}. Here is the link for your interview with ${i.applicantName} (${i.code}) on ${when}.`;
+  const base = student ? `Hi ${firstOf(i.firstName)}. Here is the link for your interview on ${when}.` : `Hi ${firstOf(i.firstName)}. Here is the link for your interview with ${i.applicantName} (${i.code}) on ${when}.`;
+  const lead = i.replaces ? `${base} It replaces the link we sent before.` : base;
   const html = shell({
     origin: i.origin,
     title: subject,

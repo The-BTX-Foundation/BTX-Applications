@@ -1,0 +1,174 @@
+// SERVER ONLY. Gets a Microsoft Graph access token for BTX's Teams meetings account, so the Ops Hub can make Teams
+// meetings. The account is meetings@btxfoundation.onmicrosoft.com: a licensed, non-admin user that only organizes the
+// interview meetings and never attends them. The admin account is never used here.
+//
+// Sign-in model: a public client (Microsoft Graph Command Line Tools), no client secret. The server holds a refresh token
+// and trades it for a short-lived access token each time. Microsoft rotates refresh tokens: every trade hands back a new
+// one, which is saved straight away, encrypted, in Supabase Vault through public.teams_token_set() (migration
+// 20261106120000_teams_token_vault.sql; only the service role may run it). The env var BTX_TEAMS_REFRESH_TOKEN is the
+// seed: it is used when nothing is saved yet, and also when the saved token is refused by Microsoft. The saved token is
+// always tried first, so a new env var alone does not replace a saved token that still works (see the README's "Rotate
+// after a leak").
+//
+// Tokens are never logged and never returned to a screen. Callers only get a plain reason when something is wrong.
+import 'server-only';
+import { createServiceClient, type ServiceClient } from '@btx/data/server';
+
+/** BTX's Microsoft 365 tenant. */
+export const TEAMS_TENANT = '78915995-e897-47de-b801-0d0dea583962';
+/** Microsoft Graph Command Line Tools: a public client, so no secret is needed or stored. */
+export const TEAMS_CLIENT_ID = '14d82eec-204b-4c2f-b7e8-296a70dab67e';
+export const TEAMS_SCOPE = 'OnlineMeetings.ReadWrite User.Read offline_access';
+export const TEAMS_TOKEN_URL = `https://login.microsoftonline.com/${TEAMS_TENANT}/oauth2/v2.0/token`;
+/** The env var that seeds the first refresh token on the server (a token for meetings@, never the admin account). */
+export const TEAMS_ENV_VAR = 'BTX_TEAMS_REFRESH_TOKEN';
+/** The daily cron refreshes a saved token older than this, so it never lapses between semesters. */
+export const KEEP_FRESH_DAYS = 25;
+
+/** The saved token and when it was last written. */
+export type StoredToken = { token: string; updatedAt: string | null };
+
+/** Where the newest refresh token is kept. read() returns null when nothing is saved yet. */
+export type TokenStore = { read: () => Promise<StoredToken | null>; write: (refreshToken: string) => Promise<void> };
+
+export type TokenResult =
+  | { ok: true; accessToken: string }
+  /** not-connected: no saved token and no env seed (or no service key). refused: Microsoft turned every token down.
+   * failed: Microsoft or the database could not be reached. */
+  | { ok: false; reason: 'not-connected' | 'refused' | 'failed' };
+
+/** The plain sentence an admin sees for each reason. */
+export const TOKEN_MESSAGES: Record<Exclude<TokenResult, { ok: true }>['reason'], string> = {
+  'not-connected': "Teams isn't connected yet.",
+  refused: 'The Teams sign-in has expired. Teams needs to be connected again.',
+  failed: "Couldn't reach Teams. Try again.",
+};
+
+type Trade = { ok: true; accessToken: string; refreshToken: string | null } | { ok: false; refused: boolean };
+
+// Trades one refresh token for an access token (and, normally, a new refresh token). A 400 or 401 answer means
+// Microsoft refused this token (expired, revoked, or not for this tenant); anything else is treated as "couldn't reach".
+async function trade(refreshToken: string, f: typeof fetch): Promise<Trade> {
+  let res: Response;
+  try {
+    res = await f(TEAMS_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: TEAMS_CLIENT_ID, grant_type: 'refresh_token', refresh_token: refreshToken, scope: TEAMS_SCOPE }).toString(),
+      cache: 'no-store',
+      // Gives up after 15 seconds (a timeout counts as "couldn't reach").
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    return { ok: false, refused: false };
+  }
+  if (res.status === 400 || res.status === 401) return { ok: false, refused: true };
+  if (!res.ok) return { ok: false, refused: false };
+  let body: { access_token?: unknown; refresh_token?: unknown };
+  try {
+    body = (await res.json()) as typeof body;
+  } catch {
+    return { ok: false, refused: false };
+  }
+  if (typeof body.access_token !== 'string' || body.access_token === '') return { ok: false, refused: false };
+  return { ok: true, accessToken: body.access_token, refreshToken: typeof body.refresh_token === 'string' && body.refresh_token !== '' ? body.refresh_token : null };
+}
+
+// Gets an access token. Tries the saved token first, then the env seed if it is different. Whichever works, the new
+// refresh token Microsoft hands back is written to the store before returning. A failed write does not fail the call
+// (the token just used normally stays valid for a while, so the next call can still sign in); it is logged with no
+// detail so it can be noticed.
+export async function getAccessToken(deps: { store: TokenStore | null; envToken?: string | null; fetch?: typeof fetch }): Promise<TokenResult> {
+  const f = deps.fetch ?? fetch;
+  // Without the service key nothing can be saved, so a rotated token would be lost: treat Teams as not connected.
+  if (!deps.store) return { ok: false, reason: 'not-connected' };
+  let saved: string | null;
+  try {
+    saved = (await deps.store.read())?.token ?? null;
+  } catch {
+    return { ok: false, reason: 'failed' };
+  }
+  const env = deps.envToken?.trim() || null;
+  const tries = [...new Set([saved, env].filter((t): t is string => !!t))];
+  if (tries.length === 0) return { ok: false, reason: 'not-connected' };
+  for (const token of tries) {
+    const r = await trade(token, f);
+    if (!r.ok) {
+      if (r.refused) continue; // try the next token (the env seed after a stale saved one)
+      return { ok: false, reason: 'failed' };
+    }
+    // Save the newest refresh token. When Microsoft did not rotate it but the working token came from the env seed,
+    // save that one so the store holds the token that works.
+    const keep = r.refreshToken ?? token;
+    if (keep !== saved) {
+      try {
+        await deps.store.write(keep);
+      } catch {
+        console.error('[teams] token save failed'); // no detail: an error could carry the value
+      }
+    }
+    return { ok: true, accessToken: r.accessToken };
+  }
+  return { ok: false, reason: 'refused' };
+}
+
+export type KeepFresh = 'fresh' | 'refreshed' | 'skipped' | 'failed';
+
+// The daily cron's monthly refresh: when a saved token is older than KEEP_FRESH_DAYS, trade it once (which saves the
+// rotated token), so it never runs out between semesters. Does nothing when nothing is saved or the token is recent.
+// Never throws; a problem is logged with no detail.
+export async function keepTokenFresh(deps: { store: TokenStore | null; envToken?: string | null; fetch?: typeof fetch; now?: Date }): Promise<KeepFresh> {
+  if (!deps.store) return 'skipped';
+  try {
+    const saved = await deps.store.read();
+    if (!saved) return 'skipped';
+    const age = (deps.now ?? new Date()).getTime() - Date.parse(saved.updatedAt ?? '');
+    // An unknown date counts as old.
+    if (Number.isFinite(age) && age < KEEP_FRESH_DAYS * 86_400_000) return 'fresh';
+    const r = await getAccessToken(deps);
+    if (r.ok) return 'refreshed';
+  } catch {
+    // logged below
+  }
+  console.error('[teams] token refresh failed');
+  return 'failed';
+}
+
+/** The token store backed by Supabase Vault, through the two service-role-only functions. */
+export function serviceTokenStore(db: ServiceClient): TokenStore {
+  return {
+    async read() {
+      const r = await db.rpc('teams_token_get');
+      if (r.error) throw new Error('teams token read failed');
+      const row = ((r.data ?? []) as { refresh_token?: unknown; updated_at?: unknown }[])[0];
+      const t = row?.refresh_token;
+      return typeof t === 'string' && t !== '' ? { token: t, updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null } : null;
+    },
+    async write(refreshToken: string) {
+      const r = await db.rpc('teams_token_set', { p_token: refreshToken });
+      // The database's error text is not passed on.
+      if (r.error) throw new Error('teams token write failed');
+    },
+  };
+}
+
+// The store for this server: Vault through the service-role client, or null without the service key.
+function serverStore(): TokenStore | null {
+  const db = createServiceClient();
+  return db ? serviceTokenStore(db) : null;
+}
+
+/** An access token for this server, seeded from the env var. */
+export async function serverAccessToken(f?: typeof fetch): Promise<TokenResult> {
+  return getAccessToken({ store: serverStore(), envToken: process.env[TEAMS_ENV_VAR], fetch: f });
+}
+
+/** The cron's monthly refresh for this server. Never throws. */
+export async function serverKeepTokenFresh(now?: Date): Promise<KeepFresh> {
+  try {
+    return await keepTokenFresh({ store: serverStore(), envToken: process.env[TEAMS_ENV_VAR], now });
+  } catch {
+    console.error('[teams] token refresh failed');
+    return 'failed';
+  }
+}

@@ -16,7 +16,7 @@ const TF = 'mock-staff-tf';
 const CK = 'mock-staff-ck';
 const DS = 'mock-staff-ds';
 
-const link = (code: string) => `https://meet.example.org/btx/${code.toLowerCase()}`;
+const link = (code: string) => `https://teams.microsoft.com/l/meetup-join/btx-${code.toLowerCase()}`;
 const p = (code: string, a: string, b: string): [string, MockPairing] => [code, { interviewer_a: a, interviewer_b: b, video_url: link(code) }];
 
 const PAIRINGS = new Map<string, MockPairing>([

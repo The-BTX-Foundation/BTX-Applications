@@ -32,6 +32,13 @@
   font-size: 14px;
   color: var(--ink);
 }
+/* An old link that is not a Teams link: a note under the field, not an error. */
+.iv-vl-r .iv-vl-w {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}
 .iv-vl-r input.bad {
   border-color: var(--late, #b3261e);
 }
