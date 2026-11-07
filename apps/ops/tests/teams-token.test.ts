@@ -1,18 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getAccessToken, TEAMS_CLIENT_ID, TEAMS_SCOPE, TEAMS_TOKEN_URL, TOKEN_MESSAGES, type TokenStore } from '@/lib/teams/token';
+import { getAccessToken, keepTokenFresh, TEAMS_CLIENT_ID, TEAMS_SCOPE, TEAMS_TOKEN_URL, TOKEN_MESSAGES, type TokenStore } from '@/lib/teams/token';
 
 // An in-memory token store that counts writes.
-function memoryStore(initial: string | null, opts: { readFails?: boolean; writeFails?: boolean } = {}) {
-  const state = { token: initial, writes: [] as string[] };
+function memoryStore(initial: string | null, opts: { readFails?: boolean; writeFails?: boolean; updatedAt?: string | null } = {}) {
+  const state = { token: initial, updatedAt: opts.updatedAt === undefined ? '2026-11-01T00:00:00Z' : opts.updatedAt, writes: [] as string[] };
   const store: TokenStore = {
     read: async () => {
       if (opts.readFails) throw new Error('db down');
-      return state.token;
+      return state.token ? { token: state.token, updatedAt: state.updatedAt } : null;
     },
     write: async (t) => {
       if (opts.writeFails) throw new Error('db down');
       state.writes.push(t);
       state.token = t;
+      state.updatedAt = '2026-12-01T00:00:00Z';
     },
   };
   return { state, store };
@@ -97,14 +98,51 @@ describe('Teams token store', () => {
     expect(await getAccessToken({ store: memoryStore('rt-a', { readFails: true }).store, fetch: tokenEndpoint({}).f })).toEqual({ ok: false, reason: 'failed' });
   });
 
-  it('still returns the access token when saving the rotated token fails', async () => {
+  it('still returns the access token when saving the rotated token fails, and logs it with no detail', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { store } = memoryStore('rt-a', { writeFails: true });
     expect(await getAccessToken({ store, fetch: tokenEndpoint({ 'rt-a': { access: 'at-6', refresh: 'rt-b' } }).f })).toEqual({ ok: true, accessToken: 'at-6' });
+    expect(log).toHaveBeenCalledWith('[teams] token save failed');
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/rt-|at-6/);
+    log.mockRestore();
   });
 
   it('never puts a token in its answer or its messages', async () => {
     const r = await getAccessToken({ store: memoryStore('rt-secret').store, fetch: tokenEndpoint({}).f });
     expect(JSON.stringify(r)).not.toContain('rt-secret');
     for (const m of Object.values(TOKEN_MESSAGES)) expect(m).not.toMatch(/rt-|token/i);
+  });
+});
+
+describe('keepTokenFresh (the daily cron, monthly in effect)', () => {
+  const NOW = new Date('2026-12-01T12:00:00Z');
+  it('does nothing while the saved token is younger than 25 days', async () => {
+    const { store } = memoryStore('rt-a', { updatedAt: '2026-11-10T00:00:00Z' });
+    const { f } = tokenEndpoint({ 'rt-a': { access: 'at', refresh: 'rt-b' } });
+    expect(await keepTokenFresh({ store, fetch: f, now: NOW })).toBe('fresh');
+    expect(f).not.toHaveBeenCalled();
+  });
+  it('refreshes an older token once and saves the rotated one', async () => {
+    const { state, store } = memoryStore('rt-a', { updatedAt: '2026-11-01T00:00:00Z' });
+    const { f } = tokenEndpoint({ 'rt-a': { access: 'at', refresh: 'rt-b' } });
+    expect(await keepTokenFresh({ store, fetch: f, now: NOW })).toBe('refreshed');
+    expect(state.writes).toEqual(['rt-b']);
+  });
+  it('treats an unknown date as old', async () => {
+    const { store } = memoryStore('rt-a', { updatedAt: null });
+    expect(await keepTokenFresh({ store, fetch: tokenEndpoint({ 'rt-a': { access: 'at', refresh: 'rt-b' } }).f, now: NOW })).toBe('refreshed');
+  });
+  it('skips when nothing is saved or there is no service key, without calling Microsoft', async () => {
+    const { f } = tokenEndpoint({ 'rt-env': { access: 'at' } });
+    expect(await keepTokenFresh({ store: memoryStore(null).store, envToken: 'rt-env', fetch: f, now: NOW })).toBe('skipped');
+    expect(await keepTokenFresh({ store: null, envToken: 'rt-env', fetch: f, now: NOW })).toBe('skipped');
+    expect(f).not.toHaveBeenCalled();
+  });
+  it('fails quietly with a no-detail log', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await keepTokenFresh({ store: memoryStore('rt-a', { updatedAt: '2026-01-01T00:00:00Z' }).store, fetch: tokenEndpoint({}).f, now: NOW })).toBe('failed');
+    expect(await keepTokenFresh({ store: memoryStore('rt-a', { readFails: true }).store, fetch: tokenEndpoint({}).f, now: NOW })).toBe('failed');
+    expect(log.mock.calls).toEqual([['[teams] token refresh failed'], ['[teams] token refresh failed']]);
+    log.mockRestore();
   });
 });

@@ -14,7 +14,7 @@ import { sendAvailabilityReminders, sendRebalanceEmails, sendVideoLinkEmails, ty
 import { previewRebalance } from '../interviews';
 import { affected, joinNames, namesLine, remindMessage, whenLine, type MoveView } from '../interview-times';
 import { FLOW_PEOPLE, FLOW_WAITING_IDS } from '@/mock/interview-flow';
-import { makeTeamsLinks, teamsLinksLine } from '../teams/links';
+import { makeTeamsLinks, planTeamsLinks, teamsConfirmLine, teamsLinksLine } from '../teams/links';
 import { serverAccessToken } from '../teams/token';
 
 type Msg = { ok: boolean; message: string };
@@ -91,19 +91,46 @@ export async function saveVideoLinks(links: { slotId: string; url: string }[]): 
 }
 
 export type TeamsLinksMsg = Msg & { links: { slotId: string; url: string }[] };
+export type TeamsPreview = Msg & { toMake: number; replacing: number; handCheck: number; confirm: string };
 
-// Admin only. "Make Teams links": a Teams meeting from BTX's Teams account for every paired interview ahead that has no
-// link or a non-Teams link (lib/teams/links.ts). The new links are saved, then emailed to the student and both
-// interviewers exactly as "Save and send" does (once per link). When Teams is not connected the message says so and
-// nothing changes. Mock mode makes nothing.
+// The confirm step before "Make Teams links": how many links it makes, how many it replaces, and how many interviews
+// within 24 hours it leaves for a hand check. Changes nothing.
+export async function previewTeamsLinksAction(): Promise<TeamsPreview> {
+  const none = { toMake: 0, replacing: 0, handCheck: 0 };
+  if (!hasSupabaseEnv()) return { ok: true, message: '', ...none, confirm: 'Teams links are made only in the live Ops Hub.' };
+  try {
+    const p = await planTeamsLinks(await db());
+    if (!p.ok) return { ok: false, message: p.message, ...none, confirm: '' };
+    const n = { toMake: p.toMake.length, replacing: p.replacing, handCheck: p.handCheck };
+    return { ok: true, message: '', ...n, confirm: teamsConfirmLine(n) };
+  } catch {
+    return { ok: false, message: "Couldn't check the Teams links. Try again.", ...none, confirm: '' };
+  }
+}
+
+// What the video-link emails did, in plain words (empty when nothing was due).
+function teamsMailLine(m: InterviewMailResult): string {
+  if (!m.ok || m.notConfigured) return "Email isn't set up here, so no emails went out.";
+  const parts: string[] = [];
+  if (m.sent > 0) parts.push(`Sent ${m.sent} ${m.sent === 1 ? 'email' : 'emails'} with the link.`);
+  if (m.skipped > 0) parts.push(`${m.skipped} ${m.skipped === 1 ? 'email had' : 'emails had'} already gone out.`);
+  if (m.failed > 0) parts.push(`${m.failed} ${m.failed === 1 ? "email didn't" : "emails didn't"} go; press Make Teams links again to try ${m.failed === 1 ? 'it' : 'them'}.`);
+  return parts.join(' ');
+}
+
+// Admin only. "Make Teams links": a Teams meeting from BTX's Teams meetings account for every paired interview ahead
+// that has no link or a non-Teams link (lib/teams/links.ts; links within 24 hours are left for a hand check). Then every
+// paired interview ahead with a Teams link is emailed to the student and both interviewers; the email log keeps each
+// address-and-link pair to one email, so people who already have theirs get nothing new. When Teams is not connected
+// the message says so and nothing changes. Mock mode makes nothing.
 export async function makeTeamsLinksAction(): Promise<TeamsLinksMsg> {
   if (!hasSupabaseEnv()) return { ok: true, message: 'Teams links are made only in the live Ops Hub.', links: [] };
   try {
     const r = await makeTeamsLinks(await db(), { token: () => serverAccessToken() });
     if (!r.ok) return { ok: false, message: r.message, links: [] };
     const line = teamsLinksLine(r);
-    if (r.links.length === 0) return { ok: true, message: line, links: [] };
-    const mail = mailLine(await sendVideoLinkEmails(r.cycleId, r.links.map((l) => l.slotId)), 'The student and both interviewers got the link by email.');
+    if (r.emailSlotIds.length === 0) return { ok: true, message: line, links: r.links };
+    const mail = teamsMailLine(await sendVideoLinkEmails(r.cycleId, r.emailSlotIds, {}, r.replaced));
     return { ok: true, message: mail ? `${line} ${mail}` : line, links: r.links };
   } catch {
     return { ok: false, message: "Couldn't make the Teams links. Try again.", links: [] };

@@ -112,6 +112,12 @@ describe('booked, video link, rebalance, cancel', () => {
     expect(r.subject).toBe('Video link for Wed Nov 11, 7:00 PM');
     expect(r.html).toContain('https://teams.microsoft.com/l/meetup-join/1');
     expect(r.html).toContain('Join the video call');
+    expect(r.text).not.toContain('replaces');
+  });
+  it('video link: a replacement link says so in one line', () => {
+    const r = videoLinkEmail({ ...base, audience: 'student', firstName: 'Ada', videoUrl: 'https://teams.microsoft.com/l/meetup-join/2', replaces: true });
+    expect(r.text).toContain('It replaces the link we sent before.');
+    expect(r.html).toContain('It replaces the link we sent before.');
   });
   it('rebalance: added and removed', () => {
     const a = rebalanceEmail({ ...base, change: 'added', firstName: 'Kelsey', videoUrl: null, otherName: 'Tomi Falodun', scorecardUrl: 'https://ops.example.org/scholarships/scoring' });

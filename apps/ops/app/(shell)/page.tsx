@@ -10,6 +10,11 @@ import { loadToday } from '@/lib/today';
 import { loadVideoLinks } from '@/lib/interviews';
 import { requireStaff } from '@/lib/user';
 
+// Server Actions run under the page that calls them, so their time limit is set here (Next.js: maxDuration at the page
+// level). "Make Teams links" on the video links dialog calls Microsoft once or twice per interview and then sends the
+// emails, which can take minutes for a full cycle. Vercel's btx-ops project has Fluid compute on, which allows 300.
+export const maxDuration = 300;
+
 // The page.
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;

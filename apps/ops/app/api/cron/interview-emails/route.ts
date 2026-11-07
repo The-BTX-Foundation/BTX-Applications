@@ -2,6 +2,8 @@
 //   prep      the evening before: each interviewer's prep email for tomorrow's interviews
 //   reminder  the morning before: each student's reminder
 // The same run also sends the matching pushes (prep: "Interviews tomorrow"; reminder: "Due tomorrow").
+// The prep run also keeps the Teams sign-in alive: when the saved refresh token is older than about 25 days it is used
+// once (lib/teams/token.ts keepTokenFresh), so it never lapses between semesters. That never changes the response.
 // Vercel calls it with `Authorization: Bearer ${CRON_SECRET}` (set CRON_SECRET in the project's env); anything else gets
 // 401. Returns the counts as JSON. Safe to run twice: email_log keeps every email to once.
 //
@@ -13,12 +15,14 @@
 import { NextResponse } from 'next/server';
 import { sendPrepEmails, sendReminderEmails, type InterviewDeps } from '@/lib/email/interviews';
 import { sendDueTomorrowPushes, sendPrepPushes } from '@/lib/push/crons';
+import { serverKeepTokenFresh, type KeepFresh } from '@/lib/teams/token';
 
 export const dynamic = 'force-dynamic';
 // The pushes run inside this request (one at a time, each with its own 10 second cap, 40 seconds in all); this keeps the function alive that long.
 export const maxDuration = 60;
 
-async function handleCron(request: Request, deps: InterviewDeps = {}): Promise<Response> {
+// `keepFresh` is the Teams token refresh (a fake in tests).
+async function handleCron(request: Request, deps: InterviewDeps = {}, keepFresh: (now: Date) => Promise<KeepFresh> = serverKeepTokenFresh): Promise<Response> {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const kind = new URL(request.url).searchParams.get('kind');
@@ -30,12 +34,15 @@ async function handleCron(request: Request, deps: InterviewDeps = {}): Promise<R
     console.error('[cron] pushes failed', err instanceof Error ? err.message : 'unknown');
     return null;
   });
+  // Once a day (the prep run). serverKeepTokenFresh never throws and logs any problem with no detail.
+  const teamsRun = kind === 'prep' ? keepFresh(now).catch(() => 'failed' as const) : Promise.resolve(null);
   try {
     const result = kind === 'prep' ? await sendPrepEmails(now, deps) : await sendReminderEmails(now, deps);
-    return NextResponse.json({ ...result, push: await pushRun }, { status: result.ok ? 200 : 500 });
+    const [push] = await Promise.all([pushRun, teamsRun]);
+    return NextResponse.json({ ...result, push }, { status: result.ok ? 200 : 500 });
   } catch (err) {
     console.error('[cron] interview emails failed', err);
-    await pushRun;
+    await Promise.all([pushRun, teamsRun]);
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
 }

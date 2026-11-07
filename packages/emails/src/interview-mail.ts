@@ -73,15 +73,16 @@ export function planCancel(oldRow: InterviewRow, c: PlanContext, newRow?: Interv
     });
 }
 
-/** The video link to the student and each interviewer. A new link is a new email; the same link twice is one. */
-export function planVideoLink(row: InterviewRow, c: PlanContext): Planned[] {
+/** The video link to the student and each interviewer. A new link is a new email; the same link twice is one.
+ * `replaces`: this link replaced an earlier one, so the email says so in one line. */
+export function planVideoLink(row: InterviewRow, c: PlanContext, replaces = false): Planned[] {
   if (!row.videoUrl) return [];
   const out: Planned[] = [];
   const key = (email: string) => `${email.toLowerCase()}|${row.videoUrl}`;
   const url = row.videoUrl;
-  out.push(planned('video-link', row, row.applicantEmail, videoLinkEmail({ ...base(row, c), videoUrl: url, audience: 'student', firstName: first(row.applicantName) }), key(row.applicantEmail)));
+  out.push(planned('video-link', row, row.applicantEmail, videoLinkEmail({ ...base(row, c), videoUrl: url, audience: 'student', firstName: first(row.applicantName), replaces }), key(row.applicantEmail)));
   for (const p of row.interviewers) {
-    if (p.email) out.push(planned('video-link', row, p.email, videoLinkEmail({ ...base(row, c), videoUrl: url, audience: 'interviewer', firstName: first(p.name) }), key(p.email)));
+    if (p.email) out.push(planned('video-link', row, p.email, videoLinkEmail({ ...base(row, c), videoUrl: url, audience: 'interviewer', firstName: first(p.name), replaces }), key(p.email)));
   }
   return out;
 }

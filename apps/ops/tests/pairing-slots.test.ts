@@ -51,11 +51,13 @@ describe('checkNewSlots', () => {
 });
 
 describe('isVideoUrl (Teams links only)', () => {
-  it('accepts Teams links on teams.microsoft.com and teams.live.com', () => {
+  it('accepts Teams links on teams.microsoft.com, teams.live.com and teams.cloud.microsoft', () => {
     expect(isVideoUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc%40thread.v2/0?context=%7b%7d')).toBe(true);
     expect(isVideoUrl('https://teams.live.com/meet/9312345678901?p=abc')).toBe(true);
     expect(isVideoUrl('https://gov.teams.microsoft.com/l/meetup-join/x')).toBe(true);
     expect(isVideoUrl('https://TEAMS.MICROSOFT.COM/l/meetup-join/x')).toBe(true);
+    expect(isVideoUrl('https://teams.cloud.microsoft/l/meetup-join/x')).toBe(true);
+    expect(isVideoUrl('https://emea.teams.cloud.microsoft/meet/123')).toBe(true);
   });
   it('rejects Google Meet, Zoom and every other host', () => {
     expect(isVideoUrl('https://meet.google.com/abc-defg-hij')).toBe(false);
@@ -70,6 +72,10 @@ describe('isVideoUrl (Teams links only)', () => {
     expect(isVideoUrl('https://teams.microsoft.com@evil.com/x')).toBe(false);
     expect(isVideoUrl('https://user@teams.microsoft.com/x')).toBe(false);
     expect(isVideoUrl('https://teams.microsoft.com:8443/x')).toBe(false);
+    expect(isVideoUrl('https://teams.cloud.microsoft.evil.com/x')).toBe(false);
+    expect(isVideoUrl('https://teams.cloud.microsoft.com/x')).toBe(false);
+    expect(isVideoUrl('https://evilteams.cloud.microsoft/x')).toBe(false);
+    expect(isVideoUrl('https://cloud.microsoft/x')).toBe(false);
   });
   it('keeps the database rule: https, no spaces, up to 500 characters', () => {
     expect(isVideoUrl('http://teams.microsoft.com/l/meetup-join/x')).toBe(false);

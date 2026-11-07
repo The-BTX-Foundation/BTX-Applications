@@ -4,12 +4,14 @@
 // to the student in the Portal before the interview (D7). The Today page places this; it does not edit that page.
 // Usage on a server page: `const data = await loadVideoLinks();` then `<VideoLinksPanel data={data} onClose={...} />`
 // from a client component that holds the open/closed state (the "Add links" button).
-// Links are Teams only (2026-11-06). "Make Teams links" has the server make a Teams meeting for every interview still
-// without one, saves and emails them, and fills the fields. The fields stay so one link can be fixed by hand.
+// Links are Teams only (2026-11-06). "Make Teams links" first shows what it will do (a confirm step with the counts),
+// then has the server make a Teams meeting for every interview still without one, save and email them, and fills the
+// fields. The fields stay so one link can be fixed by hand. Only fields the admin changed are checked (as on the server);
+// an old non-Teams link that was not touched shows a warning but does not block saving.
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { VideoLinksData } from '@/lib/interviews';
-import { makeTeamsLinksAction, saveVideoLinks } from '@/lib/actions/interviews';
+import { makeTeamsLinksAction, previewTeamsLinksAction, saveVideoLinks } from '@/lib/actions/interviews';
 import { isVideoUrl, TEAMS_ONLY_MESSAGE } from '@/lib/pairing-slots';
 import { Dialog } from '../sch-parts';
 import '../scholarships.css';
@@ -25,10 +27,32 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
-  const bad = (id: string) => (urls[id] ?? '').trim() !== '' && !isVideoUrl((urls[id] ?? '').trim());
+  // The confirm step: what "Make Teams links" will do, or null when it is not showing.
+  const [confirm, setConfirm] = useState<{ text: string; toMake: number } | null>(null);
+  const text = (id: string) => (urls[id] ?? '').trim();
+  const changed = (id: string) => text(id) !== (saved[id] ?? '');
+  // A field the admin changed that is not a Teams link: blocks saving (the server refuses it too).
+  const bad = (id: string) => changed(id) && text(id) !== '' && !isVideoUrl(text(id));
+  // An untouched old link that is not a Teams link (from before Teams only): a warning, not a block.
+  const legacy = (id: string) => !changed(id) && text(id) !== '' && !isVideoUrl(text(id));
 
-  // Has the server make the missing Teams links, then shows them in the fields.
+  // Asks the server what "Make Teams links" would do and shows the confirm step.
+  async function askMake() {
+    setBusy(true);
+    setError('');
+    setNote('');
+    const res = await previewTeamsLinksAction();
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.message);
+      return;
+    }
+    setConfirm({ text: res.confirm, toMake: res.toMake });
+  }
+
+  // After the confirm step: the server makes the missing Teams links and emails them, then they show in the fields.
   async function makeLinks() {
+    setConfirm(null);
     setBusy(true);
     setError('');
     setNote('');
@@ -46,6 +70,7 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
   }
 
   async function save() {
+    // Only changed fields are checked, matching the server, which checks only the links it is sent.
     if (data.rows.some((r) => bad(r.slotId))) {
       setError(TEAMS_ONLY_MESSAGE);
       return;
@@ -53,8 +78,8 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
     setBusy(true);
     setError('');
     // Only links that changed are sent.
-    const changed = data.rows.filter((r) => (urls[r.slotId] ?? '').trim() !== (saved[r.slotId] ?? '')).map((r) => ({ slotId: r.slotId, url: urls[r.slotId] ?? '' }));
-    const res = changed.length === 0 ? { ok: true, message: '' } : await saveVideoLinks(changed);
+    const edits = data.rows.filter((r) => changed(r.slotId)).map((r) => ({ slotId: r.slotId, url: urls[r.slotId] ?? '' }));
+    const res = edits.length === 0 ? { ok: true, message: '' } : await saveVideoLinks(edits);
     setBusy(false);
     if (!res.ok) {
       setError(res.message);
@@ -87,6 +112,7 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
                 maxLength={500}
                 onChange={(e) => setUrls({ ...urls, [r.slotId]: e.target.value })}
               />
+              {legacy(r.slotId) ? <span className="iv-vl-w">Not a Teams link. Make Teams links replaces it.</span> : null}
             </label>
           ))}
         </div>
@@ -102,17 +128,33 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
           {error}
         </p>
       ) : null}
-      <div className="s-dlg-b">
-        <button type="button" className="o-btn p lg" onClick={makeLinks} disabled={busy || data.rows.length === 0}>
-          Make Teams links
-        </button>
-        <button type="button" className="o-btn s lg" onClick={save} disabled={busy || data.rows.length === 0}>
-          Save and send
-        </button>
-        <button type="button" className="o-btn s lg" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
+      {confirm ? (
+        <>
+          <p className="iv-vl-n" role="status">
+            {confirm.text}
+          </p>
+          <div className="s-dlg-b">
+            <button type="button" className="o-btn p lg" onClick={makeLinks} disabled={busy}>
+              {confirm.toMake > 0 ? `Make ${confirm.toMake} Teams ${confirm.toMake === 1 ? 'link' : 'links'}` : 'Send the emails'}
+            </button>
+            <button type="button" className="o-btn s lg" onClick={() => setConfirm(null)}>
+              Back
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="s-dlg-b">
+          <button type="button" className="o-btn p lg" onClick={askMake} disabled={busy || data.rows.length === 0}>
+            Make Teams links
+          </button>
+          <button type="button" className="o-btn s lg" onClick={save} disabled={busy || data.rows.length === 0}>
+            Save and send
+          </button>
+          <button type="button" className="o-btn s lg" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      )}
     </Dialog>
   );
 }
