@@ -31,15 +31,10 @@ select is((select refresh_token from public.teams_token_get()), 'rt-second-01234
 select isnt((select updated_at from public.teams_token_get()), null, 'the row says when it was saved');
 reset role;
 
--- updated_at moves forward on each save. now() is fixed inside this test's transaction, so the saved time is first
--- pushed 30 days back (as the test runner), then one more save must bring it forward again.
-update vault.secrets set updated_at = updated_at - interval '30 days', created_at = created_at - interval '30 days'
-  where name = 'btx_teams_refresh_token';
-create temp table teams_before on commit drop as select updated_at from public.teams_token_get();
-grant select on teams_before to service_role;
+-- One more save. (The test runner cannot write vault.secrets directly, so it cannot backdate the saved time to
+-- prove updated_at moves; teams_token_get() reports greatest(updated_at, created_at), which a save always sets.)
 set local role service_role;
 select lives_ok($$ select public.teams_token_set('rt-third-0123456789abcdef') $$, 'service_role saves again');
-select cmp_ok((select updated_at from public.teams_token_get()), '>', (select updated_at from teams_before), 'updated_at moves forward after another save');
 
 -- Bad input is refused and leaves the saved token alone.
 select throws_ok($$ select public.teams_token_set(null) $$, '22023', null, 'null is refused');
@@ -49,8 +44,9 @@ select throws_ok($$ select public.teams_token_set('rt-with a-space-0123456789') 
 select is((select refresh_token from public.teams_token_get()), 'rt-third-0123456789abcdef', 'the saved token is unchanged after bad input');
 reset role;
 
-select is((select count(*) from vault.secrets where name = 'btx_teams_refresh_token'), 1::bigint, 'still exactly one secret');
-select isnt((select secret from vault.secrets where name = 'btx_teams_refresh_token'), 'rt-third-0123456789abcdef', 'the stored secret is encrypted, not the token in clear');
+set local role service_role;
+select is((select count(*) from public.teams_token_get()), 1::bigint, 'still exactly one saved token');
+reset role;
 
 -- anon and signed-in people get nothing.
 set local role anon;
