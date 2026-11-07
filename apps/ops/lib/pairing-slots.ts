@@ -69,15 +69,16 @@ export function checkNewSlots(opts: { entries: NewSlotInput[]; windowStart: stri
   return { rows, errors };
 }
 
-// The hosts a BTX interview link may use: Microsoft Teams only (work, personal, and the newer cloud.microsoft address). Google Meet, Zoom and every
+// The hosts a BTX interview link may use: Microsoft Teams for work only (teams.microsoft.com and the newer
+// teams.cloud.microsoft address). Consumer Teams (teams.live.com) is refused: BTX meetings come from BTX's own tenant. Google Meet, Zoom and every
 // other host are refused, because BTX interviews are Teams meetings made from BTX's own Teams account.
-export const TEAMS_HOSTS = ['teams.microsoft.com', 'teams.live.com', 'teams.cloud.microsoft'] as const;
+export const TEAMS_HOSTS = ['teams.microsoft.com', 'teams.cloud.microsoft'] as const;
 
 /** What an admin is told when a link is not a Teams link. */
 export const TEAMS_ONLY_MESSAGE = 'Use the Teams link for this interview.';
 
 /** True when the text is a Teams meeting link the database accepts: https://, up to 500 characters, no spaces, and a host
- * that is teams.microsoft.com, teams.live.com or teams.cloud.microsoft (or a subdomain of one). The host is read from the parsed address, so a
+ * that is teams.microsoft.com or teams.cloud.microsoft (or a subdomain of one). The host is read from the parsed address, so a
  * look-alike such as teams.microsoft.com.evil.com, or a link with a user name in front of the host, is refused. */
 export function isTeamsUrl(v: string): boolean {
   if (v.length > 500 || !/^https:\/\/\S+$/.test(v)) return false;

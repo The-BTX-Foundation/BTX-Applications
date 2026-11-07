@@ -24,7 +24,9 @@ begin;
 
 create extension if not exists supabase_vault with schema vault;
 
--- Reads the saved token and when it was last written. No row when nothing is saved yet.
+-- Reads the saved token and when it was last written. No row when nothing is saved yet. vault.update_secret() sets
+-- updated_at; if a Vault version ever left it empty, the later of updated_at and created_at is reported instead, so the
+-- daily cron's "older than 25 days" check still has a date.
 create or replace function public.teams_token_get()
 returns table (refresh_token text, updated_at timestamptz)
 language sql
@@ -32,7 +34,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select s.decrypted_secret, s.updated_at
+  select s.decrypted_secret, greatest(s.updated_at, s.created_at)
   from vault.decrypted_secrets s
   where s.name = 'btx_teams_refresh_token'
   limit 1;

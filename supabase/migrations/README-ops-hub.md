@@ -368,6 +368,6 @@ twice.
 which is misleading: the cause is the missing functions, not Microsoft.
 
 Tests: `supabase/tests/database/06_teams_token.test.sql` (who can run the functions, rotation, bad input).
-Roll back: `drop function public.teams_token_get(); drop function public.teams_token_set(text);` and delete the Vault
-secret named `btx_teams_refresh_token` (the feature then says "Teams isn't connected yet"). Details and re-seeding:
-`apps/ops/README.md`, "Teams interview links".
+Roll back: `drop function public.teams_token_get(); drop function public.teams_token_set(text);` and
+`delete from vault.secrets where name = 'btx_teams_refresh_token';` (the feature then says "Teams isn't connected yet"). Details, re-seeding and
+"Rotate after a leak": `apps/ops/README.md`, "Teams interview links".

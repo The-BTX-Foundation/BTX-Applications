@@ -21,7 +21,10 @@ export const ORG_ONLY_SETTINGS = { lobbyBypassSettings: { scope: 'organization',
 
 type GraphMeeting = { id?: unknown; joinWebUrl?: unknown; allowedPresenters?: unknown; lobbyBypassSettings?: { scope?: unknown; isDialInBypassEnabled?: unknown } | null };
 
-// Sends one JSON request to Graph. Returns the parsed body, or null on any network or HTTP problem.
+/** Every call to Microsoft gives up after this long, so a hung request cannot hold the page. */
+export const MICROSOFT_TIMEOUT_MS = 15_000;
+
+// Sends one JSON request to Graph. Returns the parsed body, or null on any network or HTTP problem or a timeout.
 async function graph(f: typeof fetch, accessToken: string, url: string, method: 'POST' | 'PATCH', body: unknown): Promise<GraphMeeting | null> {
   try {
     const res = await f(url, {
@@ -29,6 +32,7 @@ async function graph(f: typeof fetch, accessToken: string, url: string, method: 
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       cache: 'no-store',
+      signal: AbortSignal.timeout(MICROSOFT_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as GraphMeeting;
@@ -54,7 +58,7 @@ export async function createOrGetMeeting(accessToken: string, input: MeetingInpu
   if (typeof m.id !== 'string' || m.id === '') return { ok: false };
   // Always set the lobby rule (a meeting found again may have been changed by hand), then check the answer shows it.
   const p = await graph(f, accessToken, `${GRAPH_MEETINGS}/${encodeURIComponent(m.id)}`, 'PATCH', ORG_ONLY_SETTINGS);
-  if (!p || p.allowedPresenters !== 'organization' || p.lobbyBypassSettings?.scope !== 'organization') return { ok: false };
+  if (!p || p.allowedPresenters !== 'organization' || p.lobbyBypassSettings?.scope !== 'organization' || p.lobbyBypassSettings?.isDialInBypassEnabled !== false) return { ok: false };
   return { ok: true, joinUrl: m.joinWebUrl };
 }
 

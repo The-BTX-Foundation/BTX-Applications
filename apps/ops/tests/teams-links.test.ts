@@ -13,16 +13,25 @@ const end = (s: string) => new Date(Date.parse(s) + 30 * 60_000).toISOString();
 type Slot = { id: string; app?: string; startsAt: string; code: string; name: string; pair: boolean; url: string | null };
 
 // A small stand-in for the Supabase client: just the calls makeTeamsLinks makes (role, cycle, bookings, pairings,
-// applications, and the video_url update), backed by an in-memory list. `updateFails` makes the save fail for a slot.
-function fakeDb(role: string, slots: Slot[], opts: { updateFails?: string[] } = {}) {
+// applications, the email log, and the conditional video_url update), backed by in-memory lists.
+// `updateFails` makes the save fail for a slot; `emailed` lists email-log rows; `beforeSave` runs just before a slot's
+// booking re-check, so a test can change things "while running".
+function fakeDb(role: string, slots: Slot[], opts: { updateFails?: string[]; emailed?: { slot_id: string; application_id: string; recipient: string }[]; beforeSave?: (slotId: string, state: { pairs: Map<string, { url: string | null }>; booking: Map<string, string> }) => void } = {}) {
   const updates: { slotId: string; url: string }[] = [];
   const pairs = new Map(slots.filter((s) => s.pair).map((s) => [s.id, { url: s.url }]));
   const appOf = (s: Slot) => s.app ?? `app-${s.id}`;
+  const booking = new Map(slots.map((s) => [s.id, appOf(s)]));
   const from = (table: string) => {
     let op: 'select' | 'update' = 'select';
     let payload: Record<string, unknown> = {};
     const eqs: Record<string, unknown> = {};
     const result = () => {
+      if (table === 'bookings' && eqs.slot_id !== undefined) {
+        const id = String(eqs.slot_id);
+        opts.beforeSave?.(id, { pairs, booking });
+        return { data: booking.has(id) ? { application_id: booking.get(id) } : null, error: null };
+      }
+      if (table === 'email_log') return { data: opts.emailed ?? [], error: null };
       if (table === 'cycles') return { data: { id: 'c1', interview_start: '2026-10-15', interview_end: '2026-12-01' }, error: null };
       if (table === 'bookings') return { data: slots.map((s) => ({ slot_id: s.id, application_id: appOf(s), interview_slots: { starts_at: s.startsAt, ends_at: end(s.startsAt), cycle_id: 'c1' } })), error: null };
       if (table === 'applications') return { data: slots.map((s) => ({ id: appOf(s), applicant_code: s.code, full_name: s.name })), error: null };
@@ -30,7 +39,8 @@ function fakeDb(role: string, slots: Slot[], opts: { updateFails?: string[] } = 
       if (table === 'interview_pairings' && op === 'update') {
         const id = String(eqs.slot_id);
         if (opts.updateFails?.includes(id)) return { data: null, error: { message: 'nope' } };
-        if (!pairs.has(id)) return { data: [], error: null };
+        // The conditional update: only while the link is still what the plan saw.
+        if (!pairs.has(id) || ('video_url' in eqs && pairs.get(id)!.url !== eqs.video_url)) return { data: [], error: null };
         pairs.set(id, { url: String(payload.video_url) });
         updates.push({ slotId: id, url: String(payload.video_url) });
         return { data: [{ slot_id: id }], error: null };
@@ -41,6 +51,7 @@ function fakeDb(role: string, slots: Slot[], opts: { updateFails?: string[] } = 
       select: () => b,
       update: (v: Record<string, unknown>) => ((op = 'update'), (payload = v), b),
       eq: (k: string, v: unknown) => ((eqs[k] = v), b),
+      is: (k: string, v: unknown) => ((eqs[k] = v), b),
       in: () => b,
       order: () => b,
       limit: () => b,
@@ -55,17 +66,23 @@ function fakeDb(role: string, slots: Slot[], opts: { updateFails?: string[] } = 
 
 // A fake Graph: every createOrGet for the same externalId returns the same meeting (as Microsoft does). `fail` lists
 // externalIds Graph answers with an error; `patch` decides what the PATCH answers with ('ok' echoes the settings).
-function fakeGraph(opts: { fail?: string[]; patch?: 'ok' | 'everyone' | 'error' } = {}) {
+function fakeGraph(opts: { fail?: string[]; patch?: 'ok' | 'everyone' | 'dialin' | 'error' } = {}) {
   const meetings = new Map<string, { id: string; url: string }>();
   const calls: { method: string; url: string; body: Record<string, unknown> }[] = [];
   const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
     calls.push({ method: String(init?.method), url: String(url), body });
     expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer at-1');
+    expect(init?.signal).toBeInstanceOf(AbortSignal); // every Graph call has a timeout
     if (init?.method === 'PATCH') {
       const mode = opts.patch ?? 'ok';
       if (mode === 'error') return new Response('{"error":{}}', { status: 403 });
-      const settings = mode === 'everyone' ? { allowedPresenters: 'everyone', lobbyBypassSettings: { scope: 'everyone', isDialInBypassEnabled: true } } : body;
+      const settings =
+        mode === 'everyone'
+          ? { allowedPresenters: 'everyone', lobbyBypassSettings: { scope: 'everyone', isDialInBypassEnabled: true } }
+          : mode === 'dialin'
+            ? { allowedPresenters: 'organization', lobbyBypassSettings: { scope: 'organization', isDialInBypassEnabled: true } }
+            : body;
       return new Response(JSON.stringify({ id: String(url).split('/').pop(), ...settings }), { status: 200 });
     }
     const id = String(body.externalId);
@@ -94,22 +111,33 @@ const SLOTS: Slot[] = [
 describe('planTeamsLinks (the confirm step)', () => {
   it('counts what a run would make, replace, leave, and hand-check', async () => {
     const p = await planTeamsLinks(fakeDb('admin', SLOTS).client, NOW);
-    expect(p).toMatchObject({ ok: true, cycleId: 'c1', replacing: 1, had: 1, handCheck: 1 });
+    // toEmail: the 3 new links plus s3, whose Teams link nobody has been emailed yet.
+    expect(p).toMatchObject({ ok: true, cycleId: 'c1', replacing: 1, had: 1, handCheck: 1, toEmail: 4 });
     if (!p.ok) throw new Error('plan');
     // s1 and s7 have no link (s7 is soon, but an empty link is still filled); s2 replaces a Meet link; s6 (Zoom, soon) is
     // left for a hand check; s3 already has Teams; s4 is unpaired; s5 is past.
     expect(p.toMake.map((x) => x.slotId)).toEqual(['s7', 's1', 's2']); // in time order
     expect(p.teamsSlotIds.sort()).toEqual(['s1', 's2', 's3', 's7']);
   });
+  it('does not count an existing Teams link that was already emailed', async () => {
+    const emailed = [{ slot_id: 's3', application_id: 'app-s3', recipient: 'cy@x.org|https://teams.microsoft.com/l/meetup-join/already' }];
+    expect(await planTeamsLinks(fakeDb('admin', SLOTS, { emailed }).client, NOW)).toMatchObject({ toEmail: 3 });
+    // An email for an older link does not count.
+    const old = [{ slot_id: 's3', application_id: 'app-s3', recipient: 'cy@x.org|https://meet.google.com/old' }];
+    expect(await planTeamsLinks(fakeDb('admin', SLOTS, { emailed: old }).client, NOW)).toMatchObject({ toEmail: 4 });
+  });
   it('is admin only', async () => {
     expect(await planTeamsLinks(fakeDb('board', SLOTS).client, NOW)).toEqual({ ok: false, message: 'Only board members with admin rights can make Teams links.' });
   });
   it('says the counts in plain words', () => {
-    expect(teamsConfirmLine({ toMake: 3, replacing: 1, handCheck: 1 })).toBe(
-      "Makes 3 Teams links and emails 3 students and their interviewers. 1 interview already has another link; it will be replaced. 1 interview starts within 24 hours with another link. It needs a hand check and won't change.",
+    expect(teamsConfirmLine({ toMake: 3, replacing: 1, handCheck: 1, toEmail: 4 })).toBe(
+      "Makes 3 Teams links. Emails the link to 4 students and their interviewers. 1 interview already has another link; it will be replaced. 1 interview starts within 24 hours with another link. It needs a hand check and won't change.",
     );
-    expect(teamsConfirmLine({ toMake: 1, replacing: 0, handCheck: 0 })).toBe('Makes 1 Teams link and emails 1 student and their interviewers.');
-    expect(teamsConfirmLine({ toMake: 0, replacing: 0, handCheck: 0 })).toMatch(/already has a Teams link/);
+    expect(teamsConfirmLine({ toMake: 1, replacing: 0, handCheck: 0, toEmail: 1 })).toBe('Makes 1 Teams link. Emails the link to 1 student and their interviewers.');
+    expect(teamsConfirmLine({ toMake: 0, replacing: 0, handCheck: 0, toEmail: 2 })).toBe('No new Teams links to make. Emails the link to 2 students and their interviewers.');
+    expect(teamsConfirmLine({ toMake: 0, replacing: 0, handCheck: 0, toEmail: 0 })).toBe('Every paired interview ahead already has a Teams link, and everyone has had it by email.');
+    // Never "every interview has a Teams link" while hand checks are waiting.
+    expect(teamsConfirmLine({ toMake: 0, replacing: 0, handCheck: 1, toEmail: 0 })).toBe("No new Teams links to make. 1 interview starts within 24 hours with another link. It needs a hand check and won't change.");
   });
 });
 
@@ -155,7 +183,7 @@ describe('makeTeamsLinks', () => {
   });
 
   it('counts a meeting as failed when the PATCH fails or does not show the organization rule', async () => {
-    for (const patch of ['error', 'everyone'] as const) {
+    for (const patch of ['error', 'everyone', 'dialin'] as const) {
       const { client, updates } = fakeDb('admin', SLOTS.slice(0, 1));
       expect(await makeTeamsLinks(client, { token: okToken, fetch: fakeGraph({ patch }).f, now: NOW })).toMatchObject({ ok: true, made: 0, failed: 1 });
       expect(updates).toEqual([]);
@@ -198,6 +226,27 @@ describe('makeTeamsLinks', () => {
     expect(await makeTeamsLinks(again.client, { token: okToken, fetch: g.f, now: NOW })).toMatchObject({ ok: true, made: 1, had: 2, failed: 0 });
     expect(g.meetings.size).toBe(2);
     expect(again.updates[0]).toEqual({ slotId: 's2', url: g.meetings.get('s2:app-s2')?.url });
+  });
+
+  it('leaves an interview alone when its link changed while running, and does not email it', async () => {
+    const db = fakeDb('admin', SLOTS.slice(0, 2), {
+      // Someone pastes a link by hand on s1 after the plan was made.
+      beforeSave: (id, st) => {
+        if (id === 's1') st.pairs.set('s1', { url: 'https://teams.microsoft.com/l/meetup-join/by-hand' });
+      },
+    });
+    const r = await makeTeamsLinks(db.client, { token: okToken, fetch: fakeGraph().f, now: NOW });
+    expect(r).toMatchObject({ ok: true, made: 1, skipped: 1, failed: 0 });
+    expect(db.pairs.get('s1')?.url).toBe('https://teams.microsoft.com/l/meetup-join/by-hand');
+    expect(r.ok && r.emailSlotIds).toEqual(['s2']);
+  });
+
+  it('leaves an interview alone when another student booked the slot while running', async () => {
+    const db = fakeDb('admin', SLOTS.slice(0, 1), { beforeSave: (_id, st) => st.booking.set('s1', 'app-other') });
+    const r = await makeTeamsLinks(db.client, { token: okToken, fetch: fakeGraph().f, now: NOW });
+    expect(r).toMatchObject({ ok: true, made: 0, skipped: 1, emailSlotIds: [] });
+    expect(db.updates).toEqual([]);
+    expect(teamsLinksLine(r.ok ? r : { made: 0, had: 0, failed: 0, handCheck: 0 })).toBe('1 interview changed while this was running and was left alone.');
   });
 
   it('counts Graph failures and keeps going', async () => {

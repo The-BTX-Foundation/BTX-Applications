@@ -404,7 +404,7 @@ export async function previewRebalance(db: Db, cycleId: string, now = new Date()
 
 // ---- video links (D7) --------------------------------------------------------------------------------------------
 
-export type VideoLinkRow = { slotId: string; when: string; code: string; /** The applicant's full name. */ applicant: string; names: string; url: string };
+export type VideoLinkRow = { slotId: string; when: string; /** ISO start, for the 24-hour hand-check note. */ startsAt: string; code: string; /** The applicant's full name. */ applicant: string; names: string; url: string };
 export type VideoLinksData = {
   rows: VideoLinkRow[];
   /** Booked interviews ahead that have no pair yet, so no link can be added. */
@@ -418,6 +418,7 @@ export async function loadVideoLinks(): Promise<VideoLinksData> {
   const rowFor = (slotId: string, startsAt: string, code: string, applicant: string, names: string, url: string | null): VideoLinkRow => ({
     slotId,
     when: `${dayLabel(startsAt)}, ${timeLabel(startsAt)}`,
+    startsAt,
     code,
     applicant,
     names,

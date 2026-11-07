@@ -51,9 +51,8 @@ describe('checkNewSlots', () => {
 });
 
 describe('isVideoUrl (Teams links only)', () => {
-  it('accepts Teams links on teams.microsoft.com, teams.live.com and teams.cloud.microsoft', () => {
+  it('accepts Teams links on teams.microsoft.com and teams.cloud.microsoft', () => {
     expect(isVideoUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc%40thread.v2/0?context=%7b%7d')).toBe(true);
-    expect(isVideoUrl('https://teams.live.com/meet/9312345678901?p=abc')).toBe(true);
     expect(isVideoUrl('https://gov.teams.microsoft.com/l/meetup-join/x')).toBe(true);
     expect(isVideoUrl('https://TEAMS.MICROSOFT.COM/l/meetup-join/x')).toBe(true);
     expect(isVideoUrl('https://teams.cloud.microsoft/l/meetup-join/x')).toBe(true);
@@ -62,6 +61,7 @@ describe('isVideoUrl (Teams links only)', () => {
   it('rejects Google Meet, Zoom and every other host', () => {
     expect(isVideoUrl('https://meet.google.com/abc-defg-hij')).toBe(false);
     expect(isVideoUrl('https://zoom.us/j/123456789')).toBe(false);
+    expect(isVideoUrl('https://teams.live.com/meet/9312345678901?p=abc')).toBe(false); // consumer Teams
     expect(isVideoUrl('https://us02web.zoom.us/j/1')).toBe(false);
     expect(isVideoUrl('https://example.org/teams.microsoft.com')).toBe(false);
   });

@@ -29,6 +29,7 @@ function tokenEndpoint(answers: Record<string, { access: string; refresh?: strin
     expect(form.get('grant_type')).toBe('refresh_token');
     expect(form.get('scope')).toBe(TEAMS_SCOPE);
     expect(form.get('client_secret')).toBeNull(); // public client
+    expect(init?.signal).toBeInstanceOf(AbortSignal); // every call has a timeout
     const rt = form.get('refresh_token') ?? '';
     seen.push(rt);
     const a = answers[rt];

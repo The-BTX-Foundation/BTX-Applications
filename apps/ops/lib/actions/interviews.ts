@@ -91,17 +91,17 @@ export async function saveVideoLinks(links: { slotId: string; url: string }[]): 
 }
 
 export type TeamsLinksMsg = Msg & { links: { slotId: string; url: string }[] };
-export type TeamsPreview = Msg & { toMake: number; replacing: number; handCheck: number; confirm: string };
+export type TeamsPreview = Msg & { toMake: number; replacing: number; handCheck: number; toEmail: number; confirm: string };
 
 // The confirm step before "Make Teams links": how many links it makes, how many it replaces, and how many interviews
 // within 24 hours it leaves for a hand check. Changes nothing.
 export async function previewTeamsLinksAction(): Promise<TeamsPreview> {
-  const none = { toMake: 0, replacing: 0, handCheck: 0 };
+  const none = { toMake: 0, replacing: 0, handCheck: 0, toEmail: 0 };
   if (!hasSupabaseEnv()) return { ok: true, message: '', ...none, confirm: 'Teams links are made only in the live Ops Hub.' };
   try {
     const p = await planTeamsLinks(await db());
     if (!p.ok) return { ok: false, message: p.message, ...none, confirm: '' };
-    const n = { toMake: p.toMake.length, replacing: p.replacing, handCheck: p.handCheck };
+    const n = { toMake: p.toMake.length, replacing: p.replacing, handCheck: p.handCheck, toEmail: p.toEmail };
     return { ok: true, message: '', ...n, confirm: teamsConfirmLine(n) };
   } catch {
     return { ok: false, message: "Couldn't check the Teams links. Try again.", ...none, confirm: '' };

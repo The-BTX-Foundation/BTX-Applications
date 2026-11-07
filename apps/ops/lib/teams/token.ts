@@ -6,8 +6,9 @@
 // and trades it for a short-lived access token each time. Microsoft rotates refresh tokens: every trade hands back a new
 // one, which is saved straight away, encrypted, in Supabase Vault through public.teams_token_set() (migration
 // 20261106120000_teams_token_vault.sql; only the service role may run it). The env var BTX_TEAMS_REFRESH_TOKEN is the
-// seed: it is used when nothing is saved yet, and also when the saved token is refused (so putting a fresh token in the
-// env var re-connects Teams).
+// seed: it is used when nothing is saved yet, and also when the saved token is refused by Microsoft. The saved token is
+// always tried first, so a new env var alone does not replace a saved token that still works (see the README's "Rotate
+// after a leak").
 //
 // Tokens are never logged and never returned to a screen. Callers only get a plain reason when something is wrong.
 import 'server-only';
@@ -55,6 +56,8 @@ async function trade(refreshToken: string, f: typeof fetch): Promise<Trade> {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ client_id: TEAMS_CLIENT_ID, grant_type: 'refresh_token', refresh_token: refreshToken, scope: TEAMS_SCOPE }).toString(),
       cache: 'no-store',
+      // Gives up after 15 seconds (a timeout counts as "couldn't reach").
+      signal: AbortSignal.timeout(15_000),
     });
   } catch {
     return { ok: false, refused: false };

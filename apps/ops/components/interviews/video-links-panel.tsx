@@ -28,26 +28,39 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   // The confirm step: what "Make Teams links" will do, or null when it is not showing.
-  const [confirm, setConfirm] = useState<{ text: string; toMake: number } | null>(null);
+  const [confirm, setConfirm] = useState<{ text: string; toMake: number; toEmail: number } | null>(null);
+  // Read once when the dialog opens: the 24-hour hand-check note is about the moment the admin looks.
+  const [openedAt] = useState(() => Date.now());
   const text = (id: string) => (urls[id] ?? '').trim();
   const changed = (id: string) => text(id) !== (saved[id] ?? '');
   // A field the admin changed that is not a Teams link: blocks saving (the server refuses it too).
   const bad = (id: string) => changed(id) && text(id) !== '' && !isVideoUrl(text(id));
   // An untouched old link that is not a Teams link (from before Teams only): a warning, not a block.
   const legacy = (id: string) => !changed(id) && text(id) !== '' && !isVideoUrl(text(id));
+  // Inside 24 hours the button leaves an old link alone (the server's hand-check rule), so the note says so.
+  const soon = (startsAt: string) => Date.parse(startsAt) - openedAt <= 24 * 3_600_000;
+  const TRY_AGAIN = "That didn't go through. Try again.";
 
   // Asks the server what "Make Teams links" would do and shows the confirm step.
   async function askMake() {
     setBusy(true);
     setError('');
     setNote('');
-    const res = await previewTeamsLinksAction();
+    let res: Awaited<ReturnType<typeof previewTeamsLinksAction>>;
+    try {
+      res = await previewTeamsLinksAction();
+    } catch {
+      // A network drop or a server timeout: a fixed plain message, and the buttons work again.
+      setBusy(false);
+      setError(TRY_AGAIN);
+      return;
+    }
     setBusy(false);
     if (!res.ok) {
       setError(res.message);
       return;
     }
-    setConfirm({ text: res.confirm, toMake: res.toMake });
+    setConfirm({ text: res.confirm, toMake: res.toMake, toEmail: res.toEmail });
   }
 
   // After the confirm step: the server makes the missing Teams links and emails them, then they show in the fields.
@@ -56,7 +69,16 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
     setBusy(true);
     setError('');
     setNote('');
-    const res = await makeTeamsLinksAction();
+    let res: Awaited<ReturnType<typeof makeTeamsLinksAction>>;
+    try {
+      res = await makeTeamsLinksAction();
+    } catch {
+      // Some links may have been made before the drop; pressing again is safe (the same meeting comes back).
+      setBusy(false);
+      setError(TRY_AGAIN);
+      router.refresh();
+      return;
+    }
     setBusy(false);
     if (!res.ok) {
       setError(res.message);
@@ -112,7 +134,9 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
                 maxLength={500}
                 onChange={(e) => setUrls({ ...urls, [r.slotId]: e.target.value })}
               />
-              {legacy(r.slotId) ? <span className="iv-vl-w">Not a Teams link. Make Teams links replaces it.</span> : null}
+              {legacy(r.slotId) ? (
+                <span className="iv-vl-w">{soon(r.startsAt) ? 'Not a Teams link. This interview is within 24 hours, so it needs a hand check: paste the Teams link here.' : 'Not a Teams link. Make Teams links replaces it.'}</span>
+              ) : null}
             </label>
           ))}
         </div>
@@ -134,9 +158,12 @@ export function VideoLinksPanel({ data, onClose }: { data: VideoLinksData; onClo
             {confirm.text}
           </p>
           <div className="s-dlg-b">
-            <button type="button" className="o-btn p lg" onClick={makeLinks} disabled={busy}>
-              {confirm.toMake > 0 ? `Make ${confirm.toMake} Teams ${confirm.toMake === 1 ? 'link' : 'links'}` : 'Send the emails'}
-            </button>
+            {/* Nothing to make and nothing to email: only Back. */}
+            {confirm.toMake > 0 || confirm.toEmail > 0 ? (
+              <button type="button" className="o-btn p lg" onClick={makeLinks} disabled={busy}>
+                {confirm.toMake > 0 ? `Make ${confirm.toMake} Teams ${confirm.toMake === 1 ? 'link' : 'links'}` : 'Send the emails'}
+              </button>
+            ) : null}
             <button type="button" className="o-btn s lg" onClick={() => setConfirm(null)}>
               Back
             </button>

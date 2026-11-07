@@ -29,17 +29,28 @@ select is((select refresh_token from public.teams_token_get()), 'rt-first-012345
 select lives_ok($$ select public.teams_token_set('rt-second-0123456789abcdef') $$, 'service_role saves the rotated token');
 select is((select refresh_token from public.teams_token_get()), 'rt-second-0123456789abcdef', 'the rotated token replaces the first');
 select isnt((select updated_at from public.teams_token_get()), null, 'the row says when it was saved');
+reset role;
+
+-- updated_at moves forward on each save. now() is fixed inside this test's transaction, so the saved time is first
+-- pushed 30 days back (as the test runner), then one more save must bring it forward again.
+update vault.secrets set updated_at = updated_at - interval '30 days', created_at = created_at - interval '30 days'
+  where name = 'btx_teams_refresh_token';
+create temp table teams_before on commit drop as select updated_at from public.teams_token_get();
+grant select on teams_before to service_role;
+set local role service_role;
+select lives_ok($$ select public.teams_token_set('rt-third-0123456789abcdef') $$, 'service_role saves again');
+select cmp_ok((select updated_at from public.teams_token_get()), '>', (select updated_at from teams_before), 'updated_at moves forward after another save');
 
 -- Bad input is refused and leaves the saved token alone.
 select throws_ok($$ select public.teams_token_set(null) $$, '22023', null, 'null is refused');
 select throws_ok($$ select public.teams_token_set('') $$, '22023', null, 'an empty value is refused');
 select throws_ok($$ select public.teams_token_set('short') $$, '22023', null, 'a too-short value is refused');
 select throws_ok($$ select public.teams_token_set('rt-with a-space-0123456789') $$, '22023', null, 'a value with a space is refused');
-select is((select refresh_token from public.teams_token_get()), 'rt-second-0123456789abcdef', 'the saved token is unchanged after bad input');
+select is((select refresh_token from public.teams_token_get()), 'rt-third-0123456789abcdef', 'the saved token is unchanged after bad input');
 reset role;
 
 select is((select count(*) from vault.secrets where name = 'btx_teams_refresh_token'), 1::bigint, 'still exactly one secret');
-select isnt((select secret from vault.secrets where name = 'btx_teams_refresh_token'), 'rt-second-0123456789abcdef', 'the stored secret is encrypted, not the token in clear');
+select isnt((select secret from vault.secrets where name = 'btx_teams_refresh_token'), 'rt-third-0123456789abcdef', 'the stored secret is encrypted, not the token in clear');
 
 -- anon and signed-in people get nothing.
 set local role anon;
@@ -56,7 +67,7 @@ select throws_ok($$ select * from vault.decrypted_secrets $$, '42501', null, 'a 
 select throws_ok($$ select * from vault.secrets $$, '42501', null, 'a signed-in admin cannot see the encrypted secrets');
 reset role;
 
-select is((select refresh_token from public.teams_token_get()), 'rt-second-0123456789abcdef', 'nobody else changed the token');
+select is((select refresh_token from public.teams_token_get()), 'rt-third-0123456789abcdef', 'nobody else changed the token');
 
 select * from finish();
 rollback;
