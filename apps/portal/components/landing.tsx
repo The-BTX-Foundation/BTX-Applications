@@ -155,7 +155,7 @@ export function Landing({ variant, view, notified }: { variant: CycleVariant; vi
                   {view.amount} for one Clark School engineering undergraduate this {season}.
                 </>
               ) : (
-                <>The next cycle opens in {view.nextMonth}.</>
+                <>{view.nextMonth ? `The next cycle opens in ${view.nextMonth}.` : 'Dates for the next cycle are coming soon.'}</>
               )}
             </p>
             {open ? (

@@ -18,8 +18,9 @@ export type CycleView = {
   applyByLong: string;
   /** "11:59 PM", or "[time]" */
   deadlineTime: string;
-  /** "Oct" style month for the closed landing, or "[month]". */
-  nextMonth: string;
+  /** The month the next cycle opens ("January"), or null when the board has not set it yet. The screens then
+   *  say the dates are coming soon instead of showing a bracketed placeholder to students. */
+  nextMonth: string | null;
   requirements: string[];
   /** The photo-and-story due date ("Fri Nov 6"), or "[date]". */
   photoDue: string;
@@ -84,7 +85,7 @@ export function toView(c: Cycle): CycleView {
     opensLong: longDay(opens),
     applyByLong: longDay(apply),
     deadlineTime: easternTime(c.closes_at),
-    nextMonth: c.next_cycle_month ?? PLACEHOLDER.month,
+    nextMonth: c.next_cycle_month ?? null,
     photoDue: longDay(c.photo_due),
     paymentNote: c.payment_note?.trim() || "[How it's paid]",
     eventDate: c.event_enabled && c.event_at ? longDay(easternDate(c.event_at)) : '[Event date]',
@@ -119,7 +120,7 @@ export async function loadLanding(preview?: string): Promise<Landing | { failed:
   if (failed) return { failed: true };
   return {
     variant: cycleVariant(cycle),
-    view: cycle ? toView(cycle) : { ...MOCK, id: null, term: null, awardName: null, amount: PLACEHOLDER.amount, opensLong: PLACEHOLDER.date, applyByLong: PLACEHOLDER.date, nextMonth: PLACEHOLDER.month, drawing: null },
+    view: cycle ? toView(cycle) : { ...MOCK, id: null, term: null, awardName: null, amount: PLACEHOLDER.amount, opensLong: PLACEHOLDER.date, applyByLong: PLACEHOLDER.date, nextMonth: null, drawing: null },
   };
 }
 
