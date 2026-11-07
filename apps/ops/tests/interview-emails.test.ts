@@ -37,7 +37,7 @@ describe('prep email', () => {
     ...base,
     firstName: 'Kelsey',
     otherName: 'Tomi Falodun',
-    videoUrl: 'https://meet.google.com/qvr-hwbn-xme',
+    videoUrl: 'https://teams.microsoft.com/l/meetup-join/qvr-hwbn-xme',
     answers: ['I tutor in Bowie.', null, 'Stormwater.'],
     scorecardUrl: 'https://ops.example.org/scholarships/scoring',
     questions: [{ title: 'Community', questions: ['Tell us about it.'] }, { title: 'To close', questions: ['Questions for us?'] }],
@@ -50,7 +50,7 @@ describe('prep email', () => {
       expect(part).toContain('Ada Okafor');
       expect(part).toContain('APP-2026-00015');
       expect(part).toContain('Tomi Falodun');
-      expect(part).toContain('meet.google.com/qvr-hwbn-xme');
+      expect(part).toContain('teams.microsoft.com/l/meetup-join/qvr-hwbn-xme');
       expect(part).toContain('I tutor in Bowie.');
       expect(part).toContain('Stormwater.');
       expect(part).toContain('https://ops.example.org/scholarships/scoring');
@@ -74,7 +74,7 @@ describe('prep email', () => {
 });
 
 describe('reminder email', () => {
-  const input = { ...base, firstName: 'Ebony Coleman', videoUrl: 'https://meet.google.com/xke-pfrd-tqa', interviewers: ['Cillisha Knights', 'Darien Strachan'], changeUrl: 'https://apply.example.org/status/change' };
+  const input = { ...base, firstName: 'Ebony Coleman', videoUrl: 'https://teams.microsoft.com/l/meetup-join/xke-pfrd-tqa', interviewers: ['Cillisha Knights', 'Darien Strachan'], changeUrl: 'https://apply.example.org/status/change' };
   it('has the time, link, interviewer names and the change link', () => {
     const r = reminderEmail(input);
     expect(r.subject).toBe('Your BTX interview is tomorrow at 7:00 PM');
@@ -108,9 +108,9 @@ describe('booked, video link, rebalance, cancel', () => {
     expect(r.html).toContain('You and Tomi Falodun interview Ada Okafor');
   });
   it('video link: has the link and a join button', () => {
-    const r = videoLinkEmail({ ...base, audience: 'student', firstName: 'Ada', videoUrl: 'https://zoom.us/j/1' });
+    const r = videoLinkEmail({ ...base, audience: 'student', firstName: 'Ada', videoUrl: 'https://teams.microsoft.com/l/meetup-join/1' });
     expect(r.subject).toBe('Video link for Wed Nov 11, 7:00 PM');
-    expect(r.html).toContain('https://zoom.us/j/1');
+    expect(r.html).toContain('https://teams.microsoft.com/l/meetup-join/1');
     expect(r.html).toContain('Join the video call');
   });
   it('rebalance: added and removed', () => {

@@ -29,8 +29,8 @@ describe('syncWindow and addDays', () => {
 
 describe('calendar_events', () => {
   it('a timed event keeps its times in UTC and the owner in the description', () => {
-    const [e] = build({ people, events: [{ id: 'e1', title: 'Board meeting', starts_at: '2026-10-28T23:00:00+00:00', ends_at: '2026-10-29T00:30:00+00:00', all_day: false, location: null, video_url: 'https://meet.example/abc', owner_id: 'u1' }] });
-    expect(e).toMatchObject({ id: 'event:e1', title: 'Board meeting', allDay: false, start: '2026-10-28T23:00:00Z', end: '2026-10-29T00:30:00Z', location: 'https://meet.example/abc' });
+    const [e] = build({ people, events: [{ id: 'e1', title: 'Board meeting', starts_at: '2026-10-28T23:00:00+00:00', ends_at: '2026-10-29T00:30:00+00:00', all_day: false, location: null, video_url: 'https://teams.microsoft.com/l/meetup-join/abc', owner_id: 'u1' }] });
+    expect(e).toMatchObject({ id: 'event:e1', title: 'Board meeting', allDay: false, start: '2026-10-28T23:00:00Z', end: '2026-10-29T00:30:00Z', location: 'https://teams.microsoft.com/l/meetup-join/abc' });
     expect(e.description).toBe(`Owner: Kelsey M\n\n${FOOTER}`);
   });
   it('a timed event with no end lasts an hour; location wins over the video link', () => {
@@ -86,7 +86,7 @@ describe('interviews', () => {
       { id: 's1', starts_at: '2026-11-10T15:00:00Z', ends_at: '2026-11-10T15:30:00Z' },
       { id: 's2', starts_at: '2026-11-11T15:00:00Z', ends_at: '2026-11-11T15:30:00Z' },
     ],
-    pairings: [{ slot_id: 's1', interviewer_a: 'u1', interviewer_b: 'u2', video_url: 'https://meet.example/iv' }],
+    pairings: [{ slot_id: 's1', interviewer_a: 'u1', interviewer_b: 'u2', video_url: 'https://teams.microsoft.com/l/meetup-join/iv' }],
     // full_name and email are here on purpose: even if a loader ever passed them, they must not come out.
     apps: [{ id: 'a1', applicant_code: 'APP-2026-00015', full_name: DISTINCT_NAME, terpmail: 'zq@terpmail.umd.edu' }],
   };
@@ -99,8 +99,8 @@ describe('interviews', () => {
       allDay: false,
       start: '2026-11-10T15:00:00Z',
       end: '2026-11-10T15:30:00Z',
-      location: 'https://meet.example/iv',
-      description: `Interviewers: Kelsey M, Dominick L\nVideo: https://meet.example/iv\n\n${FOOTER}`,
+      location: 'https://teams.microsoft.com/l/meetup-join/iv',
+      description: `Interviewers: Kelsey M, Dominick L\nVideo: https://teams.microsoft.com/l/meetup-join/iv\n\n${FOOTER}`,
     });
   });
 

@@ -350,3 +350,13 @@ In one transaction: drop the trigger `bookings_auto_pair` and the functions `boo
 `interview_questions` and `ai_usage`; drop `interview_slots.opened_at`, `interview_free_times.ranges` and `.said`
 (first delete any rows that have no `days` and `windows`, then set those two back to not null). The old blocks table
 comes back only by re-running the Ops Hub file's `board_availability` section.
+
+## Teams sign-in (`20261106120000_teams_auth.sql`)
+
+Adds one table, `public.teams_auth`: a single row (key `btx`, a check allows no other) holding the newest Microsoft
+refresh token for BTX's Teams account, so the Ops Hub can make a Teams meeting for each interview (BTX interviews are
+Teams only). Row level security is on with **no policies**, and anon and authenticated have no rights at all: only the
+server's service role reads and writes it. The server seeds it from the env var `BTX_TEAMS_REFRESH_TOKEN` and writes
+every rotated token back. Nothing else changes; `interview_pairings.video_url` keeps its https / 500-character check
+(the Teams-only rule is in the app). Safe to run twice. Roll back: `drop table public.teams_auth;` (the feature then
+says "Teams isn't connected yet"). Details and re-seeding: `apps/ops/README.md`, "Teams interview links".

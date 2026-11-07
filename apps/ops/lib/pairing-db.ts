@@ -13,7 +13,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { blocksToRanges, rangesToBlocks, windowDays as rangeWindowDays, type MinuteRange } from './free-ranges';
 import { BLOCKS, type AvailabilityRow, type Block } from './pairing';
-import { checkNewSlots, isVideoUrl, type NewSlotInput } from './pairing-slots';
+import { checkNewSlots, isVideoUrl, TEAMS_ONLY_MESSAGE, type NewSlotInput } from './pairing-slots';
 
 export type Db = SupabaseClient;
 export type Result<T extends object = object> = ({ ok: true } & T) | { ok: false; message: string };
@@ -284,7 +284,8 @@ export async function setVideoLinks(client: Db, links: { slotId: string; url: st
   const me = await sessionRole(client);
   if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can add video links.' };
   const clean = links.map((l) => ({ slotId: l.slotId, url: l.url.trim() })).filter((l) => l.url !== '');
-  if (clean.some((l) => !isVideoUrl(l.url))) return { ok: false, message: 'Each link must start with https:// and be a full web address.' };
+  // Teams links only (isVideoUrl): a Meet, Zoom or other link is refused before anything is saved.
+  if (clean.some((l) => !isVideoUrl(l.url))) return { ok: false, message: TEAMS_ONLY_MESSAGE };
   let saved = 0;
   for (const l of clean) {
     const u = await client.from('interview_pairings').update({ video_url: l.url }).eq('slot_id', l.slotId).select('slot_id');

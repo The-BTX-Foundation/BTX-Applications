@@ -14,6 +14,8 @@ import { sendAvailabilityReminders, sendRebalanceEmails, sendVideoLinkEmails, ty
 import { previewRebalance } from '../interviews';
 import { affected, joinNames, namesLine, remindMessage, whenLine, type MoveView } from '../interview-times';
 import { FLOW_PEOPLE, FLOW_WAITING_IDS } from '@/mock/interview-flow';
+import { makeTeamsLinks, teamsLinksLine } from '../teams/links';
+import { serverAccessToken } from '../teams/token';
 
 type Msg = { ok: boolean; message: string };
 
@@ -85,6 +87,26 @@ export async function saveVideoLinks(links: { slotId: string; url: string }[]): 
     return { ok: true, message: line ? `${saved} ${line}` : saved };
   } catch {
     return { ok: false, message: "That didn't save. Try again." };
+  }
+}
+
+export type TeamsLinksMsg = Msg & { links: { slotId: string; url: string }[] };
+
+// Admin only. "Make Teams links": a Teams meeting from BTX's Teams account for every paired interview ahead that has no
+// link or a non-Teams link (lib/teams/links.ts). The new links are saved, then emailed to the student and both
+// interviewers exactly as "Save and send" does (once per link). When Teams is not connected the message says so and
+// nothing changes. Mock mode makes nothing.
+export async function makeTeamsLinksAction(): Promise<TeamsLinksMsg> {
+  if (!hasSupabaseEnv()) return { ok: true, message: 'Teams links are made only in the live Ops Hub.', links: [] };
+  try {
+    const r = await makeTeamsLinks(await db(), { token: () => serverAccessToken() });
+    if (!r.ok) return { ok: false, message: r.message, links: [] };
+    const line = teamsLinksLine(r);
+    if (r.links.length === 0) return { ok: true, message: line, links: [] };
+    const mail = mailLine(await sendVideoLinkEmails(r.cycleId, r.links.map((l) => l.slotId)), 'The student and both interviewers got the link by email.');
+    return { ok: true, message: mail ? `${line} ${mail}` : line, links: r.links };
+  } catch {
+    return { ok: false, message: "Couldn't make the Teams links. Try again.", links: [] };
   }
 }
 

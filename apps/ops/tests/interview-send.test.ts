@@ -26,7 +26,7 @@ function fakeLog() {
 const kelsey = { userId: 'u1', name: 'Kelsey Davis', email: 'kdavis@btx.org' };
 const tomi = { userId: 'u2', name: 'Tomi Falodun', email: 'tfalodun@btx.org' };
 const row = (over: Partial<InterviewRow> = {}): InterviewRow => ({
-  slotId: 's1', cycleId: 'c1', startsAt: '2026-11-11T23:00:00Z', endsAt: '2026-11-11T23:30:00Z', videoUrl: 'https://meet.google.com/aaa', applicationId: 'a1',
+  slotId: 's1', cycleId: 'c1', startsAt: '2026-11-11T23:00:00Z', endsAt: '2026-11-11T23:30:00Z', videoUrl: 'https://teams.microsoft.com/l/meetup-join/aaa', applicationId: 'a1',
   applicantName: 'Ada Okafor', applicantEmail: 'ada@terpmail.umd.edu', code: 'APP-2026-00015', answers: ['One', 'Two', 'Three'], interviewers: [kelsey, tomi], ...over,
 });
 
@@ -214,7 +214,7 @@ describe('sendVideoLinkEmails', () => {
     expect(await sendVideoLinkEmails('c1', ['s1'], deps(data, log, send))).toMatchObject({ ok: true, kind: 'video-link', sent: 3 });
     expect(send.mock.calls.map((c) => c[0].to).sort()).toEqual(['ada@terpmail.umd.edu', 'kdavis@btx.org', 'tfalodun@btx.org']);
     expect(await sendVideoLinkEmails('c1', ['s1'], deps(data, log, send))).toMatchObject({ sent: 0, skipped: 3 });
-    rows[0] = row({ videoUrl: 'https://zoom.us/j/2' });
+    rows[0] = row({ videoUrl: 'https://teams.microsoft.com/l/meetup-join/2' });
     expect(await sendVideoLinkEmails('c1', ['s1'], deps(data, log, send))).toMatchObject({ sent: 3 });
   });
   it('skips slots with no link and is admin only', async () => {
