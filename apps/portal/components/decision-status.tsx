@@ -240,7 +240,7 @@ export function NotPickedStatus(p: Common) {
               </div>
               <div className={d.op}>
                 <div className={d.opT}>
-                  <b>Apply again in {view.nextMonth}</b>
+                  <b>{view.nextMonth ? `Apply again in ${view.nextMonth}` : 'Apply again next cycle'}</b>
                   <p>We&apos;ll email you the day the next cycle opens.</p>
                 </div>
                 <div className={d.opS}>
