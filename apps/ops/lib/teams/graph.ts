@@ -5,9 +5,10 @@
 //   1. createOrGet with only its documented fields (externalId, start, end, subject). externalId is the booking
 //      ("slotId:applicationId"), so asking twice for the same booking returns the same meeting and a retry never makes a
 //      duplicate, while a slot re-booked by another student gets a new meeting.
-//   2. PATCH the meeting with the lobby rule (owner, 2026-11-06): people in BTX's own Microsoft 365 organization (the
-//      board, signed in with BTX accounts) go straight in and may present; everyone else (the student) waits in the
-//      lobby until a board member lets them in. The PATCH answer must show that rule, or the meeting is not used.
+//   2. PATCH the meeting settings (owner, 2026-11-12, replacing the 2026-11-06 organization-only lobby): everyone with
+//      the link goes straight in, because board members join from many different Microsoft accounts and got stuck;
+//      only BTX accounts may present; the meeting records itself as soon as it starts, since guests cannot start a
+//      recording. The PATCH answer must show all three, or the meeting is not used.
 import 'server-only';
 import { isTeamsUrl } from '../pairing-slots';
 
@@ -16,10 +17,20 @@ export const GRAPH_MEETINGS = 'https://graph.microsoft.com/v1.0/me/onlineMeeting
 export type MeetingInput = { externalId: string; startsAt: string; endsAt: string; subject: string };
 export type MeetingResult = { ok: true; joinUrl: string } | { ok: false };
 
-/** The lobby rule every BTX interview gets: BTX accounts skip the lobby and present; nobody else does. Never 'everyone'. */
-export const ORG_ONLY_SETTINGS = { lobbyBypassSettings: { scope: 'organization', isDialInBypassEnabled: false }, allowedPresenters: 'organization' } as const;
+/** The settings every BTX interview gets: no lobby for anyone, only BTX accounts present, and it records itself. */
+export const MEETING_SETTINGS = {
+  lobbyBypassSettings: { scope: 'everyone', isDialInBypassEnabled: true },
+  allowedPresenters: 'organization',
+  recordAutomatically: true,
+} as const;
 
-type GraphMeeting = { id?: unknown; joinWebUrl?: unknown; allowedPresenters?: unknown; lobbyBypassSettings?: { scope?: unknown; isDialInBypassEnabled?: unknown } | null };
+type GraphMeeting = {
+  id?: unknown;
+  joinWebUrl?: unknown;
+  allowedPresenters?: unknown;
+  recordAutomatically?: unknown;
+  lobbyBypassSettings?: { scope?: unknown; isDialInBypassEnabled?: unknown } | null;
+};
 
 /** Every call to Microsoft gives up after this long, so a hung request cannot hold the page. */
 export const MICROSOFT_TIMEOUT_MS = 15_000;
@@ -46,7 +57,7 @@ export function bookingExternalId(slotId: string, applicationId: string): string
   return `${slotId}:${applicationId}`;
 }
 
-/** Makes or finds the booking's Teams meeting, applies the lobby rule, and returns its join link. */
+/** Makes or finds the booking's Teams meeting, applies the meeting settings, and returns its join link. */
 export async function createOrGetMeeting(accessToken: string, input: MeetingInput, f: typeof fetch = fetch): Promise<MeetingResult> {
   const m = await graph(f, accessToken, `${GRAPH_MEETINGS}/createOrGet`, 'POST', {
     externalId: input.externalId,
@@ -56,9 +67,16 @@ export async function createOrGetMeeting(accessToken: string, input: MeetingInpu
   });
   if (!m || typeof m.joinWebUrl !== 'string' || !isTeamsUrl(m.joinWebUrl)) return { ok: false };
   if (typeof m.id !== 'string' || m.id === '') return { ok: false };
-  // Always set the lobby rule (a meeting found again may have been changed by hand), then check the answer shows it.
-  const p = await graph(f, accessToken, `${GRAPH_MEETINGS}/${encodeURIComponent(m.id)}`, 'PATCH', ORG_ONLY_SETTINGS);
-  if (!p || p.allowedPresenters !== 'organization' || p.lobbyBypassSettings?.scope !== 'organization' || p.lobbyBypassSettings?.isDialInBypassEnabled !== false) return { ok: false };
+  // Always set the settings (a meeting found again may have been changed by hand), then check the answer shows them.
+  const p = await graph(f, accessToken, `${GRAPH_MEETINGS}/${encodeURIComponent(m.id)}`, 'PATCH', MEETING_SETTINGS);
+  if (
+    !p ||
+    p.allowedPresenters !== MEETING_SETTINGS.allowedPresenters ||
+    p.recordAutomatically !== MEETING_SETTINGS.recordAutomatically ||
+    p.lobbyBypassSettings?.scope !== MEETING_SETTINGS.lobbyBypassSettings.scope ||
+    p.lobbyBypassSettings?.isDialInBypassEnabled !== MEETING_SETTINGS.lobbyBypassSettings.isDialInBypassEnabled
+  )
+    return { ok: false };
   return { ok: true, joinUrl: m.joinWebUrl };
 }
 
