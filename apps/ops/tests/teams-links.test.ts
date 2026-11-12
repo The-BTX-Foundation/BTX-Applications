@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/pairing-db';
-import { GRAPH_MEETINGS, meetingSubject, ORG_ONLY_SETTINGS } from '@/lib/teams/graph';
+import { GRAPH_MEETINGS, meetingSubject, MEETING_SETTINGS } from '@/lib/teams/graph';
 import { makeTeamsLinks, planTeamsLinks, teamsConfirmLine, teamsLinksLine } from '@/lib/teams/links';
 import type { TokenResult } from '@/lib/teams/token';
 
@@ -66,7 +66,7 @@ function fakeDb(role: string, slots: Slot[], opts: { updateFails?: string[]; ema
 
 // A fake Graph: every createOrGet for the same externalId returns the same meeting (as Microsoft does). `fail` lists
 // externalIds Graph answers with an error; `patch` decides what the PATCH answers with ('ok' echoes the settings).
-function fakeGraph(opts: { fail?: string[]; patch?: 'ok' | 'everyone' | 'dialin' | 'error' } = {}) {
+function fakeGraph(opts: { fail?: string[]; patch?: 'ok' | 'presenters' | 'lobby' | 'dialin' | 'norecord' | 'missing' | 'nolobby' | 'error' } = {}) {
   const meetings = new Map<string, { id: string; url: string }>();
   const calls: { method: string; url: string; body: Record<string, unknown> }[] = [];
   const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -78,11 +78,19 @@ function fakeGraph(opts: { fail?: string[]; patch?: 'ok' | 'everyone' | 'dialin'
       const mode = opts.patch ?? 'ok';
       if (mode === 'error') return new Response('{"error":{}}', { status: 403 });
       const settings =
-        mode === 'everyone'
-          ? { allowedPresenters: 'everyone', lobbyBypassSettings: { scope: 'everyone', isDialInBypassEnabled: true } }
-          : mode === 'dialin'
-            ? { allowedPresenters: 'organization', lobbyBypassSettings: { scope: 'organization', isDialInBypassEnabled: true } }
-            : body;
+        mode === 'presenters'
+          ? { ...body, allowedPresenters: 'everyone' }
+          : mode === 'lobby'
+            ? { ...body, lobbyBypassSettings: { scope: 'organization', isDialInBypassEnabled: true } }
+            : mode === 'dialin'
+              ? { ...body, lobbyBypassSettings: { scope: 'everyone', isDialInBypassEnabled: false } }
+              : mode === 'norecord'
+                ? { ...body, recordAutomatically: false }
+                : mode === 'missing'
+                  ? { allowedPresenters: body.allowedPresenters, lobbyBypassSettings: body.lobbyBypassSettings }
+                  : mode === 'nolobby'
+                    ? { ...body, lobbyBypassSettings: null }
+                    : body;
       return new Response(JSON.stringify({ id: String(url).split('/').pop(), ...settings }), { status: 200 });
     }
     const id = String(body.externalId);
@@ -172,18 +180,17 @@ describe('makeTeamsLinks', () => {
     expect(JSON.stringify(g.calls)).not.toMatch(/Ada|Okafor/);
   });
 
-  it('always PATCHes the organization-only lobby rule, never everyone', async () => {
+  it('always PATCHes the meeting settings: no lobby, BTX-only presenters, automatic recording', async () => {
     const g = fakeGraph();
     await makeTeamsLinks(fakeDb('admin', SLOTS.slice(0, 1)).client, { token: okToken, fetch: g.f, now: NOW });
     const patch = g.calls.find((c) => c.method === 'PATCH');
     expect(patch?.url).toBe(`${GRAPH_MEETINGS}/meeting-1`);
-    expect(patch?.body).toEqual({ lobbyBypassSettings: { scope: 'organization', isDialInBypassEnabled: false }, allowedPresenters: 'organization' });
-    expect(ORG_ONLY_SETTINGS).toEqual(patch?.body);
-    expect(JSON.stringify(g.calls)).not.toContain('everyone"');
+    expect(patch?.body).toEqual({ lobbyBypassSettings: { scope: 'everyone', isDialInBypassEnabled: true }, allowedPresenters: 'organization', recordAutomatically: true });
+    expect(MEETING_SETTINGS).toEqual(patch?.body);
   });
 
-  it('counts a meeting as failed when the PATCH fails or does not show the organization rule', async () => {
-    for (const patch of ['error', 'everyone', 'dialin'] as const) {
+  it('counts a meeting as failed when the PATCH fails or does not show every setting', async () => {
+    for (const patch of ['error', 'presenters', 'lobby', 'dialin', 'norecord', 'missing', 'nolobby'] as const) {
       const { client, updates } = fakeDb('admin', SLOTS.slice(0, 1));
       expect(await makeTeamsLinks(client, { token: okToken, fetch: fakeGraph({ patch }).f, now: NOW })).toMatchObject({ ok: true, made: 0, failed: 1 });
       expect(updates).toEqual([]);
