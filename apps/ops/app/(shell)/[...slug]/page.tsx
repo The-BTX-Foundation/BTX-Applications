@@ -2,7 +2,6 @@
 // There is nothing else on it on purpose (no invented screens). A path that is not in the sidebar is a 404.
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { PageHeader } from '@/components/page-header';
 import { NotBuilt as Card } from '@/components/not-built';
 import { ALL_ROUTES } from '@/lib/nav';
 
@@ -25,10 +24,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function NotBuilt({ params }: Props) {
   const e = await entry(params);
   if (!e) notFound();
-  return (
-    <>
-      <PageHeader title={e.label} />
-      <Card />
-    </>
-  );
+  return <Card title={e.label} />;
 }

@@ -1,508 +1,218 @@
-/* Board chat (prefix ch-). Numbers from the Figma "Board chat" laptop (1440 x 900) and phone (390 x 844) frames. */
-.ch-root {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: -16px -16px -82px;
-  padding: 16px 16px 12px;
-  height: calc(100dvh - 122px);
-  min-height: 0;
-  box-sizing: border-box;
-}
-.ch-list,
-.ch-sp {
-  display: none;
-}
-.ch-hrow {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-  flex: none;
-}
-.ch-hrow h1 {
-  font-size: 30px;
-  font-weight: 500;
-  line-height: 33px;
-  margin-bottom: 0;
-}
-.ch-sel {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--ink);
-  border-radius: 4px;
-}
-.ch-sel select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  font: inherit;
-}
-.ch-sel select:disabled {
-  cursor: default;
-}
-.ch-pick {
-  height: 44px;
-  padding: 0 14px;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-}
-.ch-th {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.ch-thh {
-  display: none;
-}
-.ch-msgs {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* column-reverse: the scroll starts at the newest message and stays there as messages are added */
-  display: flex;
-  flex-direction: column-reverse;
-}
-.ch-mi {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: none;
-}
-.ch-none {
-  color: var(--muted);
-  font-size: 15px;
-}
-.ch-day {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  height: 17px;
-  flex: none;
-}
-.ch-day::before,
-.ch-day::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
-.ch-m {
-  display: flex;
-  gap: 10px;
-  flex: none;
-  min-width: 0;
-}
-.ch-av {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--surface);
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-}
-.ch-av.bot {
-  width: 32px;
-  height: 32px;
-  background: var(--gold);
-  color: var(--ink);
-  margin-right: 2px;
-}
-.ch-av.s {
-  width: 24px;
-  height: 24px;
-  font-size: 10px;
-}
-.ch-mb {
-  min-width: 0;
-  flex: 1;
-}
-.ch-mh {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-height: 19px;
-  font-size: 13px;
-  min-width: 0;
-}
-.ch-mh b {
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.ch-tag {
-  flex: none;
-  height: 19px;
-  box-sizing: border-box;
-  padding: 0 7px;
-  border: 1px solid var(--ink);
-  border-radius: 6px;
-  background: var(--surface);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 17px;
-  white-space: nowrap;
-}
-.ch-tm {
-  white-space: nowrap;
-  flex: none;
-}
-.ch-bub {
-  margin-top: 4px;
-  background: var(--wash);
-  border: 1px solid var(--line);
-  border-radius: 6px 16px 16px 16px;
-  padding: 9px 13px;
-  font-size: 17px;
-  line-height: 22.5px;
-  overflow-wrap: break-word;
-}
-.ch-bub.bot {
-  background: var(--surface);
-  border-radius: 14px;
-  padding: 11px 13px;
-  font-size: 15.6px;
-  line-height: 21px;
-}
-.ch-bub b {
-  font-weight: 700;
-}
-.ch-open {
-  margin-top: 0;
-}
-.ch-m.me {
-  padding-left: 44px;
-}
-.ch-m.me .ch-mb {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-.ch-m.me .ch-mh {
-  justify-content: flex-end;
-}
-.ch-m.me .ch-bub {
-  background: var(--ink);
-  color: var(--surface);
-  border-color: var(--ink);
-  border-radius: 16px 6px 16px 16px;
-}
-.ch-comp {
-  flex: none;
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 40px;
-  grid-template-areas: 'sel sel' 'inp go';
-  column-gap: 12px;
-  row-gap: 6px;
-  align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--ink);
-  border-radius: 4px;
-  padding: 7px 6px 3px 7px;
-}
-.ch-post {
-  grid-area: sel;
-  justify-self: start;
-  height: 34px;
-  padding: 0 13px;
-  gap: 6px;
-  font-size: 13px;
-}
-.ch-post em {
-  font-style: normal;
-  font-weight: 500;
-  color: var(--muted);
-}
-.ch-post b {
-  font-weight: 600;
-}
-.ch-in {
-  grid-area: inp;
-  min-width: 0;
-  height: 40px;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  padding: 0 9px;
-  font-size: 17px;
-  font-family: inherit;
-  color: var(--ink);
-}
-.ch-in::placeholder {
-  color: var(--muted);
-  opacity: 1;
-}
-.ch-in:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: -2px;
-}
-.ch-go {
-  grid-area: go;
-  width: 40px;
-  height: 40px;
-  border-radius: 2px;
-  background: var(--ink);
-  color: var(--surface);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.ch-go:disabled {
-  cursor: default;
-}
-.ch-err {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 4px);
-  font-size: 13px;
-  color: var(--muted);
-}
+/* Board chat (Ops Hub refresh, prefix ch-). Ported from the demo apps/design/ops-refresh/directions/p-chat at its final
+   values (base, life pass, peak pass, Clean-cut), top to bottom so the cascade holds. Every rule sits under .ch-pg, the page's
+   wrapper (<div className="rf ch-pg">; not .ch, which @btx/ui's components.css already uses for the Portal's checklist); the shared rf- vocabulary comes from components/refresh/refresh.css, imported first.
+   The page is an app window: the header on top, the chat window fills the rest, the composer stays at the bottom.
+   Phone below 760px; Pinned folds into the thread head below 1360px and is its own column from 1360px. */
 
+/* ---------- The page fills the screen (the shell's page padding, then the window takes the rest) ---------- */
+.o-page:has(> .rf.ch-pg) { min-height: 0; }
 @media (min-width: 900px) {
-  .ch-root {
-    flex-direction: row;
-    gap: 0;
-    margin: -24px -32px -20px;
-    padding: 0;
-    height: 100dvh;
-    overflow: hidden;
-  }
-  .ch-hrow {
-    display: none;
-  }
-  .ch-list {
-    display: flex;
-    flex-direction: column;
-    flex: none;
-    width: 260px;
-    box-sizing: border-box;
-    padding: 24px 14px 0;
-    border-right: 1px solid var(--line);
-    overflow-y: auto;
-  }
-  .ch-list h1 {
-    font-size: 26px;
-    font-weight: 500;
-    line-height: 28.6px;
-    padding-left: 6px;
-    margin-bottom: 14px;
-  }
-  .ch-search {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 38px;
-    box-sizing: border-box;
-    padding: 0 15px;
-    border: 1px solid var(--ink);
-    border-radius: 4px;
-    background: var(--surface);
-    color: var(--muted);
-    margin-bottom: 14px;
-    flex: none;
-  }
-  .ch-search input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    font: inherit;
-    font-size: 14px;
-    color: var(--ink);
-  }
-  .ch-search input::placeholder {
-    color: var(--muted);
-    opacity: 1;
-  }
-  .ch-search:focus-within {
-    outline: 2px solid var(--gold);
-    outline-offset: 1px;
-  }
-  .ch-chn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: none;
-    height: 40px;
-    width: 100%;
-    padding: 0 10px;
-    border-radius: 4px;
-    font-size: 15px;
-    font-weight: 600;
-    text-align: left;
-  }
-  .ch-chn.on {
-    background: var(--bg);
-    box-shadow: inset 3px 0 0 var(--gold);
-    font-weight: 700;
-  }
-  .ch-chn > span:not(.ch-av, .ch-ct) {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ch-dir {
-    margin: 18px 0 5px 10px;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 16px;
-  }
-  .ch-th {
-    flex: 1;
-    min-width: 0;
-    gap: 0;
-  }
-  .ch-thh {
-    display: flex;
-    align-items: center;
-    flex: none;
-    height: 85px;
-    box-sizing: border-box;
-    padding: 22px 24px 15px;
-    border-bottom: 1px solid var(--line);
-  }
-  .ch-thh h2 {
-    font-size: 21px;
-    font-weight: 500;
-    line-height: 28px;
-  }
-  .ch-thh p {
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 18px;
-    margin-top: 2px;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-thickness: 1px;
-  }
-  .ch-msgs {
-    padding: 4px 24px 0;
-    margin-bottom: 12px;
-  }
-  .ch-m {
-    max-width: 100%;
-  }
-  .ch-av {
-    width: 32px;
-    height: 32px;
-  }
-  .ch-av.s {
-    width: 24px;
-    height: 24px;
-  }
-  .ch-mb {
-    flex: 0 1 auto;
-    max-width: 520px;
-  }
-  .ch-bub {
-    font-size: 15px;
-    line-height: 21px;
-    width: fit-content;
-    max-width: 100%;
-  }
-  .ch-bub.bot {
-    font-size: 15px;
-    background: transparent;
-  }
-  .ch-m.me {
-    padding-left: 0;
-    justify-content: flex-end;
-  }
-  .ch-m.me .ch-mb {
-    align-items: flex-end;
-  }
-  .ch-comp {
-    display: flex;
-    gap: 12px;
-    margin: 0 24px 18px;
-    height: 52px;
-    box-sizing: border-box;
-    padding: 1px 9px;
-  }
-  .ch-post {
-    flex: none;
-  }
-  .ch-in {
-    flex: 1;
-    height: 34px;
-    padding: 0;
-    font-size: 15px;
-  }
-  .ch-go {
-    width: 34px;
-    height: 34px;
-  }
-  .ch-sp {
-    display: block;
-    flex: none;
-    width: 300px;
-    box-sizing: border-box;
-    border-left: 1px solid var(--line);
-  }
-  .ch-sp section {
-    padding: 18px 20px 15px;
-    border-bottom: 1px solid var(--line);
-  }
-  .ch-sp h2 {
-    font-size: 19px;
-    font-weight: 500;
-    line-height: 24px;
-  }
-  .ch-pn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 38px;
-    font-size: 15px;
-    font-weight: 600;
-    border-bottom: 1px solid var(--line);
-  }
-  .ch-pn:last-child {
-    border-bottom: 0;
-  }
-  .ch-pn span {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  .ch-pin-i {
-    flex: none;
-  }
+  .o-page:has(> .rf.ch-pg) { flex: none; height: 100vh; height: 100dvh; padding-bottom: 24px; }
+}
+@media (min-width: 760px) and (max-width: 899px) {
+  /* the app keeps its top bar and bottom tabs here (the shell's laptop layout starts at 900px) */
+  .o-page:has(> .rf.ch-pg) { flex: none; height: calc(var(--ch-vh, 100dvh) - 56px - 64px - env(safe-area-inset-bottom)); padding: 24px; }
+}
+@media (max-width: 759px) {
+  .o-page:has(> .rf.ch-pg) { flex: none; height: calc(var(--ch-vh, 100dvh) - 56px - 64px - env(safe-area-inset-bottom)); padding: 0 16px 14px; }
+  /* the on-screen keyboard is up: the tab bar steps aside and the window ends at the keyboard */
+  .o-page:has(> .rf.ch-pg.ch-kb) { height: calc(var(--ch-vh, 100dvh) - 56px); }
+  body:has(.rf.ch-pg.ch-kb) .o-tabs { display: none; }
+}
+.rf.ch-pg { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- Page head: a real "Search messages" field (the shared header draws a fake box) ---------- */
+.ch-pg .ch-head { flex: none; }
+.ch-pg .rf-head > div:first-child { flex: 1 1 auto; min-width: 0; }
+.ch-pg .ch-news:empty { display: none; }
+.ch-pg .rf-search input::placeholder { color: #757575; }
+.ch-pg .ch-sk-hl { width: 150px; height: 30px; }
+.ch-pg .ch-sk-nx { width: min(560px, 100%); height: 62px; margin-top: 14px; border-radius: var(--r); }
+
+/* ---------- The window: channels | thread | pinned ---------- */
+.ch-pg .ch-win { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+
+/* channels: All areas, the four areas, Direct */
+.ch-pg .ch-chans { min-width: 0; padding: var(--s2) 0; border-right: 1px solid var(--line-soft); overflow-y: auto; }
+.ch-pg .ch-chn { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 var(--s4) 0 20px; border: 0; background: none; font-size: var(--t-body); font-weight: 500; text-align: left; transition: background .15s var(--ease); }
+.ch-pg .ch-chn:hover { background: var(--wash); }
+.ch-pg .ch-chn:active { background: var(--line-soft); }
+.ch-pg .ch-chn[aria-current="true"] { background: var(--wash); font-weight: 600; }
+.ch-pg .ch-chn[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.ch-pg .ch-lab { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-pg .ch-ct { display: grid; place-items: center; width: var(--ic); height: var(--ic); flex: none; }
+.ch-pg .ch-ct .rf-i { width: 22px; height: 22px; color: var(--muted); }
+.ch-pg .ch-chn[aria-current="true"] .ch-ct .rf-i { color: var(--gold-ink); }
+.ch-pg .ch-av { display: inline-grid; place-items: center; width: 32px; height: 32px; margin: 0 -4px; flex: none; border-radius: 999px; background: var(--wash); color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: -0.02em; }
+.ch-pg .ch-chn[aria-current="true"] .ch-av { color: var(--gold-ink); }
+.ch-pg .ch-grp { padding: var(--s4) 20px 4px; font-size: var(--t-label); font-weight: 500; color: var(--ink); }
+.ch-pg .ch-count { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: var(--ink); font-size: 14px; font-weight: 600; }
+.ch-pg .ch-count.ch-wide { padding: 0 5px; }
+
+/* the thread: its head, the messages (scroll), the composer */
+.ch-pg .ch-thread { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.ch-pg .ch-th-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 60px; padding: var(--s2) var(--pad); border-bottom: 1px solid var(--line-soft); }
+.ch-pg .ch-th-head h2 { font-size: var(--t-h2); font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+.ch-pg .ch-th-head .ch-ppl { margin-left: var(--s2); font-size: var(--t-label); font-weight: 400; color: var(--muted); }
+.ch-pg .ch-pin-lnk { display: none; color: var(--gold-ink); font-weight: 500; }
+.ch-pg .ch-pinfold .ch-pins { padding: var(--s2) var(--pad) var(--s3); border-bottom: 1px solid var(--line-soft); }
+.ch-pg .ch-pins li { display: flex; align-items: flex-start; gap: var(--s2); padding: 8px 0; font-size: var(--t-body); font-weight: 500; }
+.ch-pg .ch-pins li + li { border-top: 1px solid var(--line-soft); }
+.ch-pg .ch-pins li .rf-i { width: 18px; height: 18px; margin-top: 2px; color: var(--gold-ink); }
+.ch-pg .ch-pins .ch-pn-none { color: var(--muted); font-weight: 400; }
+.ch-pg .ch-msgs { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--s2) 0 var(--s4); }
+.ch-pg .ch-msgs .rf-none { padding: var(--s6) var(--pad); }
+
+/* day and unread dividers */
+.ch-pg .ch-day { display: flex; align-items: center; justify-content: center; gap: var(--s3); padding: var(--s5) var(--pad) var(--s2); font-size: var(--t-label); font-weight: 500; color: var(--ink); }
+.ch-pg .ch-day::before, .ch-pg .ch-day::after { content: ""; flex: 1; height: 1px; background: var(--line-soft); }
+.ch-pg .ch-newline { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--pad) var(--s1); font-size: var(--t-label); font-weight: 600; color: var(--gold-ink); }
+.ch-pg .ch-newline::after { content: ""; flex: 1; height: 2px; background: var(--gold); }
+
+/* a message group: one avatar and name per person per run; later lines are just text */
+.ch-pg .ch-mg { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; padding: var(--s3) var(--pad) 2px; }
+.ch-pg .ch-mav { grid-row: 1 / 99; width: 40px; height: 40px; border: 0; background: var(--wash); color: var(--muted); }
+.ch-pg .ch-mav.ch-me, .ch-pg .ch-mav.ch-bot { background: var(--wash); color: var(--gold-ink); }
+.ch-pg .ch-mav.ch-bot .rf-i { width: 18px; height: 18px; }
+.ch-pg .ch-from { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--s2); }
+.ch-pg .ch-from b { font-weight: 600; white-space: nowrap; }
+.ch-pg .ch-tm { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.ch-pg .ch-ar { align-self: center; font-size: 14px; color: var(--muted); }
+.ch-pg .ch-ar::before { content: "\00b7"; margin-right: 8px; }
+.ch-pg .ch-line { position: relative; padding: 3px 0; font-size: var(--t-body); line-height: 1.45; overflow-wrap: break-word; }
+.ch-pg .ch-line + .ch-line { margin-top: 2px; }
+.ch-pg .ch-line b { font-weight: 600; }
+.ch-pg .ch-tm2 { position: absolute; right: 100%; top: 6px; width: calc(40px + 14px); padding-right: 6px; font-size: 14px; color: var(--muted); text-align: right; white-space: nowrap; opacity: 0; transition: opacity .15s var(--ease); }
+.ch-pg .ch-line:hover .ch-tm2 { opacity: 1; }
+.ch-pg .ch-line.ch-mine { margin-top: 4px; padding: 4px 12px; box-shadow: inset 3px 0 0 var(--gold); }
+.ch-pg .ch-line.ch-mine + .ch-line.ch-mine { margin-top: 4px; }
+.ch-pg .ch-line .rf-lnk { margin-top: 6px; }
+.ch-pg .ch-task { display: flex; padding-top: 4px; }
+.ch-pg .ch-sentline { display: flex; align-items: center; gap: 6px; padding: 4px 0 2px; font-size: var(--t-label); color: var(--muted); }
+.ch-pg .ch-sentline .rf-lnk { margin-top: 0; }
+.ch-pg .ch-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--gold); color: var(--ink); }
+.ch-pg .ch-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+.ch-pg .ch-flashin { animation: ch-flash 1.6s var(--ease); }
+@keyframes ch-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: transparent; } }
+
+/* the composer: post to (All areas), the field, the gold send */
+.ch-pg .ch-senderr { margin: 0; padding: 0 var(--pad) var(--s2); font-size: var(--t-label); font-weight: 600; }
+.ch-pg .ch-comp { flex: none; display: flex; align-items: flex-end; gap: var(--s2); padding: var(--s3) var(--pad) var(--s4); border-top: 1px solid var(--line-soft); background: var(--surface); }
+.ch-pg .ch-postto { position: relative; display: inline-flex; align-items: center; gap: 6px; height: var(--ctl); padding: 0 10px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); white-space: nowrap; flex: none; }
+.ch-pg .ch-postto:hover { border-color: var(--ink); }
+.ch-pg .ch-postto:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ch-pg .ch-postto em { font-style: normal; color: var(--muted); }
+.ch-pg .ch-postto b { font-weight: 600; }
+.ch-pg .ch-postto .rf-i { width: 16px; height: 16px; }
+.ch-pg .ch-postto select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.ch-pg .ch-field { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 4px; min-height: var(--ctl); padding: 0 3px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.ch-pg .ch-field:hover { border-color: var(--muted); }
+.ch-pg .ch-field:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 1px; }
+.ch-pg .ch-field textarea { flex: 1; min-width: 0; height: calc(var(--ctl) - 2px); max-height: 140px; padding: calc((var(--ctl) - 2px - 22px) / 2) 0; border: 0; background: none; font-size: var(--t-body); line-height: 22px; resize: none; outline: none; }
+.ch-pg .ch-field textarea::placeholder { color: #757575; }
+.ch-pg .ch-send { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 2px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--line); flex: none; cursor: default; transition: background .15s var(--ease), color .15s var(--ease); }
+.ch-pg .ch-send.ch-go { background: var(--gold); color: var(--ink); cursor: pointer; }
+.ch-pg .ch-send.ch-go:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.ch-pg .ch-send.ch-go:active { background: #b88a26; transform: translateY(1px); }
+.ch-pg .ch-send .rf-i { width: 18px; height: 18px; }
+/* live: this target's send is waiting on the database (Send off, the words "Sending…" in its place) */
+.ch-pg .ch-send.ch-busy { width: auto; padding: 0 var(--s2); color: var(--muted); font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+/* live: a message that did not save stays at the bottom of its thread, lined up with the messages' text: a neutral
+   hairline rule like your own sent lines (no fill), the error words, then Retry (the row's one solid control) and Remove */
+.ch-pg .ch-unsent { margin: var(--s3) var(--pad) 2px calc(var(--pad) + 54px); padding: 4px 0 4px 12px; border-left: 2px solid var(--line); }
+.ch-pg .ch-unsent-to { margin: 0 0 2px; font-size: var(--t-label); color: var(--muted); }
+.ch-pg .ch-unsent-text { margin: 0; font-size: var(--t-body); line-height: 1.45; overflow-wrap: break-word; }
+.ch-pg .ch-unsent .ch-senderr { margin: 4px 0 0; padding: 0; }
+.ch-pg .ch-unsent .ch-sentline { margin: 0; }
+.ch-pg .ch-unsent-acts { display: flex; align-items: center; gap: var(--s4); margin: var(--s2) 0 0; }
+.ch-pg .ch-unsent-acts .rf-btn { height: 36px; padding: 0 var(--s4); font-size: var(--t-label); }
+.ch-pg .ch-unsent-acts .ch-remove { color: var(--muted); font-weight: 500; }
+.ch-pg .ch-unsent-acts [aria-disabled="true"] { opacity: .5; cursor: default; }
+@media (max-width: 759px) { .ch-pg .ch-unsent { margin-left: calc(12px + 52px); margin-right: 12px; } }
+/* live: a search over a channel read only up to its cap says it covers the loaded messages only */
+.ch-pg .ch-capnote { margin: 0; padding: var(--s3) var(--pad) var(--s2); font-size: var(--t-label); color: var(--muted); text-align: center; }
+
+/* pinned (wide laptops: its own column) */
+.ch-pg .ch-pinside { display: none; min-width: 0; border-left: 1px solid var(--line-soft); overflow-y: auto; }
+.ch-pg .ch-ph { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 60px; padding: var(--s3) var(--pad); }
+.ch-pg .ch-ph h2 { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
+.ch-pg .ch-pinside .ch-pins { padding: 0 var(--pad) var(--s4); }
+
+/* phone-only controls (hidden on laptop) */
+.ch-pg .ch-chbar, .ch-pg .ch-scrim, .ch-pg .ch-sheet, .ch-pg .ch-qfield { display: none; }
+.ch-pg .ch-iconbtn { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; }
+.ch-pg .ch-iconbtn:hover { background: var(--wash); }
+.ch-pg .ch-iconbtn:active { background: var(--line-soft); }
+
+/* ---------- Loading skeleton and load error ---------- */
+.ch-pg .ch-sk-chn { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 var(--s4) 0 20px; }
+.ch-pg .ch-sk-chn .rf-sk:first-child { width: var(--ic); height: 22px; }
+.ch-pg .ch-sk-chn .rf-sk:last-child { flex: 1; max-width: 120px; }
+.ch-pg .ch-sk-mg { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; padding: var(--s3) var(--pad); }
+.ch-pg .ch-sk-mg .ch-sk-av { width: 40px; height: 40px; border-radius: 999px; }
+.ch-pg .ch-sk-mg .ch-lines .rf-sk + .rf-sk { margin-top: 8px; }
+.ch-pg .ch-win.ch-errbox { display: block; flex: none; }
+.ch-pg .ch-errbox .rf-load-err { padding: var(--s5) var(--pad); border-top: 0; }
+.ch-pg .ch-errbox .rf-load-err.rf-retrying { height: 60vh; }
+.ch-pg .ch-errbox .rf-retrying .ch-win { height: 100%; border: 0; border-radius: 0; }
+
+/* ---------- Pinned: a fold under the thread head below 1360px, its own column from 1360px ---------- */
+@media (max-width: 1359px) {
+  .ch-pg .ch-pin-lnk { display: inline-flex; }
+}
+@media (min-width: 1360px) {
+  .ch-pg .ch-win.ch-main { grid-template-columns: 240px minmax(0, 1fr) 280px; }
+  .ch-pg .ch-pinside { display: block; }
+}
+@media (min-width: 760px) and (max-width: 1100px) {
+  .ch-pg .rf-search { width: 300px; }
+  .ch-pg .ch-win, .ch-pg .ch-win.ch-main { grid-template-columns: 204px minmax(0, 1fr); }
+  .ch-pg .ch-chn, .ch-pg .ch-grp, .ch-pg .ch-sk-chn { padding-left: 16px; }
 }
 
-/* The load-error card on a phone: tighter, with a full-width button (the Figma error frame). */
-@media (max-width: 899px) {
-  .ch-errp {
-    margin-top: -5px;
-  }
-  .ch-errp .o-err {
-    padding: 20px;
-  }
-  .ch-errp .o-err .o-btn {
-    width: 100%;
-    height: 44px;
-    margin-top: 20px;
-  }
+/* ---------- Phone (under 760px): channel picker, thread, composer above the tabs ---------- */
+@media (max-width: 759px) {
+  .ch-pg .ch-head { margin: 0; padding: 14px 0 12px; background: var(--bg); }
+  .ch-pg .ch-sk-hl { height: 26px; }
+  .ch-pg .ch-win, .ch-pg .ch-win.ch-main { grid-template-columns: minmax(0, 1fr); }
+  .ch-pg .ch-chans, .ch-pg .ch-pinside, .ch-pg .ch-th-head { display: none !important; }
+  /* the channel picker row */
+  .ch-pg .ch-chbar { flex: none; display: flex; align-items: center; gap: var(--s2); min-height: 52px; padding: 4px 4px 4px 12px; border-bottom: 1px solid var(--line-soft); }
+  .ch-pg .ch-chpick { display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-body); font-weight: 600; white-space: nowrap; }
+  .ch-pg .ch-chpick > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ch-pg .ch-chpick:active { background: var(--line-soft); }
+  .ch-pg .ch-chpick .rf-i { width: 18px; height: 18px; }
+  .ch-pg .ch-grow { flex: 1; }
+  .ch-pg .ch-chbar .rf-lnk { margin-right: 8px; }
+  .ch-pg .ch-chbar .ch-pin-lnk::after { inset: -12px -8px; }
+  .ch-pg .ch-qfield { flex: none; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px 0 var(--pad); border-bottom: 1px solid var(--line-soft); }
+  .ch-pg .ch-qfield input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; font-size: 16px; outline: none; }
+  .ch-pg .ch-msgs { padding-bottom: var(--s3); }
+  .ch-pg .ch-mg { padding: var(--s3) 12px 2px; column-gap: 12px; }
+  .ch-pg .ch-day, .ch-pg .ch-newline { padding-left: 12px; padding-right: 12px; }
+  .ch-pg .ch-tm2 { display: none; }
+  .ch-pg .ch-comp { flex-wrap: wrap; padding: var(--s2) 12px 12px; }
+  .ch-pg .ch-postto { height: 36px; }
+  .ch-pg .ch-comp .ch-field { flex: 1 1 100%; }
+  .ch-pg .ch-send { width: 40px; height: 40px; }
+  .ch-pg .ch-field { padding-right: 1px; }
+  /* the channel sheet */
+  .ch-pg .ch-scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(21, 23, 26, .36); opacity: 0; visibility: hidden; transition: opacity .2s var(--ease), visibility 0s .2s; }
+  .ch-pg .ch-scrim.ch-on { opacity: 1; visibility: visible; transition: opacity .2s var(--ease), visibility 0s 0s; }
+  .ch-pg .ch-sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: calc(100dvh - 40px); background: var(--surface); border-top: 1px solid var(--line); border-radius: 8px 8px 0 0; transform: translateY(100%); visibility: hidden; transition: transform .25s var(--ease), visibility 0s .25s; }
+  .ch-pg .ch-sheet.ch-on { transform: none; visibility: visible; transition: transform .25s var(--ease), visibility 0s 0s; }
+  .ch-pg .ch-sh-head { position: relative; padding: 8px var(--pad) var(--s3); border-bottom: 1px solid var(--line-soft); }
+  .ch-pg .ch-grab { width: 40px; height: 4px; margin: 0 auto 6px; border-radius: 2px; background: var(--line); }
+  .ch-pg .ch-sh-close { position: absolute; top: 4px; right: 4px; }
+  .ch-pg .ch-sh-title { margin-top: 6px; font-size: 21px; font-weight: 500; }
+  .ch-pg .ch-sh-body { overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(var(--s4) + env(safe-area-inset-bottom)); }
+  .ch-pg .ch-sh-body .ch-chn { min-height: 52px; padding-left: var(--pad); }
+  .ch-pg .ch-sh-body .ch-grp { padding-left: var(--pad); }
+  .ch-pg .ch-sh-body .ch-ppl { padding: var(--s3) var(--pad) 0; font-size: var(--t-label); color: var(--muted); }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .ch-pg .ch-chn:hover, .ch-pg .ch-iconbtn:hover { background: none; }
+  .ch-pg .ch-chn[aria-current="true"]:hover { background: var(--wash); }
 }

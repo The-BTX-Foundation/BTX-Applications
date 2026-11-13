@@ -108,18 +108,21 @@ export function planReminder(row: InterviewRow, c: PlanContext): Planned[] {
  * The two rebalance notes for one move: the interviewer added ("You're now interviewing ...", with a REQUEST invite) and
  * the one removed (with a CANCEL invite). `row` is the interview AFTER the move; `from` is the person who left.
  * The recipient key carries the direction, so someone added and later removed from the same slot gets both emails.
+ * `changeId` (optional): one pairing change (a single reassign or cover). It joins the key, so a later change on the same
+ * slot emails again; without it (Rebalance) the key is "<email>|added" / "<email>|removed", once per slot.
  */
-export function planRebalance(row: InterviewRow, move: { from: { name: string; email: string | null }; toUserId: string }, c: PlanContext): Planned[] {
+export function planRebalance(row: InterviewRow, move: { from: { name: string; email: string | null }; toUserId: string; changeId?: string }, c: PlanContext): Planned[] {
   const out: Planned[] = [];
+  const tail = move.changeId ? `|${move.changeId}` : '';
   const added = row.interviewers.find((p) => p.userId === move.toUserId);
   if (added?.email) {
     const other = row.interviewers.find((p) => p.userId !== added.userId);
     const m = rebalanceEmail({ ...base(row, c), change: 'added', firstName: first(added.name), otherName: other?.name, scorecardUrl: scorecard(c) });
-    out.push(planned('rebalance', row, added.email, m, `${added.email.toLowerCase()}|added`, calendar(row, 'REQUEST', { email: added.email, name: added.name }, c)));
+    out.push(planned('rebalance', row, added.email, m, `${added.email.toLowerCase()}|added${tail}`, calendar(row, 'REQUEST', { email: added.email, name: added.name }, c)));
   }
   if (move.from.email) {
     const m = rebalanceEmail({ ...base(row, c), change: 'removed', firstName: first(move.from.name) });
-    out.push(planned('rebalance', row, move.from.email, m, `${move.from.email.toLowerCase()}|removed`, calendar(row, 'CANCEL', { email: move.from.email, name: move.from.name }, c)));
+    out.push(planned('rebalance', row, move.from.email, m, `${move.from.email.toLowerCase()}|removed${tail}`, calendar(row, 'CANCEL', { email: move.from.email, name: move.from.name }, c)));
   }
   return out;
 }

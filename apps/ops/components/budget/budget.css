@@ -1,0 +1,307 @@
+/* The refreshed Budget page and its approval page (Ops Hub refresh, 2026-11-12). Ported from the demo
+   apps/design/ops-refresh/directions/p-budget (its Finance shared parts and "Budget page" rules, then the life, peak and
+   Clean-cut passes), written at the final values. Every class is bu-, every rule sits under .bu (the page wrapper:
+   <div class="rf bu">, plus bu-ap on the approval route), so nothing reaches another page. The shared pieces (tokens, page
+   header, panel, news card, buttons, links, chips, skeleton blocks) come from refresh.css.
+   Phone below 760px; 760 to 1100 stacks the plan's two halves and puts funds and chat side by side. */
+
+/* ---------- Header: the news card's icon in gold ink; the loading blocks ---------- */
+.bu .rf-nx-i { color: var(--gold-ink); }
+.bu .bu-sk-hl .rf-sk:first-child { width: 150px; height: 30px; }
+.bu .bu-sk-hl { flex: 1 1 auto; min-width: 0; }
+.bu .bu-sk-hl .rf-sk + .rf-sk { width: min(560px, 100%); height: 62px; margin-top: 14px; border-radius: var(--r); }
+/* links on this page are gold ink (the demo's peak pass) */
+.bu .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.bu .rf-lnk .rf-i { color: var(--gold-ink); }
+.bu .rf-lnk:disabled, .bu .rf-lnk[aria-disabled="true"] { color: var(--muted); cursor: not-allowed; text-decoration: none; transform: none; }
+
+/* ---------- Phone: the three Finance pages as light text tabs under the title (laptops have the sidebar) ---------- */
+.bu .bu-secnav { display: none; }
+
+/* ---------- The board: the plan spans the top, then category + spending | funds + chat ---------- */
+.bu .bu-board { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.bu .bu-span { grid-column: 1 / -1; min-width: 0; }
+.bu .rf-panel > .rf-ph { gap: var(--s3); }
+.bu .bu-pm { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.bu .bu-pm b { color: var(--ink); font-weight: 600; }
+.bu .bu-due-r { color: var(--ink); font-weight: 600; }
+.bu .bu-pbody { padding: 0 var(--pad) var(--pad); }
+.bu .rf-pcard > .bu-pbody:first-child { padding-top: var(--pad); }
+.bu .bu-tlink { text-decoration: none; }
+.bu .bu-tlink:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+
+/* what needs the viewer: the gold-tint card with the gold edge; settled once decided */
+.bu .bu-plan .rf-pcard { overflow: visible; }
+.bu .bu-focus .rf-pcard { background: var(--gold-tint); border: 1px solid #e0cf9f; box-shadow: inset 3px 0 0 var(--gold); }
+.bu .bu-focus.bu-settled .rf-pcard { background: var(--surface); border-color: var(--line); box-shadow: none; }
+.bu .bu-flashit { animation: bu-flash 1.6s var(--ease); scroll-margin-top: 16px; }
+@keyframes bu-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+
+/* ---------- Money bars: ink = spent, gold stripes = planned and waiting, solid gold = approved ---------- */
+.bu .bu-bar { position: relative; display: flex; height: 10px; background: var(--wash); border: 1px solid var(--line-soft); border-radius: 2px; overflow: hidden; }
+.bu .bu-focus .bu-bar { background: var(--surface); border-color: rgba(201, 155, 49, .35); }
+.bu .bu-bar > span { display: block; height: 100%; flex: none; transition: width .25s var(--ease), background .25s var(--ease); }
+.bu .bu-bar .bu-sp { background: var(--ink); }
+.bu .bu-bar .bu-pl { background: repeating-linear-gradient(135deg, var(--gold) 0 4px, var(--gold-tint) 4px 7px); }
+.bu .bu-bar.bu-ok .bu-pl, .bu .bu-bar .bu-gd { background: var(--gold); }
+.bu .bu-bar.bu-thick { height: 14px; }
+.bu .bu-bar .bu-over { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(90deg, var(--surface) 0 2px, var(--ink) 2px 4px); }
+.bu .bu-key { display: flex; flex-wrap: wrap; gap: 2px var(--s4); margin-top: 6px; font-size: var(--t-label); color: var(--muted); }
+.bu .bu-key span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.bu .bu-key b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bu .bu-key .bu-push { margin-left: auto; }
+.bu .rf-ph .bu-key { margin-top: 0; }
+.bu .bu-sw { display: inline-block; width: 10px; height: 10px; flex: none; }
+.bu .bu-sw.bu-sp { background: var(--ink); }
+.bu .bu-sw.bu-pl { background: repeating-linear-gradient(135deg, var(--gold) 0 3px, var(--gold-tint) 3px 5px); border: 1px solid var(--gold); }
+.bu .bu-sw.bu-gd { background: var(--gold); }
+
+/* ---------- The plan: left = the money (bar, lines, the gold primary), right = steps and comments ---------- */
+.bu .bu-pgrid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s6); padding: var(--pad) var(--pad) var(--pad); }
+.bu .bu-pg-a, .bu .bu-pg-b { min-width: 0; }
+.bu .bu-pg-b { display: flex; flex-direction: column; gap: var(--s5); padding-left: var(--s6); border-left: 1px solid rgba(201, 155, 49, .45); }
+.bu .bu-settled .bu-pg-b { border-left-color: var(--line-soft); }
+.bu .bu-plan h3 { margin-bottom: var(--s2); font-size: var(--t-label); font-weight: 500; }
+.bu .bu-plan h3 .bu-n { font-weight: 500; color: var(--muted); }
+.bu .bu-lines { margin-top: var(--s4); }
+.bu .bu-lines li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px var(--s3); padding: 6px 0; font-size: var(--t-body); }
+.bu .bu-lines li b { font-size: var(--t-row); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bu .bu-lt { grid-column: 1 / -1; display: block; height: 6px; background: var(--wash); border: 1px solid var(--line-soft); border-radius: 2px; overflow: hidden; }
+.bu .bu-focus .bu-lt { background: var(--surface); border-color: rgba(201, 155, 49, .35); }
+.bu .bu-lt span { display: block; height: 100%; background: var(--ink); transition: width .25s var(--ease); }
+.bu .bu-newl { margin-left: var(--s2); font-size: var(--t-label); font-weight: 600; color: var(--gold-ink); white-space: nowrap; }
+.bu .bu-apfoot { margin-top: var(--s4); }
+.bu .bu-ap-act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); }
+.bu .bu-why { margin-top: var(--s3); }
+.bu .bu-why .bu-draft { background: var(--surface); }
+.bu .bu-settled .bu-why .bu-draft, .bu .rf-panel:not(.bu-focus) .bu-draft { background: var(--gold-tint); }
+.bu .bu-note { margin-top: var(--s2); font-size: var(--t-body); color: var(--muted); }
+.bu .bu-pe { margin-bottom: 2px; font-size: var(--t-body); color: var(--muted); }
+
+/* "Coming soon": the money actions drawn but switched off in live mode (owner, 2026-10-12) */
+.bu .bu-off { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); }
+.bu .rf-btn:disabled.bu-x, .bu .bu-off .rf-btn:disabled, .bu .bu-off .rf-btn[aria-disabled="true"] { cursor: not-allowed; opacity: .55; transform: none; }
+.bu .bu-off .rf-btn-gold:disabled:hover, .bu .bu-off .rf-btn-gold[aria-disabled="true"]:hover, .bu .bu-off .rf-btn-gold[aria-disabled="true"]:active { background: var(--gold); border-color: var(--gold); box-shadow: none; }
+.bu .bu-off .rf-lnk[aria-disabled="true"]:active { color: var(--muted); transform: none; }
+/* The plan takes focus when the news card's Review brings it into view (a container, so no ring). */
+.bu #bu-plan:focus { outline: none; }
+.bu .bu-soon { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: 14px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+
+/* the draft (a decline's why, a nudge) */
+.bu .bu-draft { position: relative; padding: var(--s3) var(--s4); background: var(--gold-tint); border-radius: var(--r); }
+.bu .bu-draft::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.bu .bu-dl { display: block; font-size: var(--t-label); color: var(--muted); }
+.bu .bu-dtext { display: block; width: 100%; margin-top: 4px; font-size: var(--t-body); line-height: 1.4; }
+.bu textarea.bu-dtext { padding: 8px 10px; border: 1px solid var(--ink); border-radius: 2px; background: var(--surface); resize: vertical; }
+.bu .bu-dact { display: flex; align-items: center; gap: var(--s4); margin-top: var(--s3); }
+
+/* the moment after an action: "Saved 9:14 AM · Undo" */
+.bu .bu-moment { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: var(--ctl); font-size: var(--t-body); animation: bu-fadein .2s var(--ease); }
+.bu .bu-tick { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--gold); flex: none; }
+.bu .bu-tick.bu-ink { background: var(--ink); color: var(--surface); }
+.bu .bu-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+.bu .bu-pbody .bu-moment { margin: 4px 0 var(--s3); }
+@keyframes bu-fadein { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Steps: a line of marks, then tick, title, who and when; the step that's now gets the Now tag ---------- */
+.bu .bu-cl-bar { display: flex; gap: 3px; height: 8px; margin-bottom: var(--s2); }
+.bu .bu-cl-bar span { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 2px; transition: background .2s var(--ease); }
+.bu .bu-cl-bar span.bu-on { background: var(--ink); border-color: var(--ink); }
+.bu .bu-cl-bar span.bu-now { background: var(--gold); border-color: var(--gold); }
+.bu .bu-qsteps { margin: 0; padding: 0; list-style: none; }
+.bu .bu-qsteps li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; column-gap: var(--s3); align-items: start; padding: 8px 0; }
+.bu .bu-qsteps li + li { border-top: 1px solid rgba(201, 155, 49, .28); }
+.bu .bu-settled .bu-qsteps li + li { border-top-color: var(--line-soft); }
+.bu .bu-ck { position: relative; display: grid; place-items: center; width: 24px; height: 24px; flex: none; margin-top: 1px; padding: 0; border: 1.75px solid var(--ink); border-radius: 999px; background: var(--surface); }
+.bu .bu-ck .rf-i { width: 15px; height: 15px; stroke-width: 2.5; opacity: 0; }
+.bu .bu-ck.bu-on { background: var(--ink); color: var(--surface); }
+.bu .bu-ck.bu-on .rf-i { opacity: 1; }
+.bu .bu-st { display: block; font-size: var(--t-body); font-weight: 500; line-height: 1.35; }
+.bu .bu-qsteps li.bu-on .bu-st { color: var(--muted); }
+.bu .bu-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); margin-top: 2px; font-size: var(--t-label); color: var(--muted); }
+.bu .bu-who { display: inline-flex; align-items: center; gap: 6px; }
+.bu .bu-nowtag { padding-top: 2px; font-size: 14px; font-weight: 600; color: var(--gold-ink); white-space: nowrap; }
+.bu .bu-av { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 999px; background: var(--wash); box-shadow: 0 0 0 1.5px var(--surface); font-size: 10px; font-weight: 700; color: var(--muted); }
+.bu .bu-av.bu-me { background: var(--gold); color: var(--ink); }
+.bu .bu-av.bu-sq { border-radius: 2px; }
+.bu .bu-av .rf-i { width: 14px; height: 14px; }
+.bu .bu-unas { color: var(--muted); font-style: normal; }
+
+/* ---------- Comments and chat messages ---------- */
+.bu .bu-msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--s3); padding: 0 var(--pad); }
+.bu .bu-from { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.bu .bu-from b { font-weight: 600; white-space: nowrap; }
+.bu .bu-from span { font-size: var(--t-label); color: var(--muted); }
+.bu .bu-txt { margin-top: 4px; font-size: var(--t-body); }
+.bu .bu-cmts .bu-msg { padding: 0; margin-bottom: var(--s3); }
+.bu .bu-cmts .bu-txt { padding: 8px 12px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 2px; }
+.bu .bu-cmts .bu-mine .bu-txt { background: var(--wash); border-color: var(--wash); }
+.bu .bu-earlier { margin-bottom: var(--s3); font-size: var(--t-label); color: var(--muted); }
+.bu .bu-reply { display: flex; align-items: center; gap: var(--s2); margin: var(--s3) var(--pad) var(--pad) calc(var(--pad) + 36px + var(--s3)); height: var(--ctl); padding: 0 4px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.bu .bu-reply:hover { border-color: var(--muted); }
+.bu .bu-reply:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 1px; }
+.bu .bu-reply input { flex: 1; min-width: 0; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.bu .bu-cmts .bu-reply { margin: 0; }
+.bu .bu-send { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--ink); }
+.bu .bu-send:hover:not([disabled]) { background: var(--gold-tint); }
+.bu .bu-send:active:not([disabled]) { background: var(--gold); }
+.bu .bu-send[disabled] { color: var(--line); cursor: default; }
+
+/* ---------- The year by category: name | bar | spent of budget | quiet action (on hover) ---------- */
+.bu .bu-cats { padding: var(--s2) 0; }
+.bu .bu-cr { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 150px 112px; column-gap: var(--s4); align-items: center; min-height: 64px; padding: 8px var(--pad); }
+.bu .bu-cr + .bu-cr { box-shadow: inset 0 1px 0 var(--line-soft); }
+.bu .bu-cr:hover { background: #f8f9f6; }
+.bu .bu-cn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--s2); min-width: 0; }
+.bu .bu-cn b { font-size: var(--t-row); font-weight: 500; }
+.bu .bu-sub { flex-basis: 100%; font-size: var(--t-label); color: var(--muted); }
+.bu .bu-cn .rf-late { margin-top: 4px; }
+.bu .bu-ca { font-size: var(--t-body); color: var(--muted); white-space: nowrap; text-align: right; }
+.bu .bu-ca b { color: var(--ink); font-size: var(--t-row); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bu .bu-ra { justify-self: end; opacity: 0; transition: opacity .15s var(--ease); }
+.bu .bu-cr:hover .bu-ra, .bu .bu-ra:focus-visible { opacity: 1; }
+
+/* ---------- The quarter's spending: the rows, then the add row ---------- */
+.bu .bu-spends li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s4); align-items: center; min-height: 56px; padding: 8px var(--pad); }
+.bu .bu-spends li + li { box-shadow: inset 0 1px 0 var(--line-soft); }
+.bu .bu-spends li.bu-fresh { animation: bu-flash 1.6s var(--ease); }
+.bu .bu-sw-t { display: block; min-width: 0; }
+.bu .bu-sw-t > b { display: block; font-size: var(--t-row); font-weight: 500; }
+.bu .bu-eb { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-bottom: 2px; font-size: 14px; color: var(--muted); }
+.bu .bu-when { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.bu .bu-kw { white-space: nowrap; }
+.bu .bu-kw::before { content: "\00b7"; margin-right: 8px; color: var(--muted); }
+.bu .bu-sa { font-size: var(--t-row); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bu .bu-spends .bu-moment.bu-sm { grid-column: 2 / -1; min-height: 32px; font-size: var(--t-label); color: var(--muted); }
+.bu .bu-spends .bu-moment.bu-sm .bu-tick { width: 20px; height: 20px; }
+.bu .bu-more { padding: 0 var(--pad) var(--s3); font-size: var(--t-label); color: var(--muted); }
+.bu .bu-empty-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); min-height: 56px; padding: var(--s3) var(--pad); font-size: var(--t-body); color: var(--muted); }
+.bu .bu-add { border-top: 1px solid var(--line-soft); }
+.bu .bu-add-open { display: flex; align-items: center; gap: var(--s4); width: 100%; min-height: 56px; padding: 0 var(--pad); border: 0; background: none; text-align: left; font-size: var(--t-body); color: var(--muted); }
+.bu button.bu-add-open:hover { background: var(--wash); color: var(--ink); }
+.bu button.bu-add-open:active { background: var(--line-soft); }
+.bu .bu-add-open.bu-off { display: flex; cursor: not-allowed; }
+.bu .bu-plus { display: grid; place-items: center; width: 24px; height: 24px; }
+.bu .bu-lab { flex: 1; }
+.bu .bu-add-open.bu-off .bu-lab { flex: 0 1 auto; }
+.bu .bu-add-form { padding: 6px var(--pad) var(--s3); background: var(--surface); }
+.bu .bu-add-field { display: flex; align-items: center; gap: var(--s4); min-height: 44px; border-bottom: 2px solid var(--gold); }
+.bu .bu-add-field .bu-plus { color: var(--muted); }
+.bu .bu-add-field input { flex: 1; min-width: 0; height: 42px; border: 0; background: none; font-size: var(--t-row); outline: none; }
+.bu .bu-add-hint { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.bu .rf-chips.bu-chips { padding-left: calc(24px + var(--s4)); }
+.bu .rf-pchip { border-color: var(--line); background: var(--surface); }
+.bu .rf-pchip.bu-ink { border-color: var(--ink); }
+.bu .rf-pchip:hover { background: var(--wash); }
+.bu .bu-fsel { position: relative; }
+.bu .bu-fsel select { position: absolute; inset: 0; z-index: 1; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.bu .bu-fsel:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- Funds on hand ---------- */
+.bu .bu-fv { font-size: 32px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.bu .bu-fm { margin: 4px 0 var(--s4); font-size: var(--t-label); color: var(--muted); }
+.bu .bu-fm .bu-off { gap: var(--s2); }
+.bu .bu-inl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s2); }
+.bu .bu-money-in { display: flex; align-items: center; height: var(--ctl); width: 180px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; background: var(--surface); font-size: var(--t-row); }
+.bu .bu-money-in:focus-within { outline: 2px solid var(--ink); outline-offset: 1px; }
+.bu .bu-money-in span { color: var(--muted); }
+.bu .bu-money-in input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; font-size: var(--t-row); outline: none; }
+.bu .bu-fshare { margin-top: 6px; font-size: var(--t-label); color: var(--muted); }
+.bu .bu-fshare b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---------- Finance chat ---------- */
+.bu .bu-chat .rf-pcard { padding-top: 14px; }
+.bu .bu-chat .rf-pcard > .bu-msg { margin-bottom: var(--s3); }
+.bu .bu-sentline { padding: 0 var(--pad); margin-left: calc(36px + var(--s3)); font-size: var(--t-label); color: var(--muted); animation: bu-fadein .2s var(--ease); }
+.bu .bu-chat .rf-load-err { border-top: 0; }
+
+/* ---------- No plan yet: who drafts it, and the nudge ---------- */
+.bu .bu-waitbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 14px; margin-top: 8px; font-size: var(--t-label); }
+.bu .bu-waitbar.bu-done { min-height: 46px; }
+.bu .bu-wt { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--gold-ink); }
+.bu .bu-wt .rf-i { width: 16px; height: 16px; }
+.bu .bu-nudge { position: relative; height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background .15s var(--ease); }
+.bu .bu-nudge:hover, .bu .bu-nudge:active { background: var(--wash); }
+.bu .bu-nudge:active { transform: translateY(1px); }
+.bu .bu-nudged { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 500; animation: bu-fadein .2s var(--ease); }
+.bu .bu-nudged .rf-i { width: 16px; height: 16px; stroke-width: 2.25; }
+
+/* ---------- Load error: the "Budget didn't load." card ---------- */
+.bu .bu-errline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); padding: var(--s5) var(--pad); font-size: var(--t-row); }
+.bu .bu-errline .rf-i { width: 20px; height: 20px; margin-right: 6px; vertical-align: -4px; }
+
+/* ---------- Loading: the grey panels ---------- */
+.bu .bu-sk-box { padding: 20px var(--pad); }
+.bu .bu-sk-box .rf-sk + .rf-sk { margin-top: 14px; }
+.bu .bu-sk-box .bu-sk-t { width: 140px; height: 18px; }
+.bu .bu-sk-box .bu-sk-s { width: 55%; }
+.bu .bu-sk-box .bu-sk-bar { height: 10px; }
+
+/* ---------- The approval route: back link and the plan alone ---------- */
+.bu .bu-back { display: inline-flex; margin-bottom: var(--s4); font-size: var(--t-body); }
+.bu .bu-back .rf-i { width: 18px; height: 18px; }
+.bu .bu-solo { max-width: 1040px; }
+
+/* ---------- Wide screens: the board keeps a readable measure ---------- */
+@media (min-width: 1600px) { .bu .bu-board { max-width: 1480px; } }
+@media (min-width: 1101px) and (max-width: 1359px) {
+  .bu .bu-cr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 150px; }
+  .bu .bu-cr .bu-ra, .bu .bu-cr .bu-ra-none { display: none; }
+}
+@media (min-width: 760px) and (max-width: 1100px) {
+  .bu .rf-search { width: 260px; }
+  .bu .bu-board { grid-template-columns: minmax(0, 1fr); }
+  .bu .bu-col-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .bu .bu-pgrid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+  .bu .bu-pg-b { padding-left: 0; padding-top: var(--s5); border-left: 0; border-top: 1px solid rgba(201, 155, 49, .45); }
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 759px) {
+  .bu .rf-head { margin-bottom: var(--s3); }
+  .bu .rf-head > div:first-child { flex: 1 1 auto; align-self: stretch; min-width: 0; }
+  .bu .rf-head .rf-nx { margin-top: 14px; }
+  .bu .bu-secnav { position: relative; display: flex; gap: var(--s5); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); }
+  .bu .bu-secnav a { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; font-size: var(--t-body); font-weight: 500; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .bu .bu-secnav a:active { color: var(--ink); }
+  .bu .bu-secnav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+  .bu .bu-secnav a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--gold); }
+  .bu .bu-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: var(--ink); font-size: 14px; font-weight: 600; }
+  .bu .bu-board { grid-template-columns: minmax(0, 1fr); }
+  .bu .bu-pgrid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+  .bu .bu-pg-b { padding-left: 0; padding-top: var(--s5); border-left: 0; border-top: 1px solid rgba(201, 155, 49, .45); }
+  .bu .bu-ap-act .rf-btn-gold { flex: 1 1 100%; }
+  .bu .bu-key .bu-push { margin-left: 0; flex-basis: 100%; }
+  .bu .rf-ph .bu-key { flex-wrap: nowrap; }
+  .bu .bu-cr { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; padding: 12px var(--pad); }
+  .bu .bu-cr .bu-bar { grid-column: 1 / -1; grid-row: 2; }
+  .bu .bu-cr .bu-ra, .bu .bu-cr .bu-ra-none { display: none; }
+  .bu .bu-cr:hover { background: none; }
+  .bu .bu-ca { align-self: start; padding-top: 2px; }
+  .bu .bu-spends .bu-moment.bu-sm { grid-column: 1 / -1; }
+  .bu .bu-add-hint { display: none; }
+  .bu .bu-money-in { flex: 1 1 160px; }
+  .bu .bu-nudge::after { content: ""; position: absolute; inset: -4px 0; }
+  .bu .bu-back { min-height: 44px; align-items: center; margin-bottom: var(--s2); }
+  .bu .bu-flashit, .bu .bu-plan { scroll-margin-top: 72px; }
+  /* the approval route on a phone: its actions stay in reach above the tab bar */
+  .bu.bu-ap .bu-apfoot { position: fixed; z-index: 25; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom)); margin: 0; padding: var(--s3) var(--s4); background: var(--surface); border-top: 1px solid var(--line); }
+  .bu.bu-ap .bu-apfoot .bu-why { max-height: 45vh; overflow-y: auto; }
+  .o-page:has(> .bu-ap) { padding-bottom: calc(220px + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- The narrowest phones (320px): panel heads and keys wrap instead of running past the card ---------- */
+@media (max-width: 359px) {
+  .bu .rf-ph { flex-wrap: wrap; }
+  .bu .rf-ph .bu-key { flex-wrap: wrap; }
+  .bu .bu-key .bu-push { white-space: normal; }
+  /* a head link's tap area stops at the card edge */
+  .bu .rf-ph > .rf-lnk:last-child::after { right: 0; }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .bu button.bu-add-open:hover { background: none; color: var(--muted); }
+  .bu .bu-nudge:hover { background: var(--surface); }
+  .bu .bu-cr:hover { background: none; }
+}

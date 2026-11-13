@@ -10,6 +10,7 @@ import { sessionClient } from '../supabase-server';
 import { planPairing, runPairing, setVideoLinks, swapInterviewer, type Db } from '../pairing-db';
 import { addTime, openProposedTimes, rebalanceInterviews, rebuildProposedTimes, removeTime } from '../interview-flow-db';
 import { sendBookingInvites } from '../email/send';
+import { remindLine, remindUnbooked } from '../email/remind-students';
 import { sendAvailabilityReminders, sendRebalanceEmails, sendVideoLinkEmails, type InterviewMailResult } from '../email/interviews';
 import { previewRebalance } from '../interviews';
 import { affected, joinNames, namesLine, remindMessage, whenLine, type MoveView } from '../interview-times';
@@ -214,6 +215,19 @@ export async function remindBoard(cycleId: string): Promise<Msg> {
     return remindMessage(await sendAvailabilityReminders(cycleId));
   } catch {
     return { ok: false, message: "That didn't send. Try again." };
+  }
+}
+
+// Admin only. "Remind" on a student who has not booked, or "Remind all": the "Schedule your interview" email again, with
+// the Portal link to book (lib/email/remind-students.ts). At most once a day per student; `ids` null means everyone who
+// has not booked. Mock mode changes nothing (the page plays it locally).
+export async function remindStudentsAction(cycleId: string, ids: string[] | null): Promise<Msg> {
+  if (!hasSupabaseEnv()) return { ok: true, message: 'Reminded the students.' };
+  try {
+    const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string').slice(0, 500) : null;
+    return remindLine(await remindUnbooked(cycleId, list));
+  } catch {
+    return { ok: false, message: "That didn't send. Some emails may already have gone out." };
   }
 }
 

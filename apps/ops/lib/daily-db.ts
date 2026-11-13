@@ -18,13 +18,14 @@ type Loose = {
   rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<Res>;
 };
 
-export type ReadOpts = { eq?: Record<string, unknown>; gte?: Record<string, string>; lte?: Record<string, string>; order?: [string, boolean]; limit?: number };
+export type ReadOpts = { eq?: Record<string, unknown>; in?: Record<string, unknown[]>; gte?: Record<string, string>; lte?: Record<string, string>; order?: [string, boolean]; limit?: number };
 
 // Reads rows from a table or view; throws when the database says no (the loaders turn that into the "didn't load" card).
 export async function readRows(table: string, select: string, o: ReadOpts = {}): Promise<Row[]> {
   const client = (await sessionClient()) as unknown as Loose;
   let q = client.from(table).select(select);
   for (const [c, v] of Object.entries(o.eq ?? {})) q = q.eq(c, v);
+  for (const [c, v] of Object.entries(o.in ?? {})) q = q.in(c, v);
   for (const [c, v] of Object.entries(o.gte ?? {})) q = q.gte(c, v);
   for (const [c, v] of Object.entries(o.lte ?? {})) q = q.lte(c, v);
   if (o.order) q = q.order(o.order[0], { ascending: o.order[1] });

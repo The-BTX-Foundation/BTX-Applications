@@ -46,3 +46,33 @@ Screenshots live outside the repo in `BTX Foundation/apps/ops-build/hub/`: the a
 | Chat stress phone | 9.25 | 9.25 (Figma bubble overflow; not changed) |
 | Instagram phone / stress phone | 6.88 / 8.00 | 6.79 / 8.00 (Figma text off the card edge; not changed) |
 | Sponsorships stress phone | 7.17 | 2.78 |
+
+## Real app against the signed-off demo, every page (2026-11-12, full build)
+
+Run by `apps/design/ops-refresh/tools/parity/parity.mjs` in mock mode against the running Ops Hub on port 3032, normal state, after all review fixes. "Real" is the share of pixels no neighbour within 1px explains. Heights are the difference in pixels, laptop 1440 wide / phone 390 wide. Laptop residue near 1% is the shell's sidebar, whose counts are live app data (for example Finance 2, demo 1); page content matches. Stress, empty, error and loading states were each compared by the page's builder (stress states without a demo frame, and states the demo draws at normal height, are checked by eye); Today was proven in the pilot.
+
+| Page | Route | Laptop real % | Phone real % | Height diff (laptop / phone) |
+|---|---|---|---|---|
+| Tasks | `/tasks` | 0.59 | 0.02 | 0 / 1 |
+| Calendar | `/calendar` | 0.77 | 0.06 | 0 / 1 |
+| Goals | `/goals` | 0.71 | 0.09 | 0 / 1 |
+| Chat | `/chat` | 0.73 | 0.02 | 0 / 0 |
+| Board members | `/people` | 0.61 | 0.01 | 0 / 1 |
+| Budget | `/finance/budget` | 0.64 | 0.01 | 0 / 1 |
+| Fundraising | `/finance/fundraising` | 1.02 | 0.02 | 0 / 1 |
+| Grants | `/finance/grants` | 1.00 | 0.02 | 0 / 1 |
+| Certifications | `/programs/certifications` | 0.80 | 0.01 | 0 / 1 |
+| Mentorship | `/programs/mentorship` | 1.05 | 0.02 | 0 / 1 |
+| Sponsorships | `/programs/sponsorships` | 1.08 | 0.02 | 0 / 1 |
+| Outreach plan | `/outreach/plan` | 0.80 | 0.01 | 0 / 1 |
+| Instagram | `/outreach/instagram` | 0.87 | 0.01 | 0 / 1 |
+| Newsletter | `/outreach/newsletter` | 0.92 | 0.02 | 0 / 1 |
+| Applicants | `/scholarships/applicants` | 0.35 | 0.05 | 0 / 1 |
+| Awardees | `/scholarships/awardees` | 0.70 | 0.01 | 0 / 1 |
+| Cycle | `/scholarships/cycle` | 0.51 | 0.17 | 0 / 1 |
+| Cycle settings | `/scholarships/cycle/settings` | 0.70 | 0.03 | 0 / 1 |
+| Interviews | `/scholarships/interviews` | 0.91 | 0.47 | 1 / 2 |
+| Availability | `/scholarships/interviews/availability` | 0.79 | 0.14 | 0 / 1 |
+| Interview questions | `/scholarships/interviews/questions` | 0.59 | 0.01 | 0 / 1 |
+| Scoring | `/scholarships/scoring` | 0.85 | 0.02 | 0 / 0 |
+| Selection | `/scholarships/selection` | 1.22 | 0.09 | 0 / 1 |

@@ -22,6 +22,11 @@ export type CalItem = {
   /** People on it (staff profile ids). The signed-in person's id makes it "Yours". */
   people: string[];
   video?: boolean;
+  /** Interviews only: the student's full name and the application number, apart (the refreshed row draws them apart). */
+  student?: string;
+  code?: string;
+  /** Events only: the stored calendar_events.kind ("meeting", "planning_call"...), when the row has one. */
+  eventKind?: string;
   /** A bar across days (the interview window, a late task) instead of a chip in one day. */
   span?: boolean;
   late?: boolean;

@@ -1,0 +1,179 @@
+/* The refreshed Board members page (Ops Hub refresh, 2026-11-12). Ported from the demo apps/design/ops-refresh/directions/
+   p-people (its page rules, then the life, peak and Clean-cut passes, folded to their final values so the cascade holds).
+   Every class is bm-, every rule sits under .bm (the page wrapper: <div class="rf bm">), so nothing reaches another page.
+   The shared pieces (tokens, page header, panel, buttons, links, fold, skeleton blocks) come from refresh.css.
+   Phone below 760px; mid laptops 760 to 1359 drop the right column and fold "What admin rights add" under the list. */
+
+/* ---------- The board: A = the nudge that matters + the members; B = what admin rights add ---------- */
+.bm .bm-board { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr); align-items: start; }
+.bm .rf-panel > .rf-ph .bm-sum { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.bm .bm-h3-gap { margin-top: var(--s4); }
+@keyframes bm-fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bm-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+
+/* the nudge box: gold tint, gold left edge, the drafted message and the one gold action */
+.bm .bm-needs { position: relative; padding: 20px var(--pad) 20px calc(var(--pad) + 3px); background: var(--gold-tint); border: 1px solid #e0cf9f; border-radius: var(--r); box-shadow: inset 4px 0 0 var(--gold); overflow: hidden; }
+.bm .bm-ntop { display: flex; align-items: center; gap: var(--s3); }
+.bm .bm-ntop h2 { font-size: var(--t-row); font-weight: 500; }
+.bm .bm-ntop .bm-av { width: 40px; height: 40px; border: 0; background: var(--surface); color: var(--gold-ink); }
+.bm .bm-nmsg { margin-top: var(--s3); padding: 10px 14px; border: 1px solid var(--line-soft); border-radius: 2px; background: var(--surface); }
+.bm .bm-dl { display: block; font-size: var(--t-label); color: var(--muted); }
+.bm .bm-dtext { display: block; width: 100%; margin-top: 4px; font-size: var(--t-body); line-height: 1.45; }
+.bm textarea.bm-dtext { padding: 8px 10px; border: 1px solid var(--ink); border-radius: 2px; background: var(--surface); resize: vertical; }
+.bm .bm-nact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); margin-top: var(--s4); }
+.bm .bm-needs .bm-nact .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.bm .bm-fail { display: flex; align-items: center; gap: var(--s2); flex-basis: 100%; font-size: var(--t-label); font-weight: 500; color: var(--danger, #b42318); }
+.bm .bm-fail .rf-i { width: 18px; height: 18px; }
+.bm .bm-done { display: block; line-height: 1.6; font-size: var(--t-label); color: var(--ink); animation: bm-fadein .2s var(--ease); }
+.bm .bm-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 6px; vertical-align: -5px; border-radius: 999px; background: var(--gold); }
+.bm .bm-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+
+/* ---------- Members: one row each; tap opens their work in place (laptop) or in a sheet (phone) ---------- */
+.bm .bm-colh { display: grid; grid-template-columns: 40px minmax(0, 1fr) 236px 92px 20px; column-gap: 14px; padding: 14px var(--pad) 8px; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--line-soft); }
+.bm .bm-colh span:first-child { grid-column: 1 / 3; }
+.bm .bm-mem + .bm-mem { background-image: linear-gradient(var(--line-soft), var(--line-soft)); background-size: calc(100% - var(--pad) - 54px) 1px; background-position: right top; background-repeat: no-repeat; }
+.bm .bm-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 236px 92px 20px; column-gap: 14px; align-items: center; width: 100%; min-height: 72px; padding: 12px var(--pad); border: 0; background: var(--surface); text-align: left; transition: background .15s var(--ease); }
+.bm .bm-row:hover { background: var(--wash); }
+.bm .bm-row:active { background: var(--line-soft); }
+.bm .bm-row[aria-expanded="true"] { background: var(--surface); box-shadow: inset 3px 0 0 var(--gold); }
+.bm .bm-row.bm-flash { animation: bm-flash 1.6s var(--ease); }
+.bm .bm-av { width: 40px; height: 40px; border: 0; background: var(--wash); color: var(--muted); }
+.bm .bm-av.bm-me { background: var(--wash); color: var(--gold-ink); }
+.bm .bm-who { min-width: 0; }
+.bm .bm-nm { display: block; font-size: var(--t-row); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.bm .bm-nm.bm-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A name kept on one line elsewhere (callout title, "To ... in Board chat", panels) still breaks when it is longer than the
+   whole line, so a very long name never pushes the page sideways. */
+.bm .rf-nowrap { max-width: 100%; }
+.bm h2 .rf-nowrap, .bm .bm-dl .rf-nowrap, .bm .bm-tt .rf-nowrap, .bm .bm-tm .rf-nowrap { white-space: normal; overflow-wrap: anywhere; }
+.bm .bm-confirm h4, .bm .bm-done { overflow-wrap: anywhere; }
+.bm .bm-unknown { flex-basis: 100%; margin: 0; font-size: var(--t-label); font-weight: 500; color: var(--muted); }
+.bm .bm-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s3); margin-top: 4px; font-size: var(--t-label); color: var(--muted); }
+.bm .bm-tag { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.bm .bm-tag .rf-i { width: 14px; height: 14px; color: var(--muted); }
+.bm .bm-tag.bm-new { animation: bm-fadein .25s var(--ease); }
+.bm .bm-you { font-weight: 600; color: var(--ink); }
+/* their work, drawn: interviews as date blocks, open tasks as squares (filled ink = late) */
+.bm .bm-work { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--s3); min-width: 0; }
+.bm .bm-ivs { display: flex; gap: 4px; }
+.bm .bm-ivs > span { display: inline-flex; align-items: baseline; gap: 3px; height: 26px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; color: var(--gold-ink); font-size: 14px; font-weight: 500; line-height: 26px; white-space: nowrap; }
+.bm .bm-ivs b { font-weight: 600; color: var(--ink); }
+.bm .bm-tks { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.bm .bm-sqs { display: inline-flex; gap: 3px; }
+.bm .bm-sqs i { width: 12px; height: 12px; border: 1.5px solid var(--ink); border-radius: 1px; }
+.bm .bm-sqs i.bm-late { background: var(--ink); }
+.bm .bm-nothing { font-size: var(--t-label); color: var(--muted); }
+.bm .bm-last { font-size: var(--t-body); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bm .bm-last.bm-old { display: inline-flex; align-items: center; gap: 4px; justify-self: start; height: 26px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; color: var(--gold-ink); font-weight: 600; }
+.bm .bm-chev { width: 18px; height: 18px; color: var(--muted); transition: transform .2s var(--ease); }
+.bm .bm-row[aria-expanded="true"] .bm-chev { transform: rotate(180deg); }
+
+/* the person's work, in place */
+.bm .bm-pd { padding: var(--s2) var(--pad) var(--s5) calc(var(--pad) + 54px); background: var(--surface); }
+.bm .bm-pdgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5); }
+.bm .bm-pd h3 { display: flex; align-items: baseline; gap: var(--s2); padding-bottom: 6px; font-size: var(--t-label); font-weight: 600; border-bottom: 1px solid var(--line-soft); }
+.bm .bm-pd h3 .bm-n { font-weight: 500; color: var(--muted); }
+.bm .bm-pt li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--s3); align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
+.bm .bm-pt .bm-tt { font-size: var(--t-body); font-weight: 500; line-height: 1.35; }
+.bm .bm-pt .bm-tm { display: flex; flex-wrap: wrap; gap: 2px var(--s3); grid-column: 1; font-size: var(--t-label); color: var(--muted); }
+.bm .bm-pt .bm-area { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 400; line-height: 1; color: var(--muted); white-space: nowrap; }
+.bm .bm-pt .bm-due { grid-column: 2; grid-row: 1; font-size: var(--t-label); font-weight: 500; white-space: nowrap; }
+.bm .bm-late { display: inline-flex; align-items: center; padding: 0 var(--s2); border-radius: 2px; background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; line-height: 24px; white-space: nowrap; }
+.bm .bm-pt .bm-more { display: block; padding: 9px 0; }
+.bm .bm-pd .bm-emptyl { padding: 9px 0; font-size: var(--t-label); color: var(--muted); }
+.bm .bm-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); margin-top: var(--s4); }
+.bm .bm-acts .bm-done, .bm .bm-acts .bm-fail { flex-basis: 100%; }
+.bm .bm-pd .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.bm .bm-pd .rf-saveerr { flex-basis: 100%; margin: 0; }
+/* nudge draft and admin-rights confirm, opened under the actions */
+.bm .bm-draft { position: relative; margin-top: var(--s4); padding: var(--s3) var(--s4); background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r); overflow: hidden; }
+.bm .bm-draft::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.bm .bm-dact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); margin-top: var(--s3); }
+.bm .bm-confirm { margin-top: var(--s4); padding: var(--s4); border: 1.5px solid var(--ink); border-radius: var(--r); background: var(--surface); }
+.bm .bm-confirm h4 { margin: 1.33em 0; font-size: var(--t-row); font-weight: 600; }
+.bm .bm-confirm p { margin-top: 6px; font-size: var(--t-body); line-height: 1.45; }
+
+/* what admin rights add; notifications on this phone */
+.bm .bm-rights { padding: 0 var(--pad) var(--pad); }
+.bm .bm-rights ul { margin-top: var(--s3); }
+.bm .bm-rlist li { display: flex; align-items: center; gap: var(--s3); padding: 8px 0; border-top: 1px solid var(--line-soft); font-size: var(--t-body); font-weight: 500; }
+.bm .bm-rlist li:first-child { border-top: 0; }
+.bm .bm-rlist li .rf-i { width: 16px; height: 16px; color: var(--gold-ink); }
+.bm .bm-rlist li.bm-rnote { font-weight: 400; font-size: var(--t-label); color: var(--muted); }
+.bm .bm-rfold { display: none; }
+.bm .bm-rfold-btn { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); width: 100%; min-height: 56px; padding: 0 var(--pad); border: 0; border-top: 1px solid var(--line-soft); background: none; font-size: var(--t-body); font-weight: 500; color: var(--gold-ink); text-align: left; }
+.bm .bm-rfold-btn:hover { background: var(--wash); }
+.bm .bm-rfold-btn:active { background: var(--line-soft); }
+.bm .bm-rfold-btn .rf-i { width: 18px; height: 18px; color: var(--muted); transition: transform .2s var(--ease); }
+.bm .bm-rfold-btn[aria-expanded="true"] .rf-i { transform: rotate(180deg); }
+.bm .bm-rfold .bm-rights { padding-top: 0; }
+.bm .bm-push { display: none; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.bm .bm-pushin { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s4); padding: var(--s4) var(--pad); }
+.bm .bm-pushin b { font-weight: 600; }
+.bm .bm-push .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+
+/* phone-only sheet (hidden on laptop) */
+.bm .bm-scrim, .bm .bm-sheet { display: none; }
+
+/* ---------- Loading skeleton and load error ---------- */
+.bm .rf-sk-hl .rf-sk:nth-child(1) { width: 190px; height: 30px; }
+.bm .bm-skpanel { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.bm .bm-skph { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s4) var(--pad) var(--s2); }
+.bm .bm-skph .rf-sk { width: 160px; height: 18px; }
+.bm .bm-skrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) 120px; column-gap: 14px; align-items: center; min-height: 72px; padding: 12px var(--pad); }
+.bm .bm-skrow + .bm-skrow { box-shadow: inset 0 1px 0 var(--line-soft); }
+.bm .bm-skrow .bm-skav { width: 40px; height: 40px; border-radius: 999px; }
+.bm .bm-skrow .bm-lines .rf-sk:first-child { width: 55%; height: 16px; }
+.bm .bm-skrow .bm-lines .rf-sk + .rf-sk { margin-top: 8px; width: 40%; }
+.bm .bm-errbox { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.bm .bm-loaderr { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s4); padding: var(--s5) var(--pad); }
+.bm .bm-loaderr p { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); font-weight: 500; }
+
+/* ---------- Mid laptops (760 to 1359): one reading column; admin rights folds under the list ---------- */
+@media (min-width: 760px) and (max-width: 1359px) {
+  .bm .bm-board { grid-template-columns: minmax(0, 1fr); }
+  .bm .bm-colb { display: none; }
+  .bm .bm-rfold { display: block; }
+}
+@media (min-width: 760px) and (max-width: 1100px) {
+  .bm .bm-colh, .bm .bm-row { grid-template-columns: 40px minmax(0, 1fr) 196px 84px 20px; column-gap: var(--s3); }
+  .bm .bm-pd { padding-left: calc(var(--pad) + 52px); }
+}
+
+/* ---------- Phone (under 760px): one column, rows open a sheet ---------- */
+@media (max-width: 759px) {
+  .bm .rf-sk-hl .rf-sk:nth-child(1) { height: 26px; }
+  .bm .bm-board { grid-template-columns: minmax(0, 1fr); }
+  .bm .bm-colb { display: none; }
+  .bm .bm-rfold, .bm .bm-push { display: block; }
+  .bm .bm-needs { padding: var(--s4) var(--pad) var(--s4) calc(var(--pad) + 4px); }
+  .bm .bm-colh { display: none; }
+  /* row: avatar | name, title, work | last active */
+  .bm .bm-row { grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: 12px; align-items: start; min-height: 0; padding: 14px var(--pad); }
+  .bm .bm-row .bm-work { grid-column: 2; grid-row: 2; margin-top: 8px; }
+  .bm .bm-row .bm-last { grid-column: 3; grid-row: 1; padding-top: 1px; font-size: var(--t-label); }
+  .bm .bm-row .bm-chev { display: none; }
+  .bm .bm-mem + .bm-mem { background-size: calc(100% - var(--pad) - 52px) 1px; }
+  .bm .bm-inplace { display: none; }
+  .bm .bm-pdgrid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+  .bm .bm-skrow { grid-template-columns: 40px minmax(0, 1fr) 56px; column-gap: 12px; }
+  /* the sheet */
+  .bm .bm-scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(21, 23, 26, .36); opacity: 0; visibility: hidden; transition: opacity .2s var(--ease), visibility 0s .2s; }
+  .bm .bm-scrim.bm-on { opacity: 1; visibility: visible; transition: opacity .2s var(--ease), visibility 0s 0s; }
+  .bm .bm-sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: calc(100dvh - 40px); background: var(--surface); border-top: 1px solid var(--line); border-radius: 8px 8px 0 0; transform: translateY(100%); visibility: hidden; transition: transform .25s var(--ease), visibility 0s .25s; }
+  .bm .bm-sheet.bm-on { transform: none; visibility: visible; transition: transform .25s var(--ease), visibility 0s 0s; }
+  .bm .bm-shhead { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: var(--s3); align-items: center; padding: 8px 52px var(--s3) var(--pad); border-bottom: 1px solid var(--line-soft); }
+  .bm .bm-grab { grid-column: 1 / -1; width: 40px; height: 4px; margin: 0 auto 8px; border-radius: 2px; background: var(--line); }
+  .bm .bm-shclose { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; }
+  .bm .bm-shclose:hover { background: var(--wash); }
+  .bm .bm-shclose:active { background: var(--line-soft); }
+  .bm .bm-shhead .bm-nm { font-size: 20px; font-weight: 500; }
+  .bm .bm-shbody { overflow-y: auto; overscroll-behavior: contain; }
+  .bm .bm-shbody .bm-pd { padding: var(--s4) var(--pad) calc(var(--s5) + env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .bm .bm-row:hover { background: var(--surface); }
+  .bm .bm-rfold-btn:hover, .bm .bm-shclose:hover { background: none; }
+}

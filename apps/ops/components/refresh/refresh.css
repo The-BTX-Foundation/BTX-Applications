@@ -1,0 +1,368 @@
+/* Shared layer of the refreshed Ops Hub pages (signed off on Today, 2026-11-11). Every refreshed page wraps its content
+   in <div className="rf <page-prefix>"> and gets: the tokens, the base, the page ground, and the rf- vocabulary below
+   (page header, news card, panel, tab bar, row grammar, group headings, tags, chips, pickers, buttons, links, fold,
+   skeleton, empty and load-error lines, avatar, waiting line, date block, slim bar and squares marks). A page adds only
+   its own prefixed classes in components/<page>/<page>.css, scoped under its prefix (.td .td-x for Today).
+   Ported from the demos (apps/design/ops-refresh/directions/p-*), top to bottom in the same order so the cascade holds:
+   base, life pass, peak pass, then the Clean-cut block, which wins. Every rule sits under .rf, so nothing here reaches
+   an old page and the shared @btx/ui classes (.btn, .i, .bar ...) never reach a refreshed one. Phone below 760px. */
+
+/* The page ground (--wash) and the page padding (the demo's .content), only while a refreshed page is on screen. */
+.o-page:has(> .rf) { background: var(--wash); padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); gap: 0; }
+@media (min-width: 760px) {
+  .o-page:has(> .rf) { padding: 24px 24px 96px; }
+}
+@media (min-width: 900px) {
+  .o-page:has(> .rf) { padding: 24px 24px 48px; }
+}
+@media (min-width: 1360px) {
+  .o-page:has(> .rf) { padding: 32px 32px 56px; }
+}
+/* ---------- Font and the current app's tokens (SPEC-R2, fixed) ---------- */
+.rf { --bg: #f4f5f2;
+  --surface: #ffffff;
+  --ink: #15171a;
+  --muted: #545a60;
+  --line: #c9cec8;
+  --line-soft: #e1e4df;
+  --wash: #eceeea;
+  --gold: #c99b31;
+  --gold-tint: #f6eeda;
+  --gold-ink: #7a5b12;
+  --side: 248px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  --pad: 24px; --gap: 24px; --ctl: 40px;
+  --t-head: 34px; --t-h2: 20px; --t-row: 17px; --t-body: 16px; --t-label: 15px;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+  --fold: .22s; }
+/* ---------- Base ---------- */
+.rf * { box-sizing: border-box; }
+.rf { background: var(--bg); color: var(--ink); font: 400 var(--t-body)/1.4 var(--font-sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+.rf button, .rf input, .rf textarea { font: inherit; color: inherit; }
+.rf button { cursor: pointer; }
+.rf a { color: inherit; }
+.rf h1, .rf h2, .rf h3, .rf p, .rf ul, .rf dl, .rf dd { margin: 0; }
+.rf ul { padding: 0; list-style: none; }
+.rf [hidden] { display: none !important; }
+.rf .rf-i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.rf .rf-nowrap { white-space: nowrap; }
+.rf .rf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rf :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* ---------- Folding: every open/close and add/remove animates height (nothing jumps) ---------- */
+.rf .rf-fold { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--fold) var(--ease), opacity var(--fold) var(--ease); }
+.rf .rf-fold > .rf-fold-in { min-height: 0; overflow: hidden; visibility: visible; transition: visibility 0s 0s; }
+.rf .rf-fold.rf-closed { grid-template-rows: 0fr; opacity: 0; }
+.rf .rf-fold.rf-closed > .rf-fold-in { visibility: hidden; transition: visibility 0s var(--fold); }
+/* ---------- Controls: one height; outlined secondary; gold only for the one primary ---------- */
+.rf .rf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); height: var(--ctl); padding: 0 var(--s4); border-radius: 2px; border: 1px solid var(--line); background: var(--surface); font-size: var(--t-body); font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .15s var(--ease), border-color .15s var(--ease), transform .08s; }
+.rf .rf-btn:hover { border-color: var(--ink); background: var(--wash); }
+.rf .rf-btn:active { transform: translateY(1px); background: var(--line-soft); }
+.rf .rf-btn-gold { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+.rf .rf-btn-gold:hover { background: var(--gold); border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.rf .rf-btn-gold:active { background: #b88a26; border-color: #b88a26; }
+.rf .rf-btn[disabled] { cursor: progress; opacity: .85; }
+.rf .rf-btn .rf-i { width: 18px; height: 18px; }
+/* quiet text action: underlined on hover, 44px hit area via ::after */
+.rf .rf-lnk { position: relative; display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; font-size: var(--t-label); font-weight: 600; color: var(--ink); text-decoration: none; white-space: nowrap; border-radius: 2px; }
+.rf .rf-lnk::after { content: ""; position: absolute; inset: -11px -6px; }
+.rf .rf-lnk:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rf .rf-lnk:active { color: var(--muted); transform: translateY(1px); }
+.rf .rf-lnk .rf-i { width: 16px; height: 16px; transition: transform .2s var(--ease); }
+.rf .rf-lnk[aria-expanded="true"] .rf-i { transform: rotate(180deg); }
+.rf .rf-chip { display: inline-block; padding: 0 var(--s2); border: 1px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 500; line-height: 22px; white-space: nowrap; color: var(--ink); }
+.rf .rf-late { display: inline-flex; align-items: center; padding: 0 var(--s2); border-radius: 999px; background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; line-height: 24px; white-space: nowrap; }
+.rf .rf-avatar { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; background: var(--gold-tint); border: 1px solid var(--line); color: var(--ink); font-size: 14px; font-weight: 600; }
+.rf .rf-avatar.rf-round { border-radius: 999px; }
+/* ---------- Page head: the headline is the news (two stacked lines cross-fade, box keeps its height) ---------- */
+.rf .rf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s5); margin-bottom: var(--s5); }
+.rf .rf-ptitle { display: flex; align-items: baseline; gap: 12px; }
+.rf .rf-ptitle h1 { font-size: 34px; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
+.rf .rf-pdate { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.rf .rf-search { display: flex; align-items: center; gap: 10px; width: min(380px, 38%); height: var(--ctl); padding: 0 14px; border: 1px solid var(--line); background: var(--surface); flex: none; }
+.rf .rf-search:hover { border-color: var(--ink); }
+.rf .rf-search input { flex: 1; min-width: 0; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.rf .rf-search:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 2px; }
+/* ---------- Board: two columns of panels (a page sets its own column split) ---------- */
+.rf .rf-board { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+.rf .rf-col { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+.rf .rf-panel { min-width: 0; background: var(--surface); border: 1px solid var(--line); }
+.rf .rf-ph { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 60px; padding: var(--s3) var(--pad); }
+.rf .rf-ph h2 { font-size: var(--t-h2); font-weight: 500; }
+.rf .rf-bar { display: flex; gap: 3px; height: 10px; }
+.rf .rf-bar span { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 1px; }
+.rf .rf-bar span.rf-on { background: var(--gold); border-color: var(--gold); }
+/* ---------- Tab bar: light text tabs with a sliding gold underline ---------- */
+.rf .rf-tabbar { position: relative; display: flex; gap: var(--s5); padding: 0 var(--pad); border-bottom: 1px solid var(--line-soft); }
+.rf .rf-tabbar [role=tab] { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0; border: 0; background: none; font-size: var(--t-body); font-weight: 500; color: var(--muted); white-space: nowrap; }
+.rf .rf-tabbar [role=tab] .rf-n { font-weight: 500; color: var(--muted); }
+.rf .rf-tabbar [role=tab]:hover { color: var(--ink); }
+.rf .rf-tabbar [role=tab]:active { transform: translateY(1px); }
+.rf .rf-tabbar [role=tab][aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.rf .rf-tabbar [role=tab][aria-selected="true"] .rf-n { color: var(--ink); }
+.rf .rf-tab-ink { position: absolute; left: 0; bottom: -1px; height: 3px; width: 0; background: var(--gold); }
+.rf .rf-tab-ink.rf-ready { transition: transform .22s var(--ease), width .22s var(--ease); }
+/* group headers: quiet */
+.rf .rf-grp { padding: 18px var(--pad) 6px; font-size: var(--t-label); font-weight: 500; color: var(--muted); }
+.rf .rf-grp.rf-g-late { color: var(--ink); font-weight: 600; }
+.rf .rf-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) 112px 84px; column-gap: var(--s4); align-items: center; min-height: 64px; padding: 10px var(--pad); background: var(--surface); transition: background .15s var(--ease), transform .2s var(--ease); touch-action: pan-y; }
+.rf .rf-row:hover { background: var(--wash); }
+.rf .rf-item + .rf-item .rf-row { box-shadow: inset 0 1px 0 var(--line-soft); }
+.rf .rf-row.rf-flash { animation: rf-flash 1.6s var(--ease); }
+@keyframes rf-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+.rf .rf-check { position: relative; width: 24px; height: 24px; padding: 0; border: 1.75px solid var(--ink); border-radius: 999px; background: var(--surface); display: grid; place-items: center; transition: background .15s var(--ease); }
+.rf .rf-check::after { content: ""; position: absolute; inset: -10px; }
+.rf .rf-check:hover { background: var(--gold-tint); }
+.rf .rf-check:active { transform: scale(.9); }
+.rf .rf-check .rf-i { width: 16px; height: 16px; stroke-width: 2.5; opacity: 0; }
+.rf .rf-check[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.rf .rf-check[aria-pressed="true"] .rf-i { opacity: 1; }
+.rf .rf-check.rf-pop { animation: rf-pop .24s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes rf-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.rf .rf-main { min-width: 0; }
+.rf .rf-t { display: block; font-size: var(--t-row); font-weight: 600; line-height: 1.3; transition: color .2s var(--ease); }
+.rf .rf-row.rf-done .rf-t { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.rf .rf-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); margin-top: 4px; font-size: var(--t-label); color: var(--muted); }
+.rf .rf-due { font-size: var(--t-body); font-weight: 500; white-space: nowrap; cursor: default; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+/* sub-panels that open under a row (pickers, drafts, schedules), indented to the title */
+.rf .rf-sub-in { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 24px + var(--s4)); }
+.rf .rf-pick { height: 36px; padding: 0 var(--s4); border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: var(--t-label); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.rf .rf-pick:hover { border-color: var(--ink); background: var(--gold-tint); }
+.rf .rf-pick:active { transform: translateY(1px); background: var(--line-soft); }
+.rf .rf-pick span { font-weight: 400; color: var(--muted); }
+.rf .rf-none { padding: var(--s5) var(--pad); font-size: var(--t-body); color: var(--muted); }
+.rf .rf-chips { display: flex; flex-wrap: wrap; gap: var(--s2); min-height: 0; padding-left: calc(24px + var(--s4)); }
+.rf .rf-chips:not(:empty) { padding-top: var(--s3); }
+.rf .rf-pchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--gold); border-radius: 999px; background: var(--gold-tint); font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+.rf .rf-pchip.rf-new { animation: rf-chipin .18s var(--ease); }
+.rf .rf-pchip:hover { border-color: var(--ink); }
+.rf .rf-pchip:active { transform: scale(.96); }
+.rf .rf-pchip .rf-i { width: 16px; height: 16px; }
+.rf .rf-pchip .rf-x { width: 14px; height: 14px; color: var(--muted); }
+@keyframes rf-chipin { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+.rf .rf-stub { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--s3) 0; background: var(--gold); color: var(--ink); font-size: var(--t-label); font-weight: 500; line-height: 1.2; }
+.rf .rf-stub strong { font-size: 44px; font-weight: 500; line-height: 1; }
+.rf .rf-sq { display: flex; gap: 4px; }
+.rf .rf-sq span { width: 18px; height: 18px; border: 1.5px solid var(--line); border-radius: 1px; background: var(--surface); }
+.rf .rf-sq span.rf-on { background: var(--gold); border-color: var(--gold); }
+/* ---------- Mid laptops (760 to 1359): one reading column, supporting panels side by side ---------- */
+@media (min-width: 760px) and (max-width: 1359px) {
+  .rf .rf-board { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 760px) and (max-width: 1100px) {
+  .rf .rf-search { width: 340px; }
+  .rf .rf-stub strong { font-size: 36px; }
+}
+/* ---------- Phone (under 760px): tighter padding, one column, rows wrap their meta ---------- */
+@media (max-width: 759px) {
+  .rf { --pad: 16px; --gap: 20px; --ctl: 44px; --t-head: 27px; --t-h2: 20px; --t-row: 17px; --t-body: 16px; --t-label: 15px; }
+  .rf .rf-search { display: none; }
+  .rf .rf-sk-row { grid-template-columns: 24px minmax(0, 1fr) 56px; column-gap: var(--s3); }
+  .rf .rf-head { margin-bottom: var(--s4); }
+  .rf .rf-ptitle h1 { font-size: 28px; }
+  .rf .rf-board { grid-template-columns: minmax(0, 1fr); }
+  .rf .rf-panel { margin: 0 calc(-1 * var(--s4)); border-left: 0; border-right: 0; }
+  .rf .rf-ph { min-height: 56px; }
+  .rf .rf-tabbar { gap: var(--s5); }
+  .rf .rf-tabbar [role=tab] { height: 48px; }
+  /* rows: icon | title + meta | trailing control */
+  .rf .rf-row { grid-template-columns: 24px minmax(0, 1fr) auto; column-gap: var(--s3); align-items: start; min-height: 0; padding: 14px var(--pad); }
+  .rf .rf-row:hover { background: var(--surface); }
+  .rf .rf-check { margin-top: 1px; }
+  .rf .rf-due { padding-top: 1px; font-size: var(--t-label); }
+  .rf .rf-sub-in { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 24px + var(--s3)); }
+  .rf .rf-pick { height: 44px; }
+  .rf .rf-stub strong { font-size: 36px; }
+}
+/* ---------- Loading: grey blocks shaped like the page, no spinner ---------- */
+.rf .rf-sk { display: block; height: 14px; background: var(--wash); border-radius: 2px; animation: rf-skpulse 1.6s ease-in-out infinite; }
+@keyframes rf-skpulse { 50% { opacity: .5; } }
+.rf .rf-sk-hl .rf-sk:nth-child(1) { width: 140px; height: 28px; }
+.rf .rf-sk-box { padding: 20px var(--pad); }
+.rf .rf-sk-box .rf-sk + .rf-sk { margin-top: 12px; }
+.rf .rf-sk-bar { height: 10px; }
+.rf .rf-sk-ph { display: flex; align-items: center; min-height: 60px; padding: var(--s3) var(--pad); }
+.rf .rf-sk-ph .rf-sk { width: 120px; height: 18px; }
+.rf .rf-sk-tabs { display: flex; gap: var(--s5); align-items: center; height: 44px; padding: 0 var(--pad); border-bottom: 1px solid var(--line-soft); }
+.rf .rf-sk-tabs .rf-sk { width: 64px; }
+.rf .rf-sk-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 72px; column-gap: var(--s4); align-items: center; min-height: 64px; padding: 10px var(--pad); }
+.rf .rf-sk-row + .rf-sk-row { box-shadow: inset 0 1px 0 var(--line-soft); }
+.rf .rf-sk-row .rf-c { width: 24px; height: 24px; border-radius: 999px; }
+.rf .rf-sk-row .rf-lines .rf-sk + .rf-sk { margin-top: 8px; width: 40%; }
+.rf .rf-sk-row .rf-lines .rf-sk:first-child { height: 16px; }
+/* ---------- Load error: one section failed; one plain line and Try again, the rest of the page still shows ---------- */
+.rf .rf-load-err { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s4); padding: var(--s4) var(--pad) var(--s5); border-top: 1px solid var(--line-soft); }
+.rf .rf-load-err p { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-body); font-weight: 500; }
+.rf .rf-load-err p .rf-i { width: 20px; height: 20px; }
+.rf .rf-load-err.rf-retrying { display: block !important; padding: 0 !important; }
+/* ---------- Life pass (2026-11-10, from the Calendar pilot): cards on the gray ground, a place for the eye on every row ---------- */
+.rf { --r: 10px; --lift: 0 1px 2px rgba(21, 23, 26, .05), 0 8px 18px -10px rgba(21, 23, 26, .14); }
+.rf .rf-panel { border-color: var(--line-soft); border-radius: var(--r); box-shadow: var(--lift); overflow: hidden; }
+.rf .rf-ph h2 { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.rf .rf-ph h2 > .rf-i { width: 20px; height: 20px; color: var(--gold-ink); }
+/* group headers inside a list: weight and a count */
+.rf .rf-grp { display: flex; align-items: baseline; gap: 8px; padding: 18px var(--pad) 4px; font-size: var(--t-label); font-weight: 600; color: var(--ink); }
+.rf .rf-grp .rf-gn { font-weight: 500; color: var(--muted); }
+/* row: kind tile | eyebrow + title + meta | (hover snooze) | check */
+.rf .rf-row { grid-template-columns: 40px minmax(0, 1fr) auto 24px; column-gap: 14px; align-items: start; padding: 12px var(--pad); }
+.rf .rf-item + .rf-item .rf-row { box-shadow: none; background-image: linear-gradient(var(--line-soft), var(--line-soft)); background-size: calc(100% - var(--pad) - 54px) 1px; background-position: right top; background-repeat: no-repeat; }
+.rf .rf-row:hover.rf-k-gold, .rf .rf-row:hover { box-shadow: none; }
+.rf .rf-kt { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--wash); color: var(--muted); transition: opacity .2s var(--ease); }
+.rf .rf-kt .rf-i { width: 20px; height: 20px; }
+.rf .rf-row.rf-k-tint .rf-kt { background: var(--gold-tint); color: var(--gold-ink); }
+.rf .rf-row.rf-k-gold .rf-kt { background: var(--gold); color: var(--ink); }
+.rf .rf-row.rf-done .rf-kt { opacity: .5; }
+.rf .rf-check { align-self: start; margin-top: 26px; }
+.rf .rf-eb { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 22px; margin-bottom: 2px; font-size: 14px; color: var(--muted); }
+.rf .rf-eb .rf-due { font-size: 14px; font-weight: 600; color: var(--ink); }
+.rf .rf-eb .rf-late { line-height: 22px; }
+.rf .rf-eb .rf-kw::before { content: "\00b7"; margin-right: 8px; }
+.rf .rf-meta { gap: 6px var(--s3); margin-top: 6px; }
+.rf .rf-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border: 0; border-radius: 999px; background: var(--wash); font-size: 14px; font-weight: 600; line-height: 1; }
+.rf .rf-chip .rf-i { width: 14px; height: 14px; color: var(--muted); }
+.rf .rf-waitbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px var(--s3); margin-top: 10px; padding: 7px 7px 7px 12px; border-radius: 8px; background: var(--gold-tint); box-shadow: inset 3px 0 0 var(--gold); font-size: var(--t-label); }
+.rf .rf-waitbar .rf-wt { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--gold-ink); }
+.rf .rf-waitbar .rf-wt .rf-i { width: 16px; height: 16px; }
+.rf .rf-waitbar { max-width: 560px; }
+.rf .rf-waitbar.rf-done { padding: 8px 12px; background: var(--wash); box-shadow: none; }
+.rf .rf-sub-in { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 54px); }
+.rf .rf-chips { padding-left: 56px; }
+.rf .rf-sq { margin-top: 4px; }
+/* skeletons match the new shapes */
+.rf .rf-sk-row { grid-template-columns: 40px minmax(0, 1fr) 24px; column-gap: 14px; }
+.rf .rf-sk-row .rf-c { width: 40px; height: 40px; border-radius: 10px; }
+.rf .rf-sk-row > .rf-sk:last-child { width: 24px; height: 24px; border-radius: 999px; }
+@media (max-width: 759px) {
+  .rf { --gap: 14px; }
+  .rf .rf-panel { margin: 0; border: 1px solid var(--line-soft); }
+  .rf .rf-row { grid-template-columns: 40px minmax(0, 1fr) 24px; column-gap: 12px; padding: 12px var(--pad); }
+  .rf .rf-item + .rf-item .rf-row { box-shadow: none; background-image: linear-gradient(var(--line-soft), var(--line-soft)); background-size: calc(100% - var(--pad) - 52px) 1px; background-position: right top; background-repeat: no-repeat; }
+  .rf .rf-check { margin-top: 26px; }
+  .rf .rf-due { padding-top: 0; font-size: 14px; }
+  .rf .rf-sub-in { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 52px); }
+  .rf .rf-sk-row { grid-template-columns: 40px minmax(0, 1fr) 24px; column-gap: 12px; }
+}
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .rf .rf-row:hover { background: none; }
+  .rf .rf-row:hover { background: var(--surface); }
+  .rf .rf-pick:hover, .rf .rf-btn:hover { border-color: var(--line); background: var(--surface); }
+  .rf .rf-btn-gold:hover { background: var(--gold); border-color: var(--gold); box-shadow: none; }
+  .rf .rf-lnk:hover { text-decoration: none; }
+}
+/* ---------- Reduced motion: state changes still happen, without movement ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .rf *, .rf *::before, .rf *::after { animation: none !important; transition-duration: 0s !important; transition-delay: 0s !important; }
+}
+/* ---------- Peak pass (2026-11-10): quieter type, headings on the ground, less noise per row ---------- */
+.rf { background: var(--wash); }
+.rf .rf-ptitle h1 { font-weight: 400; letter-spacing: -0.025em; }
+.rf .rf-panel { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.rf .rf-panel > .rf-ph { min-height: 0; padding: 0 2px 10px; }
+.rf .rf-panel > .rf-ph h2 { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
+.rf .rf-panel > .rf-ph h2 > .rf-i { display: none; }
+.rf .rf-panel > .rf-ph .rf-lnk { color: var(--gold-ink); }
+.rf .rf-pcard { min-width: 0; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r); box-shadow: var(--lift); overflow: hidden; }
+.rf .rf-row .rf-t { font-weight: 500; }
+.rf .rf-row .rf-meta .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.rf .rf-row .rf-meta .rf-lnk .rf-i { color: var(--gold-ink); }
+.rf .rf-stub { background: var(--gold-tint); color: var(--gold-ink); }
+.rf .rf-stub strong { color: var(--ink); font-weight: 400; }
+@media (max-width: 759px) {
+  .rf .rf-panel { margin: 0; border: 0; }
+}
+/* ---------- Clean-cut finish (2026-11-11, signed off on Today): Dominick: the peak pass kept the flow but "looks more AI
+   vibe coded"; he liked the earlier clean lines. Same structure, new finish: hairlines instead of soft shadows, one
+   corner system (surfaces 4px, controls 2px), bare line icons instead of filled rounded tiles, no tinted pills. ---------- */
+.rf { --r: 4px; --lift: none; --ic: 24px; --off: 36px; }
+.rf .rf-pcard { border-color: var(--line); border-radius: var(--r); }
+/* rows: a bare line icon, text starts closer to the edge */
+.rf .rf-row { grid-template-columns: var(--ic) minmax(0, 1fr) auto 24px; column-gap: 12px; padding: 14px var(--pad); }
+.rf .rf-kt, .rf .rf-row.rf-k-tint .rf-kt, .rf .rf-row.rf-k-gold .rf-kt, .rf .rf-row.rf-open .rf-kt, .rf .rf-row.rf-open.rf-k-gold .rf-kt { width: var(--ic); height: 22px; border-radius: 0; background: none; color: var(--muted); }
+.rf .rf-row.rf-k-tint .rf-kt, .rf .rf-row.rf-k-gold .rf-kt, .rf .rf-row.rf-open.rf-k-gold .rf-kt { color: var(--gold-ink); }
+.rf .rf-kt .rf-i { width: 22px; height: 22px; }
+.rf .rf-item + .rf-item .rf-row { box-shadow: none; background-image: linear-gradient(var(--line-soft), var(--line-soft)); background-size: calc(100% - var(--pad) - var(--off)) 1px; background-position: right top; background-repeat: no-repeat; }
+.rf .rf-item + .rf-item .rf-row.rf-open, .rf .rf-item + .rf-item .rf-row:hover { box-shadow: none; }
+.rf .rf-check, .rf .rf-lead-ic { margin-top: 24px; }
+.rf .rf-sub-in { padding-left: calc(var(--pad) + var(--off)); }
+.rf .rf-chips { padding-left: 38px; }
+/* tags and controls: square corners, hairline borders, no tinted pills */
+.rf .rf-late { border-radius: 2px; padding: 0 6px; font-size: 14px; line-height: 20px; }
+.rf .rf-eb .rf-late { line-height: 20px; }
+.rf .rf-chip { height: 22px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; font-weight: 500; }
+.rf .rf-row.rf-open .rf-chip { background: none; }
+.rf .rf-pick, .rf .rf-pchip { border-radius: 2px; }
+.rf .rf-waitbar, .rf .rf-waitbar.rf-done { max-width: none; margin-top: 8px; padding: 0; border-radius: 0; background: none; box-shadow: none; justify-content: flex-start; gap: 6px 14px; }
+.rf .rf-waitbar .rf-wt { font-weight: 500; }
+.rf .rf-stub { background: var(--surface); border-right: 1px solid var(--line-soft); color: var(--gold-ink); }
+.rf .rf-sk-row { grid-template-columns: var(--ic) minmax(0, 1fr) 24px; column-gap: 12px; }
+.rf .rf-sk-row .rf-c { width: var(--ic); height: var(--ic); border-radius: 2px; }
+@media (max-width: 759px) {
+  .rf .rf-row { grid-template-columns: var(--ic) minmax(0, 1fr) 24px; column-gap: 12px; padding: 14px var(--pad); }
+  .rf .rf-item + .rf-item .rf-row { background-size: calc(100% - var(--pad) - var(--off)) 1px; }
+  .rf .rf-check, .rf .rf-lead-ic { margin-top: 24px; }
+  .rf .rf-sub-in { padding-left: calc(var(--pad) + var(--off)); }
+  .rf .rf-sk-row { grid-template-columns: var(--ic) minmax(0, 1fr) 24px; column-gap: 12px; }
+}
+/* The search box's placeholder text (search is not built yet, so the box is not a field). */
+.rf .rf-search-ph { flex: 1; min-width: 0; padding-left: 2px; color: #757575; font-size: var(--t-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* "Couldn't save. Try again." after a refused live write. */
+.rf .rf-saveerr { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s4); color: var(--danger, #b42318); font-size: var(--t-body); font-weight: 500; }
+.rf .rf-saveerr .rf-i { width: 18px; height: 18px; flex: none; }
+/* The shell's column sizes to its content, so a page with short content (a loading skeleton) came out narrow:
+   on a refreshed page the column always takes the full width beside the sidebar. */
+.o-col:has(> .o-page > .rf) { flex: 1 1 0%; }
+/* The Portal's shared stylesheet (@btx/ui components.css) also has a `.rf { margin-top: auto }` rule at wide widths; it would push a
+   short refreshed page to the bottom of the window. This (more specific) rule keeps the page at the top. */
+.o-page > .rf { margin-top: 0; }
+
+/* ---------- Shared pieces the other demo pages use (Today has none of these yet), at their final Clean-cut values ---------- */
+/* News card (nx): one "what happened / what's next" card under a page header or a panel heading. */
+.rf .rf-nx { display: grid; grid-template-columns: var(--ic) minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; max-width: 560px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); text-align: left; font: inherit; color: inherit; text-decoration: none; transition: transform .08s, background .15s; }
+.rf .rf-nx.rf-gold { background: var(--gold-tint); border-color: #e0cf9f; box-shadow: inset 3px 0 0 var(--gold); }
+.rf .rf-nx:active { transform: translateY(1px); }
+.rf .rf-nx-i { display: grid; place-items: center; width: var(--ic); height: var(--ic); color: var(--muted); }
+.rf .rf-nx.rf-gold .rf-nx-i { color: var(--gold-ink); }
+.rf .rf-nx-i .rf-i { width: 22px; height: 22px; }
+.rf .rf-nx-m { display: flex; flex-direction: column; min-width: 0; }
+.rf .rf-nx-k { font-size: 14px; font-weight: 500; color: var(--muted); }
+.rf .rf-nx.rf-gold .rf-nx-k { color: var(--gold-ink); }
+.rf .rf-nx-t { font-size: var(--t-row); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.rf .rf-nx-go { display: inline-flex; align-items: center; gap: 2px; font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+.rf .rf-nx-go .rf-i { width: 16px; height: 16px; }
+/* Filter chip (fchip): a toggle (aria-pressed) or, with a <select> laid over it, a select chip. */
+.rf .rf-fchip { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); font-weight: 500; color: var(--ink); white-space: nowrap; transition: background .15s var(--ease), border-color .15s var(--ease); }
+.rf .rf-fchip::after { content: ""; position: absolute; inset: -4px -2px; }
+.rf .rf-fchip .rf-n, .rf .rf-fchip .rf-k { color: var(--muted); font-weight: 400; }
+.rf .rf-fchip:hover { border-color: var(--ink); }
+.rf .rf-fchip:active { transform: translateY(1px); background: var(--line-soft); }
+.rf .rf-fchip[aria-pressed="true"], .rf .rf-fchip.rf-on { background: var(--gold-tint); border-color: var(--gold); font-weight: 600; }
+.rf .rf-fchip[aria-pressed="true"] .rf-n, .rf .rf-fchip.rf-on .rf-n { color: var(--ink); }
+.rf .rf-fchip .rf-i { width: 16px; height: 16px; }
+.rf .rf-fchip select { position: absolute; inset: 0; z-index: 1; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.rf .rf-fchip:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* Select (sel): a labelled native select drawn as a control ("Award  Legacy"), with a down chevron. */
+.rf .rf-sel { position: relative; display: inline-flex; align-items: center; gap: 6px; height: var(--ctl); padding: 0 34px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); white-space: nowrap; }
+.rf .rf-sel:hover { border-color: var(--ink); }
+.rf .rf-sel:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; border-color: var(--ink); }
+.rf .rf-sel > span { color: var(--muted); }
+.rf .rf-sel select { appearance: none; -webkit-appearance: none; border: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); outline: none; cursor: pointer; padding: 0; }
+.rf .rf-sel .rf-i { position: absolute; right: 10px; width: 16px; height: 16px; pointer-events: none; }
+.rf .rf-sel.rf-on { border-color: var(--gold); background: var(--gold-tint); }
+/* Done tick: a small round ink check beside "Sent" or "Saved". */
+.rf .rf-tick { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 999px; background: var(--ink); color: var(--surface); }
+.rf .rf-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+/* Empty block: a whole list or page with nothing in it (one line, then its one action). .rf-none is the one-line version for a section. */
+.rf .rf-empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s5); padding: var(--s6) var(--pad); font-size: var(--t-body); }
+.rf .rf-empty p { flex-basis: 100%; font-size: var(--t-row); font-weight: 500; }
+.rf .rf-none .rf-lnk { margin-left: var(--s2); }
+@media (max-width: 759px) {
+  .rf .rf-nx { max-width: none; margin-top: 10px; }
+  .rf .rf-fchip { height: 44px; }
+  .rf .rf-sel { min-width: 0; padding-right: 30px; }
+  .rf .rf-sel select { min-width: 0; width: 100%; text-overflow: ellipsis; }
+  .rf .rf-sel > span { display: none; }
+}
+@media (hover: none) {
+  .rf .rf-fchip:hover { border-color: var(--line); }
+  .rf .rf-fchip.rf-on:hover, .rf .rf-fchip[aria-pressed="true"]:hover { border-color: var(--gold); background: var(--gold-tint); }
+}

@@ -12,6 +12,7 @@ describe('checkEvent', () => {
     expect(checkEvent({ ...good, date: '' })).toEqual({ ok: false, message: 'Pick a date.' });
     expect(checkEvent({ ...good, date: '2026-02-31' })).toEqual({ ok: false, message: 'Pick a date.' });
     expect(checkEvent({ ...good, time: '25:00' })).toEqual({ ok: false, message: 'Pick a time.' });
+    expect(checkEvent({ ...good, time: '24:00' })).toEqual({ ok: false, message: 'Pick a time.' });
     expect(checkEvent({ ...good, area: 'admin' })).toEqual({ ok: false, message: 'Pick an area.' });
   });
   it('refuses a title over 200 characters', () => {
@@ -20,6 +21,11 @@ describe('checkEvent', () => {
   });
   it('takes all four areas, including money (shown as Finance)', () => {
     for (const area of ['scholarships', 'programs', 'money', 'outreach']) expect(checkEvent({ ...good, area }).ok).toBe(true);
+  });
+  it('takes any 24-hour HH:MM time, not only the listed half hours', () => {
+    expect(checkEvent({ ...good, time: '09:15' })).toMatchObject({ ok: true, time: '09:15' });
+    expect(checkEvent({ ...good, time: '23:59' })).toMatchObject({ ok: true, time: '23:59' });
+    expect(checkEvent({ ...good, time: '00:00' })).toMatchObject({ ok: true, time: '00:00' });
   });
   it('takes "all day" as a time', () => {
     expect(checkEvent({ ...good, time: ALL_DAY }).ok).toBe(true);

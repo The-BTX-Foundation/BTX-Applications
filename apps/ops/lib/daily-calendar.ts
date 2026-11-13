@@ -36,6 +36,7 @@ export function eventItems(rows: Raw[]): CalItem[] {
       start,
       people: e.owner_id ? [str(e.owner_id)] : [],
       video: Boolean(e.video_url),
+      ...(e.kind ? { eventKind: str(e.kind) } : {}),
     };
   });
 }
@@ -46,6 +47,8 @@ export function interviewItems(bookings: Raw[], slots: Raw[], pairings: Raw[], a
   const pair = new Map(pairings.map((p) => [str(p.slot_id), p]));
   // "Ada Okafor · APP-2026-00015" (every staff member sees names, D2); the code alone when the name is blank.
   const label = new Map(apps.map((a) => [str(a.id), [str(a.full_name).trim(), str(a.applicant_code)].filter(Boolean).join(' · ')]));
+  // The name and the code apart, for the refreshed Calendar row.
+  const parts = new Map(apps.map((a) => [str(a.id), { student: str(a.full_name).trim(), code: str(a.applicant_code) }]));
   const out: CalItem[] = [];
   for (const b of bookings) {
     if (b.status !== 'active') continue;
@@ -63,6 +66,7 @@ export function interviewItems(bookings: Raw[], slots: Raw[], pairings: Raw[], a
       start,
       people: p ? [str(p.interviewer_a), str(p.interviewer_b)] : [],
       video: Boolean(p?.video_url),
+      ...(parts.get(str(b.application_id)) ?? {}),
     });
   }
   return out;

@@ -247,17 +247,31 @@ export async function runPairing(client: Db, now = new Date()): Promise<Result<{
 
 /** Admin only: replaces one interviewer on a paired interview by hand. The new person must be someone the database
  * says may take it (free then, under their limit, not busy, not someone who knows the student). */
-export async function swapInterviewer(client: Db, slotId: string, fromUserId: string, toUserId: string): Promise<Result> {
-  const me = await sessionRole(client);
-  if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can change interviewers.' };
+/** What swapInterviewer says when the interviewer changed between the read and the write (someone else moved it). */
+export const SWAP_TAKEN = 'That interview just changed. Check it again.';
+
+/**
+ * `opts.trusted`: the caller already checked permission and passes a service-role client (lib/interview-reassign.ts:
+ * an admin's "Change interviewer", or a board member taking themselves off through an Availability save), so the
+ * session's role is not read.
+ */
+export async function swapInterviewer(client: Db, slotId: string, fromUserId: string, toUserId: string, opts: { trusted?: boolean } = {}): Promise<Result> {
+  if (!opts.trusted) {
+    const me = await sessionRole(client);
+    if (me.role !== 'admin') return { ok: false, message: 'Only board members with admin rights can change interviewers.' };
+  }
   const cur = await client.from('interview_pairings').select('interviewer_a, interviewer_b').eq('slot_id', slotId).maybeSingle();
   if (cur.error) return { ok: false, message: SAVE_FAILED };
   if (!cur.data) return { ok: false, message: 'That interview has no pair yet.' };
   const { interviewer_a: a, interviewer_b: b } = cur.data as { interviewer_a: string; interviewer_b: string };
   if (fromUserId !== a && fromUserId !== b) return { ok: false, message: 'That person is not one of the two interviewers.' };
   if (toUserId === a || toUserId === b) return { ok: false, message: 'That person is already interviewing.' };
-  const staff = await readStaff(client);
-  if (!staff.some((s) => s.userId === toUserId && (s.role === 'board' || s.role === 'admin'))) return { ok: false, message: 'Pick a board member.' };
+  // The staff list needs a signed-in staff session; a trusted (service-role) call relies on the candidate list below,
+  // which holds only admins and board members.
+  if (!opts.trusted) {
+    const staff = await readStaff(client);
+    if (!staff.some((s) => s.userId === toUserId && (s.role === 'board' || s.role === 'admin'))) return { ok: false, message: 'Pick a board member.' };
+  }
   const bk = await client.from('bookings').select('application_id').eq('slot_id', slotId).eq('status', 'active').maybeSingle();
   if (bk.error) return { ok: false, message: SAVE_FAILED };
   let cands: Candidate[];
@@ -268,12 +282,16 @@ export async function swapInterviewer(client: Db, slotId: string, fromUserId: st
   }
   // The reason stays vague on purpose: it may be a private "student I know".
   if (!cands.some((c) => c.userId === toUserId)) return { ok: false, message: "That person can't take this interview. Pick someone who is free then." };
+  // Only while `fromUserId` still holds that seat: a change made in between updates nothing and says so.
+  const seat = fromUserId === a ? 'interviewer_a' : 'interviewer_b';
   const upd = await client
     .from('interview_pairings')
-    .update(fromUserId === a ? { interviewer_a: toUserId } : { interviewer_b: toUserId })
+    .update({ [seat]: toUserId })
     .eq('slot_id', slotId)
+    .eq(seat, fromUserId)
     .select('slot_id');
-  if (upd.error || (upd.data ?? []).length === 0) return { ok: false, message: SAVE_FAILED };
+  if (upd.error) return { ok: false, message: SAVE_FAILED };
+  if ((upd.data ?? []).length === 0) return { ok: false, message: SWAP_TAKEN };
   return { ok: true };
 }
 

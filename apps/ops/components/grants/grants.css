@@ -1,0 +1,197 @@
+/* The Grants page's own parts (demo apps/design/ops-refresh/directions/p-grants), on top of the shared refresh layer
+   (components/refresh/refresh.css). Every rule sits under .gr, at the demo's final (Clean-cut) values. Phone below 760px. */
+
+/* ---------- Page head: the demo's margins and search width ---------- */
+.gr .gr-head { margin-bottom: var(--s5); }
+.gr .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.gr .rf-lnk .rf-i { color: var(--gold-ink); }
+.gr .gr-sk-hl .rf-sk:first-child { width: 150px; height: 30px; }
+.gr .gr-sk-hl .rf-sk + .rf-sk { display: block; width: min(560px, calc(100vw - 32px)); max-width: 100%; height: 62px; margin-top: 14px; border-radius: var(--r); }
+/* the title side may shrink beside the search box (mid laptops), so the loading block never pushes the page sideways */
+.gr .gr-head > div:first-child { min-width: 0; }
+
+/* ---------- Phone Finance tabs (hidden on laptops, where the sidebar shows Finance) ---------- */
+.gr .gr-secnav { display: none; }
+
+/* ---------- Board: the pipeline | getting started ---------- */
+.gr .gr-board { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+.gr .gr-col { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+.gr .gr-pm { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.gr .gr-pm b { color: var(--ink); font-weight: 600; }
+.gr .gr-ph-l { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--s3); min-width: 0; }
+.gr .gr-ph-l h2 { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
+.gr .gr-pbody { padding: var(--pad) var(--pad) var(--s2); }
+
+/* ---------- The pipeline track: four score blocks ---------- */
+.gr .gr-track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); margin: 0; padding: var(--pad) var(--pad) var(--s4); list-style: none; }
+.gr .gr-stg { position: relative; display: flex; flex-direction: column; gap: 2px; min-height: 72px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--muted); }
+.gr .gr-stg.gr-has { color: var(--gold-ink); }
+.gr .gr-sn { font-size: 28px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.gr .gr-stg.gr-has .gr-sn { color: var(--ink); }
+.gr .gr-sl { font-size: var(--t-label); font-weight: 600; color: var(--muted); }
+.gr .gr-stg.gr-has .gr-sl { color: var(--gold-ink); }
+.gr .gr-sa { position: absolute; right: -16px; top: 50%; width: 16px; height: 16px; margin-top: -8px; color: var(--muted); }
+
+/* ---------- Grants under each stage ---------- */
+.gr .gr-stage-h { display: flex; align-items: center; gap: 8px; padding: 14px var(--pad) 4px; font-size: var(--t-label); font-weight: 600; color: var(--ink); border-top: 1px solid var(--line-soft); }
+.gr .gr-stage-h::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--gold); }
+.gr .gr-grs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s4); align-items: center; min-height: 64px; padding: 12px var(--pad); }
+.gr .gr-grs li + li { box-shadow: inset 0 1px 0 var(--line-soft); }
+.gr .gr-grs li.gr-fresh { animation: gr-flash 1.6s var(--ease); }
+.gr .gr-gn b { font-size: var(--t-row); font-weight: 500; }
+.gr .gr-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); margin-top: 4px; font-size: var(--t-label); color: var(--muted); }
+.gr .gr-gn .gr-meta { margin-top: 2px; }
+.gr .gr-ga { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; max-width: 240px; text-align: right; }
+.gr .gr-ga b { font-size: var(--t-row); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* A long free note wraps inside the amount column (never clips on phones, never squeezes the name on laptops). */
+.gr .gr-gdt { min-width: 0; max-width: 100%; font-size: var(--t-label); color: var(--muted); overflow-wrap: anywhere; }
+.gr .gr-gdl { font-size: var(--t-label); line-height: 20px; }
+.gr .gr-more { padding: 0 var(--pad) var(--s3); font-size: var(--t-label); color: var(--muted); }
+.gr .gr-empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); min-height: 56px; padding: var(--s3) var(--pad); font-size: var(--t-body); color: var(--muted); }
+.gr .gr-unas { color: var(--muted); font-style: normal; }
+
+/* the moment after an action: "Added 9:14 AM · Undo", "Done · Undo" */
+.gr .gr-moment { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: var(--ctl); font-size: var(--t-body); animation: gr-fadein .2s var(--ease); }
+.gr .gr-grs .gr-moment { grid-column: 1 / -1; min-height: 28px; font-size: var(--t-label); color: var(--muted); }
+.gr .gr-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 999px; background: var(--gold); color: var(--ink); }
+.gr .gr-tick.gr-ink { background: var(--ink); color: var(--surface); }
+.gr .gr-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+
+/* ---------- Add a grant: a quiet row that turns into a field; parsed chips under it ---------- */
+.gr .gr-add { border-top: 1px solid var(--line-soft); }
+.gr .gr-add-open { display: flex; align-items: center; gap: var(--s4); width: 100%; min-height: 56px; padding: 0 var(--pad); border: 0; background: none; text-align: left; font-size: var(--t-body); color: var(--muted); }
+.gr .gr-add-open:hover { background: var(--wash); color: var(--ink); }
+.gr .gr-add-open:active { background: var(--line-soft); }
+.gr .gr-plus { display: grid; place-items: center; width: 24px; height: 24px; }
+.gr .gr-lab { flex: 1; }
+.gr .gr-kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-size: 14px; color: var(--muted); }
+/* live: adding is off, so the row is drawn disabled with "Coming soon" */
+.gr .gr-add-open.gr-soon, .gr .gr-add-open.gr-soon:hover, .gr .gr-add-open.gr-soon:active { cursor: default; background: none; color: var(--muted); }
+.gr .gr-soontag { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; font-size: 14px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.gr .gr-add-form { padding: 6px var(--pad) var(--s3); background: var(--surface); }
+.gr .gr-add-field { display: flex; align-items: center; gap: var(--s4); min-height: 44px; border-bottom: 2px solid var(--gold); }
+.gr .gr-add-field .gr-plus { color: var(--muted); }
+.gr .gr-add-field input { flex: 1; min-width: 0; height: 42px; border: 0; background: none; font-size: var(--t-row); outline: none; }
+.gr .gr-add-field .rf-btn-gold { height: 36px; flex: none; }
+.gr .gr-add-field .rf-btn-gold[disabled] { cursor: default; }
+.gr .gr-chips { display: flex; flex-wrap: wrap; gap: var(--s2); padding-left: calc(24px + var(--s4)); }
+.gr .gr-chips:not(:empty) { padding-top: var(--s3); }
+.gr .gr-pchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); font-weight: 600; white-space: nowrap; animation: gr-chipin .18s var(--ease); }
+.gr .gr-pchip.gr-ink { border-color: var(--ink); }
+
+/* ---------- Getting started: steps drawn as a line of marks, then the steps ---------- */
+.gr .gr-cl-bar { display: flex; gap: 3px; height: 8px; }
+.gr .gr-cl-bar span { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 2px; transition: background .2s var(--ease); }
+.gr .gr-cl-bar span.gr-on { background: var(--ink); border-color: var(--ink); }
+.gr .gr-cl-bar span.gr-now { background: var(--gold); border-color: var(--gold); }
+.gr .gr-steps { margin: 0; padding: 0; list-style: none; }
+.gr .gr-steps li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--s4); align-items: start; padding: 14px var(--pad); }
+.gr .gr-steps li + li { box-shadow: inset 0 1px 0 var(--line-soft); }
+.gr .gr-steps li.gr-now.gr-mine { background: var(--gold-tint); }
+.gr .gr-steps li.gr-now.gr-mine::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.gr .gr-main { min-width: 0; }
+.gr .gr-st { display: block; font-size: var(--t-row); font-weight: 500; line-height: 1.3; }
+.gr .gr-steps li.gr-on .gr-st { color: var(--muted); }
+.gr .gr-ck { position: relative; display: grid; place-items: center; width: 24px; height: 24px; flex: none; margin-top: 20px; padding: 0; border: 1.75px solid var(--ink); border-radius: 999px; background: var(--surface); }
+.gr button.gr-ck::after { content: ""; position: absolute; inset: -10px; }
+.gr button.gr-ck:hover { background: var(--gold-tint); }
+.gr button.gr-ck:active { transform: scale(.9); }
+.gr .gr-ck .rf-i { width: 15px; height: 15px; stroke-width: 2.5; opacity: 0; }
+.gr .gr-ck.gr-on { background: var(--ink); color: var(--surface); }
+.gr .gr-ck.gr-on .rf-i { opacity: 1; }
+.gr .gr-ck.gr-pop { animation: gr-pop .24s cubic-bezier(.3, 1.6, .5, 1); }
+.gr .gr-eb { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-bottom: 2px; font-size: 14px; font-weight: 400; color: var(--muted); }
+.gr .gr-when { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.gr .gr-when.gr-soft { font-weight: 500; color: var(--muted); }
+.gr .gr-eb .gr-late { line-height: 22px; }
+/* A long step note wraps (it may run to 500 characters). */
+.gr .gr-kw { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.gr .gr-nowtag { font-size: 14px; font-weight: 600; color: var(--gold-ink); white-space: nowrap; }
+.gr .gr-kw::before, .gr .gr-nowtag::before { content: "\00b7"; margin-right: 8px; font-weight: 400; color: var(--muted); }
+.gr .gr-steps .gr-who { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.gr .gr-av { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 999px; background: var(--wash); box-shadow: 0 0 0 1.5px var(--surface); font-size: 10px; font-weight: 700; color: var(--muted); }
+.gr .gr-av.gr-me { background: var(--gold); color: var(--ink); }
+.gr .gr-av.gr-sq { border-radius: 2px; }
+.gr .gr-av .rf-i { width: 14px; height: 14px; }
+
+/* waiting on someone: the clock line and the nudge */
+.gr .gr-waitbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 14px; margin-top: 8px; font-size: var(--t-label); }
+.gr .gr-waitbar.gr-done { min-height: 46px; }
+.gr .gr-wt { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--gold-ink); }
+.gr .gr-wt .rf-i { width: 16px; height: 16px; }
+.gr .gr-nudge { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background .15s var(--ease); }
+.gr .gr-nudge:hover, .gr .gr-nudge:active { background: var(--wash); }
+.gr .gr-nudge:active { transform: translateY(1px); }
+.gr .gr-nudged { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 500; animation: gr-fadein .2s var(--ease); }
+.gr .gr-nudged .rf-i { width: 16px; height: 16px; stroke-width: 2.25; }
+.gr .gr-sub-in { display: block; padding: var(--s2) 0; }
+.gr .gr-draft { position: relative; display: block; padding: var(--s3) var(--s4); border-radius: var(--r); background: var(--surface); }
+.gr .gr-draft::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.gr .gr-steps li:not(.gr-now) .gr-draft { background: var(--gold-tint); }
+.gr .gr-dl { display: block; font-size: var(--t-label); color: var(--muted); }
+.gr .gr-dtext { display: block; width: 100%; margin-top: 4px; font-size: var(--t-body); line-height: 1.4; }
+.gr textarea.gr-dtext { padding: 8px 10px; border: 1px solid var(--ink); border-radius: 2px; background: var(--surface); resize: vertical; }
+.gr .gr-dact { display: flex; align-items: center; gap: var(--s4); margin-top: var(--s3); }
+
+/* ---------- Load error: the whole board ---------- */
+.gr .gr-errline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); padding: var(--s5) var(--pad); font-size: var(--t-row); }
+.gr .gr-errline .rf-i { width: 20px; height: 20px; margin-right: 6px; vertical-align: -4px; }
+.gr .gr-ye .rf-load-err { border-top: 0; }
+
+/* ---------- Loading ---------- */
+.gr .gr-sk-box { padding: 20px var(--pad); }
+.gr .gr-sk-box .rf-sk + .rf-sk { margin-top: 14px; }
+.gr .gr-sk-box .gr-sk-bar { height: 10px; }
+.gr .gr-sk-box .gr-sk-t { width: 140px; height: 18px; }
+.gr .gr-sk-box .gr-sk-s { width: 55%; }
+
+/* the news card's "See it" brings the next step into view and flashes it */
+.gr .gr-flash { animation: gr-flash 1.6s var(--ease); }
+
+@keyframes gr-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+@keyframes gr-fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gr-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes gr-chipin { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+
+/* ---------- Wide screens: the board keeps a readable measure ---------- */
+@media (min-width: 1600px) {
+  .gr .gr-board { max-width: 1480px; }
+}
+
+/* ---------- Mid laptops: one column, the supporting panels side by side ---------- */
+@media (min-width: 760px) and (max-width: 1100px) {
+  .gr .rf-search { width: 260px; }
+  .gr .gr-board { grid-template-columns: minmax(0, 1fr); }
+  .gr .gr-col-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 759px) {
+  .gr .gr-head { margin-bottom: var(--s3); }
+  .gr .rf-nx { margin-top: 14px; }
+  .gr .gr-secnav { position: relative; display: flex; gap: var(--s5); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); }
+  .gr .gr-secnav a { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; font-size: var(--t-body); font-weight: 500; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .gr .gr-secnav a:active { color: var(--ink); }
+  .gr .gr-secnav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+  .gr .gr-secnav a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--gold); }
+  .gr .gr-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: var(--ink); font-size: 14px; font-weight: 600; }
+  .gr .gr-board, .gr .gr-col { gap: 14px; }
+  .gr .gr-board { grid-template-columns: minmax(0, 1fr); }
+  .gr .gr-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gr .gr-stg:nth-child(2) .gr-sa { display: none; }
+  .gr .gr-grs li { grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+  .gr .gr-ga { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s3); max-width: none; text-align: left; }
+  .gr .gr-ga .gr-gdl { align-self: center; }
+  .gr .gr-kbd { display: none; }
+  .gr .gr-add-field { flex-wrap: wrap; }
+  .gr .gr-add-field input { flex: 1 1 220px; }
+  .gr .gr-add-field .rf-btn-gold { height: 44px; margin: 0 0 var(--s2) calc(24px + var(--s4)); }
+  .gr .gr-nudge { position: relative; }
+  .gr .gr-nudge::after { content: ""; position: absolute; inset: -4px 0; }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .gr .gr-add-open:hover { background: none; }
+  .gr .gr-nudge:hover { background: var(--surface); }
+}

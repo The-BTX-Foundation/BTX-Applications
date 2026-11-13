@@ -8,6 +8,7 @@ import { ErrorIcon } from '@btx/ui';
 import { checkStaffCode, startSignIn } from '@/lib/ops-auth';
 import { NO_ACCESS } from '@/lib/role';
 import { OIcon } from './icons';
+import './shell-finish.css';
 
 const PORTAL = process.env.NEXT_PUBLIC_PORTAL_URL || '#';
 
@@ -89,7 +90,7 @@ export function SignIn({ next, notice }: { next?: string; notice?: 'access' | 'l
   const portal = PORTAL === '#' ? <a className="o-si-lk">application portal</a> : <a className="o-si-lk" href={PORTAL}>application portal</a>;
 
   return (
-    <main className={`o-si${stage === 'code' ? ' code' : ''}`}>
+    <main className={`o-si sf-si${stage === 'code' ? ' code' : ''}`}>
       <img src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={77} height={34} className="o-si-logo" />
       {stage === 'email' ? (
         <form className="o-si-box" onSubmit={sendCode} noValidate>
