@@ -249,6 +249,9 @@ export function InterviewsBoard({ view, live }: { view: InterviewsView; live: bo
   // The Teams-links confirm sits in the gold card while links are its task, otherwise in a sheet under Booked.
   const mkInCard = stage === 'links';
   const stageKey = stage;
+  // The gold card is drawn open on page load (folding it open then pushed the whole page down, a layout shift);
+  // it folds open only when its task changes while the page is open.
+  const [firstStage] = useState(stage);
 
   // When the gold card's task changes (its content is drawn anew) or fresh data redraws the page, focus that was on a
   // part that went away lands on the card's heading (or today's cell), never on the page body. Skipped on first draw.
@@ -1584,7 +1587,7 @@ export function InterviewsBoard({ view, live }: { view: InterviewsView; live: bo
                 <span>{needsNote.text}</span>
               </p>
             ) : null}
-            <Fold open appear key={stageKey}>
+            <Fold open appear={stageKey !== firstStage} key={stageKey}>
               {needsBody()}
             </Fold>
           </section>
