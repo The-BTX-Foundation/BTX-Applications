@@ -1,5 +1,5 @@
 // Goals page sample data (Figma "Goals" frames, laptop + phone, normal and stress). Types mirror the draft schema:
-// `goals` (year, title, metric, status, ...), `year_figures` (year, metric, value). The page only sees lib/goals.ts.
+// `goals` (year, title, metric, status, ...), `year_figures` (year, metric, value). lib/daily-goals.ts uses these types; the page uses lib/goals-view.ts.
 export type GoalStatus = 'in_planning' | 'in_progress' | 'on_track' | 'at_risk' | 'met' | 'missed' | 'not_started';
 
 /** One goal card. `value`/`unit` and `foot` are the laptop wording; `phone*` is the phone wording where it differs. */

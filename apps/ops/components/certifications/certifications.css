@@ -1,0 +1,199 @@
+/* The refreshed Certifications page (demo p-certifications, Ops Hub refresh 2026-11-12). Only this page's own classes,
+   every one under .cf, on top of the shared layer (components/refresh/refresh.css). Values are the demo's final ones
+   (its base, life, peak and Clean-cut passes resolved). Phone below 760px. */
+
+/* ---------- Head: the news card spans the column on the phone ---------- */
+.rf.cf .rf-nx { margin-top: 14px; }
+.cf .cf-sk-hl .rf-sk:first-child { width: 150px; height: 30px; }
+.cf .cf-sk-hl .rf-sk + .rf-sk { display: block; width: min(560px, calc(100vw - 32px)); height: 62px; margin-top: 14px; border-radius: var(--r); }
+
+/* ---------- Text links in this page are gold ink ---------- */
+.cf .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.cf .rf-lnk .rf-i { color: var(--gold-ink); }
+
+/* ---------- Phone: the three Programs pages as light text tabs under the title (the sidebar is hidden there) ---------- */
+.cf .cf-secnav { display: none; }
+
+/* ---------- Board: two columns; the load error is one ---------- */
+.cf .cf-board.cf-solo { grid-template-columns: minmax(0, 1fr); }
+.cf .rf-ph { flex-wrap: wrap; row-gap: var(--s2); }
+.cf .cf-sub { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+
+/* ---------- The plan: seats (one square per student the budget covers) beside the money line ---------- */
+.cf .cf-pl { display: flex; align-items: center; gap: var(--s5); padding: var(--s4) var(--pad); }
+.cf .cf-seats { display: flex; gap: 4px; flex: none; }
+.cf .cf-seats span { width: 22px; height: 22px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--surface); }
+.cf .cf-pl-a { font-size: var(--t-body); }
+.cf .cf-pl-a b { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cf .cf-pl-b { margin-top: 2px; font-size: var(--t-label); color: var(--muted); }
+.cf .cf-pl-sk { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+
+/* ---------- Progress: steps drawn as slim segments, gold = done, tinted = now ---------- */
+.cf .cf-prog { display: flex; align-items: center; gap: var(--s3); }
+.cf .cf-bar { display: flex; gap: 3px; width: 140px; height: 10px; }
+.cf .cf-bar span { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 2px; }
+.cf .cf-bar span.cf-on { background: var(--gold); border-color: var(--gold); }
+.cf .cf-bar span.cf-now { background: var(--gold-tint); border: 1.5px solid var(--gold); }
+.cf .cf-prog b { font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+
+/* ---------- Checklist rows: check | eyebrow (when), title, who ---------- */
+.cf .cf-items > li + li > .cf-row, .cf .cf-items > li + li > .cf-now { box-shadow: inset 0 1px 0 var(--line-soft); }
+.cf .cf-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--s4); align-items: start; padding: 14px var(--pad); background: var(--surface); transition: background .15s var(--ease); }
+.cf .cf-row.cf-flash { animation: rf-flash 1.6s var(--ease); }
+.cf .cf-row .rf-check { margin-top: 20px; }
+.cf .cf-row.cf-noeb .rf-check { margin-top: 0; }
+.cf .cf-review { margin-top: 20px; }
+.cf .cf-row.cf-noeb .cf-review { margin-top: 0; }
+.cf .cf-t { display: block; font-size: var(--t-row); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; transition: color .2s var(--ease); }
+.cf .cf-row.cf-done .cf-t { color: var(--muted); }
+.cf .cf-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); margin-top: 4px; font-size: var(--t-label); color: var(--muted); }
+.cf .cf-meta > span { white-space: nowrap; }
+/* A step's note (tasks.note, up to 500 characters) wraps; a long word or link breaks instead of running off the card. */
+.cf .cf-meta > .cf-note { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.cf .cf-who { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); white-space: nowrap; }
+.cf .cf-ini { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--wash); box-shadow: 0 0 0 1.5px var(--surface); font-size: 10px; font-weight: 700; color: var(--muted); }
+.cf .cf-ini.cf-me { background: var(--gold); color: var(--ink); }
+.cf .cf-now .cf-ini { box-shadow: 0 0 0 1.5px var(--gold-tint); }
+.cf .cf-who.cf-nobody { color: var(--muted); }
+.cf .cf-who.cf-nobody .cf-ini { background: none; border: 1.5px dashed var(--muted); }
+.cf .cf-eb { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-bottom: 2px; font-size: 14px; color: var(--muted); }
+.cf .cf-due { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; cursor: default; }
+.cf .cf-due.cf-muted { font-weight: 500; color: var(--muted); }
+.cf .cf-eb .rf-late { line-height: 22px; }
+.cf .cf-call { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); white-space: nowrap; }
+.cf .cf-call .rf-i { width: 16px; height: 16px; }
+/* the moment after an action, right where it happened */
+.cf .cf-after { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink); font-weight: 500; animation: cf-fadein .2s var(--ease); }
+.cf .cf-tk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--gold); }
+.cf .cf-tk .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+@keyframes cf-fadein { from { opacity: 0; } to { opacity: 1; } }
+/* the step that is now: gold tint and a gold left edge, its work inside */
+.cf .cf-now { position: relative; background: var(--gold-tint); }
+.cf .cf-now::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); z-index: 1; }
+.cf .cf-now > .cf-row { background: transparent; }
+.cf .cf-now > .cf-row.cf-flash { animation: none; }
+.cf .cf-now-in, .cf .cf-ideas-fold .cf-sub-in { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 24px + var(--s4)); }
+.cf .cf-flashit { animation: rf-flash 1.6s var(--ease); scroll-margin-top: 16px; }
+.cf [data-row] { scroll-margin-top: 16px; }
+
+/* ---------- Ideas inside "Pick the first certifications" ---------- */
+.cf .cf-ih { padding: var(--s1) 0 var(--s2); font-size: var(--t-label); font-weight: 500; }
+.cf .cf-ideas { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r); overflow: hidden; }
+.cf .cf-idea { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; column-gap: 14px; min-height: 60px; padding: 10px var(--s4); }
+.cf .cf-idea + .cf-idea { border-top: 1px solid var(--line-soft); }
+.cf .cf-idea.cf-flash { animation: rf-flash 1.6s var(--ease); }
+.cf .cf-kt { display: grid; place-items: center; width: var(--ic); height: 22px; color: var(--muted); }
+.cf .cf-kt .rf-i { width: 22px; height: 22px; }
+.cf .cf-kt.cf-gold { color: var(--gold-ink); }
+.cf .cf-idea.cf-dropped .cf-kt { opacity: .55; }
+.cf .cf-nm { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s2); font-size: var(--t-body); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.cf .cf-nm > span:first-child { min-width: 0; }
+.cf .cf-idea.cf-dropped .cf-nm > span:first-child { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.cf .cf-by { display: block; margin-top: 2px; font-size: var(--t-label); color: var(--muted); }
+.cf .cf-chip { display: inline-block; height: 22px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap; color: var(--ink); }
+.cf .cf-chip.cf-ink { background: var(--ink); border-color: var(--ink); color: var(--surface); font-weight: 600; }
+.cf .cf-iacts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s1) var(--s4); font-size: var(--t-label); color: var(--muted); }
+.cf .cf-idea-add { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+.cf .cf-fld { flex: 1 1 220px; display: flex; align-items: center; height: var(--ctl); padding: 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.cf .cf-fld:hover { border-color: var(--muted); }
+.cf .cf-fld:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 1px; }
+.cf .cf-fld input { flex: 1; min-width: 0; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.cf .cf-idea-after { padding-top: var(--s3); font-size: var(--t-label); }
+
+/* ---------- Empty, add in place, chips, save error ---------- */
+.cf .cf-none { padding: var(--s5) var(--pad); font-size: var(--t-body); color: var(--muted); }
+.cf .cf-none .rf-lnk { margin-left: var(--s2); }
+/* The ideas' own panel (no step about picking certifications, or that step done with no ideas yet). */
+.cf .cf-ideas-panel { padding: var(--s4) var(--pad); }
+.cf .cf-ideas-panel .cf-idea-add:first-child { margin-top: 0; }
+.cf .cf-noideas { margin-bottom: var(--s3); font-size: var(--t-body); color: var(--muted); }
+/* The chat's plain notes: older messages not shown, or no Programs chat yet. */
+.cf .cf-chatnote { padding: var(--s3) var(--pad) 0; font-size: var(--t-label); color: var(--muted); text-align: center; }
+.cf .cf-chatnote.cf-alone { padding-bottom: var(--pad); }
+.cf .cf-add { border-top: 1px solid var(--line-soft); }
+.cf .cf-add-open { display: flex; align-items: center; gap: var(--s4); width: 100%; min-height: 56px; padding: 0 var(--pad); border: 0; background: none; text-align: left; font-size: var(--t-body); color: var(--muted); }
+.cf .cf-add-open:hover { background: var(--wash); color: var(--ink); }
+.cf .cf-add-open:active { background: var(--line-soft); }
+.cf .cf-plus { display: grid; place-items: center; width: 24px; height: 24px; }
+.cf .cf-add-open .cf-lab { flex: 1; }
+.cf .cf-kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-size: 14px; color: var(--muted); }
+.cf .cf-add-form { padding: 6px var(--pad) var(--s3); background: var(--surface); }
+.cf .cf-add-field { display: flex; align-items: center; gap: var(--s4); min-height: 44px; border-bottom: 2px solid var(--gold); }
+.cf .cf-add-field .cf-plus { color: var(--muted); }
+.cf .cf-add-field input { flex: 1; min-width: 0; height: 42px; border: 0; background: none; font-size: var(--t-row); outline: none; }
+.cf .cf-add-hint { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.cf .cf-chips { display: flex; flex-wrap: wrap; gap: var(--s2); padding-left: calc(24px + var(--s4)); }
+.cf .cf-chips:not(:empty) { padding-top: var(--s3); }
+.cf .cf-pchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+.cf .cf-pchip:hover { background: var(--wash); border-color: var(--ink); }
+.cf .cf-pchip:active { transform: scale(.96); }
+.cf .cf-pchip.cf-new { animation: rf-chipin .18s var(--ease); }
+.cf .cf-pchip .rf-i { width: 16px; height: 16px; }
+.cf .cf-pchip .cf-x { width: 14px; height: 14px; color: var(--muted); }
+.cf .rf-saveerr { margin: 0; padding: var(--s3) var(--pad); border-top: 1px solid var(--line-soft); }
+
+/* ---------- Load error: the app's line and Try again ---------- */
+.cf .cf-err { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); padding: var(--s5) var(--pad); font-size: var(--t-body); }
+.cf .cf-err b { font-weight: 600; }
+.cf .cf-err p { color: var(--muted); }
+
+/* ---------- Programs chat: day lines, messages, a field to write ---------- */
+.cf .cf-chat .rf-pcard { padding-top: 14px; }
+.cf .cf-chat .cf-err { padding-top: var(--s3); }
+.cf .cf-day { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--pad) 0; font-size: var(--t-label); color: var(--muted); }
+.cf .cf-day::before, .cf .cf-day::after { content: ""; flex: 1; height: 1px; background: var(--line-soft); }
+.cf .cf-msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) var(--pad) 0; }
+.cf .cf-from { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.cf .cf-from b { font-weight: 600; white-space: nowrap; }
+.cf .cf-from span { font-size: var(--t-label); color: var(--muted); }
+.cf .cf-txt { margin-top: 2px; font-size: var(--t-body); overflow-wrap: anywhere; }
+.cf .rf-avatar .rf-i { width: 18px; height: 18px; }
+.cf .cf-msg.cf-bot .rf-avatar { background: var(--surface); }
+.cf .cf-unsent { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: var(--t-label); color: var(--danger, #b42318); font-weight: 500; }
+.cf .cf-reply { display: flex; align-items: center; gap: var(--s2); margin: var(--s4) var(--pad) var(--pad); height: var(--ctl); padding: 0 4px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.cf .cf-reply:hover { border-color: var(--muted); }
+.cf .cf-reply:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 1px; }
+.cf .cf-reply input { flex: 1; min-width: 0; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.cf .cf-send { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--ink); }
+.cf .cf-send:hover:not([disabled]) { background: var(--gold-tint); }
+.cf .cf-send:active:not([disabled]) { background: var(--gold); }
+.cf .cf-send[disabled] { color: var(--line); cursor: default; }
+.cf .cf-noreply { padding-bottom: var(--pad); }
+
+/* ---------- Loading: grey blocks shaped like the page ---------- */
+.cf .rf-sk { height: 12px; border-radius: 1px; }
+.cf .cf-sk-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 80px; column-gap: var(--s4); align-items: center; min-height: 64px; padding: 12px var(--pad); border-top: 1px solid var(--line-soft); }
+.cf .cf-sk-row .cf-c { width: 24px; height: 24px; border-radius: 999px; }
+.cf .cf-lines { display: flex; flex-direction: column; gap: 8px; }
+.cf .cf-sk-reply { border-style: dashed; }
+
+/* ---------- Phone (under 760px) ---------- */
+@media (max-width: 759px) {
+  .cf .rf-head > div:first-child { flex: 1 1 auto; align-self: stretch; min-width: 0; }
+  .rf.cf .rf-nx { max-width: none; margin-top: 14px; }
+  .cf .cf-secnav { position: relative; display: flex; gap: var(--s5); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); }
+  .cf .cf-secnav a { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; font-size: var(--t-body); font-weight: 500; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .cf .cf-secnav a:active { color: var(--ink); }
+  .cf .cf-secnav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+  .cf .cf-secnav a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--gold); }
+  .cf .cf-pl { gap: var(--s4); align-items: flex-start; }
+  .cf .cf-seats { padding-top: 3px; }
+  .cf .cf-seats span { width: 18px; height: 18px; }
+  .cf .cf-bar { width: 96px; }
+  .cf .cf-row { column-gap: var(--s3); }
+  .cf .cf-due { padding-top: 1px; }
+  .cf .cf-now-in, .cf .cf-ideas-fold .cf-sub-in { padding-left: calc(var(--pad) + 24px + var(--s3)); }
+  .cf .cf-idea { grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; row-gap: 6px; padding: 12px var(--s3); }
+  .cf .cf-idea .cf-iacts { grid-column: 2; justify-content: flex-start; gap: var(--s1) var(--s5); }
+  .cf .cf-idea-add .rf-btn { flex: 1 1 100%; }
+  .cf .cf-add-hint, .cf .cf-kbd { display: none; }
+  .cf .cf-add-field { gap: var(--s3); }
+  .cf .cf-chips { padding-left: calc(24px + var(--s3)); }
+  .cf .cf-sk-row { grid-template-columns: 24px minmax(0, 1fr) 56px; column-gap: var(--s3); }
+  .cf .cf-flashit, .cf [data-row] { scroll-margin-top: 72px; }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .cf .cf-add-open:hover { background: none; color: var(--muted); }
+}

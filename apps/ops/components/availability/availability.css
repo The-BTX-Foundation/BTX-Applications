@@ -1,0 +1,241 @@
+/* Interviews > Your availability (Ops Hub refresh, demo p-availability). Only this page's own classes, all under .fy and
+   prefixed fy-; the shared rf- layer (components/refresh/refresh.css) is imported first. Ported from the demo's final
+   values (base, life pass, peak pass, then the Clean-cut block, which wins). Phone below 760px. */
+
+/* ---------- Page grid: the line spans the top; limit and students side by side under it ---------- */
+.fy .fy-board { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.fy .fy-span { grid-column: 1 / -1; min-width: 0; }
+.fy .rf-ph { flex-wrap: wrap; gap: var(--s2) var(--s4); }
+.fy .rf-panel > .rf-ph .rf-lnk { font-weight: 500; }
+.fy .fy-ptitle { align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.fy .rf-pcard .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.fy .rf-pcard .rf-lnk .rf-i { color: var(--gold-ink); }
+.fy .fy-r { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s5); font-size: var(--t-label); color: var(--muted); }
+.fy .fy-tot { font-weight: 500; }
+.fy .fy-sent { display: inline-flex; align-items: center; gap: 6px; }
+.fy .fy-sent:focus { outline: none; }
+.fy .fy-sent:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.fy .fy-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 999px; background: var(--gold); color: var(--ink); }
+.fy .fy-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+
+/* ---------- What needs you: the changes not sent yet and the one gold Send ---------- */
+.fy .fy-needs-pad { padding-bottom: var(--gap); }
+.fy .fy-needs { position: relative; padding: 20px var(--pad) 20px calc(var(--pad) + 3px); background: var(--gold-tint); border: 1px solid #e0cf9f; border-radius: var(--r); overflow: hidden; box-shadow: inset 3px 0 0 var(--gold); }
+.fy .fy-nbody { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s3) var(--s5); }
+.fy .fy-nact { display: flex; align-items: center; gap: var(--s4); }
+.fy .fy-clog { display: flex; flex-direction: column; gap: 4px; }
+.fy .fy-clog li { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--t-body); overflow-wrap: anywhere; min-width: 0; }
+.fy .fy-clog li::before { content: ""; flex: none; width: 6px; height: 6px; margin-top: 2px; background: var(--ink); border-radius: 999px; transform: translateY(-2px); }
+.fy .fy-clog .fy-more { color: var(--muted); font-size: var(--t-label); }
+.fy .fy-clog .fy-more::before { display: none; }
+.fy .fy-saveerr { margin: var(--s3) 0 0; }
+
+/* the moment after an action: a tick, what happened, Undo (one line, in the place it happened) */
+@keyframes fy-fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fy-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+@keyframes fy-chipin { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+.fy .fy-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s2); font-size: var(--t-label); color: var(--ink); animation: fy-fadein .2s var(--ease); }
+.fy .fy-note .fy-tick { margin-right: 2px; }
+.fy .fy-tx { min-width: 0; overflow-wrap: anywhere; }
+.fy .fy-sep { color: var(--muted); }
+
+/* ---------- Add free time: a typed line with read-back chips, quick picks under it ---------- */
+.fy .fy-addw { padding: var(--s4) var(--pad) var(--s4); }
+.fy .fy-addf { display: flex; align-items: center; gap: var(--s3); min-height: 48px; border-bottom: 2px solid var(--gold); }
+.fy .fy-plus { display: grid; place-items: center; width: 24px; height: 24px; color: var(--muted); flex: none; }
+.fy .fy-addf input { flex: 1; min-width: 0; height: 46px; border: 0; background: none; font-size: var(--t-row); outline: none; }
+.fy .fy-addf input::placeholder { color: var(--muted); }
+.fy .fy-addf:focus-within { box-shadow: 0 1px 0 var(--gold); }
+.fy .fy-hint { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.fy .fy-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding-left: calc(24px + var(--s3)); }
+.fy .fy-chips:not(:empty) { padding-top: var(--s3); }
+.fy .fy-pchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--gold); border-radius: 999px; background: var(--gold-tint); font-size: var(--t-label); font-weight: 600; white-space: nowrap; animation: fy-chipin .18s var(--ease); }
+.fy .fy-pchip .rf-i { width: 16px; height: 16px; }
+.fy .fy-perr { font-size: var(--t-label); color: var(--ink); font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.fy .fy-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding-top: var(--s3); padding-left: calc(24px + var(--s3)); }
+.fy .fy-picks > span { font-size: var(--t-label); color: var(--muted); margin-right: var(--s1); }
+.fy .fy-qp { height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); font-weight: 500; white-space: nowrap; transition: background .15s var(--ease), border-color .15s var(--ease); }
+.fy .fy-qp:hover { border-color: var(--ink); background: var(--wash); }
+.fy .fy-qp:active { background: var(--line-soft); transform: translateY(1px); }
+.fy .fy-addnote { padding-top: var(--s3); padding-left: calc(24px + var(--s3)); }
+
+/* ---------- The line: one row per day, hours 8 AM to 10 PM drawn left to right ---------- */
+.fy .fy-line { --dcol: 112px; --tcol: 300px; border-top: 1px solid var(--line-soft); }
+.fy .fy-axis, .fy .fy-drow { display: grid; grid-template-columns: var(--dcol) minmax(0, 1fr) var(--tcol); column-gap: var(--s4); padding: 0 var(--pad); }
+.fy .fy-axis { position: relative; height: 34px; align-items: end; padding-bottom: 6px; font-size: 14px; color: var(--muted); }
+.fy .fy-ticks { grid-column: 2; position: relative; height: 18px; }
+.fy .fy-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.fy .fy-ticks span:first-child { transform: none; }
+.fy .fy-ticks span:last-child { transform: translateX(-100%); }
+.fy .fy-drow { position: relative; align-items: center; min-height: 60px; padding-top: 10px; padding-bottom: 10px; box-shadow: inset 0 1px 0 var(--line-soft); }
+.fy .fy-drow.fy-fresh { animation: fy-flash 1.6s var(--ease); }
+.fy .fy-dl { display: flex; align-items: center; gap: var(--s3); white-space: nowrap; }
+.fy .fy-dl span { font-size: 14px; color: var(--muted); }
+.fy .fy-dnum { display: inline-grid; place-items: center; align-content: center; width: 44px; height: 48px; flex: none; border: 1px solid var(--line-soft); border-radius: 2px; background: var(--surface); line-height: 1; }
+.fy .fy-dnum b { font-size: 20px; font-weight: 600; }
+.fy .fy-dnum small { margin-top: 3px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gold-ink); }
+.fy .fy-drow.fy-today .fy-dnum { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.fy .fy-drow.fy-today .fy-dnum small { color: #e0cf9f; }
+.fy .fy-dl .fy-tdy { font-size: 14px; font-weight: 600; color: var(--ink); }
+/* the day's track: hour lines; free time as a tinted bar; booked half hours as solid gold */
+.fy .fy-trk { position: relative; height: 32px; background: var(--surface) repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px calc(100% / 14)); border: 1px solid var(--line-soft); border-radius: 2px; touch-action: pan-y; cursor: crosshair; }
+.fy .fy-drow.fy-wkend .fy-trk { background-color: var(--bg); }
+.fy .fy-fb { position: absolute; top: 3px; bottom: 3px; padding: 0; border: 1.5px solid var(--gold); border-radius: 2px; background: var(--gold-tint); cursor: pointer; transition: background .15s var(--ease); }
+.fy .fy-fb:hover { background: #efe1bd; }
+.fy .fy-fb:active { background: #ead8a8; }
+.fy .fy-bk { position: absolute; top: 3px; bottom: 3px; background: var(--gold); border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); border-radius: 2px; pointer-events: none; }
+.fy .fy-prev { position: absolute; top: 3px; bottom: 3px; border: 1.5px dashed var(--ink); border-radius: 2px; background: rgba(201, 155, 49, .18); pointer-events: none; }
+/* the day's words: each free span, the booked interviews, one quiet action per line on the right */
+.fy .fy-dt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fy .fy-rg { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 32px; }
+.fy .fy-rt { padding: 2px 0; border: 0; background: none; font-size: var(--t-row); font-weight: 500; text-align: left; white-space: nowrap; border-radius: 2px; }
+.fy .fy-rt:hover { text-decoration: underline; text-underline-offset: 3px; }
+.fy .fy-rt:active { color: var(--muted); }
+.fy .fy-nf { font-size: var(--t-body); color: var(--muted); }
+.fy .fy-bkl { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s2); margin-top: 2px; font-size: var(--t-label); color: var(--muted); }
+.fy .fy-bkl b { max-width: 100%; color: var(--ink); font-weight: 500; overflow-wrap: break-word; }
+.fy .fy-bkl b::before { content: ""; display: inline-block; margin-right: 6px; width: 10px; height: 10px; background: var(--gold); border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); border-radius: 1px; }
+.fy .fy-who { display: inline-flex; align-items: center; gap: 6px; }
+.fy .fy-faces { display: inline-flex; }
+.fy .fy-fc { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--wash); box-shadow: 0 0 0 1.5px var(--surface); font-size: 10px; font-weight: 700; color: var(--muted); }
+.fy .fy-fc + .fy-fc { margin-left: -2px; }
+.fy .fy-fc.fy-me { background: var(--gold); color: var(--ink); }
+.fy .fy-rged { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); padding: 2px 0; }
+.fy .fy-rged input { flex: 1 1 140px; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; background: var(--surface); font-size: var(--t-body); }
+.fy .fy-rged .fy-perr { flex-basis: 100%; }
+.fy .fy-dnote { grid-column: 2 / -1; padding-top: var(--s2); }
+.fy .fy-legend { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s5); padding: var(--s3) var(--pad) var(--s4); border-top: 1px solid var(--line-soft); background: var(--surface); font-size: 14px; color: var(--muted); }
+.fy .fy-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fy .fy-lg { display: inline-block; width: 18px; height: 12px; border: 1.5px solid var(--gold); border-radius: 2px; background: var(--gold-tint); }
+.fy .fy-lg.fy-lgb { width: 8px; background: var(--gold); border: 0; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); }
+
+/* ---------- Most interviews: squares for the limit, filled = booked; the stepper ---------- */
+.fy .fy-lim { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); padding: var(--s4) var(--pad) var(--s4); }
+.fy .fy-sq { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 24px; }
+.fy .fy-sqc { width: 22px; height: 22px; border: 1.5px solid var(--line); border-radius: 2px; background: var(--surface); }
+.fy .fy-sqc.fy-on { background: var(--gold); border-color: var(--gold); }
+.fy .fy-sq b { margin-left: 10px; font-size: var(--t-label); font-weight: 500; color: var(--muted); white-space: nowrap; }
+.fy .fy-big { font-style: normal; font-size: 24px; font-weight: 600; color: var(--ink); vertical-align: -2px; font-variant-numeric: tabular-nums; }
+.fy .fy-nolim { font-size: var(--t-body); font-weight: 500; }
+.fy .fy-step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
+.fy .fy-step button { display: grid; place-items: center; width: 40px; height: 38px; border: 0; background: var(--surface); font-size: 20px; font-weight: 500; }
+.fy .fy-step button:hover { background: var(--wash); }
+.fy .fy-step button:active { background: var(--line-soft); }
+.fy .fy-step button[disabled] { color: var(--line); cursor: default; background: var(--surface); }
+.fy .fy-step output { min-width: 64px; padding: 0 var(--s2); text-align: center; font-size: var(--t-row); font-weight: 600; border-left: 1px solid var(--line-soft); border-right: 1px solid var(--line-soft); line-height: 38px; white-space: nowrap; }
+.fy .fy-limact { display: flex; align-items: center; gap: var(--s4); }
+.fy .fy-pnote { padding: 0 var(--pad) var(--s4); }
+
+/* ---------- Students I know: private names, never paired with you ---------- */
+.fy .fy-priv { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 8px; border: 1px solid var(--line-soft); border-radius: 2px; background: var(--surface); font-size: var(--t-label); font-weight: 500; color: var(--ink); }
+.fy .fy-priv .rf-i { width: 16px; height: 16px; color: var(--muted); }
+.fy .fy-kn { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); column-gap: var(--s5); padding: var(--s2) var(--pad) 0; }
+.fy .fy-kn li { display: flex; align-items: center; gap: var(--s3); min-height: 60px; border-top: 1px solid var(--line-soft); }
+.fy .fy-kn li b { flex: 1; min-width: 0; font-size: var(--t-body); font-weight: 600; overflow-wrap: anywhere; }
+.fy .fy-ini { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 999px; background: var(--wash); font-size: 14px; font-weight: 600; color: var(--muted); }
+.fy .fy-none { color: var(--muted); font-size: var(--t-body); }
+.fy .fy-kadd { display: flex; align-items: center; gap: var(--s3); margin: var(--s2) var(--pad) var(--s4); min-height: 44px; border-bottom: 1px solid var(--line); }
+.fy .fy-kadd:focus-within { border-bottom-color: var(--gold); box-shadow: 0 1px 0 var(--gold); }
+.fy .fy-kadd input { flex: 1; min-width: 0; height: 42px; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.fy .fy-kadd input::placeholder { color: var(--muted); }
+
+/* ---------- Locked while a send or the reader runs (aria-disabled keeps focus where it is) ---------- */
+.fy [aria-disabled="true"] { opacity: .5; cursor: default; }
+.fy .fy-step[aria-disabled="true"] button { pointer-events: none; }
+.fy .rf-btn[aria-disabled="true"] { opacity: .7; }
+
+/* ---------- Load error and no dates ---------- */
+.fy .fy-err { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); padding: var(--s5) var(--pad); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.fy .fy-err h2 { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-h2); font-weight: 500; }
+.fy .fy-err p { font-size: var(--t-body); color: var(--muted); }
+.fy .fy-nodates { padding: var(--s5) var(--pad); font-size: var(--t-body); }
+
+/* ---------- Loading: blocks shaped like the header and the line ---------- */
+.fy .fy-sk-title { width: 200px; height: 30px; }
+.fy .fy-sk-card { width: 100%; max-width: 560px; height: 62px; margin-top: 14px; border-radius: 10px; }
+.fy .fy-skel { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); }
+.fy .fy-skel .rf-panel { background: none; }
+.fy .fy-sk-ph { display: flex; align-items: center; min-height: 60px; padding: var(--s3) var(--pad); }
+.fy .fy-sk-ph .rf-sk { width: 140px; height: 18px; }
+.fy .fy-sk-add { margin: 0 var(--pad) var(--s4); height: 46px; border-bottom: 2px solid var(--line-soft); }
+.fy .fy-sk-drow { display: grid; grid-template-columns: 112px minmax(0, 1fr) 300px; column-gap: var(--s4); align-items: center; min-height: 60px; padding: 0 var(--pad); border-top: 1px solid var(--line-soft); }
+.fy .fy-sk-drow .rf-sk:first-child { width: 44px; height: 48px; border-radius: 2px; }
+.fy .fy-sk-drow .rf-sk:nth-child(2) { height: 32px; border-radius: 6px; }
+.fy .fy-sk-drow .rf-sk:nth-child(3) { width: 120px; height: 16px; }
+
+/* ---------- Mid laptops ---------- */
+@media (min-width: 760px) and (max-width: 1179px) {
+  .fy .fy-board { grid-template-columns: minmax(0, 1fr); }
+  .fy .fy-line { --dcol: 96px; --tcol: 240px; }
+  .fy .fy-ticks .fy-odd { display: none; }
+}
+@media (min-width: 1600px) {
+  .fy .fy-line { --tcol: 340px; }
+}
+
+/* ---------- Phone: the day on top, its hours as a full-width track, the words beside the date ---------- */
+@media (max-width: 759px) {
+  .fy .fy-head > div:first-child { flex: 1 1 auto; align-self: stretch; min-width: 0; }
+  .fy .fy-head .rf-nx { margin-top: 14px; }
+  .fy .fy-sk-title { height: 26px; }
+  .fy .fy-board { grid-template-columns: minmax(0, 1fr); }
+  .fy .fy-r { flex-basis: 100%; padding-left: 2px; }
+  .fy .fy-needs { padding: var(--s4) var(--pad) var(--s4) calc(var(--pad) + 3px); }
+  .fy .fy-nbody { grid-template-columns: minmax(0, 1fr); }
+  .fy .fy-nact { display: block; }
+  .fy .fy-nact .rf-btn { width: 100%; }
+  .fy .fy-hint { display: none; }
+  .fy .fy-chips, .fy .fy-picks, .fy .fy-addnote { padding-left: 0; }
+  .fy .fy-picks > span { flex-basis: 100%; }
+  .fy .fy-qp { height: 44px; padding: 0 14px; }
+  .fy .fy-axis, .fy .fy-drow { grid-template-columns: 44px minmax(0, 1fr); column-gap: var(--s3); }
+  .fy .fy-axis { height: 30px; }
+  .fy .fy-ticks { grid-column: 1 / -1; }
+  .fy .fy-ticks .fy-odd, .fy .fy-ticks .fy-last { display: none; }
+  .fy .fy-dl { grid-row: 1; grid-column: 1; align-self: start; min-height: 48px; align-items: center; }
+  .fy .fy-dt { grid-row: 1; grid-column: 2; }
+  .fy .fy-trk { grid-row: 2; grid-column: 1 / -1; height: 28px; cursor: default; }
+  .fy .fy-dnote { grid-row: 3; grid-column: 1 / -1; padding-top: 0; }
+  .fy .fy-dl .fy-tdy { display: none; }
+  .fy .fy-drow { row-gap: 10px; padding-top: 12px; padding-bottom: 14px; }
+  .fy .fy-rg { min-height: 44px; }
+  .fy .fy-rt { min-height: 44px; }
+  .fy .fy-rged input { height: 44px; }
+  .fy .fy-legend .fy-lgd { display: none; }
+  .fy .fy-lim { flex-direction: column; align-items: stretch; }
+  .fy .fy-step { display: flex; }
+  .fy .fy-step button { width: 52px; height: 44px; }
+  .fy .fy-step output { flex: 1; line-height: 44px; }
+  .fy .fy-limact { justify-content: space-between; }
+  .fy .fy-kn { grid-template-columns: minmax(0, 1fr); }
+  .fy .fy-kadd { min-height: 48px; }
+  .fy .fy-err { margin: 0; }
+  .fy .fy-sk-drow { grid-template-columns: minmax(0, 1fr); row-gap: 8px; padding: 12px var(--pad); }
+  .fy .fy-sk-drow .rf-sk:nth-child(3) { display: none; }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .fy .fy-qp:hover { background: var(--surface); border-color: var(--line); }
+  .fy .fy-step button:hover { background: var(--surface); }
+  .fy .fy-fb:hover { background: var(--gold-tint); }
+  .fy .fy-rt:hover { text-decoration: none; }
+}
+
+/* Send's confirm when the new times take the person off booked interviews, and what happened to each after the send */
+.fy .fy-cq { margin-top: var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
+.fy .fy-cq p { margin: 0; font-size: var(--t-body); font-weight: 600; }
+.fy .fy-cq p:focus { outline: none; }
+.fy .fy-cql { display: flex; flex-direction: column; gap: 4px; }
+.fy .fy-cql li { font-size: var(--t-body); overflow-wrap: anywhere; min-width: 0; }
+.fy .fy-cqa { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); margin-top: var(--s1); }
+.fy .fy-cout { margin-bottom: var(--gap); padding: var(--s4) var(--pad); background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r); }
+.fy .fy-cout h2 { margin: 0 0 var(--s2); font-size: var(--t-label); font-weight: 600; color: var(--muted); }
+.fy .fy-cout h2:focus { outline: none; }
+.fy .fy-cout ul { display: flex; flex-direction: column; gap: var(--s2); }
+.fy .fy-cout li { display: flex; align-items: flex-start; gap: var(--s2); font-size: var(--t-body); overflow-wrap: anywhere; min-width: 0; }
+.fy .fy-cout li .rf-i { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--gold-ink); }
+.fy .fy-cout li.fy-cbad .rf-i { color: var(--danger, #b42318); }
+@media (max-width: 759px) {
+  .fy .fy-cqa .rf-btn { width: 100%; }
+}

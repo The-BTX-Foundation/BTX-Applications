@@ -88,14 +88,16 @@ function UserCard({ user, phone }: { user: ShellUser; phone?: boolean }) {
         className={`${phone ? 'o-m-me' : 'o-me'}${open ? ' open' : ''}`}
         aria-expanded={open}
         aria-controls={id}
-        aria-label={`${user.name}, ${user.roleText}. Account menu`}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="o-av" data-review-private>{user.initials}</span>
+        {/* The button's name comes from its own text ("Dana Mercer Admin rights, account menu"), so what a screen reader says
+            always contains what is on screen. The initials repeat the name, so they are hidden from assistive tech. */}
+        <span className="o-av" aria-hidden="true" data-review-private>{user.initials}</span>
         <span className="o-me-t">
           <b data-review-private>{user.name}</b>
           <span>{user.roleText}</span>
         </span>
+        <span className="sr-only">, account menu</span>
       </button>
       {open && phone ? menu : null}
     </div>
@@ -109,7 +111,7 @@ function Group({ group, pathname, open, onToggle, phone, counts }: { group: NavG
   return (
     <div className={`o-ng ${open ? 'open' : 'shut'}`}>
       <button type="button" className={`${prefix}-gr`} aria-expanded={open} onClick={onToggle}>
-        <OIcon name={group.icon} size={phone ? 22 : 19} />
+        <OIcon name={group.icon} size={phone ? 22 : 20} />
         <span className={`${prefix}-gl`}>{group.label}</span>
         {open ? null : <Count n={count} />}
         <OIcon name={open ? 'down' : 'right'} size={phone ? 18 : 16} className="o-cv" />
@@ -179,14 +181,14 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
     <div className="o-app">
       <PushTapHandler />
       <aside className="o-sb" aria-label="Ops Hub" data-review="Sidebar navigation">
-        <img className="o-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={68} height={30} />
+        <img className="o-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={84} height={37} />
         <nav className="o-nav" aria-label="Main">
           {TOP.map((t) => {
             const here = isHere(pathname, t.href);
             const needs = t.id === 'today';
             return (
               <Link key={t.id} href={t.href} className={`o-tl${here ? ' on' : ''}`} aria-current={here ? 'page' : undefined}>
-                <OIcon name={t.icon} size={19} />
+                <OIcon name={t.icon} size={20} />
                 <span>{t.label}</span>
                 <Count n={sideCounts[t.id]} plain={!needs} />
               </Link>
@@ -198,7 +200,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
           ))}
           <div className="o-sep b" />
           <Link href={PEOPLE.href} className={`o-adm${isHere(pathname, PEOPLE.href) ? ' on' : ''}`}>
-            <OIcon name="people" size={17} />
+            <OIcon name="people" size={20} />
             <span>{PEOPLE.label}</span>
           </Link>
         </nav>
@@ -210,14 +212,15 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
           <button type="button" className="o-ib" aria-label="Menu: areas and board members" onClick={() => setMenu(true)}>
             <OIcon name="menu" size={22} />
           </button>
-          <img className="o-pt-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={59} height={26} />
+          <img className="o-pt-logo" src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={72} height={32} />
           <span className="o-av o-pt-av" aria-hidden="true" data-review-private>
             {user.initials}
           </span>
         </header>
-        <div className="o-page" data-review={reviewScreen(pathname).screen}>
+        {/* The page is the main landmark (screen-reader users jump straight to it). */}
+        <main className="o-page" data-review={reviewScreen(pathname).screen}>
           {children}
-        </div>
+        </main>
         <nav className="o-tabs" aria-label="Main" data-review="Phone tabs">
           {TOP.map((t) => {
             const here = isHere(pathname, t.href);
@@ -239,7 +242,7 @@ export function Shell({ user, counts, children }: { user: ShellUser; counts?: Co
           <button type="button" className="o-mn-scrim" aria-label="Close menu" onClick={() => setMenu(false)} />
           <nav className="o-mn" aria-label="Menu" data-review="Phone menu">
             <div className="o-mn-hd">
-              <img src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={59} height={26} />
+              <img src="/btx-logo-on-light.webp" alt="The BTX Foundation" width={72} height={32} />
               <button type="button" className="o-ib" aria-label="Close menu" onClick={() => setMenu(false)}>
                 <OIcon name="close" size={22} />
               </button>

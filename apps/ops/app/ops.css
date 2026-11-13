@@ -17,6 +17,8 @@ body {
 }
 
 /* ---------- shell ---------- */
+/* Clean-cut finish (Dominick, 2026-11-11), drawn from the demo p-today-states: flat (no shadows), 1px hairlines, bare line
+   icons, a gold count on Today and plain numbers elsewhere, 40px rows at 16px/500, a gold edge on the open page. */
 .o-app {
   min-height: 100dvh;
 }
@@ -29,7 +31,7 @@ body {
 .o-sb {
   display: none;
 }
-/* phone top bar */
+/* phone top bar: menu button, centred logo, initials (a three-column grid so the logo stays centred) */
 .o-pt {
   position: sticky;
   top: 0;
@@ -38,30 +40,31 @@ body {
   flex: none;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  padding: 0 8px;
 }
 .o-ib {
   width: 44px;
   height: 44px;
-  margin-left: -10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 .o-pt-logo {
-  height: 26px;
-  width: auto;
+  width: 72px;
+  height: auto;
+  justify-self: center;
 }
+/* the person's initials: a hairline square in gold tint, ink letters (the demo's .avatar) */
 .o-av {
-  width: 34px;
-  height: 34px;
-  border-radius: 2px;
-  background: var(--ink);
-  color: var(--surface);
-  font-size: 13px;
+  width: 36px;
+  height: 36px;
+  background: var(--gold-tint);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 14px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -69,7 +72,8 @@ body {
   flex: none;
 }
 .o-pt-av {
-  margin-left: auto;
+  justify-self: end;
+  margin-right: 4px;
 }
 .o-page {
   flex: 1;
@@ -86,7 +90,7 @@ body {
   right: 0;
   bottom: 0;
   z-index: 5;
-  height: 66px;
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--surface);
   border-top: 1px solid var(--line);
   display: grid;
@@ -99,20 +103,21 @@ body {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 12px;
-  font-weight: 600;
+  min-height: 64px;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--muted);
 }
 .o-tab.on {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 .o-tab.on::before {
   content: '';
   position: absolute;
   top: -1px;
-  left: 22%;
-  right: 22%;
+  left: 20%;
+  right: 20%;
   height: 3px;
   background: var(--gold);
 }
@@ -120,25 +125,22 @@ body {
   position: relative;
   display: flex;
 }
+/* the tab's count: a round gold badge (the demo's .bottombar .count); Board chat's is gold too */
 .o-bd {
   position: absolute;
-  top: -4px;
+  top: -8px;
   left: 14px;
-  min-width: 18px;
-  height: 18px;
+  min-width: 22px;
+  height: 22px;
   padding: 0 5px;
   border-radius: 999px;
   background: var(--gold);
   color: var(--on-gold);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.o-bd.k {
-  background: var(--ink);
-  color: var(--surface);
 }
 
 /* phone menu sheet */
@@ -168,52 +170,58 @@ body {
   overflow-y: auto;
 }
 .o-mn-hd {
-  height: 44px;
+  height: 48px;
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px 0 18px;
+  padding: 0 8px 0 18px;
 }
 .o-mn-hd img {
-  height: 26px;
-  width: auto;
-}
-.o-mn-hd .o-ib {
-  margin: 0;
+  width: 72px;
+  height: auto;
 }
 .o-m-r,
 .o-m-gr,
 .o-m-sub {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: 44px;
+  gap: 12px;
+  min-height: 44px;
   flex: none;
   width: 100%;
   padding: 0 18px;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   text-align: left;
 }
-.o-m-r.on {
+/* the open page: wash with the gold edge, as on the laptop */
+.o-m-r.on,
+.o-m-sub.on {
   background: var(--wash);
-  font-weight: 700;
+  font-weight: 600;
+}
+.o-m-r.on::before,
+.o-m-sub.on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--gold);
 }
 .o-m-l,
 .o-m-gl {
   flex: 1;
+  min-width: 0;
 }
 .o-m-sub {
   padding-left: 54px;
-  font-size: 16px;
-  font-weight: 500;
 }
 .o-m-sub > span:first-child {
   flex: 1;
-}
-.o-m-sub.on {
-  font-weight: 700;
 }
 /* Notifications row (iPhone app only): the switch and the "Off in Settings" state (Figma 466:12043). */
 .o-m-nt {
@@ -222,12 +230,12 @@ body {
 }
 .o-m-sm {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--muted);
 }
 .o-m-lk {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--gold-ink);
   text-decoration: underline;
@@ -238,15 +246,16 @@ body {
 .o-m-nn {
   margin: 0;
   padding: 0 18px 8px 54px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
 }
+/* the switch: a 2px-cornered track and square knob, flat (no pills, no shadows) */
 .o-sw {
   position: relative;
   flex: none;
   width: 44px;
   height: 26px;
-  border-radius: 13px;
+  border-radius: 2px;
   background: var(--line);
   transition: background 0.15s;
 }
@@ -264,9 +273,8 @@ body {
   left: 2px;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: 1px;
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   transition: transform 0.15s;
 }
 .o-sw[aria-checked='true'] .o-sw-k {
@@ -288,24 +296,27 @@ body {
 }
 .o-m-sep {
   height: 1px;
-  background: var(--line);
-  margin: 0 18px;
+  background: var(--line-soft);
+  margin: 4px 0;
   flex: none;
 }
+/* the account card stays at the bottom of the sheet even when an unfolded area makes the list scroll */
 .o-m-mew {
   margin-top: auto;
   flex: none;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
 }
 .o-m-me {
   width: 100%;
   flex: none;
-  height: 49px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 18px;
+  padding: 12px 18px;
   text-align: left;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-soft);
   box-sizing: border-box;
 }
 
@@ -317,13 +328,12 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(100% + 7px);
+  bottom: calc(100% + 4px);
   z-index: 30;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 2px;
-  box-shadow: 0 8px 24px rgba(21, 23, 26, 0.12);
-  padding: 6px 0;
+  border-radius: 4px;
+  padding: 4px 0;
 }
 .o-me-item {
   display: flex;
@@ -341,25 +351,25 @@ body {
   background: var(--wash);
 }
 .o-m-out {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-soft);
 }
 .o-m-out .o-me-item {
   height: 48px;
   padding: 0 18px;
-  font-size: 17px;
+  font-size: 16px;
 }
 
-/* count pills and the sidebar's shared bits */
+/* counts: gold on Today and on each folded area, plain ink numbers elsewhere (the demo's .count / .count.plain) */
 .o-ct {
   margin-left: auto;
-  min-width: 22px;
-  height: 20px;
+  min-width: 24px;
+  height: 24px;
   padding: 0 6px;
   border-radius: 999px;
   background: var(--gold);
   color: var(--on-gold);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -371,17 +381,11 @@ body {
   padding: 0;
   color: var(--ink);
 }
-.o-m-r .o-ct,
-.o-m-sub .o-ct,
-.o-m-gr .o-ct {
-  height: 22px;
-  min-width: 24px;
-}
-.o-m-r .o-ct.plain {
-  height: auto;
-}
 .o-m-gr .o-cv {
-  margin-left: 12px;
+  margin-left: 4px;
+}
+.o-cv {
+  color: var(--muted);
 }
 .o-me-t {
   display: flex;
@@ -389,24 +393,36 @@ body {
   min-width: 0;
 }
 .o-me-t b {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 17px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .o-me-t span {
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.4;
   color: var(--muted);
-  margin-top: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.o-m-me .o-me-t b {
-  font-size: 16px;
+/* a hovered shell row picks up the wash (mouse only; a touch screen keeps nothing behind after a tap) */
+@media (hover: hover) {
+  .o-m-r:hover,
+  .o-m-gr:hover,
+  .o-m-sub:hover,
+  .o-me:hover,
+  .o-m-me:hover,
+  .o-ib:hover {
+    background: var(--wash);
+  }
 }
-.o-m-me .o-me-t span {
-  font-size: 14px;
-  margin-top: 4px;
+.o-ib:active,
+.o-m-r:active,
+.o-m-gr:active,
+.o-m-sub:active,
+.o-me:active,
+.o-m-me:active {
+  background: var(--line-soft);
 }
 
 /* ---------- laptop ---------- */
@@ -428,17 +444,19 @@ body {
     top: 0;
     background: var(--surface);
     border-right: 1px solid var(--line);
-    padding: 22px 12px 14px;
+    padding: 20px 12px 12px;
+    overflow-y: auto;
   }
   .o-logo {
-    height: 30px;
-    width: 68px;
-    margin: 0 0 14px 12px;
+    width: 84px;
+    height: auto;
+    margin: 0 0 16px 12px;
     align-self: flex-start;
   }
   .o-nav {
     display: flex;
     flex-direction: column;
+    gap: 2px;
   }
   .o-tl,
   .o-s-gr {
@@ -447,42 +465,49 @@ body {
     align-items: center;
     gap: 12px;
     width: 100%;
-    height: 34px;
+    min-height: 40px;
     padding: 0 12px;
-    border-radius: 4px;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 500;
     text-align: left;
   }
+  /* the open page: wash with a 3px gold edge */
   .o-tl.on,
   .o-s-sub.on {
-    background: var(--bg);
-    box-shadow: inset 3px 0 0 var(--gold);
+    background: var(--wash);
+  }
+  .o-tl.on::before,
+  .o-s-sub.on::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--gold);
   }
   .o-sep {
     height: 1px;
-    background: var(--line);
-    margin: 9px 8px 6px;
-  }
-  .o-sep.b {
-    margin-top: 9px;
+    background: var(--line-soft);
+    margin: 6px 0;
   }
   .o-ng.open .o-gs {
     display: flex;
     flex-direction: column;
+    gap: 2px;
     padding-bottom: 4px;
   }
   .o-s-sub {
+    position: relative;
     display: flex;
     align-items: center;
-    height: 26px;
-    padding: 0 12px 0 36px;
-    border-radius: 4px;
-    font-size: 14px;
+    min-height: 32px;
+    padding: 0 12px 0 48px;
+    font-size: 15px;
     font-weight: 500;
   }
   .o-s-sub.on {
-    font-weight: 700;
+    font-weight: 600;
   }
   .o-s-sub > span:first-child {
     flex: 1;
@@ -494,17 +519,43 @@ body {
     margin-left: 0;
   }
   .o-s-gr .o-cv {
-    margin-left: 10px;
+    margin-left: 4px;
   }
   .o-adm {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 30px;
+    min-height: 40px;
     padding: 0 12px;
-    border-radius: 4px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
+  }
+  .o-adm.on {
+    background: var(--wash);
+  }
+  .o-adm.on::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--gold);
+  }
+  @media (hover: hover) {
+    .o-tl:hover,
+    .o-s-gr:hover,
+    .o-s-sub:hover,
+    .o-adm:hover {
+      background: var(--wash);
+    }
+  }
+  .o-tl:active,
+  .o-s-gr:active,
+  .o-s-sub:active,
+  .o-adm:active {
+    background: var(--line-soft);
   }
   .o-me-w {
     margin-top: auto;
@@ -515,11 +566,13 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 13px 12px 0;
-    border-top: 1px solid var(--line);
+    padding: 12px;
+    border-top: 1px solid var(--line-soft);
     text-align: left;
-    height: 51px;
     box-sizing: border-box;
+  }
+  .o-me.open {
+    background: var(--wash);
   }
   .o-page {
     padding: 24px 32px 20px;

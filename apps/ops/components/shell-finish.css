@@ -1,0 +1,45 @@
+/* Finish for the four small screens that are not a page of the app: sign-in, "not built yet", the 404 and the error
+   screen. Prefix `sf-`; every rule sits under `.sf` (the card screens) or `.sf-si` (sign-in), so nothing reaches
+   another page. Flat white card, 1px hairline, 4px surface, 2px controls, one gold primary, wash ground, no shadow. */
+
+/* ---------- card screens (not built, 404, error) ---------- */
+.sf { --ctl: 44px; background: var(--wash); }
+.sf .sf-pg { display: flex; flex-direction: column; align-items: flex-start; }
+.sf .sf-logo { display: block; height: 34px; width: 77px; margin-bottom: 20px; }
+.sf .sf-title { font-size: 28px; font-weight: 500; line-height: 1.15; letter-spacing: -0.01em; margin-bottom: 20px; }
+.sf .sf-card { width: 100%; max-width: 520px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 24px 20px; display: flex; flex-direction: column; align-items: flex-start; }
+.sf .sf-mark { width: 22px; height: 22px; flex: none; color: var(--muted); fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.sf .sf-card h1, .sf .sf-card h2 { font-size: 20px; font-weight: 500; line-height: 1.25; margin-top: 14px; }
+.sf .sf-card p { color: var(--muted); font-size: var(--t-body); margin-top: 6px; }
+.sf .sf-acts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.sf .sf-acts .rf-btn { min-height: 44px; text-decoration: none; }
+/* 404 and error stand alone: a centered card; inside the shell they sit at the top like any page */
+.sf .sf-alone { min-height: 60dvh; justify-content: center; align-items: center; text-align: left; }
+@media (min-width: 760px) {
+  .sf .sf-card { padding: 32px; }
+  .sf .sf-title { font-size: 34px; }
+  .sf .sf-acts .rf-btn { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf .rf-btn { transition: none; }
+}
+
+/* ---------- sign-in (markup and logic unchanged; this is only the finish) ---------- */
+body:has(.sf-si) { background: var(--wash); }
+.o-si.sf-si { background: var(--wash); padding-top: max(24px, calc(50dvh - 260px)); }
+.sf-si .o-si-box { border: 1px solid var(--line); border-radius: 4px; }
+.sf-si .o-si-box h1 { font-weight: 500; }
+.sf-si .o-si-lb { font-weight: 600; }
+.sf-si .o-si-in { height: 48px; border: 1px solid var(--ink); border-radius: 2px; }
+.sf-si .o-si-in:focus-visible, .sf-si .o-si-btn:focus-visible, .sf-si .o-si-lk:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sf-si .o-si-keep { min-height: 44px; margin-top: 8px; }
+.sf-si .o-si-keep input { width: 44px; height: 44px; left: -12px; top: 0; cursor: pointer; }
+.sf-si .o-si-keep input:focus-visible + .o-si-cb { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sf-si .o-si-btn { height: 48px; font-weight: 600; border: 1px solid var(--gold); transition: border-color 0.15s; }
+.sf-si .o-si-btn:hover:not(:disabled) { border-color: var(--ink); }
+.sf-si .o-si-lk { position: relative; font-weight: 600; border-radius: 2px; }
+.sf-si .o-si-lk::after { content: ''; position: absolute; inset: -12px -6px; }
+.sf-si .o-si-foot .o-si-lk { white-space: nowrap; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .sf-si .o-si-btn { transition: none; }
+}

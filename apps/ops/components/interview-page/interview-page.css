@@ -1,0 +1,111 @@
+/* The page for one interview (route /scholarships/interviews/[slot]). Every rule sits under .rf.ip; the shared rf- layer
+   (components/refresh/refresh.css) does the rest. Phone first (one column, below 760px); from 1100px the join card and
+   the interviewers sit in a column beside the questions. */
+
+.rf.ip { --pad: 20px; }
+.rf.ip .ip-back { margin: 0 0 var(--s2); }
+.rf.ip .ip-back .rf-lnk { color: var(--gold-ink); min-height: 44px; }
+.rf.ip .ip-back .rf-i { width: 18px; height: 18px; }
+.rf.ip .rf-head { margin-bottom: var(--s5); }
+.rf.ip .rf-ptitle { min-width: 0; }
+.rf.ip .rf-ptitle h1 { overflow-wrap: anywhere; min-width: 0; }
+.rf.ip .ip-meta { display: grid; gap: var(--s1); margin-top: var(--s2); }
+.rf.ip .ip-when { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--s3); font-size: var(--t-row); font-weight: 500; }
+.rf.ip .ip-tz { font-weight: 400; color: var(--muted); }
+.rf.ip .ip-dim { color: var(--muted); font-weight: 400; font-size: var(--t-label); }
+.rf.ip .ip-sub { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s4); color: var(--muted); font-size: var(--t-label); }
+.rf.ip .ip-sub .rf-lnk { color: var(--gold-ink); min-height: 40px; }
+
+.rf.ip .ip-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); align-items: start; }
+.rf.ip .ip-side, .rf.ip .ip-main { display: grid; gap: var(--gap); min-width: 0; }
+.rf.ip .rf-panel { min-width: 0; }
+
+/* ---------- Join ---------- */
+.rf.ip .ip-join { padding: var(--pad); border-left: 3px solid var(--gold); }
+.rf.ip .ip-jrow { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.rf.ip .ip-jbtn { flex: 1 1 auto; }
+.rf.ip .ip-cbtn { flex: 0 0 auto; min-width: 124px; }
+.rf.ip .ip-copied { min-height: 0; margin-top: var(--s2); font-size: var(--t-label); color: var(--muted); }
+.rf.ip .ip-copied:empty { display: none; }
+.rf.ip .ip-cfail { display: grid; gap: var(--s2); margin-top: var(--s3); font-size: var(--t-label); }
+.rf.ip .ip-cfail input { width: 100%; min-width: 0; height: var(--ctl); padding: 0 var(--s3); border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-label); }
+.rf.ip .ip-nolink { display: flex; align-items: flex-start; gap: var(--s2); color: var(--muted); }
+.rf.ip .ip-nolink .rf-i { color: var(--gold-ink); margin-top: 1px; }
+
+/* ---------- Interviewers ---------- */
+.rf.ip .ip-pair > li + li { border-top: 1px solid var(--line-soft); }
+.rf.ip .ip-prow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; column-gap: 14px; padding: 12px var(--pad); min-height: 64px; }
+.rf.ip .ip-av { display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 999px; background: var(--wash); font-size: 15px; font-weight: 600; color: var(--muted); }
+.rf.ip .ip-av.ip-me { background: var(--surface); border: 1px solid var(--gold-ink); color: var(--gold-ink); }
+.rf.ip .ip-pn { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--s2); min-width: 0; }
+.rf.ip .ip-pname { font-size: var(--t-row); font-weight: 500; overflow-wrap: anywhere; min-width: 0; }
+.rf.ip .ip-you { font-size: var(--t-label); color: var(--gold-ink); font-weight: 600; }
+.rf.ip .ip-chg { color: var(--gold-ink); min-height: 44px; padding: 0 var(--s1); }
+.rf.ip .ip-chg[aria-disabled="true"] { opacity: .55; cursor: default; }
+.rf.ip .ip-sheet { margin: 0 var(--pad) var(--s4); padding: var(--s4); background: var(--wash); border-left: 3px solid var(--gold); border-radius: 2px; display: grid; gap: var(--s3); }
+.rf.ip .ip-sh { font-weight: 600; }
+.rf.ip .ip-sh:focus { outline: none; }
+.rf.ip .ip-sh:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rf.ip .ip-cands { border: 0; margin: 0; padding: 0; display: grid; gap: var(--s1); min-width: 0; }
+.rf.ip .ip-cand { display: grid; grid-template-columns: 22px 40px minmax(0, 1fr); align-items: center; column-gap: var(--s3); min-height: 52px; padding: 6px var(--s3); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 2px; cursor: pointer; }
+.rf.ip .ip-cand.ip-on { border-color: var(--gold-ink); }
+.rf.ip .ip-cand input { width: 20px; height: 20px; margin: 0; accent-color: var(--gold-ink); }
+.rf.ip .ip-sact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4); }
+.rf.ip .ip-sact .rf-btn[aria-disabled="true"] { opacity: .55; cursor: default; }
+.rf.ip .ip-sact .rf-lnk { min-height: 44px; }
+.rf.ip .ip-outcome { display: flex; align-items: flex-start; gap: var(--s2); padding: var(--s3) var(--pad); font-weight: 500; }
+.rf.ip .ip-sheet .ip-outcome { padding: 0; }
+.rf.ip .ip-outcome .rf-i { width: 18px; height: 18px; margin-top: 2px; color: var(--gold-ink); }
+.rf.ip .ip-outcome:focus { outline: none; }
+.rf.ip .ip-bad, .rf.ip .ip-bad .rf-i { color: var(--danger, #b42318); }
+.rf.ip .ip-people .rf-none { padding: var(--s4) var(--pad); }
+
+/* ---------- Questions and notes ---------- */
+.rf.ip .ip-why { padding: var(--s4) var(--pad) 0; color: var(--muted); font-size: var(--t-label); }
+.rf.ip .ip-qs .rf-none, .rf.ip .ip-qs .rf-load-err { margin: var(--s4) var(--pad); }
+.rf.ip .ip-qlist, .rf.ip .ip-qlist ol { list-style: none; margin: 0; padding: 0; }
+.rf.ip .ip-grp + .ip-grp { border-top: 1px solid var(--line); }
+.rf.ip .ip-gname { padding: var(--s4) var(--pad) 0; font-family: var(--font-mono, inherit); font-size: 14px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--gold-ink); }
+.rf.ip .ip-q { padding: var(--s3) var(--pad) var(--s4); display: grid; gap: var(--s3); }
+.rf.ip .ip-q + .ip-q { border-top: 1px solid var(--line-soft); }
+.rf.ip .ip-qt { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--s3); font-size: var(--t-row); font-weight: 500; line-height: 1.35; }
+.rf.ip .ip-qn { font-size: var(--t-label); font-weight: 600; color: var(--muted); padding-top: 2px; }
+.rf.ip .ip-theirs, .rf.ip .ip-box { margin-left: 36px; min-width: 0; }
+.rf.ip .ip-theirs { display: grid; gap: var(--s2); }
+.rf.ip .ip-theirs li { padding-left: var(--s3); border-left: 2px solid var(--line-soft); }
+.rf.ip .ip-by { display: block; font-size: 14px; font-weight: 600; color: var(--muted); }
+.rf.ip .ip-theirs p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rf.ip .ip-box { display: grid; gap: var(--s1); }
+.rf.ip .ip-box-l { font-size: var(--t-label); font-weight: 500; }
+.rf.ip .ip-box textarea { width: 100%; min-width: 0; min-height: 88px; padding: 10px var(--s3); border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: var(--t-body); line-height: 1.45; resize: vertical; }
+.rf.ip .ip-box textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.rf.ip .ip-st { display: flex; align-items: center; gap: var(--s2); min-height: 24px; font-size: 14px; color: var(--muted); }
+.rf.ip .ip-st .rf-i { width: 16px; height: 16px; }
+.rf.ip .ip-st .rf-lnk { color: var(--gold-ink); min-height: 32px; }
+.rf.ip .ip-overall .ip-theirs, .rf.ip .ip-overall .ip-box { margin: var(--s4) var(--pad); }
+.rf.ip .ip-overall .ip-theirs + .ip-box { margin-top: 0; }
+.rf.ip .ip-private { display: flex; align-items: flex-start; gap: var(--s2); color: var(--muted); font-size: var(--t-label); }
+.rf.ip .ip-private .rf-i { width: 18px; height: 18px; margin-top: 1px; }
+.rf.ip .ip-score .rf-btn { min-width: 0; max-width: 100%; white-space: normal; }
+
+/* Phone: 16px sides inside cards, 44px targets, notes boxes full width under the question. */
+@media (max-width: 759px) {
+  .rf.ip { --pad: 16px; --gap: 16px; --ctl: 44px; }
+  .rf.ip .ip-theirs, .rf.ip .ip-box { margin-left: 0; }
+  .rf.ip .ip-jbtn, .rf.ip .ip-cbtn { flex: 1 1 100%; }
+}
+
+/* Laptop: the join card and the interviewers beside the questions. */
+@media (min-width: 1100px) {
+  .rf.ip .ip-grid { grid-template-columns: minmax(0, 1fr) 360px; }
+  .rf.ip .ip-side { grid-column: 2; grid-row: 1; position: sticky; top: var(--s5); }
+  .rf.ip .ip-main { grid-column: 1; grid-row: 1; }
+}
+@media (min-width: 1360px) {
+  .rf.ip .ip-grid { grid-template-columns: minmax(0, 1fr) 400px; }
+}
+
+/* Loading skeleton */
+.rf.ip .ip-sk-join { display: block; height: 76px; }
+.rf.ip .ip-sk-ph { padding: 0 0 var(--s3); }
+.rf.ip .ip-sk-ph .rf-sk { width: 140px; height: 20px; }

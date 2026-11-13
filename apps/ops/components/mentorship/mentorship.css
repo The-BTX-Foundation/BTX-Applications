@@ -1,0 +1,141 @@
+/* The Mentorship page (demo p-mentorship, final Clean-cut values). Everything sits under .ms (the page wraps its content
+   in <div class="rf ms">); the shared rf- layer comes from components/refresh/refresh.css, imported first. Overrides of
+   shared classes use .rf.ms so they win whatever order the stylesheets load in. Phone below 760px. */
+
+/* ---------- Head: title and status wrap; the news card's title is the quieter weight ---------- */
+.rf.ms .ms-head > div { flex: 1; min-width: 0; }
+.rf.ms .ms-ptitle { flex-wrap: wrap; gap: 4px 12px; }
+.rf.ms .rf-nx { margin-top: 14px; }
+.rf.ms .rf-nx-t { font-weight: 500; }
+
+/* ---------- Phone: the Programs pages as light text tabs under the header (the sidebar lists them on laptops) ---------- */
+.ms .ms-secnav { display: none; }
+
+/* ---------- Board: the load error drops to one column ---------- */
+.rf.ms .ms-solo { grid-template-columns: minmax(0, 1fr); }
+.rf.ms .ms-ph { flex-wrap: wrap; gap: 8px 12px; }
+.ms .ms-sub { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+
+/* ---------- Progress: one slim segment per step; gold = done, tinted = now ---------- */
+.ms .ms-prog { display: flex; align-items: center; gap: var(--s3); }
+.ms .ms-bar { display: flex; gap: 3px; width: 140px; height: 10px; border-radius: 2px; }
+.ms .ms-bar span { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
+.ms .ms-bar span.ms-on { background: var(--gold); border-color: var(--gold); }
+.ms .ms-bar span.ms-cur { background: var(--gold-tint); border: 1.5px solid var(--gold); }
+.ms .ms-prog b { font-size: var(--t-label); font-weight: 600; white-space: nowrap; }
+
+/* ---------- Steps: the numbered block is the check | step line, title, meta ---------- */
+.ms .ms-row { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; align-items: center; min-height: 64px; padding: 12px var(--pad); background: var(--surface); transition: background .15s var(--ease); }
+.ms .ms-items > li + li > .ms-row, .ms .ms-items > li + li > .ms-now { box-shadow: inset 0 1px 0 var(--line-soft); }
+.ms .ms-row.ms-flash { animation: ms-flash 1.6s var(--ease); }
+@keyframes ms-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+.ms .ms-check { position: relative; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); color: var(--ink); transition: background .15s var(--ease); }
+.ms .ms-check::after { content: ""; position: absolute; inset: -4px; }
+.ms button.ms-check:active { transform: scale(.9); }
+.ms .ms-check .ms-num { grid-area: 1 / 1; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ms .ms-check .rf-i { grid-area: 1 / 1; width: 20px; height: 20px; stroke-width: 2.5; opacity: 0; }
+.ms .ms-check[aria-pressed="true"] .ms-num, .ms .ms-check.ms-on .ms-num { visibility: hidden; }
+.ms .ms-check[aria-pressed="true"] .rf-i, .ms .ms-check.ms-on .rf-i { opacity: 1; }
+.ms .ms-is-now .ms-check { border-color: #e0cf9f; color: var(--gold-ink); }
+.ms .ms-check.ms-pop { animation: ms-pop .24s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes ms-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.ms .ms-main { min-width: 0; }
+.ms .ms-eb { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; margin-bottom: 2px; font-size: 14px; color: var(--muted); }
+.ms .ms-st { font-weight: 600; color: var(--ink); }
+.ms .ms-done .ms-st { font-weight: 500; color: var(--muted); }
+.ms .ms-due { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: default; }
+.ms .ms-due.ms-muted { font-weight: 400; }
+.ms .ms-due::before { content: "\00b7"; margin-right: 8px; color: var(--muted); }
+.ms .ms-is-now .ms-due { color: var(--gold-ink); font-weight: 600; }
+.ms .ms-t { display: block; font-size: var(--t-row); font-weight: 500; line-height: 1.3; transition: color .2s var(--ease); }
+.ms .ms-done .ms-t { color: var(--muted); }
+.ms .ms-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s3); margin-top: 4px; font-size: var(--t-label); color: var(--muted); }
+/* a long note wraps (and breaks a very long word); the owner chip and "Done 9:14 AM · Undo" stay on one line */
+.ms .ms-meta > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.ms .ms-meta > .ms-who, .ms .ms-meta > .ms-after { white-space: nowrap; }
+.ms .ms-who { display: inline-flex; align-items: center; gap: 6px; }
+.ms .ms-ini { display: inline-block; width: 22px; height: 22px; border: 1.5px dashed var(--muted); border-radius: 999px; }
+.rf.ms .ms-row .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+.rf.ms .ms-saveerr { margin: 6px 0 0; font-size: var(--t-label); }
+
+/* the moment after an action, right where it happened */
+.ms .ms-after { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink); font-weight: 500; animation: ms-fadein .2s var(--ease); }
+@keyframes ms-fadein { from { opacity: 0; } to { opacity: 1; } }
+.ms .ms-tk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--gold); }
+.ms .ms-tk .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+
+/* the step that is now: gold tint and a gold left edge, its one action inside */
+.ms .ms-now { position: relative; background: var(--gold-tint); }
+.ms .ms-now::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; width: 3px; background: var(--gold); }
+.ms .ms-now > .ms-row { background: transparent; }
+.ms .ms-now > .ms-row.ms-flash { animation: none; }
+.ms .ms-now-in { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 54px); }
+.ms .ms-share-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); }
+.ms .ms-none { padding: var(--s5) var(--pad); font-size: var(--t-body); color: var(--muted); }
+.ms .ms-none .rf-lnk { margin-left: var(--s2); }
+
+/* the checklist's load error: the app's line and Try again */
+.ms .ms-err { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); padding: var(--s5) var(--pad); font-size: var(--t-body); }
+.ms .ms-err b { font-weight: 600; }
+.ms .ms-err p { color: var(--muted); }
+
+/* ---------- Programs chat: day lines, messages, a box to write ---------- */
+.rf.ms .ms-chat .rf-pcard { padding-top: 14px; }
+.rf.ms .ms-chat .rf-pcard.ms-chat-err { padding-top: 0; }
+.rf.ms .ms-chat-err .rf-load-err { border-top: 0; }
+.ms .ms-day { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--pad) 0; font-size: var(--t-label); font-weight: 600; color: var(--muted); }
+.ms .ms-day::before, .ms .ms-day::after { content: ""; flex: 1; height: 1px; background: var(--line-soft); }
+.ms .ms-msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) var(--pad) 0; }
+.ms .ms-av { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 999px; background: var(--gold-tint); color: var(--ink); font-size: 14px; font-weight: 600; }
+.ms .ms-bot .ms-av { background: var(--wash); color: var(--muted); }
+.ms .ms-av .rf-i { width: 18px; height: 18px; }
+.ms .ms-from { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2); }
+.ms .ms-from b { font-weight: 600; white-space: nowrap; }
+.ms .ms-from span { font-size: var(--t-label); color: var(--muted); }
+.ms .ms-txt { margin-top: 2px; font-size: var(--t-body); overflow-wrap: break-word; }
+.ms .ms-nomsg { padding: var(--s3) var(--pad) 0; color: var(--muted); }
+.ms .ms-reply { display: flex; align-items: center; gap: var(--s2); height: var(--ctl); margin: var(--s4) var(--pad) var(--pad); padding: 0 4px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.ms .ms-reply:hover { border-color: var(--muted); }
+.ms .ms-reply:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 1px; }
+.ms .ms-reply input { flex: 1; min-width: 0; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.ms .ms-send { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--ink); }
+.ms .ms-send:hover:not([disabled]) { background: var(--gold-tint); }
+.ms .ms-send:active:not([disabled]) { background: var(--gold); }
+.ms .ms-send[disabled] { color: var(--line); cursor: default; }
+.ms .ms-reply-pad { height: var(--pad); }
+/* a message that did not save: its words, the error line, Retry and Remove */
+.ms .ms-unsent { margin: var(--s3) var(--pad) 2px calc(var(--pad) + 48px); padding: 4px 0 4px 12px; border-left: 2px solid var(--line); }
+.ms .ms-unsent-text { font-size: var(--t-body); line-height: 1.45; overflow-wrap: break-word; }
+.rf.ms .ms-senderr { margin: 4px 0 0; }
+.ms .ms-sending { margin: 4px 0 0; font-size: var(--t-label); color: var(--muted); }
+.ms .ms-unsent-acts { display: flex; align-items: center; gap: var(--s4); margin: var(--s2) 0 0; }
+.rf.ms .ms-unsent-acts .rf-btn { height: 36px; padding: 0 var(--s4); font-size: var(--t-label); }
+.rf.ms .ms-unsent-acts .ms-remove { color: var(--muted); font-weight: 500; }
+.ms .ms-unsent-acts [aria-disabled="true"] { opacity: .5; cursor: default; }
+
+/* ---------- Loading: grey blocks shaped like the page ---------- */
+.ms .ms-sk { display: block; height: 12px; background: var(--wash); border-radius: 4px; animation: ms-shim 1.2s ease-in-out infinite; }
+@keyframes ms-shim { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.rf.ms .rf-panel > .rf-ph .ms-sk { background: var(--line-soft); }
+.ms .ms-sk-title { width: 140px; height: 30px; margin-bottom: 6px; }
+.ms .ms-sk-card { width: 100%; max-width: 560px; height: 62px; margin-top: 14px; border-radius: var(--r); }
+.ms .ms-sk-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; align-items: center; min-height: 64px; padding: 12px var(--pad); border-top: 1px solid var(--line-soft); }
+.ms .ms-sk-row .ms-c { width: 40px; height: 40px; border-radius: var(--r); }
+.ms .ms-lines { display: flex; flex-direction: column; gap: 8px; }
+.ms .ms-reply-sk { border-style: dashed; }
+
+/* ---------- Phone (under 760px) ---------- */
+@media (max-width: 759px) {
+  .ms .ms-secnav { position: relative; display: flex; gap: var(--s5); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); }
+  .ms .ms-secnav a { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; font-size: var(--t-body); font-weight: 500; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .ms .ms-secnav a:active { color: var(--ink); }
+  .ms .ms-secnav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+  .ms .ms-secnav a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--gold); }
+  .ms .ms-bar { width: 96px; }
+  .ms .ms-due { padding-top: 1px; }
+  .ms .ms-row { column-gap: 12px; align-items: start; min-height: 0; padding: 14px var(--pad); }
+  .ms .ms-now-in { padding-left: calc(var(--pad) + 52px); }
+  .rf.ms .ms-share-row .rf-btn-gold { flex: 1 1 100%; }
+  .ms .ms-sk-row { column-gap: 12px; }
+  .ms .ms-unsent { margin-left: calc(var(--pad) + 48px); }
+}

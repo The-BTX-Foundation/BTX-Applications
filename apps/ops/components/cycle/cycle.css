@@ -1,0 +1,256 @@
+/* The Cycle page (demo p-cycle, final Clean-cut values). Everything sits under .cy (the page wraps its content in
+   <div class="rf cy">); the shared rf- layer comes from components/refresh/refresh.css, imported first. Overrides of shared
+   classes use .rf.cy so they win whatever order the stylesheets load in. Mid laptops 760-1179px, phone below 760px. */
+
+/* ---------- Head: title, award and amount, the settings link; the news card's title is the quieter weight ---------- */
+.rf.cy .cy-head > div:first-child { min-width: 0; }
+.rf.cy .cy-ptitle { flex-wrap: wrap; gap: 4px 12px; }
+.rf.cy .cy-ptitle h1 { overflow-wrap: anywhere; min-width: 0; }
+.rf.cy .cy-pdate { white-space: normal; }
+.rf.cy .rf-nx { margin-top: 14px; }
+.rf.cy .rf-nx-t { font-weight: 500; }
+
+/* ---------- Grid: schedule + checklist; the Scholarships chat beside them on wide screens ---------- */
+.cy .cy-grid { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.cy .cy-main, .cy .cy-skel { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+@media (min-width: 1500px) {
+  .cy .cy-grid { grid-template-columns: minmax(0, 1fr) 380px; }
+  .cy .cy-chat { position: sticky; top: var(--s6); }
+}
+.rf.cy .cy-ph { flex-wrap: wrap; gap: 8px 16px; }
+.cy .cy-r { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; font-size: var(--t-label); color: var(--muted); }
+
+/* a white box for the load error, the empty line and the skeleton panels */
+.cy .cy-box { min-width: 0; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r); overflow: hidden; }
+.rf.cy .cy-box .rf-load-err { padding: var(--s5) var(--pad); border-top: 0; }
+.cy .cy-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s4); padding: var(--s5) var(--pad); }
+.cy .cy-empty p { font-size: var(--t-body); }
+
+/* ---------- Schedule: the dates drawn on one line (laptop), then one block per stage ---------- */
+.cy .cy-axis { position: relative; height: 76px; margin: 4px var(--pad) 0; }
+.cy .cy-ax-base { position: absolute; left: 0; right: 0; top: 34px; height: 2px; background: var(--line); }
+.cy .cy-ax-seg { position: absolute; top: 32px; height: 6px; background: var(--ink); }
+.cy .cy-ax-seg.cy-now { top: 29px; height: 12px; background: var(--gold); }
+.cy .cy-ax-seg.cy-up { background: var(--line); }
+.cy .cy-ax-pt { position: absolute; top: 29px; width: 12px; height: 12px; margin-left: -6px; background: var(--surface); border: 2px solid var(--ink); }
+.cy .cy-ax-n { position: absolute; top: 4px; transform: translateX(-50%); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.cy .cy-ax-today { position: absolute; top: 22px; width: 2px; height: 26px; margin-left: -1px; background: var(--ink); }
+.cy .cy-ax-lab { position: absolute; top: 52px; font-size: 14px; color: var(--muted); white-space: nowrap; transform: translateX(-50%); }
+.cy .cy-ax-lab.cy-start { transform: none; }
+.cy .cy-ax-lab.cy-end { transform: translateX(-100%); }
+.cy .cy-ax-lab.cy-tday { color: var(--ink); font-weight: 600; }
+
+.cy .cy-stages { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, .9fr); border-top: 1px solid var(--line-soft); }
+.cy .cy-stg { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: var(--s4) var(--s4) var(--s5); border: 0; border-left: 1px solid var(--line-soft); background: var(--surface); text-align: left; transition: background .15s var(--ease); }
+.cy .cy-stg:first-child { border-left: 0; }
+.cy .cy-stg:hover { background: var(--wash); }
+.cy .cy-stg:active { background: var(--line-soft); }
+.cy .cy-stg.cy-now, .cy .cy-stg.cy-now:hover { background: var(--surface); }
+.cy .cy-stg.cy-now::before { content: ""; position: absolute; left: -1px; right: 0; top: -1px; height: 4px; background: var(--gold); }
+.cy .cy-sh { display: flex; align-items: center; gap: var(--s2); }
+.cy .cy-node { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--surface); font-size: 14px; font-weight: 600; }
+.cy .cy-node .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+.cy .cy-stg.cy-done .cy-node { background: var(--ink); color: var(--surface); }
+.cy .cy-stg.cy-now .cy-node { background: var(--gold); border-color: var(--gold); }
+.cy .cy-stg.cy-unset .cy-node { border-style: dashed; border-color: var(--muted); color: var(--muted); }
+.cy .cy-sh b { font-size: var(--t-row); font-weight: 500; overflow-wrap: break-word; }
+.cy .cy-sd { font-size: var(--t-label); color: var(--ink); }
+.cy .cy-ss { font-size: var(--t-label); color: var(--muted); }
+.cy .cy-ss.cy-ink { color: var(--ink); font-weight: 500; }
+.cy .cy-tag { display: inline-flex; align-items: center; gap: 5px; justify-self: start; height: 24px; margin-top: 2px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; color: var(--ink); font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; }
+.cy .cy-tag .rf-i { width: 14px; height: 14px; color: var(--muted); }
+.cy .cy-drawn { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: var(--s2); }
+.cy .cy-drawn .cy-bar { width: 100%; }
+.cy .cy-lab { font-size: var(--t-label); color: var(--ink); }
+.cy .cy-lab b { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cy .cy-unset { font-size: var(--t-label); color: var(--muted); }
+
+/* slim step bars (one step per item) and a continuous bar past 40 */
+.cy .cy-bar { display: flex; gap: 3px; height: 10px; }
+.cy .cy-bar > span { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 2px; }
+.cy .cy-bar > span.cy-on { background: var(--gold); border-color: var(--gold); }
+.cy .cy-bar.cy-ink > span.cy-on { background: var(--ink); border-color: var(--ink); }
+.cy .cy-bar.cy-cont { position: relative; display: block; border: 1px solid var(--line); background: var(--surface); }
+.cy .cy-bar.cy-cont i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); }
+.cy .cy-bar.cy-ink.cy-cont i { background: var(--ink); }
+
+/* ---------- Checklist: groups by stage; one row per step, the quiet action at the row's right ---------- */
+.cy .cy-prog { display: flex; align-items: center; gap: var(--s3); min-width: 220px; flex: 1; max-width: 360px; }
+.cy .cy-prog .cy-bar { flex: 1; }
+.cy .cy-prog b { font-size: var(--t-label); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.cy .cy-grp { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); width: 100%; min-height: 56px; padding: 14px var(--pad) 10px; border: 0; border-top: 1px solid var(--line-soft); background: none; text-align: left; font-size: var(--t-label); font-weight: 500; color: var(--muted); }
+.cy .cy-grp:focus { outline: none; }
+.cy .cy-grp:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cy .cy-gl { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s3); min-width: 0; }
+.cy .cy-grp b { color: var(--ink); font-size: var(--t-row); font-weight: 500; }
+.cy .cy-gs { color: var(--muted); font-weight: 500; }
+.cy .cy-nowc { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; color: var(--gold-ink); font-size: 14px; font-weight: 500; }
+.cy button.cy-grp:hover { background: var(--wash); color: var(--ink); }
+.cy button.cy-grp:active { background: var(--line-soft); }
+.cy .cy-grp > .rf-i { width: 18px; height: 18px; transition: transform .2s var(--ease); }
+.cy .cy-grp[aria-expanded="true"] > .rf-i { transform: rotate(180deg); }
+.cy .cy-grp.cy-pulse { animation: cy-flash 1.6s var(--ease); }
+.cy .cy-node.cy-gn { width: 24px; height: 24px; margin: 0; }
+.cy .cy-node.cy-gn.cy-done { background: var(--ink); color: var(--surface); }
+.cy .cy-node.cy-gn.cy-now { background: var(--gold); border-color: var(--gold); }
+.cy .cy-node.cy-node-sm { width: 16px; height: 16px; border-width: 1.5px; }
+.cy .cy-steps li { display: flex; align-items: center; gap: var(--s3); min-height: 44px; padding: 6px var(--pad) 6px calc(var(--pad) + 36px); font-size: var(--t-body); color: var(--muted); }
+.cy .cy-steps li .rf-i { width: 16px; height: 16px; color: var(--ink); stroke-width: 2.25; }
+.cy .cy-steps li span:not(.cy-node) { white-space: nowrap; }
+@keyframes cy-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+@keyframes cy-fadein { from { opacity: 0; } to { opacity: 1; } }
+
+.cy .cy-row { position: relative; border-top: 1px solid var(--line-soft); background: var(--surface); }
+.cy .cy-row + .cy-row { border-top: 0; background-image: linear-gradient(var(--line-soft), var(--line-soft)); background-size: calc(100% - var(--pad) - 36px) 1px; background-position: right top; background-repeat: no-repeat; }
+.cy .cy-row.cy-primary + .cy-row, .cy .cy-row + .cy-row.cy-primary { border-top: 1px solid var(--line-soft); }
+.cy .cy-row.cy-primary::before { content: ""; position: absolute; left: 0; top: -1px; bottom: 0; width: 3px; background: var(--gold); }
+.cy .cy-row.cy-flash { animation: cy-flash 1.6s var(--ease); }
+.cy .cy-rw { display: grid; grid-template-columns: 24px minmax(0, 1fr) 220px; align-items: start; column-gap: 12px; padding: 14px var(--pad); }
+.cy .cy-ck { position: relative; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 0; background: none; }
+.cy .cy-ck::after { content: ""; position: absolute; inset: -10px; }
+.cy button.cy-ck:active { transform: scale(.92); }
+.cy .cy-cb { display: grid; place-items: center; width: 24px; height: 24px; border: 1.5px solid var(--muted); border-radius: 999px; background: var(--surface); }
+.cy .cy-cb .rf-i { width: 14px; height: 14px; stroke-width: 2.5; visibility: hidden; }
+.cy .cy-row.cy-mine .cy-cb { border-color: var(--gold-ink); }
+.cy .cy-ck[aria-pressed="true"] .cy-cb, .cy .cy-ck.cy-on .cy-cb { background: var(--ink); border-color: var(--ink); }
+.cy .cy-ck[aria-pressed="true"] .rf-i, .cy .cy-ck.cy-on .rf-i { visibility: visible; color: var(--surface); }
+.cy .cy-rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cy .cy-t { font-size: var(--t-row); font-weight: 500; overflow-wrap: anywhere; }
+.cy .cy-row.cy-done .cy-t { color: var(--muted); }
+.cy .cy-eb { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-bottom: 1px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.cy .cy-row.cy-done .cy-eb { color: var(--muted); }
+.cy .cy-late { display: inline-block; padding: 0 6px; border-radius: 2px; background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; line-height: 20px; white-space: nowrap; }
+.cy .cy-meta { display: flex; margin-top: 4px; font-size: var(--t-label); color: var(--muted); min-width: 0; }
+.cy .cy-ow { display: flex; align-items: center; gap: var(--s2); min-width: 0; font-size: var(--t-label); color: var(--muted); }
+/* Names wrap (a long name never clips its "+2"); a change from the demo, which draws them on one line. */
+.cy .cy-ow > .cy-own { overflow-wrap: anywhere; min-width: 0; }
+.cy .cy-fc { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 999px; background: var(--wash); font-size: 10px; font-weight: 700; color: var(--muted); }
+.cy .cy-fc.cy-me { background: var(--gold); color: var(--ink); }
+.cy .cy-fc.cy-ic .rf-i { width: 13px; height: 13px; }
+.cy .cy-ac { display: flex; justify-content: flex-end; align-items: center; align-self: center; min-width: 0; }
+.cy .cy-ac .cy-after { justify-content: flex-end; text-align: right; }
+.rf.cy .cy-ac .rf-lnk, .rf.cy .cy-more .rf-lnk, .rf.cy .cy-wait .rf-lnk, .rf.cy .cy-after .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+
+/* the waiting line under a late step of someone else's, and its nudge */
+.cy .cy-wait { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 14px; margin-top: 8px; font-size: var(--t-label); }
+.cy .cy-wt { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--gold-ink); }
+.cy .cy-wt .rf-i { width: 16px; height: 16px; }
+.cy .cy-wdone .cy-wt { color: var(--ink); }
+.cy .cy-nudge { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background .15s var(--ease); }
+.cy .cy-nudge:hover { background: var(--gold-tint); }
+.cy .cy-nudge:active { transform: translateY(1px); background: var(--gold-tint); }
+
+/* the moment after: "Done 9:14 AM · Undo" */
+.cy .cy-after { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s2); font-size: var(--t-label); color: var(--muted); animation: cy-fadein .2s var(--ease); }
+.cy .cy-after b { color: var(--ink); font-weight: 600; }
+.cy .cy-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; margin-right: 2px; border-radius: 999px; background: var(--gold); color: var(--ink); }
+.cy .cy-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+
+/* the reminder's confirm under its row */
+.cy .cy-more { padding: 0 var(--pad) var(--s4) calc(var(--pad) + 36px); }
+.cy .cy-confirm { padding: var(--s3) var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.cy .cy-confirm p { font-size: var(--t-body); }
+.cy .cy-dact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); margin-top: var(--s3); }
+
+/* ---------- Scholarships chat: day lines, messages, a box to write ---------- */
+.rf.cy .cy-chat .rf-pcard { padding-top: 6px; }
+.rf.cy .cy-chat .rf-pcard.cy-chat-err { padding-top: 0; }
+.rf.cy .cy-chat-err .rf-load-err { border-top: 0; }
+.cy .cy-day { display: flex; align-items: center; gap: var(--s3); padding: var(--s4) var(--pad) 0; font-size: 14px; color: var(--muted); }
+.cy .cy-day::before, .cy .cy-day::after { content: ""; flex: 1; height: 1px; background: var(--line-soft); }
+.cy .cy-msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--s3); padding: var(--s3) var(--pad) 0; }
+.cy .cy-mb { min-width: 0; }
+.cy .cy-av { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--wash); color: var(--ink); font-size: 14px; font-weight: 600; }
+.cy .cy-av .rf-i { width: 16px; height: 16px; }
+.cy .cy-mine .cy-av { background: var(--gold); border-color: var(--gold); }
+.cy .cy-from { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s2); }
+.cy .cy-from b { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.cy .cy-from span { font-size: var(--t-label); color: var(--muted); }
+.cy .cy-txt { margin-top: 2px; font-size: var(--t-body); overflow-wrap: anywhere; }
+.cy .cy-nomsg { padding: var(--s3) var(--pad) 0; color: var(--muted); }
+.cy .cy-chatnote { padding: var(--s3) var(--pad) 0; font-size: var(--t-label); color: var(--muted); text-align: center; }
+.cy .cy-reply { display: flex; align-items: center; gap: var(--s2); height: var(--ctl); margin: var(--s4) var(--pad) var(--pad); padding: 0 4px 0 12px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.cy .cy-reply:hover { border-color: var(--muted); }
+.cy .cy-reply:focus-within { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 1px; }
+.cy .cy-reply input { flex: 1; min-width: 0; border: 0; background: none; font-size: var(--t-body); outline: none; }
+.cy .cy-send { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--ink); }
+.cy .cy-send:hover:not([disabled]) { background: var(--gold-tint); }
+.cy .cy-send:active:not([disabled]) { background: var(--gold); }
+.cy .cy-send[disabled] { color: var(--line); cursor: default; }
+.cy .cy-reply-pad { height: var(--pad); }
+.cy .cy-unsent { margin: var(--s3) var(--pad) 2px calc(var(--pad) + 48px); padding: 4px 0 4px 12px; border-left: 2px solid var(--line); }
+.cy .cy-unsent-text { font-size: var(--t-body); line-height: 1.45; overflow-wrap: anywhere; }
+.rf.cy .cy-senderr { margin: 4px 0 0; }
+.cy .cy-sending { margin: 4px 0 0; font-size: var(--t-label); color: var(--muted); }
+.cy .cy-unsent-acts { display: flex; align-items: center; gap: var(--s4); margin: var(--s2) 0 0; }
+.rf.cy .cy-unsent-acts .rf-btn { height: 36px; padding: 0 var(--s4); font-size: var(--t-label); }
+.rf.cy .cy-unsent-acts .cy-remove { color: var(--muted); font-weight: 500; }
+.cy .cy-unsent-acts [aria-disabled="true"] { opacity: .5; cursor: default; }
+
+/* ---------- Loading: grey blocks shaped like the page ---------- */
+.cy .cy-sk { display: block; height: 14px; background: var(--wash); border-radius: 2px; animation: cy-skpulse 1.6s ease-in-out infinite; }
+@keyframes cy-skpulse { 50% { opacity: .5; } }
+.cy .cy-sk-hl .cy-sk:nth-child(1) { width: 220px; height: 30px; }
+.cy .cy-sk-hl .cy-sk:nth-child(2) { width: min(560px, 100%); height: 62px; margin-top: 14px; border-radius: var(--r); }
+.cy .cy-sk-ph { display: flex; align-items: center; min-height: 60px; padding: var(--s3) var(--pad) var(--s3) 2px; }
+.cy .cy-sk-ph .cy-sk { width: 120px; height: 18px; }
+.cy .cy-sk-ax { margin: 0 var(--pad) var(--s4); height: 10px; }
+.cy .cy-sk-st { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s4); padding: var(--s4) var(--pad) var(--s5); border-top: 1px solid var(--line-soft); }
+.cy .cy-sk-st div .cy-sk + .cy-sk { margin-top: 10px; width: 70%; }
+.cy .cy-sk-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 120px; column-gap: 12px; align-items: center; min-height: 60px; padding: 8px var(--pad); border-top: 1px solid var(--line-soft); }
+.cy .cy-sk-row .cy-c { width: 24px; height: 24px; border-radius: 999px; }
+.cy .cy-sk-chat .cy-sk-row { grid-template-columns: 24px minmax(0, 1fr); }
+
+/* ---------- Mid laptops: three stages a row ---------- */
+@media (min-width: 760px) and (max-width: 1179px) {
+  .rf.cy .cy-search { width: 300px; }
+  .cy .cy-stages { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cy .cy-stg:nth-child(4) { border-left: 0; }
+  .cy .cy-stg:nth-child(n+4) { border-top: 1px solid var(--line-soft); }
+  .cy .cy-rw { grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .cy .cy-ac:empty { display: none; }
+  .cy .cy-sk-st { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- Phone: the schedule becomes a vertical line of stages; the action goes under the title ---------- */
+@media (max-width: 759px) {
+  .cy .cy-grid, .cy .cy-main, .cy .cy-skel { gap: 14px; }
+  .cy .cy-box { border-color: var(--line); }
+  .cy .cy-sk-hl .cy-sk:nth-child(1) { height: 28px; }
+  .rf.cy .rf-lnk { min-height: 44px; }
+  .rf.cy .rf-lnk::after { inset: 0 -6px; }
+  .cy .cy-axis { display: none; }
+  .cy .cy-stages { grid-template-columns: minmax(0, 1fr); border-top: 0; }
+  .cy .cy-stg { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--s3); row-gap: 2px; padding: var(--s3) var(--pad) var(--s4); border-left: 0; }
+  .cy .cy-stg::after { content: ""; position: absolute; left: calc(var(--pad) + 11px); top: 40px; bottom: -14px; width: 2px; background: var(--line); z-index: 0; }
+  .cy .cy-stg.cy-done::after { background: var(--ink); }
+  .cy .cy-stg:last-child::after { display: none; }
+  .cy .cy-stg.cy-now::before { left: 0; right: auto; top: 0; bottom: 0; width: 4px; height: auto; }
+  .cy .cy-sh { display: contents; }
+  .cy .cy-stg .cy-node { grid-row: 1; grid-column: 1; position: relative; z-index: 1; }
+  .cy .cy-sh b { grid-row: 1; grid-column: 2; align-self: center; }
+  .cy .cy-stg > *:not(.cy-sh) { grid-column: 2; }
+  .cy .cy-drawn { margin-top: var(--s1); }
+  .cy .cy-prog { min-width: 0; max-width: none; flex-basis: 100%; }
+  .cy .cy-rw { grid-template-columns: 24px minmax(0, 1fr); column-gap: 12px; row-gap: var(--s2); }
+  .cy .cy-meta { flex-wrap: wrap; align-items: center; gap: 2px var(--s2); }
+  .cy .cy-ac { grid-column: 2; justify-content: flex-start; }
+  .cy .cy-ac:empty { display: none; }
+  .cy .cy-ac:has(.rf-btn) { padding-top: 2px; }
+  .cy .cy-ac .cy-after { justify-content: flex-start; text-align: left; }
+  .rf.cy .cy-ac .rf-btn, .rf.cy .cy-confirm .rf-btn { height: 44px; }
+  .cy .cy-send { width: 44px; height: 44px; }
+  .cy .cy-sk-st { grid-template-columns: minmax(0, 1fr); }
+  .cy .cy-sk-row { grid-template-columns: 24px minmax(0, 1fr); }
+  .cy .cy-sk-row > .cy-sk:last-child:not(:nth-child(2)) { display: none; }
+}
+@media (max-width: 379px) {
+  .cy .cy-steps li span:not(.cy-node) { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .cy .cy-stg:hover, .cy .cy-stg.cy-now:hover { background: var(--surface); }
+  .cy button.cy-grp:hover { background: none; color: var(--muted); }
+  .cy .cy-nudge:hover { background: var(--surface); }
+}

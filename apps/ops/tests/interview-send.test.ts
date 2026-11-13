@@ -176,6 +176,22 @@ describe('sendRebalanceEmails', () => {
     expect(added).toContain('UID:interview-a1@thebtxfoundation.org');
     expect(await sendRebalanceEmails('c1', moves, deps(data, log, send))).toMatchObject({ sent: 0, skipped: 2 });
   });
+  it('a change id (one reassign) joins the key: a new change on the same slot emails again, the same change does not', async () => {
+    const { data } = fakeData([row({ interviewers: [kelsey, tomi] })]);
+    const { log, rows } = fakeLog();
+    const send = okSend();
+    const move = (changeId: string) => [{ slotId: 's1', from: 'u9', to: 'u2', fromName: 'Old Person', changeId }];
+    expect(await sendRebalanceEmails('c1', move('ch1'), deps(data, log, send))).toMatchObject({ sent: 2, skipped: 0 });
+    expect(await sendRebalanceEmails('c1', move('ch1'), deps(data, log, send))).toMatchObject({ sent: 0, skipped: 2 });
+    expect(await sendRebalanceEmails('c1', move('ch2'), deps(data, log, send))).toMatchObject({ sent: 2, skipped: 0 });
+    expect([...rows.values()].map((r) => r.recipient).sort()).toEqual(['old@btx.org|removed|ch1', 'old@btx.org|removed|ch2', 'tfalodun@btx.org|added|ch1', 'tfalodun@btx.org|added|ch2']);
+  });
+  it('Rebalance (no change id) keeps the plain "<email>|added" / "<email>|removed" keys', async () => {
+    const { data } = fakeData([row({ interviewers: [kelsey, tomi] })]);
+    const { log, rows } = fakeLog();
+    await sendRebalanceEmails('c1', [{ slotId: 's1', from: 'u9', to: 'u2', fromName: 'Old Person' }], deps(data, log));
+    expect([...rows.values()].map((r) => r.recipient).sort()).toEqual(['old@btx.org|removed', 'tfalodun@btx.org|added']);
+  });
   it('also pushes "Interview booked" to the interviewer added and "Interview cancelled" to the one removed', async () => {
     const { data } = fakeData([row({ interviewers: [kelsey, tomi] })]);
     const push = vi.fn<(items: PushItem[]) => Promise<unknown>>(async () => ({}));

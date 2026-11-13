@@ -8,7 +8,7 @@
 //   questions        interview_questions, seed_starter_questions()
 import { easternDayMinutes, freeMinutes, mergeRanges, toMinuteRange, toRange, type MinuteRange, type Range } from './free-ranges';
 import { freeCountAt, proposeTimes } from './propose-times';
-import { planRebalance, rebalanceTargets, type Move, type RebalanceInterview } from './rebalance';
+import { planRebalance, PROTECT_HOURS, rebalanceTargets, type Move, type RebalanceInterview } from './rebalance';
 import { easternToUtc, slotFor } from './pairing-slots';
 import { readCandidates, readInterviews, readRanges, readStaff, replaceRanges, sessionRole, type Db, type Result } from './pairing-db';
 
@@ -375,7 +375,7 @@ export async function rebalanceInterviews(db: Db, cycleId: string, now = new Dat
   } catch {
     return { ok: false, message: READ_FAILED };
   }
-  const cutoff = now.getTime() + 48 * 3_600_000;
+  const cutoff = now.getTime() + PROTECT_HOURS * 3_600_000;
   const interviews: RebalanceInterview[] = [];
   try {
     for (const b of d.booked) {

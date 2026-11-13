@@ -213,7 +213,7 @@ export async function sendReminderEmails(now: Date = new Date(), deps: Interview
 
 // Admin only. `moves` is what rebalanceInterviews() returned: for each, the interviewer added gets "You're now
 // interviewing ..." with a calendar invite and the one removed gets "You're no longer interviewing ..." with a cancel.
-export async function sendRebalanceEmails(cycleId: string, moves: Pick<RebalanceMove, 'slotId' | 'from' | 'to' | 'fromName'>[], deps: InterviewDeps = {}): Promise<InterviewMailResult> {
+export async function sendRebalanceEmails(cycleId: string, moves: (Pick<RebalanceMove, 'slotId' | 'from' | 'to' | 'fromName'> & { changeId?: string })[], deps: InterviewDeps = {}): Promise<InterviewMailResult> {
   const s = await setup(deps, { admin: true, needsOpsUrl: true });
   if (!s.ok) return s;
   const rows = await s.data.interviews({ slotIds: moves.map((m) => m.slotId) });
@@ -223,7 +223,7 @@ export async function sendRebalanceEmails(cycleId: string, moves: Pick<Rebalance
   for (const m of moves) {
     const row = bySlot.get(m.slotId);
     if (!row) continue;
-    plans.push(...planRebalance(row, { from: { name: m.fromName, email: await s.data.userEmail(m.from) }, toUserId: m.to }, ctxFor(s, info)));
+    plans.push(...planRebalance(row, { from: { name: m.fromName, email: await s.data.userEmail(m.from) }, toUserId: m.to, ...(m.changeId ? { changeId: m.changeId } : {}) }, ctxFor(s, info)));
   }
   const t = await run(s, plans);
   // The interviewer added gets "Interview booked" and the one removed gets "Interview cancelled" on their phones.

@@ -41,7 +41,8 @@ export function checkEvent(input: EventInput): EventCheck {
   if (!title) return { ok: false, message: 'Give the event a title.' };
   if (title.length > EVENT_TITLE_MAX) return { ok: false, message: `Keep the title to ${EVENT_TITLE_MAX} characters or fewer.` };
   if (!validDate(input.date)) return { ok: false, message: 'Pick a date.' };
-  if (!EVENT_TIMES.some((t) => t.value === input.time)) return { ok: false, message: 'Pick a time.' };
+  // A listed choice, or any real clock time: the refreshed add field reads times like "9:15am" from the typed words.
+  if (!EVENT_TIMES.some((t) => t.value === input.time) && !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time ?? '')) return { ok: false, message: 'Pick a time.' };
   if (!AREAS.includes(input.area as CalArea)) return { ok: false, message: 'Pick an area.' };
   return { ok: true, title, date: input.date, time: input.time, area: input.area as CalArea };
 }

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { cycleItems, dayAgenda, eventItems, interviewItems, milestoneItems, postItems, taskItems } from '@/lib/daily-calendar';
-import { minutes } from '@/components/calendar/dates';
+
+/** "10:00 AM" -> minutes after midnight, for sorting; null (all day) sorts as -1 (the old calendar page's helper, kept here for this test). */
+function minutes(t: string | null): number {
+  if (!t) return -1;
+  const m = /^(\d{1,2}):(\d{2}) (AM|PM)$/.exec(t);
+  if (!m) return -1;
+  return (Number(m[1]) % 12) * 60 + Number(m[2]) + (m[3] === 'PM' ? 720 : 0);
+}
 
 describe('eventItems', () => {
   it('shows Eastern time and drops AM / PM on the chip', () => {
@@ -10,6 +17,11 @@ describe('eventItems', () => {
   it('keeps an all-day event on its Eastern day with just the title', () => {
     const [e] = eventItems([{ id: 'e2', title: 'Chapter visit', area: null, starts_at: '2026-10-15T04:00:00Z', all_day: true }]);
     expect(e).toMatchObject({ date: '2026-10-15', start: null, chip: 'Chapter visit', area: 'scholarships', people: [] });
+    expect(e.eventKind).toBeUndefined();
+  });
+  it('carries the stored kind when the row has one', () => {
+    const [e] = eventItems([{ id: 'e3', title: 'Planning', area: 'programs', starts_at: '2026-10-15T22:00:00Z', all_day: false, kind: 'planning_call' }]);
+    expect(e.eventKind).toBe('planning_call');
   });
 });
 
@@ -23,6 +35,8 @@ describe('interviewItems', () => {
     );
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ title: 'Interview Sade Price · APP-2026-00015', chip: '10:00 Interview', people: ['u1', 'u2'], video: false });
+    // The refreshed Calendar row draws the name and the code apart.
+    expect(items[0]).toMatchObject({ student: 'Sade Price', code: 'APP-2026-00015' });
   });
 });
 

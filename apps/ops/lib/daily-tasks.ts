@@ -2,6 +2,7 @@
 // No server imports, so it is unit-tested (tests/daily-tasks.test.ts).
 import { isVideoLinksTask } from './area-map';
 import { dateOnlyLabel } from './format';
+import { approvalHref } from './today-map';
 import { daysBetween, decorate, type ApprovalDetail, type Bucket, type Counts, type Person, type TaskComment, type TaskItem, type TaskSeed, type TaskStatus } from './tasks-shared';
 import type { OverviewArea, TaskGroup, TaskRow, TodayData } from '@/mock/today';
 import type { OpsIconName } from '@/components/icons';
@@ -88,6 +89,7 @@ export function approvalDetail(plan: Raw, lines: { label: string; cents: number 
     totalCents: Math.max(1, total),
     hint: `Approving sets the budget for ${months}`,
     approveLabel: `Approve ${dollars(total)} for Q${q}`,
+    planId: nullable(plan.id) ?? undefined,
   };
 }
 
@@ -183,7 +185,7 @@ export function todayRow(t: TaskItem): TaskRow {
   let href: string | undefined;
   if (t.type === 'approval') {
     action = { label: t.approval?.approveLabel ?? 'Review', kind: 's' };
-    href = '/finance/budget/approval';
+    href = approvalHref(t.approval?.planId);
   } else if (t.type === 'request') {
     action = { label: 'Add times', kind: 's' };
     href = '/scholarships/interviews';

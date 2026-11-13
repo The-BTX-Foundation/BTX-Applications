@@ -1,0 +1,160 @@
+/* Scholarships > Interviews > Interview questions (Ops Hub refresh, demo p-questions). Only what no other page has; the
+   shared rf- vocabulary comes from components/refresh/refresh.css. Every class is qn- and every rule sits under .qn.
+   Values are the demo's after its last (Clean-cut) block. Phone below 760px; one column up to 1179px. */
+
+/* ---------- Header and board ---------- */
+.qn .qn-head .rf-ptitle { align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.qn .qn-board { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+.qn .qn-board > .rf-panel > .rf-ph { flex-wrap: wrap; gap: var(--s2) var(--s4); }
+.qn .qn-hl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.qn .qn-r { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s5); font-size: var(--t-label); color: var(--muted); }
+.qn .qn-ro { display: inline-flex; align-items: center; gap: 4px; }
+.qn .qn-ro .rf-i { width: 16px; height: 16px; }
+.qn .qn-draft { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--line-soft); border-radius: 2px; background: none; color: var(--gold-ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.qn .rf-panel > .rf-ph .rf-lnk, .qn .qn-grp .rf-lnk, .qn .qn-empty .rf-lnk, .qn .qn-nxact .rf-lnk { color: var(--gold-ink); font-weight: 500; }
+
+/* ---------- A group: the scoring criterion, its points as a slim bar, then its questions ---------- */
+.qn .qn-grp { margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+.qn .qn-gh { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px var(--s4); margin-bottom: 6px; padding: var(--s4) var(--pad) var(--s3); box-shadow: inset 0 -1px 0 var(--line-soft); }
+.qn .qn-gh h3 { min-width: 0; font-size: var(--t-row); font-weight: 500; overflow-wrap: anywhere; }
+.qn .qn-pts { display: inline-flex; align-items: center; gap: 10px; font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.qn .qn-pts b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.qn .qn-track { position: relative; display: block; width: 80px; height: 6px; border-radius: 2px; background: var(--wash); overflow: hidden; }
+.qn .qn-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--gold); }
+.qn .qn-ql { position: relative; margin: 0; padding: 0; list-style: none; }
+
+/* one question: grip, number, the text (a button that opens the editor), Remove */
+.qn .qn-q { position: relative; display: grid; grid-template-columns: 32px 28px minmax(0, 1fr) auto; column-gap: 8px; align-items: start; padding: 8px var(--pad) 8px calc(var(--pad) - 8px); background: var(--surface); transition: background .15s var(--ease); }
+.qn .qn-q.qn-fresh { animation: qn-flash 1.6s var(--ease); }
+@keyframes qn-flash { 0%, 30% { background: var(--gold-tint); } 100% { background: var(--surface); } }
+.qn .qn-q.qn-lift { z-index: 5; background: var(--wash); box-shadow: inset 3px 0 0 var(--gold); transition: none; cursor: grabbing; }
+.qn .qn-q.qn-lift .qn-nn { color: var(--gold-ink); }
+.qn .qn-q.qn-before::before, .qn .qn-q.qn-after::after { content: ""; position: absolute; left: var(--pad); right: var(--pad); height: 3px; background: var(--gold); }
+.qn .qn-q.qn-before::before { top: -2px; }
+.qn .qn-q.qn-after::after { bottom: -2px; }
+.qn .qn-grip { display: grid; place-items: center; width: 32px; height: 40px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--muted); cursor: grab; touch-action: none; }
+.qn .qn-grip:hover { color: var(--ink); background: var(--wash); }
+.qn .qn-grip:active { cursor: grabbing; background: var(--line-soft); }
+.qn .qn-grip[aria-disabled="true"] { cursor: progress; }
+.qn .qn-nn { display: grid; place-items: center; width: 28px; height: 40px; padding: 0; font-size: var(--t-body); font-weight: 600; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.qn .qn-qt { display: block; width: 100%; min-width: 0; min-height: 40px; margin: 0; padding: 8px 10px; border: 1px solid transparent; border-radius: 2px; background: none; font-size: var(--t-body); line-height: 1.4; text-align: left; overflow-wrap: anywhere; cursor: text; }
+.qn button.qn-qt:hover { border-color: var(--line); background: var(--bg); }
+.qn button.qn-qt:active { background: var(--wash); }
+.qn textarea.qn-qt { resize: none; overflow: hidden; border-color: var(--ink); background: var(--surface); outline: none; box-shadow: inset 0 -2px 0 var(--gold); }
+.qn p.qn-qt { cursor: default; }
+.qn .qn-qa { display: flex; align-items: center; gap: var(--s1); min-height: 40px; }
+.qn .qn-qa .rf-lnk { margin-left: var(--s3); }
+.qn .qn-mv { display: none; }
+.qn .qn-ask { font-size: var(--t-label); font-weight: 500; white-space: nowrap; }
+.qn .qn-mv button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); }
+.qn .qn-mv button:hover { border-color: var(--ink); background: var(--wash); }
+.qn .qn-mv button:active { background: var(--line-soft); }
+.qn .qn-mv button[disabled] { color: var(--line); border-color: var(--line-soft); cursor: default; background: var(--surface); }
+
+/* the moment after an action (tick, what happened, Undo) and the error and "Not saved" lines, in the same place */
+.qn .qn-note { padding: 2px var(--pad) 8px calc(var(--pad) + 72px); }
+.qn .qn-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s2); min-width: 0; font-size: var(--t-label); color: var(--ink); animation: qn-fadein .2s var(--ease); }
+@keyframes qn-fadein { from { opacity: 0; } to { opacity: 1; } }
+.qn .qn-line .qn-tx { min-width: 0; overflow-wrap: anywhere; }
+.qn .qn-line .qn-sep { color: var(--muted); }
+.qn .qn-tick { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; margin-right: 2px; border-radius: 999px; background: var(--gold); color: var(--ink); }
+.qn .qn-tick .rf-i { width: 14px; height: 14px; stroke-width: 2.5; }
+.qn .qn-err { color: var(--danger, #b42318); font-weight: 500; }
+.qn .qn-err .rf-i { width: 18px; height: 18px; }
+.qn .qn-words { flex-basis: 100%; min-width: 0; color: var(--muted); overflow-wrap: anywhere; }
+.qn .qn-r .qn-line { padding: 0; }
+/* a line about a question sits at the end of its row (not a list item of its own), lined up with the question's words */
+.qn .qn-q > .qn-note { grid-column: 1 / -1; margin: 0 calc(0px - var(--pad)) -8px calc(8px - var(--pad)); padding: 10px var(--pad) 8px calc(var(--pad) + 72px); background: var(--surface); }
+.qn .qn-old { padding-top: 8px; }
+/* a just-added question waits for its id: its controls rest */
+.qn .qn-grip[disabled] { cursor: default; color: var(--line); background: none; }
+.qn button.qn-qt[disabled] { cursor: default; color: var(--ink); }
+.qn button.qn-qt[disabled]:hover { border-color: transparent; background: none; }
+.qn .qn-qa .rf-lnk[disabled] { cursor: default; color: var(--muted); text-decoration: none; }
+
+/* add a question */
+.qn .qn-addopen { display: flex; align-items: center; gap: var(--s3); width: 100%; min-height: 48px; padding: 0 var(--pad) 0 calc(var(--pad) + 44px); border: 0; background: none; text-align: left; font-size: var(--t-body); font-weight: 500; color: var(--ink); }
+.qn .qn-addopen:hover { background: var(--wash); }
+.qn .qn-addopen:active { background: var(--line-soft); }
+.qn .qn-addopen .rf-i { width: 18px; height: 18px; color: var(--muted); }
+.qn .qn-add { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: var(--s2); align-items: start; padding: 6px var(--pad) var(--s3) calc(var(--pad) + 44px); }
+.qn .qn-add .qn-plus { display: grid; place-items: center; height: 40px; color: var(--muted); }
+.qn .qn-add textarea { width: 100%; min-width: 0; min-height: 40px; padding: 8px 2px; border: 0; border-bottom: 2px solid var(--gold); background: none; font-size: var(--t-body); line-height: 1.4; resize: none; overflow: hidden; outline: none; }
+.qn .qn-add textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.qn .qn-add .qn-hint { grid-column: 2; padding-top: 6px; font-size: 14px; color: var(--muted); }
+.qn .qn-end { height: var(--s2); }
+
+/* empty: one line and the action that fills it */
+.qn .qn-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); margin-bottom: 14px; padding: var(--s5) var(--pad); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.qn .qn-empty p { min-width: 0; font-size: var(--t-body); color: var(--muted); }
+
+/* ---------- Your next interview: the ticket ---------- */
+.qn .qn-ticket { display: grid; grid-template-columns: 84px minmax(0, 1fr); margin: 0 0 var(--s3); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+.qn .qn-stub { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--s3) 0; border-right: 1px solid var(--line-soft); background: var(--surface); color: var(--gold-ink); font-size: var(--t-label); font-weight: 500; line-height: 1.2; }
+.qn .qn-stub strong { font-size: 44px; font-weight: 400; line-height: 1; color: var(--ink); }
+.qn .qn-tb { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: var(--s3) var(--s4); }
+.qn .qn-nm { font-size: var(--t-row); font-weight: 600; white-space: nowrap; }
+.qn .qn-tm { font-size: var(--t-label); }
+.qn .qn-mt { display: flex; flex-wrap: wrap; gap: 0 var(--s3); font-size: var(--t-label); color: var(--muted); }
+.qn .qn-mt span, .qn .qn-tm span { white-space: nowrap; }
+.qn .qn-ticket.qn-tight { grid-template-columns: minmax(0, 1fr); }
+.qn .qn-ticket.qn-tight .qn-stub { flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 6px; padding: 6px var(--s4); }
+.qn .qn-ticket.qn-tight .qn-stub strong { font-size: 22px; }
+.qn .qn-ticket.qn-tight .qn-nm { white-space: normal; overflow-wrap: anywhere; }
+.qn .qn-nxact { display: flex; flex-direction: column; gap: var(--s2); padding: 0 2px var(--s4); font-size: var(--t-label); color: var(--muted); }
+.qn .qn-nxact .rf-lnk { align-self: flex-start; }
+.qn .qn-nonext { margin: 0 0 var(--s3); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-size: var(--t-body); color: var(--muted); }
+.qn .qn-next .rf-pcard, .qn .qn-sknext .rf-pcard { border: 0; border-radius: 0; background: none; overflow: visible; }
+.qn .qn-next .rf-load-err { margin: 0 0 var(--s3); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+
+/* ---------- Load error: the questions' read failed (the title stays) ---------- */
+.qn .qn-lerr { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); padding: var(--s5) var(--pad); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.qn .qn-lerr h2 { display: flex; align-items: center; gap: var(--s2); font-size: var(--t-h2); font-weight: 500; }
+.qn .qn-lerr p { font-size: var(--t-body); color: var(--muted); }
+
+/* ---------- Loading: grey blocks shaped like the groups and the ticket ---------- */
+.qn .qn-sk-hl .rf-sk:nth-child(1) { width: 200px; height: 30px; }
+.qn .qn-sk-hl .rf-sk:nth-child(2) { width: 100%; max-width: 560px; height: 62px; margin-top: 14px; border-radius: var(--r); }
+.qn .qn-sk-ph { display: flex; align-items: center; min-height: 60px; padding: var(--s3) var(--pad); }
+.qn .qn-sk-ph .rf-sk { width: 140px; height: 18px; }
+.qn .qn-sk-grp { margin-bottom: 14px; padding: var(--s4) var(--pad); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.qn .qn-sk-grp .rf-sk:first-child { width: 220px; height: 16px; margin-bottom: 14px; }
+.qn .qn-sk-grp .rf-sk + .rf-sk { height: 36px; margin-top: 8px; }
+.qn .rf-sk.qn-sk-tk { height: 96px; margin: 0 var(--pad) var(--s4); border-radius: var(--r); }
+
+/* ---------- Mid laptops: one column, next interview first ---------- */
+@media (min-width: 760px) and (max-width: 1179px) {
+  .qn .qn-board { grid-template-columns: minmax(0, 1fr); }
+  .qn .qn-next, .qn .qn-sknext { order: -1; }
+}
+
+/* ---------- Phone: next interview first; arrows under each question beside Remove ---------- */
+@media (max-width: 759px) {
+  .qn .qn-board { grid-template-columns: minmax(0, 1fr); }
+  .qn .qn-next, .qn .qn-sknext { order: -1; }
+  .qn .rf-head > div:first-child { flex: 1 1 auto; align-self: stretch; min-width: 0; }
+  .rf.qn .rf-nx { max-width: none; margin-top: 14px; }
+  .qn .qn-sk-hl .rf-sk:nth-child(1) { height: 26px; }
+  .qn .qn-q { padding: 10px var(--pad) 8px 4px; }
+  .qn .qn-grip { width: 32px; height: 44px; }
+  .qn .qn-qt { min-height: 44px; padding: 10px 8px; }
+  .qn .qn-qa { grid-column: 3; justify-content: space-between; min-height: 44px; padding-top: 4px; }
+  .qn .qn-mv { display: flex; gap: var(--s2); }
+  .qn .qn-qa .rf-lnk { margin-left: 0; min-height: 44px; }
+  .qn .qn-note { padding-left: 96px; }
+  .qn .qn-q > .qn-note { margin-left: -4px; padding-left: 96px; }
+  .qn .qn-addopen { min-height: 52px; padding-left: 52px; }
+  .qn .qn-add { grid-template-columns: 40px minmax(0, 1fr); column-gap: 10px; padding-left: 36px; }
+  .qn .qn-add .qn-hint { display: none; }
+  .qn .qn-ticket { grid-template-columns: 72px minmax(0, 1fr); }
+  .qn .qn-stub strong { font-size: 36px; }
+  .qn .qn-empty .rf-btn { width: 100%; }
+  .qn .qn-lerr { margin: 0; }
+}
+
+/* ---------- Touch screens: no hover state left behind after a tap ---------- */
+@media (hover: none) {
+  .qn .qn-addopen:hover, .qn .qn-grip:hover { background: none; }
+  .qn button.qn-qt:hover { border-color: transparent; background: none; }
+  .qn .qn-mv button:hover { border-color: var(--line); background: var(--surface); }
+}

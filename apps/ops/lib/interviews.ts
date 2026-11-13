@@ -7,16 +7,16 @@
 // MOCK (mock/interview-flow.ts, mock/staff.ts): everything, when there is no Supabase env.
 import { hasSupabaseEnv } from '@btx/data';
 import { currentStaffId } from './me';
-import { currentCycle, readCandidates, readInterviews, readStaff, sessionRole, type Db } from './pairing-db';
+import { currentCycle, readCandidates, readInterviews, readRanges, readStaff, sessionRole, type Db } from './pairing-db';
+import { needsCoverIds, remindedToday, type PairedInterview } from './interview-cover';
+import type { MinuteRange } from './free-ranges';
 import { readBoardAvailability, readFairness, readProposedTimes } from './interview-flow-db';
-import { planRebalance, type RebalanceInterview } from './rebalance';
+import { planRebalance, PROTECT_HOURS, type RebalanceInterview } from './rebalance';
 import { lastSent } from './email/send';
 import { dateOnlyLabel, dayLabel, shortDate, timeLabel } from './format';
 import { easternYmd, groupByDay, type FairPerson, type MoveView, type TimeChip, type TimeDay, whenLine } from './interview-times';
 import { sessionClient } from './supabase-server';
-import { MOCK_APPLICANTS, MOCK_NOW } from '@/mock/applicants';
 import { FLOW_BOOKED, FLOW_CYCLE, FLOW_FAIR, FLOW_NOW, FLOW_PEOPLE, FLOW_WAITING_IDS, MOCK_BOOKED_TIMES, mockChips } from '@/mock/interview-flow';
-import { pairingFor } from '@/mock/interviews';
 import { staffById, type StaffProfile } from '@/mock/staff';
 
 export type Interviewer = { userId: string; name: string; initials: string };
@@ -39,6 +39,19 @@ export type UpcomingInterview = {
   videoUrl: string | null;
   /** "Tomorrow", "In 2 days". */
   when: string;
+  /** Live: an interviewer's free hours no longer cover the time and nobody took it over yet ("Needs cover"). */
+  needsCover?: boolean;
+};
+
+/** An applicant who submitted and holds no booking (admins only): who "Remind" emails. */
+export type WaitingRow = {
+  applicationId: string;
+  name: string;
+  code: string;
+  /** When the booking email or a reminder last went to them (an instant), or null. */
+  emailed: string | null;
+  /** A reminder already went today (Eastern), so Remind sends nothing more until tomorrow. */
+  remindedToday: boolean;
 };
 
 export type PairRow = { key: string; names: string; done: number; left: number; next: string };
@@ -101,19 +114,13 @@ export type InterviewsData = {
   isAdmin: boolean;
   failed: boolean;
   source: 'live' | 'mock';
+  /** Live, admins only: the applicants with no booking, by name (null when not read). */
+  waiting?: WaitingRow[] | null;
 };
 
-type Booking = { slotId: string; startsAt: string; code: string; applicant: string; pair: Interviewer[]; videoUrl: string | null };
+type Booking = { slotId: string; startsAt: string; code: string; applicant: string; pair: Interviewer[]; videoUrl: string | null; needsCover?: boolean };
 
 const toInterviewer = (s: StaffProfile): Interviewer => ({ userId: s.user_id, name: s.display_name, initials: s.initials });
-
-// The mock pair and link for an applicant code.
-function mockPair(code: string): { pair: Interviewer[]; videoUrl: string | null } {
-  const pr = pairingFor(code);
-  const a = pr ? staffById(pr.interviewer_a) : undefined;
-  const b = pr ? staffById(pr.interviewer_b) : undefined;
-  return { pair: a && b ? [toInterviewer(a), toInterviewer(b)] : [], videoUrl: pr?.video_url ?? null };
-}
 
 // "Tomorrow", "In 2 days" or "Today", by Eastern calendar days from now.
 function whenLabel(startsAt: string, now: Date): string {
@@ -145,6 +152,7 @@ function build(bookings: Booking[], now: Date, endISO: string | null, meId: stri
       mine: meId !== null && pair.some((i) => i.userId === meId),
       videoUrl: b.videoUrl,
       when: whenLabel(b.startsAt, now),
+      ...(b.needsCover ? { needsCover: true } : {}),
     };
   });
 
@@ -292,6 +300,20 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
     if (!cycle) return build([], new Date(), null, me, false, 'live');
     const [{ booked, pairs }, staff, auth] = await Promise.all([readInterviews(client, cycle.id), readStaff(client), sessionRole(client)]);
     const byId = new Map(staff.map((s) => [s.userId, s]));
+    // "Needs cover": an interviewer's free hours no longer cover the time. A failed read of the free hours flags nothing.
+    let cover = new Set<string>();
+    try {
+      const ranges = await readRanges(client, cycle.id);
+      const byUser = new Map<string, MinuteRange[]>();
+      for (const r of ranges) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r]);
+      const paired: PairedInterview[] = booked.flatMap((b) => {
+        const p = pairs.get(b.slotId);
+        return p ? [{ slotId: b.slotId, startsAt: b.startsAt, endsAt: b.endsAt, a: p.a, b: p.b }] : [];
+      });
+      cover = needsCoverIds(paired, byUser, new Date());
+    } catch {
+      console.error('[interviews] read failed', { table: 'board_free_ranges', code: 'cover' });
+    }
     const person = (id: string): Interviewer | null => {
       const s = byId.get(id);
       return s ? { userId: s.userId, name: s.name, initials: s.initials } : null;
@@ -300,7 +322,7 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
       const p = pairs.get(b.slotId);
       const a = p ? person(p.a) : null;
       const c = p ? person(p.b) : null;
-      return { slotId: b.slotId, startsAt: b.startsAt, code: b.code, applicant: b.applicant, pair: a && c ? [a, c] : [], videoUrl: p?.videoUrl ?? null };
+      return { slotId: b.slotId, startsAt: b.startsAt, code: b.code, applicant: b.applicant, pair: a && c ? [a, c] : [], videoUrl: p?.videoUrl ?? null, ...(cover.has(b.slotId) ? { needsCover: true } : {}) };
     });
     const base = build(bookings, new Date(), cycle.interviewEnd, me, auth.role === 'admin', 'live');
 
@@ -351,8 +373,10 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
             interviews: booked.length - fr.needsTwo.length,
             needsTwo: fr.needsTwo.map((n) => ({ slotId: n.slotId, when: whenLine(n.startsAt), code: n.code, applicant: n.applicant })),
           };
+    const waiting = auth.role === 'admin' ? await readWaiting(client, cycle.id, new Set(booked.map((b) => b.applicationId))) : null;
     return {
       ...base,
+      waiting,
       cycleId: cycle.id,
       sub: `${[name, dates ? `interviews ${dates}` : '', 'all on video'].filter(Boolean).join(' · ')}`,
       subPhone: `${[dates, 'all on video'].filter(Boolean).join(' · ')}`,
@@ -366,6 +390,35 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
   }
 }
 
+// Admins only: the applicants who submitted and hold no booking (the same rule as the booking emails, lib/email/send.ts),
+// with when the booking email or a reminder last went to each (email_log, readable by admins). A failed read of the
+// log leaves the dates out; a failed read of the applicants leaves the list out (null).
+async function readWaiting(client: Db, cycleId: string, booked: Set<string>): Promise<WaitingRow[] | null> {
+  const apps = await client.from('applications').select('id, full_name, applicant_code, submitted_at').eq('cycle_id', cycleId).eq('status', 'submitted').order('submitted_at', { ascending: true });
+  if (apps.error) {
+    console.error('[interviews] read failed', { table: 'applications', code: apps.error.code ?? 'unknown' });
+    return null;
+  }
+  const rows = ((apps.data ?? []) as { id: string; full_name: string | null; applicant_code: string | null }[]).filter((a) => !booked.has(a.id));
+  if (rows.length === 0) return [];
+  const log = await client.from('email_log').select('application_id, kind, sent_at').eq('cycle_id', cycleId).in('kind', ['book', 'book-reminder']).in('application_id', rows.map((r) => r.id));
+  const sent = new Map<string, { at: string[]; reminders: string[] }>();
+  for (const l of (log.error ? [] : (log.data ?? [])) as { application_id: string; kind: string; sent_at: string }[]) {
+    const e = sent.get(l.application_id) ?? { at: [], reminders: [] };
+    e.at.push(l.sent_at);
+    if (l.kind === 'book-reminder') e.reminders.push(l.sent_at);
+    sent.set(l.application_id, e);
+  }
+  const now = new Date();
+  return rows
+    .map((r) => {
+      const e = sent.get(r.id);
+      const code = r.applicant_code ?? '';
+      return { applicationId: r.id, name: (r.full_name ?? '').trim() || code || 'No name', code, emailed: e ? ([...e.at].sort().pop() ?? null) : null, remindedToday: e ? remindedToday(e.reminders, now) : false };
+    })
+    .sort((x, y) => x.name.localeCompare(y.name));
+}
+
 // What "Rebalance future interviews" would move, without moving anything (the confirm step lists each move). Admin only.
 // Same plan as rebalanceInterviews in lib/interview-flow-db.ts: only interviews more than 48 hours away, one interviewer
 // at a time, from someone over their share to someone under it who may take that interview.
@@ -375,7 +428,7 @@ export async function previewRebalance(db: Db, cycleId: string, now = new Date()
   try {
     const [fr, { booked, pairs }] = await Promise.all([readFairness(db, cycleId), readInterviews(db, cycleId)]);
     if (!fr.ok) return fr;
-    const cutoff = now.getTime() + 48 * 3_600_000;
+    const cutoff = now.getTime() + PROTECT_HOURS * 3_600_000;
     const interviews: RebalanceInterview[] = [];
     for (const b of booked) {
       const p = pairs.get(b.slotId);
@@ -399,58 +452,5 @@ export async function previewRebalance(db: Db, cycleId: string, now = new Date()
     return { ok: true, moves };
   } catch {
     return { ok: false, message: "Couldn't check the rebalance. Try again." };
-  }
-}
-
-// ---- video links (D7) --------------------------------------------------------------------------------------------
-
-export type VideoLinkRow = { slotId: string; when: string; /** ISO start, for the 24-hour hand-check note. */ startsAt: string; code: string; /** The applicant's full name. */ applicant: string; names: string; url: string };
-export type VideoLinksData = {
-  rows: VideoLinkRow[];
-  /** Booked interviews ahead that have no pair yet, so no link can be added. */
-  unpaired: number;
-  failed: boolean;
-  source: 'live' | 'mock';
-};
-
-// The interviews ahead that can take a link ("Add the video links" on Today). Admins only; others get no rows.
-export async function loadVideoLinks(): Promise<VideoLinksData> {
-  const rowFor = (slotId: string, startsAt: string, code: string, applicant: string, names: string, url: string | null): VideoLinkRow => ({
-    slotId,
-    when: `${dayLabel(startsAt)}, ${timeLabel(startsAt)}`,
-    startsAt,
-    code,
-    applicant,
-    names,
-    url: url ?? '',
-  });
-  if (!hasSupabaseEnv()) {
-    const rows: VideoLinkRow[] = [];
-    let unpaired = 0;
-    for (const a of MOCK_APPLICANTS.filter((x) => x.interviewAt && new Date(x.interviewAt) > new Date(MOCK_NOW))) {
-      const m = mockPair(a.code);
-      if (m.pair.length !== 2) unpaired += 1;
-      else rows.push(rowFor(`mock-slot-${a.code}`, a.interviewAt as string, a.code, a.name, `${m.pair[0].name} and ${m.pair[1].name}`, null));
-    }
-    return { rows, unpaired, failed: false, source: 'mock' };
-  }
-  try {
-    const client = (await sessionClient()) as unknown as Db;
-    const auth = await sessionRole(client);
-    const cycle = await currentCycle(client);
-    if (auth.role !== 'admin' || !cycle) return { rows: [], unpaired: 0, failed: false, source: 'live' };
-    const [{ booked, pairs }, staff] = await Promise.all([readInterviews(client, cycle.id), readStaff(client)]);
-    const name = new Map(staff.map((s) => [s.userId, s.name]));
-    const now = Date.now();
-    const rows: VideoLinkRow[] = [];
-    let unpaired = 0;
-    for (const b of booked.filter((x) => Date.parse(x.startsAt) > now)) {
-      const p = pairs.get(b.slotId);
-      if (!p) unpaired += 1;
-      else rows.push(rowFor(b.slotId, b.startsAt, b.code, b.applicant, `${name.get(p.a) ?? 'Unknown'} and ${name.get(p.b) ?? 'Unknown'}`, p.videoUrl));
-    }
-    return { rows, unpaired, failed: false, source: 'live' };
-  } catch {
-    return { rows: [], unpaired: 0, failed: true, source: 'live' };
   }
 }

@@ -22,6 +22,8 @@ export type ApprovalDetail = {
   totalCents: number;
   hint: string;
   approveLabel: string;
+  /** The budget_quarter_plans id this approval belongs to (live data only): the Review link carries it as `?plan=`. */
+  planId?: string;
 };
 
 /** What a fixture (or a live row) provides; the loader adds the date labels. Column names follow `tasks`. */
