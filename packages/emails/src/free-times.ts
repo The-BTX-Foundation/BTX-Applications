@@ -20,7 +20,7 @@ export function rangeMinutes(hhmm: string): number | null {
 // True for a real calendar day written "YYYY-MM-DD".
 const isDay = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
 
-/** The ranges in a stored `ranges` value that are usable (a real day, two times, the end after the start), sorted by day and start. */
+/** The ranges in a stored `ranges` value that are usable (a real day, two times, the end after the start), each once, sorted by day and start. */
 export function cleanFreeRanges(value: unknown): FreeRange[] {
   if (!Array.isArray(value)) return [];
   const out: FreeRange[] = [];
@@ -31,6 +31,8 @@ export function cleanFreeRanges(value: unknown): FreeRange[] {
     const s = rangeMinutes(r.start);
     const e = rangeMinutes(r.end);
     if (!isDay(r.day) || s === null || e === null || e <= s) continue;
+    // exact repeats are kept once
+    if (out.some((o) => o.day === r.day && o.start === r.start && o.end === r.end)) continue;
     out.push({ day: r.day, start: r.start, end: r.end });
   }
   return out.sort((a, b) => a.day.localeCompare(b.day) || (rangeMinutes(a.start) ?? 0) - (rangeMinutes(b.start) ?? 0));

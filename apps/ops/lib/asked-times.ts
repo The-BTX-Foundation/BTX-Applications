@@ -55,7 +55,8 @@ export function groupAsked(apps: { id: string; name: string; code: string }[], b
     const r = byApp.get(a.id);
     if (!r || booked.has(a.id)) continue;
     const ranges = cleanFreeRanges(r.ranges);
-    const lines = ranges.length > 0 ? freeRangeLines(ranges) : [oldAnswerLine(r.days, r.windows)].filter(Boolean);
+    // Repeated ranges (an older save could hold the same one twice) are shown once.
+    const lines = [...new Set(ranges.length > 0 ? freeRangeLines(ranges) : [oldAnswerLine(r.days, r.windows)].filter(Boolean))];
     // Older rows (days and parts of the day) have no exact times, so no time can be said to fit them.
     const fits = ranges.length > 0 ? future.filter((s) => slotFitsRanges(s.startsAt, s.endsAt, ranges)).map((s) => ({ id: s.id, label: fitLabel(s.startsAt), opened: s.opened })) : [];
     out.push({ id: a.id, name: a.name.trim() || a.code || 'No name', code: a.code, said: (r.said ?? r.note ?? '').trim(), lines, sent: r.updated_at ?? r.created_at, fits });
@@ -66,6 +67,28 @@ export function groupAsked(apps: { id: string; name: string; code: string }[], b
 /** How many students are waiting on other times: submitted, with a free-times row, and no active booking. */
 export function countAsked(submittedIds: string[], activeAppIds: Set<string>, freeTimeAppIds: Set<string>): number {
   return submittedIds.filter((id) => freeTimeAppIds.has(id) && !activeAppIds.has(id)).length;
+}
+
+/**
+ * Today's "N students asked for other times" count from the published cycle's submitted applications and the active
+ * bookings. A failed read of either (null), or of the free-times rows (the reader throws), gives null: the card is hidden,
+ * never drawn with a guessed number.
+ */
+export async function askedCountOrNull(
+  submitted: Record<string, unknown>[] | null,
+  bookings: Record<string, unknown>[] | null,
+  readFreeTimeIds: (applicationIds: string[]) => Promise<string[]>,
+): Promise<number | null> {
+  if (submitted === null || bookings === null) return null;
+  const ids = submitted.map((a) => String(a.id));
+  if (ids.length === 0) return 0;
+  try {
+    const rows = await readFreeTimeIds(ids);
+    return countAsked(ids, new Set(bookings.map((b) => String(b.application_id))), new Set(rows));
+  } catch {
+    console.error('[today] read failed', { table: 'interview_free_times', code: 'asked' });
+    return null;
+  }
 }
 
 /** "Sent Tue Nov 10, 9:14 PM". */

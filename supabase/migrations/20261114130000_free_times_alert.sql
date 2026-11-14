@@ -10,6 +10,9 @@
 -- route also skips the alert when one for the same student went out in the last
 -- 24 hours.
 --
+-- interview_free_times also gets a size guard: one answer holds at most 60 ranges
+-- (the Portal route refuses more; existing rows hold far fewer, so it validates).
+--
 -- Additive. Safe to run twice. NOT applied by the build: an admin applies it
 -- before go-live. Until it is applied, the email's log row is refused, so the
 -- email is not sent (the student's save and the pushes still work).
@@ -29,5 +32,9 @@ create unique index email_log_once_per_slot_recipient
                        coalesce(slot_id, '00000000-0000-0000-0000-000000000000'::uuid), coalesce(lower(recipient), ''))
   where kind in ('booked', 'reminder', 'prep', 'video-link', 'rebalance', 'cancel', 'availability-reminder',
                  'book-reminder', 'free-times');
+
+alter table public.interview_free_times drop constraint if exists interview_free_times_ranges_max;
+alter table public.interview_free_times add constraint interview_free_times_ranges_max
+  check (ranges is null or jsonb_array_length(ranges) <= 60);
 
 commit;

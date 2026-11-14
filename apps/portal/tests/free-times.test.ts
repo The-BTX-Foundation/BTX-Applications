@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Mail, MailClaim, MailLog, SendResult } from '@btx/emails';
-import { freeRangeLine, freeRangeLines, freeTimesAlertHtml, freeTimesAlertSubject, freeTimesAlertText, oldAnswerLine, sentLabel, slotFitsRanges } from '@btx/emails';
+import { freeRangeLine, freeRangeLines, freeTimesAlertHtml, freeTimesAlertSubject, freeTimesAlertText, headerSafe, oldAnswerLine, sentLabel, slotFitsRanges } from '@btx/emails';
 import type { PushItem } from '@btx/push';
-import { sendFreeRanges } from '../../../packages/data/src/journey';
+import { cleanSentRanges, MAX_SAID, sendFreeRanges } from '../../../packages/data/src/journey';
 import type { BtxClient } from '../../../packages/data/src/client';
 import { readBookingClosed, readStaffIds, saveAndNotify, type FreeTimesDeps, type ServiceDb } from '@/lib/free-times-notify';
 
@@ -249,5 +249,53 @@ describe('service-role reads', () => {
     expect(await readBookingClosed(closed, 'a1', NOW)).toBe(true);
     const open = serviceDb({ applications: { cycle_id: 'c1' }, cycles: { booking_closes_at: null } });
     expect(await readBookingClosed(open, 'a1', NOW)).toBe(false);
+  });
+});
+
+describe('a name that tries to add a mail header', () => {
+  it('turns control characters into spaces, so the subject stays one line', () => {
+    const subject = freeTimesAlertSubject({ name: 'A\r\nBcc: x@y', code: 'APP-1', said: '', ranges: [], interviewsUrl: 'https://x', sentAt: '2026-11-11T02:14:00Z' });
+    expect(subject).toBe('A Bcc: x@y asked for other interview times');
+    expect(subject).not.toMatch(/[\r\n\t]/);
+  });
+  it('cuts the name at 80 characters and collapses tabs and runs of spaces', () => {
+    expect(headerSafe(`${'x'.repeat(100)}`)).toHaveLength(80);
+    expect(headerSafe(' Ada \t\t Okafor ')).toBe('Ada Okafor');
+  });
+});
+
+describe('cleanSentRanges and the 60-range limit', () => {
+  it('keeps only real days and HH:MM times with the end after the start (24:00 allowed), each once', () => {
+    expect(
+      cleanSentRanges([
+        { day: '2026-11-15', start: '15:00', end: '22:00' },
+        { day: '2026-11-15', start: '15:00', end: '22:00' },
+        { day: '2026-11-15', start: '18:00', end: '24:00' },
+        { day: '2026-11-15', start: '18:00', end: '24:30' },
+        { day: '2026-11-15', start: '9:00', end: '10:00' },
+        { day: '2026-11-15', start: '12:00', end: '11:00' },
+        { day: '2026-13-01', start: '10:00', end: '11:00' },
+        { day: '2026-11-15x', start: '10:00', end: '11:00' },
+        { day: '2026-11-15', start: '10:00', end: 11 },
+        null,
+      ]),
+    ).toEqual([
+      { day: '2026-11-15', start: '15:00', end: '22:00' },
+      { day: '2026-11-15', start: '18:00', end: '24:00' },
+    ]);
+  });
+  it('refuses more than 60 ranges after cleaning (never cuts), and cuts what she typed to 1000 characters', async () => {
+    const many = Array.from({ length: 61 }, (_, i) => ({ day: `2026-11-${String((i % 28) + 1).padStart(2, '0')}`, start: `${String(Math.floor(i / 28) + 8).padStart(2, '0')}:00`, end: '23:00' }));
+    expect(cleanSentRanges(many)).toHaveLength(61);
+    expect(await sendFreeRanges(freeTimesClient(null).client, 'a1', { ranges: many, said: '' })).toEqual({ ok: false, code: 'too_many' });
+    let inserted: { said: string } | null = null;
+    const client = {
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+        insert: async (row: { said: string }) => ((inserted = row), { error: null }),
+      }),
+    } as unknown as BtxClient;
+    await sendFreeRanges(client, 'a1', { ranges: many.slice(0, 2), said: 'y'.repeat(1500) });
+    expect(inserted!.said).toHaveLength(MAX_SAID);
   });
 });

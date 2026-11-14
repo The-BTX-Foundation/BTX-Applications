@@ -25,8 +25,18 @@ export type FreeTimesAlertInput = {
   sentAt: string;
 };
 
-// Her name for the subject and first line: the name, else the code.
-const who = (i: FreeTimesAlertInput) => i.name.trim() || i.code || 'A student';
+/**
+ * A name made safe for a mail header and one line of text: control characters (CR, LF, tab and anything below 0x20, plus
+ * DEL) become spaces, runs of spaces become one, and it is cut to 80 characters. A typed "A\r\nBcc: x@y" can then never
+ * start a new header line.
+ */
+export function headerSafe(v: string, max = 80): string {
+  // eslint-disable-next-line no-control-regex
+  return String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+}
+
+// Her name for the subject and first line: the name, else the code (both made header-safe).
+const who = (i: FreeTimesAlertInput) => headerSafe(i.name) || headerSafe(i.code, 40) || 'A student';
 
 /** "Ada Okafor asked for other interview times". */
 export function freeTimesAlertSubject(i: FreeTimesAlertInput): string {
@@ -48,7 +58,7 @@ export function freeTimesAlertText(i: FreeTimesAlertInput): string {
   return [
     'Hi team,',
     '',
-    `${who(i)}${i.code && i.name.trim() ? ` (${i.code})` : ''} hasn't booked an interview and says none of the open times work.`,
+    `${who(i)}${i.code && headerSafe(i.name) ? ` (${headerSafe(i.code, 40)})` : ''} hasn't booked an interview and says none of the open times work.`,
     ...(said ? ['', `In their words: "${said}"`] : []),
     ...(free.length ? ['', 'Free times (Eastern):', ...free.map((l) => `- ${l}`)] : []),
     '',
@@ -63,7 +73,7 @@ export function freeTimesAlertHtml(i: FreeTimesAlertInput): string {
   const font = "'Google Sans Flex','Helvetica Neue',Arial,sans-serif";
   const free = lines(i);
   const said = i.said.trim();
-  const code = i.code && i.name.trim() ? ` (${esc(i.code)})` : '';
+  const code = i.code && headerSafe(i.name) ? ` (${esc(headerSafe(i.code, 40))})` : '';
   return `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(freeTimesAlertSubject(i))}</title></head>

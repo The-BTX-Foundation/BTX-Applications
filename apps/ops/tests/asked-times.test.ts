@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { askedTitle, countAsked, groupAsked, type AskedSlot, type FreeTimesRead } from '@/lib/asked-times';
+import { describe, expect, it, vi } from 'vitest';
+import { askedCountOrNull, askedTitle, countAsked, groupAsked, type AskedSlot, type FreeTimesRead } from '@/lib/asked-times';
 import { failedView, mapLive } from '@/lib/interviews-map';
 import type { InterviewsData } from '@/lib/interviews';
 import { INTERVIEWS_VIEW, INTERVIEWS_VIEW_EMPTY, INTERVIEWS_VIEW_STRESS } from '@/mock/interviews-view';
@@ -88,5 +88,29 @@ describe('the view', () => {
     expect(INTERVIEWS_VIEW_EMPTY.asked).toEqual([]);
     expect(TODAY_VIEW.askedOtherTimes).toBe(2);
     expect(TODAY_VIEW_EMPTY.askedOtherTimes).toBe(0);
+  });
+});
+
+describe('askedCountOrNull (Today)', () => {
+  const read = async () => ['a1', 'a2'];
+  it('counts students with a row and no active booking', async () => {
+    expect(await askedCountOrNull([{ id: 'a1' }, { id: 'a2' }, { id: 'a3' }], [{ application_id: 'a2' }], read)).toBe(1);
+  });
+  it('is null (card hidden) when the submitted or bookings read failed, never a guessed number', async () => {
+    const spy = vi.fn(read);
+    expect(await askedCountOrNull(null, [], spy)).toBeNull();
+    expect(await askedCountOrNull([{ id: 'a1' }], null, spy)).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+  it('is null when the free-times read throws, and 0 with nobody submitted', async () => {
+    expect(await askedCountOrNull([{ id: 'a1' }], [], async () => { throw new Error('x'); })).toBeNull();
+    expect(await askedCountOrNull([], [], read)).toBe(0);
+  });
+});
+
+describe('repeated ranges', () => {
+  it('show once (no duplicate lines or keys)', () => {
+    const out = groupAsked(apps, new Set(), [row('a1', [...MON, ...MON], '2026-11-11T00:00:00Z')], slots, NOW);
+    expect(out[0].lines).toEqual(['Mon Nov 16, 5:00 to 6:00 PM']);
   });
 });

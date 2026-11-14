@@ -4,7 +4,7 @@
 // Env: RESEND_API_KEY and PORTAL_EMAIL_FROM (without them no email is sent), SUPABASE_SERVICE_ROLE_KEY (without it the
 // answer is saved and nobody is alerted), OPS_HUB_URL (optional; defaults to https://ops.thebtxfoundation.org).
 import { after, NextResponse } from 'next/server';
-import { sendFreeRanges, type FreeRange } from '@btx/data';
+import { cleanSentRanges, MAX_FREE_RANGES, MAX_SAID, sendFreeRanges } from '@btx/data';
 import { createServiceClient } from '@btx/data/server';
 import { supabaseMailLog } from '@btx/emails';
 import { deliverPush } from '@btx/push';
@@ -32,8 +32,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, kind: 'failed' }, { status: 400 });
   }
   const applicationId = body.applicationId;
-  // sendFreeRanges drops anything that is not a { day, start, end } of strings.
-  const row = { ranges: body.ranges as FreeRange[], said: typeof body.said === 'string' ? body.said.slice(0, 2000) : '' };
+  // Only usable ranges go further (real day, HH:MM times, end after start, no duplicates); more than MAX_FREE_RANGES after
+  // that is refused, never cut. A raw list far past any real answer is refused before it is even looked at. What she
+  // typed is cut to MAX_SAID (the Portal's box and the database allow 1000).
+  if (body.ranges.length > MAX_FREE_RANGES * 4) return NextResponse.json({ ok: false, kind: 'failed' }, { status: 400 });
+  const ranges = cleanSentRanges(body.ranges);
+  if (ranges.length === 0 || ranges.length > MAX_FREE_RANGES) return NextResponse.json({ ok: false, kind: 'failed' }, { status: 400 });
+  const row = { ranges, said: typeof body.said === 'string' ? body.said.slice(0, MAX_SAID) : '' };
 
   const admin = createServiceClient();
   // The service client is used only AFTER her own session saved (or was refused): it reads her application, the deadline,
