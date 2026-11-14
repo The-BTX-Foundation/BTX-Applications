@@ -56,7 +56,7 @@ import {
   timesOn,
   weeksOf,
 } from '@/lib/interviews-map';
-import { askedSentLine, askedTitle } from '@/lib/asked-times';
+import { askedSentLine } from '@/lib/asked-times';
 import { interviewHref } from '@/lib/interview-href';
 import type { InterviewsView, IzBooking, IzInterviewer, IzPerson, IzTime } from '@/lib/interviews-view';
 import { isVideoUrl } from '@/lib/pairing-slots';
@@ -1598,8 +1598,9 @@ export function InterviewsBoard({ view, live }: { view: InterviewsView; live: bo
             {askedN > 0 ? (
               <p className="iz-n-ask">
                 <Icon name="clock" />
+                {/* No count here: the list below already shows who and how many (each fact once on a page). */}
                 <a className="rf-lnk" href="#iz-oth">
-                  {askedTitle(askedN)}
+                  See who asked for other times
                 </a>
               </p>
             ) : null}
