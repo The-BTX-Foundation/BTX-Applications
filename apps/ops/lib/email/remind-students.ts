@@ -14,6 +14,7 @@
 import { bookHtml, bookSubject, bookText, emailDay, sendMail, type Mail, type SendResult } from '@btx/emails';
 import { easternDate, remindKey } from '../interview-cover';
 import { defaultIsAdmin, HELP_EMAIL } from './send';
+import { bookByDate, bookingClosedOn } from './booking-deadline';
 
 const DEFAULT_PORTAL_URL = 'https://apply.thebtxfoundation.org';
 
@@ -53,8 +54,6 @@ export type RemindResult =
 
 const wait = (ms: number) => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
 const firstName = (a: Applicant) => (a.full_name ?? '').trim().split(/\s+/)[0] || 'there';
-// "Nov 13" for an instant, in Eastern time (the deadline 2026-11-14T04:59Z is Nov 13).
-const easternMonthDay = (ts: string) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(new Date(ts));
 
 async function defaultStore(): Promise<RemindStore | null> {
   const { createServiceClient } = await import('@btx/data/server');
@@ -109,9 +108,8 @@ export async function remindUnbooked(cycleId: string, ids: string[] | null, deps
   if (cycle.interview_end.slice(0, 10) < easternDate(now)) return { ok: false, reason: 'interviews-over' };
   // Booking deadline passed: unbooked students can no longer book, so no reminder goes out.
   const closesAt = await store.bookingClosesAt(cycleId);
-  if (closesAt && !Number.isNaN(Date.parse(closesAt)) && now.getTime() >= Date.parse(closesAt)) {
-    return { ok: false, reason: 'booking-closed', closedOn: easternMonthDay(closesAt) };
-  }
+  const closedOn = bookingClosedOn(closesAt, now);
+  if (closedOn) return { ok: false, reason: 'booking-closed', closedOn };
   const [applicants, booked] = await Promise.all([store.submittedApplicants(cycleId), store.bookedApplicationIds(cycleId)]);
   const want = ids ? new Set(ids) : null;
   const todo = applicants.filter((a) => !booked.has(a.id) && (!want || want.has(a.id)));
@@ -121,7 +119,8 @@ export async function remindUnbooked(cycleId: string, ids: string[] | null, deps
   const origin = (deps.portalUrl ?? process.env.PORTAL_URL ?? DEFAULT_PORTAL_URL).replace(/\/+$/, '');
   const pause = deps.pauseMs ?? 550;
   const award = cycle.award_name ?? 'scholarship';
-  const bookBy = emailDay(cycle.interview_end);
+  // The deadline's Eastern day when one is set, else the interview end date.
+  const bookBy = emailDay(bookByDate(cycle.interview_end, closesAt));
   const t = { sent: 0, skipped: 0, failed: 0, notConfigured: false };
   for (const a of todo) {
     const claim = await store.claim({ kind: 'book-reminder', cycle_id: cycleId, application_id: a.id, slot_id: null, recipient: remindKey(a.terpmail, now), to_address: a.terpmail });

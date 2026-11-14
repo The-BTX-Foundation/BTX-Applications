@@ -83,6 +83,16 @@ describe('remindUnbooked', () => {
     expect(after.sent).toEqual([]);
     expect(remindLine(r)).toEqual({ ok: false, message: 'Booking closed on Nov 13. No emails went out.' });
   });
+  it('the book-by date in the email is the deadline Eastern day when set, else the interview end', async () => {
+    const mail = (m: { subject: string }[]) => m[0].subject;
+    const subjects: { subject: string }[] = [];
+    const send = async (m: { subject: string }) => (subjects.push(m), { sent: true as const, id: 'r' });
+    await remindUnbooked('c1', ['a1'], { ...base, store: store({ closesAt: '2026-11-14T04:59:00Z' }).s, send });
+    expect(mail(subjects)).toBe('Schedule your interview by Fri Nov 13');
+    subjects.length = 0;
+    await remindUnbooked('c1', ['a1'], { ...base, store: store().s, send });
+    expect(mail(subjects)).toBe('Schedule your interview by Fri Nov 20');
+  });
   it('permission: only admins', async () => {
     const { s, sent } = store();
     const r = await remindUnbooked('c1', null, { ...base, store: s, isAdmin: async () => false });

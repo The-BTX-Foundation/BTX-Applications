@@ -30,6 +30,7 @@ import {
 } from '@btx/emails';
 import { roleInEmail, type StaffRole, isStaffRole } from '../role';
 import type { ApplicantRow, EmailKind, EmailStore } from './store';
+import { bookByDate, bookingClosedOn } from './booking-deadline';
 
 export const HELP_EMAIL = 'info@thebtxfoundation.org';
 const DEFAULT_PORTAL_URL = 'https://apply.thebtxfoundation.org';
@@ -53,7 +54,9 @@ export type BatchResult =
       won?: number;
       notPicked?: number;
     }
-  | { ok: false; reason: 'not-admin' | 'no-cycle' | 'not-released' | 'no-interview-end' | 'no-service-key' };
+  | { ok: false; reason: 'not-admin' | 'no-cycle' | 'not-released' | 'no-interview-end' | 'no-service-key' }
+  /** Booking has closed (invites only): `closedOn` is the Eastern day it closed ("Nov 13"). */
+  | { ok: false; reason: 'booking-closed'; closedOn: string };
 
 export type InviteResult = { ok: true; sent: boolean; reason?: string } | { ok: false; reason: 'not-admin' | 'bad-input' | 'no-ops-url' | 'no-service-key' };
 
@@ -143,13 +146,18 @@ export async function sendBookingInvites(cycleId: string, deps: Deps = {}): Prom
   const cycle = await s.store.cycle(cycleId);
   if (!cycle) return { ok: false, reason: 'no-cycle' };
   if (!cycle.interview_end) return { ok: false, reason: 'no-interview-end' };
+  // Booking deadline passed: unbooked students can no longer book, so no invite goes out (same rule as remindUnbooked).
+  const closesAt = (await s.store.bookingClosesAt?.(cycleId)) ?? null;
+  const closedOn = bookingClosedOn(closesAt, s.now());
+  if (closedOn) return { ok: false, reason: 'booking-closed', closedOn };
   const [applicants, booked, already] = await Promise.all([
     s.store.submittedApplicants(cycleId),
     s.store.bookedApplicationIds(cycleId),
     s.store.loggedApplicationIds('book', cycleId),
   ]);
   const award = cycle.award_name ?? 'scholarship';
-  const bookBy = emailDay(cycle.interview_end);
+  // The deadline's Eastern day when one is set, else the interview end date.
+  const bookBy = emailDay(bookByDate(cycle.interview_end, closesAt));
   const todo = applicants.filter((a) => !booked.has(a.id) && !already.has(a.id));
   const plans: Plan[] = todo.map((a) => {
     const input = { firstName: firstName(a), to: a.terpmail, code: a.applicant_code ?? '', term: cycle.term, award, origin: s.origin, helpEmail: HELP_EMAIL, bookBy };

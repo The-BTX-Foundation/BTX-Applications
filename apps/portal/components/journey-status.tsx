@@ -8,7 +8,7 @@ import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { PREPARE_GUIDE_URL } from '@/lib/config';
 import { easternDate, longDay } from '@/lib/format';
 import { buildIcs, icsHref } from '@/lib/ics';
-import { countdown, dayLabel, describeFreeTimes, range, shortLabel, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
+import { bookByDate, countdown, dayLabel, describeFreeTimes, range, shortLabel, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
 import type { CycleView } from '@/lib/cycle';
 import { FollowCard } from './follow-card';
 import { JourneyDrawing } from './journey-drawing';
@@ -98,7 +98,8 @@ export function JourneyStatus(p: JourneyStatusProps) {
   let lead: React.ReactNode = null;
   if (state === 'book') {
     title = <>Your turn, {first}.</>;
-    lead = `Pick a time by ${longDay(d?.interviewEnd)}.`;
+    // The real booking deadline's Eastern day when one is set, else the interview end date.
+    lead = `Pick a time by ${longDay(bookByDate(d?.interviewEnd, p.view.bookingClosesAt))}.`;
   } else if (state === 'sent') {
     title = <>Finding you a time, {first}.</>;
     lead = "We'll email you when it's set.";

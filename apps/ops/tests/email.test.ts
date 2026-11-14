@@ -42,6 +42,31 @@ const deps = (store: EmailStore, send: ReturnType<typeof okSend> = okSend(), ext
 
 describe('sendBookingInvites', () => {
   const applicants = [person('a1', 'Ebony Coleman'), person('a2', 'Marcus Lee'), person('a3', null)];
+  // Adds the booking deadline to the fake store (null = none), the way the real store reads cycles.booking_closes_at.
+  const withDeadline = (store: EmailStore, closesAt: string | null): EmailStore => ({ ...store, bookingClosesAt: async () => closesAt });
+
+  it('refuses once the booking deadline has passed (Eastern Nov 13) and sends nothing', async () => {
+    const { store, rows } = fakeStore({ applicants });
+    const send = okSend();
+    const r = await sendBookingInvites('c1', deps(withDeadline(store, '2026-11-14T04:59:00Z'), send, { now: () => new Date('2026-11-14T05:00:00Z') }));
+    expect(r).toEqual({ ok: false, reason: 'booking-closed', closedOn: 'Nov 13' });
+    expect(send).not.toHaveBeenCalled();
+    expect(rows).toEqual([]);
+  });
+  it('still sends before the deadline, and names the deadline day (not the interview end) as the book-by date', async () => {
+    const { store } = fakeStore({ applicants });
+    const send = okSend();
+    const r = await sendBookingInvites('c1', deps(withDeadline(store, '2026-11-14T04:59:00Z'), send));
+    expect(r).toMatchObject({ ok: true, sent: 3 });
+    expect(send.mock.calls[0][0].subject).toBe('Schedule your interview by Fri Nov 13');
+  });
+  it('a null deadline, or a store without the column, keeps the interview end date as the book-by date', async () => {
+    for (const st of [withDeadline(fakeStore({ applicants }).store, null), fakeStore({ applicants }).store]) {
+      const send = okSend();
+      expect(await sendBookingInvites('c1', deps(st, send, { now: () => new Date('2027-01-01T00:00:00Z') }))).toMatchObject({ ok: true, sent: 3 });
+      expect(send.mock.calls[0][0].subject).toBe('Schedule your interview by Fri Oct 9');
+    }
+  });
 
   it('emails submitted applicants with no booking and no earlier invite, with the last interview day as the book-by date', async () => {
     const { store, rows } = fakeStore({ applicants, booked: ['a2'] });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bookingClosed, countdown, describeFreeTimes, groupByDay, mondayOf, pickState, range, shortLabel, slotsThatFit, soonTitle, type JourneyInput } from '@/lib/journey';
+import { bookByDate, bookingClosed, countdown, describeFreeTimes, groupByDay, mondayOf, pickState, range, shortLabel, slotsThatFit, soonTitle, type JourneyInput } from '@/lib/journey';
 
 const base: JourneyInput = {
   now: new Date('2026-09-15T16:00:00Z'),
@@ -88,6 +88,12 @@ describe('booking deadline', () => {
   it('a null or absent deadline never closes booking', () => {
     expect(pickState({ ...at('2026-11-15T12:00:00Z'), bookingClosesAt: null })).toBe('book');
     expect(pickState({ ...base, interviewStart: '2026-11-10', interviewEnd: '2026-11-20', now: new Date('2026-11-15T12:00:00Z') })).toBe('book');
+  });
+  it('bookByDate: the deadline Eastern day when set, the interview end otherwise', () => {
+    expect(bookByDate('2026-11-20', closes)).toBe('2026-11-13');
+    expect(bookByDate('2026-11-20', null)).toBe('2026-11-20');
+    expect(bookByDate('2026-11-20', undefined)).toBe('2026-11-20');
+    expect(bookByDate(null, null)).toBe(null);
   });
   it('bookingClosed, and the date the screen shows (Eastern)', () => {
     expect(bookingClosed(new Date('2026-11-14T04:59:00Z'), closes)).toBe(true);

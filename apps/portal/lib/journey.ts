@@ -51,6 +51,15 @@ export type JourneyInput = {
   bookingClosesAt?: string | null;
 };
 
+/**
+ * The calendar date ("2026-11-13") students are told to book by: the Eastern day of the booking deadline when one is set
+ * (2026-11-14T04:59Z is Nov 13), otherwise the cycle's interview end date as before.
+ */
+export function bookByDate(interviewEnd: string | null | undefined, closesAt: string | null | undefined): string | null | undefined {
+  if (closesAt && !Number.isNaN(Date.parse(closesAt))) return easternDate(closesAt);
+  return interviewEnd;
+}
+
 // True when the cycle sets a booking deadline and `now` is at or past it (same rule as the database's booking_closed()).
 export function bookingClosed(now: Date, closesAt: string | null | undefined): boolean {
   if (!closesAt) return false;
