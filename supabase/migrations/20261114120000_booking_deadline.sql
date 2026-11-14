@@ -241,21 +241,16 @@ create policy interview_free_times_update_own on public.interview_free_times
                 where a.id = application_id and a.user_id = (select auth.uid()) and a.status = 'submitted')
     and not exists (select 1 from public.bookings b
                     where b.application_id = interview_free_times.application_id and b.status = 'active')
-    -- exempt: past the deadline she may still update a row she already has
-    and (not exists (select 1 from public.applications a
-                     where a.id = interview_free_times.application_id and public.booking_closed(a.cycle_id))
-         or exists (select 1 from public.interview_free_times f
-                    where f.application_id = interview_free_times.application_id)))
+    -- no deadline clause: a row can only be updated if it already exists, and a student who sent
+    -- free times is exempt from the booking deadline (a self-reference here would recurse)
+  )
   with check (
     (select public.app_role()) = 'applicant'
     and exists (select 1 from public.applications a
                 where a.id = application_id and a.user_id = (select auth.uid()) and a.status = 'submitted')
     and not exists (select 1 from public.bookings b
                     where b.application_id = interview_free_times.application_id and b.status = 'active')
-    -- exempt: past the deadline she may still update a row she already has
-    and (not exists (select 1 from public.applications a
-                     where a.id = interview_free_times.application_id and public.booking_closed(a.cycle_id))
-         or exists (select 1 from public.interview_free_times f
-                    where f.application_id = interview_free_times.application_id)));
+    -- no deadline clause (see above)
+  );
 
 commit;
