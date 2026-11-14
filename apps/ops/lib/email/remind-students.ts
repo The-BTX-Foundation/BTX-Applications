@@ -9,8 +9,9 @@
 // the database refuses the kind and nothing is sent ("not-ready"). Without RESEND_API_KEY or OPS_EMAIL_FROM nothing is
 // sent or logged. It refuses a cycle that is not the current published one, and one whose interview end date has passed
 // (Eastern), so an old cycle's students are never reminded. It also refuses once the cycle's booking deadline
-// (cycles.booking_closes_at, migration 20261114120000_booking_deadline.sql) has passed: the Portal no longer lets an
-// unbooked student book then, so a "Schedule your interview" email would point at a closed door.
+// (cycles.booking_closes_at, migration 20261114120000_booking_deadline.sql) has passed, except for students who sent
+// "None of these times work" free times before it (an interview_free_times row): they are exempt in the database and
+// still get the email, worded without a "by" date. If none qualify it refuses; the others could not book anyway.
 import { bookHtml, bookSubject, bookText, emailDay, sendMail, type Mail, type SendResult } from '@btx/emails';
 import { easternDate, remindKey } from '../interview-cover';
 import { defaultIsAdmin, HELP_EMAIL } from './send';
@@ -26,6 +27,8 @@ export interface RemindStore {
   cycle(cycleId: string): Promise<{ term: string; award_name: string | null; interview_end: string | null } | null>;
   /** The cycle's booking deadline (an ISO instant), or null when it sets none or the column does not exist yet. */
   bookingClosesAt(cycleId: string): Promise<string | null>;
+  /** Ids of this cycle's applications with an interview_free_times row (exempt from the deadline). Absent = none. */
+  freeTimesApplicationIds?(cycleId: string): Promise<Set<string>>;
   /** The id of the current published cycle (the newest with status 'published'), or null when there is none. */
   publishedCycleId(): Promise<string | null>;
   submittedApplicants(cycleId: string): Promise<Applicant[]>;
@@ -74,6 +77,7 @@ async function defaultStore(): Promise<RemindStore | null> {
       if (error) throw new Error(`published cycle: ${error.message}`);
       return (data as { id: string } | null)?.id ?? null;
     },
+    freeTimesApplicationIds: base.freeTimesApplicationIds,
     submittedApplicants: base.submittedApplicants,
     bookedApplicationIds: base.bookedApplicationIds,
     async claim(row) {
@@ -106,13 +110,14 @@ export async function remindUnbooked(cycleId: string, ids: string[] | null, deps
   const now = (deps.now ?? (() => new Date()))();
   // interview_end is a date ("2026-11-20"); the last interview day still counts.
   if (cycle.interview_end.slice(0, 10) < easternDate(now)) return { ok: false, reason: 'interviews-over' };
-  // Booking deadline passed: unbooked students can no longer book, so no reminder goes out.
   const closesAt = await store.bookingClosesAt(cycleId);
   const closedOn = bookingClosedOn(closesAt, now);
-  if (closedOn) return { ok: false, reason: 'booking-closed', closedOn };
   const [applicants, booked] = await Promise.all([store.submittedApplicants(cycleId), store.bookedApplicationIds(cycleId)]);
   const want = ids ? new Set(ids) : null;
-  const todo = applicants.filter((a) => !booked.has(a.id) && (!want || want.has(a.id)));
+  // Booking deadline passed: only students who sent free times (exempt in the database) are reminded; none qualify = refuse.
+  const exempt = closedOn ? ((await store.freeTimesApplicationIds?.(cycleId)) ?? new Set<string>()) : null;
+  const todo = applicants.filter((a) => !booked.has(a.id) && (!want || want.has(a.id)) && (!exempt || exempt.has(a.id)));
+  if (closedOn && todo.length === 0) return { ok: false, reason: 'booking-closed', closedOn };
   if (todo.length === 0) return { ok: false, reason: 'none' };
   const send = deps.send ?? sendMail;
   const from = deps.from ?? process.env.OPS_EMAIL_FROM;
@@ -129,7 +134,7 @@ export async function remindUnbooked(cycleId: string, ids: string[] | null, deps
       t.skipped += 1;
       continue;
     }
-    const input = { firstName: firstName(a), to: a.terpmail, code: a.applicant_code ?? '', term: cycle.term, award, origin, helpEmail: HELP_EMAIL, bookBy };
+    const input = { firstName: firstName(a), to: a.terpmail, code: a.applicant_code ?? '', term: cycle.term, award, origin, helpEmail: HELP_EMAIL, bookBy, pastDeadline: Boolean(closedOn) };
     let r: SendResult;
     try {
       r = await send({ to: a.terpmail, subject: bookSubject(input), html: bookHtml(input), text: bookText(input), idempotencyKey: `book-reminder-${a.id}-${easternDate(now)}` }, from);

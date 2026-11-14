@@ -9,12 +9,13 @@ const NOW = new Date('2026-11-13T15:00:00Z');
 const app = (id: string, name: string): Applicant => ({ id, full_name: name, terpmail: `${id}@terpmail.umd.edu`, applicant_code: `BTX-${id}` });
 
 // An in-memory email_log with the unique key the database has (kind + recipient).
-function store(opts: { booked?: string[]; notReady?: boolean; published?: string | null; interviewEnd?: string | null; closesAt?: string | null } = {}) {
+function store(opts: { booked?: string[]; notReady?: boolean; published?: string | null; interviewEnd?: string | null; closesAt?: string | null; free?: string[] } = {}) {
   const keys = new Set<string>();
   const sent: RemindRow[] = [];
   const s: RemindStore = {
     cycle: async () => ({ term: 'Fall 2026', award_name: 'Legacy', interview_end: opts.interviewEnd === undefined ? '2026-11-20' : opts.interviewEnd }),
     bookingClosesAt: async () => opts.closesAt ?? null,
+    ...(opts.free ? { freeTimesApplicationIds: async () => new Set(opts.free) } : {}),
     publishedCycleId: async () => (opts.published === undefined ? 'c1' : opts.published),
     submittedApplicants: async () => [app('a1', 'Ana Ruiz'), app('a2', 'Ben Cole'), app('a3', 'Cam Fox')],
     bookedApplicationIds: async () => new Set(opts.booked ?? []),
@@ -82,6 +83,18 @@ describe('remindUnbooked', () => {
     expect(r).toEqual({ ok: false, reason: 'booking-closed', closedOn: 'Nov 13' });
     expect(after.sent).toEqual([]);
     expect(remindLine(r)).toEqual({ ok: false, message: 'Booking closed on Nov 13. No emails went out.' });
+  });
+  it('after the deadline, reminds only unbooked students who sent free times (past-deadline wording); none = refuse', async () => {
+    const late = { ...base, now: () => new Date('2026-11-14T05:00:00Z') };
+    const mails: { subject: string }[] = [];
+    const send = async (m: { subject: string }) => (mails.push(m), { sent: true as const, id: 'r' });
+    const some = store({ closesAt: '2026-11-14T04:59:00Z', free: ['a1', 'a2'], booked: ['a2'] });
+    expect(await remindUnbooked('c1', null, { ...late, store: some.s, send })).toMatchObject({ ok: true, sent: 1 });
+    expect(some.sent.map((x) => x.application_id)).toEqual(['a1']);
+    expect(mails[0].subject).toBe('Your interview times are open');
+    const none = store({ closesAt: '2026-11-14T04:59:00Z', free: [] });
+    expect(await remindUnbooked('c1', null, { ...late, store: none.s })).toEqual({ ok: false, reason: 'booking-closed', closedOn: 'Nov 13' });
+    expect(none.sent).toEqual([]);
   });
   it('the book-by date in the email is the deadline Eastern day when set, else the interview end', async () => {
     const mail = (m: { subject: string }[]) => m[0].subject;

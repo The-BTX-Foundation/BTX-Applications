@@ -53,6 +53,37 @@ describe('sendBookingInvites', () => {
     expect(send).not.toHaveBeenCalled();
     expect(rows).toEqual([]);
   });
+  // After the deadline only unbooked applicants with an interview_free_times row are emailed, worded without a "by" date.
+  const afterDeadline = { now: () => new Date('2026-11-14T05:00:00Z') };
+  const withFree = (store: EmailStore, free: string[] | undefined): EmailStore => ({ ...withDeadline(store, '2026-11-14T04:59:00Z'), ...(free ? { freeTimesApplicationIds: async () => new Set(free) } : {}) });
+  it('after the deadline, emails only unbooked applicants who sent free times, with the past-deadline wording', async () => {
+    const { store } = fakeStore({ applicants, booked: ['a2'] });
+    const send = okSend();
+    const r = await sendBookingInvites('c1', deps(withFree(store, ['a1', 'a2']), send, afterDeadline));
+    expect(r).toMatchObject({ ok: true, sent: 1, failed: 0 });
+    const mails = send.mock.calls.map((c) => c[0]);
+    expect(mails.map((m) => m.to)).toEqual(['a1@terpmail.umd.edu']);
+    expect(mails[0].subject).toBe('Your interview times are open');
+    expect(mails[0].text).toContain('Hi Ebony, interview times are open. Please pick one on the booking page.');
+    expect(mails[0].text).not.toMatch(/ by /);
+    expect(mails[0].html).not.toContain('Nov 13');
+  });
+  it('after the deadline, refuses when nobody who is unbooked sent free times', async () => {
+    for (const free of [[], ['a2'], undefined]) {
+      const { store, rows } = fakeStore({ applicants, booked: ['a2'] });
+      const send = okSend();
+      expect(await sendBookingInvites('c1', deps(withFree(store, free), send, afterDeadline))).toEqual({ ok: false, reason: 'booking-closed', closedOn: 'Nov 13' });
+      expect(send).not.toHaveBeenCalled();
+      expect(rows).toEqual([]);
+    }
+  });
+  it('before the deadline, free times change nothing: everyone unbooked is emailed with the "by" wording', async () => {
+    const { store } = fakeStore({ applicants });
+    const send = okSend();
+    const r = await sendBookingInvites('c1', deps(withFree(store, ['a1']), send));
+    expect(r).toMatchObject({ ok: true, sent: 3 });
+    expect(send.mock.calls.every((c) => c[0].subject === 'Schedule your interview by Fri Nov 13')).toBe(true);
+  });
   it('still sends before the deadline, and names the deadline day (not the interview end) as the book-by date', async () => {
     const { store } = fakeStore({ applicants });
     const send = okSend();

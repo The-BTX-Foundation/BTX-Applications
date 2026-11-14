@@ -146,10 +146,8 @@ export async function sendBookingInvites(cycleId: string, deps: Deps = {}): Prom
   const cycle = await s.store.cycle(cycleId);
   if (!cycle) return { ok: false, reason: 'no-cycle' };
   if (!cycle.interview_end) return { ok: false, reason: 'no-interview-end' };
-  // Booking deadline passed: unbooked students can no longer book, so no invite goes out (same rule as remindUnbooked).
   const closesAt = (await s.store.bookingClosesAt?.(cycleId)) ?? null;
   const closedOn = bookingClosedOn(closesAt, s.now());
-  if (closedOn) return { ok: false, reason: 'booking-closed', closedOn };
   const [applicants, booked, already] = await Promise.all([
     s.store.submittedApplicants(cycleId),
     s.store.bookedApplicationIds(cycleId),
@@ -158,13 +156,21 @@ export async function sendBookingInvites(cycleId: string, deps: Deps = {}): Prom
   const award = cycle.award_name ?? 'scholarship';
   // The deadline's Eastern day when one is set, else the interview end date.
   const bookBy = emailDay(bookByDate(cycle.interview_end, closesAt));
-  const todo = applicants.filter((a) => !booked.has(a.id) && !already.has(a.id));
+  // Booking deadline passed: unbooked students with no free times can no longer book, so only the ones who sent free times
+  // (exempt in the database) are emailed; if none qualify, nothing goes out (same rule as remindUnbooked).
+  let pool = applicants;
+  if (closedOn) {
+    const exempt = (await s.store.freeTimesApplicationIds?.(cycleId)) ?? new Set<string>();
+    pool = applicants.filter((a) => !booked.has(a.id) && exempt.has(a.id));
+    if (pool.length === 0) return { ok: false, reason: 'booking-closed', closedOn };
+  }
+  const todo = pool.filter((a) => !booked.has(a.id) && !already.has(a.id));
   const plans: Plan[] = todo.map((a) => {
-    const input = { firstName: firstName(a), to: a.terpmail, code: a.applicant_code ?? '', term: cycle.term, award, origin: s.origin, helpEmail: HELP_EMAIL, bookBy };
+    const input = { firstName: firstName(a), to: a.terpmail, code: a.applicant_code ?? '', term: cycle.term, award, origin: s.origin, helpEmail: HELP_EMAIL, bookBy, pastDeadline: Boolean(closedOn) };
     return { applicant: a, kind: 'book', mail: { to: a.terpmail, subject: bookSubject(input), html: bookHtml(input), text: bookText(input) } };
   });
   const r = await run(cycleId, plans, s);
-  return { ok: true, kind: 'book', sent: r.sent, skipped: applicants.length - todo.length + r.skipped, failed: r.failed, notConfigured: r.notConfigured, at: s.now().toISOString() };
+  return { ok: true, kind: 'book', sent: r.sent, skipped: pool.length - todo.length + r.skipped, failed: r.failed, notConfigured: r.notConfigured, at: s.now().toISOString() };
 }
 
 // "You won" to award winners and "not picked" to every other submitted applicant, once decisions are released.
