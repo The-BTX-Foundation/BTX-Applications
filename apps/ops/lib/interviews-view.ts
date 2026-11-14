@@ -2,6 +2,9 @@
 // sample is in mock/interviews-view.ts, the live mapping in lib/interviews-map.ts, the loader in lib/interviews-view-loader.ts.
 // Days are Eastern calendar days as "YYYY-MM-DD" strings (never parsed as UTC instants); times of day are minutes after
 // midnight Eastern (18:30 = 1110).
+import type { IzAsked } from './asked-times';
+
+export type { IzAsked, IzFit } from './asked-times';
 
 /** One board member on a booked interview (the two interviewers). */
 export type IzInterviewer = { id: string; name: string; initials: string };
@@ -132,6 +135,11 @@ export type InterviewsView = {
   target: number;
   /** Who has not booked, by name (admins; null when not read). */
   unbooked: IzWaiting[] | null;
+  /**
+   * Students who sent the times they are free ("None of these times work" in the Portal) and hold no booking, oldest
+   * first. Every board member sees them. null when the read failed (drawn as an error line, never as nobody).
+   */
+  asked: IzAsked[] | null;
   /** Mock only: the day booking is due ("Due Thu"). */
   dueDay: string | null;
   caps: IzCaps;

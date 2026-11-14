@@ -1,6 +1,7 @@
 // Live mode: builds the Today view (lib/today-view.ts) from the real tables as the signed-in person. Every read goes through the
 // session client, so row-level security applies exactly as for the other pages. The mapping itself is pure (lib/today-map.ts).
 // A failed tasks read sets `tasksFailed` and the rest still draws; each other part falls back to empty rather than guessing.
+import { askedCountOrNull } from './asked-times';
 import { readRows, whoAmI, type Row } from './daily-db';
 import { loadLiveTasks, safe } from './daily-load';
 import { easternDay } from './daily-tasks';
@@ -33,17 +34,19 @@ export async function loadLiveTodayView(): Promise<TodayResultV2> {
     const cycleEq = cycle ? { cycle_id: String(cycle.id) } : null;
 
     // Stage 1: things that need nothing else.
-    const [people, submitted, summary, cycleSlots, aheadSlots, bookings, myAssigned, funds, gifts, goals, programs, calls, posts, unread, areaChannels] = await Promise.all([
+    const [people, submittedRead, summary, cycleSlots, aheadSlots, bookingsRead, myAssigned, funds, gifts, goals, programs, calls, posts, unread, areaChannels] = await Promise.all([
       safe(readRows('staff_profiles', 'user_id, display_name, initials')),
       // Submitted applications of the cycle in play with names: board and admin read them in full (D2). One cycle = well under the cap.
-      cycleEq ? safe(readRows('applications', 'id, cycle_id, applicant_code, full_name', { eq: { status: 'submitted', ...cycleEq } })) : Promise.resolve([]),
+      // Not safe(): the "asked for other times" count must know a failed read (null) from an empty one.
+      cycleEq ? readRows('applications', 'id, cycle_id, applicant_code, full_name', { eq: { status: 'submitted', ...cycleEq } }).catch(() => null) : Promise.resolve([]),
       safe(readRows('application_score_summary', 'application_id, published_count')),
       // The cycle in play's slots, for "has booking opened" on the booking card.
       cycleEq ? safe(readRows('interview_slots', 'id, cycle_id, starts_at, ends_at, opened_at', { eq: cycleEq })) : Promise.resolve([]),
       // Every slot, in any cycle, that has not ended yet: tickets and the schedule come from these (F7).
       safe(readRows('interview_slots', 'id, cycle_id, starts_at, ends_at, opened_at', { gte: { ends_at: now.toISOString() } })),
       // Active bookings (one per applicant; capped at 1,000 rows), joined by id to the slots above.
-      safe(readRows('bookings', 'application_id, slot_id, status', { eq: { status: 'active' } })),
+      // Not safe() either, for the same reason.
+      readRows('bookings', 'application_id, slot_id, status', { eq: { status: 'active' } }).catch(() => null),
       // Which tasks are the viewer's, for the prep match (done prep tasks are not in the open list).
       safe(readRows('task_assignees', 'task_id', { eq: { user_id: who.id } })),
       safe(readRows('funds_snapshots', 'amount_cents, as_of', { order: ['as_of', false], limit: 1 })),
@@ -57,6 +60,10 @@ export async function loadLiveTodayView(): Promise<TodayResultV2> {
       // The area channels (kind = 'area'). A failed read is null: no chat card at all rather than guessing which channel is public.
       readRows('chat_channels', 'id, kind', { eq: { kind: 'area' } }).catch(() => null),
     ]);
+
+    // Everything else treats a failed read of these two as empty, as before.
+    const submitted = submittedRead ?? [];
+    const bookings = bookingsRead ?? [];
 
     // Stage 2: what the first stage's ids point at, read by id in chunks (a long id list would overflow the request URL).
     const aheadIds = new Set(aheadSlots.map((s) => String(s.id)));
@@ -119,9 +126,17 @@ export async function loadLiveTodayView(): Promise<TodayResultV2> {
     // No area-channel list (read failed) = no chat card: no channel, no message, no reply box.
     const chat = areaChannels === null ? EMPTY_CHAT : mapChat({ messages, unread, people: staff, me: who.id, areaChannelIds: areaChannels.map((c) => String(c.id)) });
 
+    // "N students asked for other times": the published cycle's submitted students with a free-times row and no active
+    // booking (RLS lets every staff role read interview_free_times). A failed read is null: no card, never a guessed zero.
+    const askedOtherTimes =
+      published && cycle === published
+        ? await askedCountOrNull(submittedRead, bookingsRead, async (ids) => (await readIn('interview_free_times', 'application_id', 'application_id', ids)).map((r) => String(r.application_id)))
+        : null;
+
     return {
       today,
       dateLabel: dateLabel(today),
+      askedOtherTimes,
       needs: mapNeeds({ cycle: published ? { id: String(published.id), interview_end: published.interview_end } : null, submitted, activeBookings: bookings, slots: cycleSlots }),
       tasks,
       teamOpen: tasksRead ? tasksRead.tasks.length : 0,

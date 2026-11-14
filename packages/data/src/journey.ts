@@ -125,6 +125,77 @@ export async function saveFreeRanges(client: BtxClient, applicationId: string, v
   return { ok: !error };
 }
 
+/** What sendFreeRanges did: added her row (`created`) or changed it; or why not: the database's error code (null for a
+ * network failure), 'no_ranges' (nothing usable was sent) or 'too_many' (more than MAX_FREE_RANGES after cleaning). */
+export type SendFreeRangesResult = { ok: true; created: boolean } | { ok: false; code: string | null };
+
+/** The most ranges one answer may hold (the database's interview_free_times_ranges_max says the same). */
+export const MAX_FREE_RANGES = 60;
+/** The most characters of what she typed that are kept (the Portal's box allows 1000). */
+export const MAX_SAID = 1000;
+
+// "HH:MM" as minutes after midnight, or null. "24:00" (midnight at the end) is allowed; anything later is not.
+const hhmm = (v: string): number | null => {
+  const m = /^(\d{2}):([0-5]\d)$/.exec(v);
+  if (!m) return null;
+  const n = Number(m[1]) * 60 + Number(m[2]);
+  return n <= 1440 ? n : null;
+};
+// A real calendar day written "YYYY-MM-DD".
+const realDay = (v: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  // An invalid date (month 13) parses to NaN; a rolled-over one (Feb 30) prints back as another day.
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === v;
+};
+
+/**
+ * The usable ranges in what the browser sent: a real "YYYY-MM-DD" day, "HH:MM" start and end (end at most 24:00 and after
+ * the start), exact duplicates dropped. Anything else is left out. Strings longer than these shapes never pass the tests.
+ */
+export function cleanSentRanges(value: unknown): FreeRange[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: FreeRange[] = [];
+  for (const v of value) {
+    if (!isRange(v)) continue;
+    const s = hhmm(v.start);
+    const e = hhmm(v.end);
+    if (!realDay(v.day) || s === null || e === null || e <= s) continue;
+    const key = `${v.day}|${v.start}|${v.end}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ day: v.day, start: v.start, end: v.end });
+  }
+  return out;
+}
+
+/**
+ * The same save as saveFreeRanges, for the Portal's server route (app/api/free-times) running as the signed-in student, so
+ * row-level security (her own application, no active booking, the booking deadline) still decides. Differences: the
+ * ranges are cleaned first (cleanSentRanges; more than MAX_FREE_RANGES after cleaning is refused as 'too_many', never
+ * cut), what she typed is cut to MAX_SAID, it says whether the row was added or changed, and a change must come back as
+ * exactly one row: under RLS an update that matches no row returns no error, so zero rows back is a refusal ('42501').
+ */
+export async function sendFreeRanges(client: BtxClient, applicationId: string, v: FreeRangesRow): Promise<SendFreeRangesResult> {
+  const ranges = cleanSentRanges(v.ranges);
+  if (ranges.length === 0) return { ok: false, code: 'no_ranges' };
+  if (ranges.length > MAX_FREE_RANGES) return { ok: false, code: 'too_many' };
+  const said = String(v.said ?? '').slice(0, MAX_SAID).trim();
+  const row = { ranges, said: said || null };
+  // Not an upsert (see saveFreeRanges): change her row if she has one, otherwise add it.
+  const { data: existing, error: readError } = await client.from('interview_free_times').select('application_id').eq('application_id', applicationId).maybeSingle();
+  if (readError) return { ok: false, code: readError.code ?? null };
+  if (existing) {
+    const { data, error } = await client.from('interview_free_times').update(row).eq('application_id', applicationId).select('application_id');
+    if (error) return { ok: false, code: error.code ?? null };
+    // RLS: an update its policy refuses matches no row and reports no error.
+    return (data ?? []).length === 1 ? { ok: true, created: false } : { ok: false, code: '42501' };
+  }
+  const { error } = await client.from('interview_free_times').insert({ application_id: applicationId, ...row });
+  return error ? { ok: false, code: error.code ?? null } : { ok: true, created: true };
+}
+
 // ---- photo and story -------------------------------------------------------------------------------------------
 
 export const PHOTO_BUCKET = 'award-photos';

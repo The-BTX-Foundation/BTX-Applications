@@ -1,7 +1,8 @@
 'use server';
 
 // Reads what a student typed about when she is free and gives back time ranges she can fix. Server only: the reader
-// needs a key that must never reach the browser. Nothing here saves anything; Send saves (saveFreeRanges).
+// needs a key that must never reach the browser. Nothing here saves anything; Send posts to
+// /api/free-times, which saves (sendFreeRanges) and alerts the board.
 import { readFreeTimes, MAX_TEXT, type Range } from '@btx/ai';
 import { fetchPublishedCycle, getAuthMode } from '@btx/data';
 import { MOCK_VIEW } from '@/lib/cycle';

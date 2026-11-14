@@ -7,6 +7,7 @@
 // MOCK (mock/interview-flow.ts, mock/staff.ts): everything, when there is no Supabase env.
 import { hasSupabaseEnv } from '@btx/data';
 import { currentStaffId } from './me';
+import { groupAsked, type AskedSlot, type FreeTimesRead, type IzAsked } from './asked-times';
 import { currentCycle, readCandidates, readInterviews, readRanges, readStaff, sessionRole, type Db } from './pairing-db';
 import { needsCoverIds, remindedToday, type PairedInterview } from './interview-cover';
 import type { MinuteRange } from './free-ranges';
@@ -116,6 +117,8 @@ export type InterviewsData = {
   source: 'live' | 'mock';
   /** Live, admins only: the applicants with no booking, by name (null when not read). */
   waiting?: WaitingRow[] | null;
+  /** Live, every board member: students who asked for other times (null when the read failed; absent in mock mode). */
+  asked?: IzAsked[] | null;
 };
 
 type Booking = { slotId: string; startsAt: string; code: string; applicant: string; pair: Interviewer[]; videoUrl: string | null; needsCover?: boolean };
@@ -373,10 +376,15 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
             interviews: booked.length - fr.needsTwo.length,
             needsTwo: fr.needsTwo.map((n) => ({ slotId: n.slotId, when: whenLine(n.startsAt), code: n.code, applicant: n.applicant })),
           };
-    const waiting = auth.role === 'admin' ? await readWaiting(client, cycle.id, new Set(booked.map((b) => b.applicationId))) : null;
+    const bookedIds = new Set(booked.map((b) => b.applicationId));
+    const [waiting, asked] = await Promise.all([
+      auth.role === 'admin' ? readWaiting(client, cycle.id, bookedIds) : Promise.resolve(null),
+      readAsked(client, cycle.id, bookedIds, tp.times.map((t) => ({ id: t.slotId, startsAt: t.startsAt, endsAt: t.endsAt, opened: t.openedAt !== null, booked: t.booked }))),
+    ]);
     return {
       ...base,
       waiting,
+      asked,
       cycleId: cycle.id,
       sub: `${[name, dates ? `interviews ${dates}` : '', 'all on video'].filter(Boolean).join(' · ')}`,
       subPhone: `${[dates, 'all on video'].filter(Boolean).join(' · ')}`,
@@ -387,6 +395,36 @@ export async function loadInterviews(opts: { forceError?: boolean; stress?: bool
     };
   } catch {
     return { ...build([], new Date(), null, me, false, 'live'), failed: true, source: 'live' };
+  }
+}
+
+// Every board member: the submitted students who sent the times they are free and hold no active booking (lib/asked-times.ts).
+// RLS lets any staff role read interview_free_times (policy interview_free_times_select_staff) and the cycle's applications.
+// A failed read gives null (an error line on the page, never "nobody is waiting").
+async function readAsked(client: Db, cycleId: string, booked: Set<string>, slots: AskedSlot[]): Promise<IzAsked[] | null> {
+  try {
+    const apps = await client.from('applications').select('id, full_name, applicant_code').eq('cycle_id', cycleId).eq('status', 'submitted');
+    if (apps.error) {
+      console.error('[interviews] read failed', { table: 'applications', code: apps.error.code ?? 'asked' });
+      return null;
+    }
+    const list = ((apps.data ?? []) as { id: string; full_name: string | null; applicant_code: string | null }[]).map((a) => ({ id: a.id, name: a.full_name ?? '', code: a.applicant_code ?? '' }));
+    const ids = list.map((a) => a.id).filter((id) => !booked.has(id));
+    if (ids.length === 0) return [];
+    const rows: FreeTimesRead[] = [];
+    // In chunks, so a big cycle never makes one over-long request.
+    for (let i = 0; i < ids.length; i += 100) {
+      const r = await client.from('interview_free_times').select('application_id, ranges, said, days, windows, note, created_at, updated_at').in('application_id', ids.slice(i, i + 100));
+      if (r.error) {
+        console.error('[interviews] read failed', { table: 'interview_free_times', code: r.error.code ?? 'unknown' });
+        return null;
+      }
+      rows.push(...((r.data ?? []) as FreeTimesRead[]));
+    }
+    return groupAsked(list, booked, rows, slots, new Date());
+  } catch {
+    console.error('[interviews] read failed', { table: 'interview_free_times', code: 'asked' });
+    return null;
   }
 }
 

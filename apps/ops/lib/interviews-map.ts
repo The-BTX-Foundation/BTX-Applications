@@ -284,6 +284,8 @@ export function mapLive(data: InterviewsData, today: string, me: string | null):
     sentLine: sentLine(data.applicantCount, data.times?.emailedCount ?? 0, data.times?.openedLabel ?? null),
     target,
     unbooked: data.isAdmin && data.waiting ? data.waiting.map((w) => ({ id: w.applicationId, name: w.name, code: w.code, emailed: w.emailed, remindedToday: w.remindedToday })) : null,
+    // No cycle: nobody can be waiting. A failed read stays null.
+    asked: data.asked === undefined ? [] : data.asked,
     dueDay: null,
     caps: capsFor(true, data.isAdmin, hasCycle),
   };
@@ -309,6 +311,7 @@ export function failedView(source: 'mock' | 'live', today: string): InterviewsVi
     sentLine: '',
     target: 0,
     unbooked: null,
+    asked: null,
     dueDay: null,
     caps: NO_CAPS,
   };
