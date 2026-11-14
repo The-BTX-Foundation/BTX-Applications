@@ -50,6 +50,10 @@
 .rf.ip .ip-cand { display: grid; grid-template-columns: 22px 40px minmax(0, 1fr); align-items: center; column-gap: var(--s3); min-height: 52px; padding: 6px var(--s3); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 2px; cursor: pointer; }
 .rf.ip .ip-cand.ip-on { border-color: var(--gold-ink); }
 .rf.ip .ip-cand input { width: 20px; height: 20px; margin: 0; accent-color: var(--gold-ink); }
+.rf.ip .ip-cn { display: grid; min-width: 0; }
+.rf.ip .ip-cnote { font-size: 14px; color: var(--gold-ink); }
+.rf.ip .ip-cnote-off { color: var(--muted); }
+.rf.ip .ip-warn { font-size: var(--t-label); font-weight: 500; overflow-wrap: anywhere; }
 .rf.ip .ip-sact { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4); }
 .rf.ip .ip-sact .rf-btn[aria-disabled="true"] { opacity: .55; cursor: default; }
 .rf.ip .ip-sact .rf-lnk { min-height: 44px; }

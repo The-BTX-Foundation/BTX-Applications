@@ -72,6 +72,7 @@ export async function loadLiveInterviewPage(reader: ApReader, slotId: string, me
       { slot, application, pairing, cycle: cycles[0] ?? null, staff, rubric: rubric ?? [], questions: rubric === null ? null : questions, notes },
       me,
       isAdmin,
+      new Date(),
     );
     return { state: 'ok', view };
   } catch (e) {

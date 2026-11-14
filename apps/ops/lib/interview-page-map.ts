@@ -27,14 +27,15 @@ export function canReadNotes(me: string | null, isAdmin: boolean, pairIds: strin
 }
 
 /**
- * Live caps. `change`: admins, with two interviewers on it (changeInterviewerAction checks admin rights again on the
- * server). `notes`: the viewer can read the notes, is signed in and the notes read worked (saveInterviewNoteAction checks
+ * Live caps. `change`: any staff viewer (the page is staff only), with two interviewers on it, while the interview is
+ * still ahead (`startsAt` after `now`, when both are given; changeInterviewerAction checks the role, the start and the
+ * cycle again on the server). `notes`: the viewer can read the notes, is signed in and the notes read worked (saveInterviewNoteAction checks
  * the same rule). `score`: the viewer is one of the two (only interviewers have a score sheet).
  */
-export function capsFor(me: string | null, isAdmin: boolean, pairIds: string[], notesFailed: boolean): IpCaps {
+export function capsFor(me: string | null, isAdmin: boolean, pairIds: string[], notesFailed: boolean, startsAt?: string | null, now?: Date): IpCaps {
   const mine = me !== null && pairIds.includes(me);
   return {
-    change: isAdmin && pairIds.length === 2,
+    change: pairIds.length === 2 && !(startsAt && now && Date.parse(startsAt) <= now.getTime()),
     notes: me !== null && canReadNotes(me, isAdmin, pairIds) && !notesFailed,
     score: mine,
   };
@@ -83,8 +84,8 @@ export type IpRows = {
   notes: Row[] | null;
 };
 
-/** Builds the view from the live rows for the viewer. */
-export function mapInterviewPage(rows: IpRows, me: string | null, isAdmin: boolean): InterviewPageView {
+/** Builds the view from the live rows for the viewer. `now` (optional) turns Change off once the interview has started. */
+export function mapInterviewPage(rows: IpRows, me: string | null, isAdmin: boolean, now?: Date): InterviewPageView {
   const names = new Map(rows.staff.map((s) => [str(s.user_id), str(s.display_name).trim() || 'A board member']));
   const initials = new Map(rows.staff.map((s) => [str(s.user_id), str(s.initials).trim()]));
   const pairIds = rows.pairing ? [str(rows.pairing.interviewer_a), str(rows.pairing.interviewer_b)].filter(Boolean) : [];
@@ -119,7 +120,7 @@ export function mapInterviewPage(rows: IpRows, me: string | null, isAdmin: boole
     mine: canRead ? mine : {},
     others: canRead ? others : {},
     notesFailed,
-    caps: capsFor(me, isAdmin, pairIds, notesFailed),
+    caps: capsFor(me, isAdmin, pairIds, notesFailed, orNull(rows.slot.starts_at), now),
     sim: null,
   };
 }

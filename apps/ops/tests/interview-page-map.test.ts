@@ -62,12 +62,18 @@ describe('who may read and do what', () => {
     expect(canReadNotes(C, false, [A, B])).toBe(false);
     expect(canReadNotes(null, false, [A, B])).toBe(false);
   });
-  it('change: admins with two on it; notes: readers whose read worked; score: interviewers only', () => {
+  it('change: any staff viewer with two on it; notes: readers whose read worked; score: interviewers only', () => {
     expect(capsFor(C, true, [A, B], false)).toEqual({ change: true, notes: true, score: false });
     expect(capsFor(C, true, [A], false).change).toBe(false);
-    expect(capsFor(A, false, [A, B], false)).toEqual({ change: false, notes: true, score: true });
+    expect(capsFor(A, false, [A, B], false)).toEqual({ change: true, notes: true, score: true });
     expect(capsFor(A, false, [A, B], true).notes).toBe(false);
-    expect(capsFor(C, false, [A, B], false)).toEqual({ change: false, notes: false, score: false });
+    expect(capsFor(C, false, [A, B], false)).toEqual({ change: true, notes: false, score: false });
+  });
+  it('change: off once the interview has started (when the time and clock are given)', () => {
+    const at = '2026-11-20T22:00:00.000Z';
+    expect(capsFor(A, false, [A, B], false, at, new Date('2026-11-20T21:59:00Z')).change).toBe(true);
+    expect(capsFor(A, false, [A, B], false, at, new Date('2026-11-20T22:00:00Z')).change).toBe(false);
+    expect(capsFor(A, true, [A, B], false, null, new Date('2026-11-21T00:00:00Z')).change).toBe(true);
   });
 });
 
@@ -111,7 +117,7 @@ describe('mapInterviewPage', () => {
     expect(v.link).toBe('https://teams.microsoft.com/l/x');
     expect(v.linkHidden).toBe(false);
     expect(v.mine[Q1]).toBe('mine on q1');
-    expect(v.caps).toEqual({ change: false, notes: true, score: true });
+    expect(v.caps).toEqual({ change: true, notes: true, score: true });
   });
   it('someone not on it and not admin: the link is hidden (only that it exists), no notes', () => {
     const v = mapInterviewPage(rows(), C, false);

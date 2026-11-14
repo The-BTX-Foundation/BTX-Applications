@@ -8,7 +8,6 @@ import { UUID } from './interview-page-map';
 export type Who = { id: string | null; role: string | null };
 
 export const NOT_STAFF = 'Only board members can do this.';
-export const NOT_ADMIN = 'Only board members with admin rights can change an interviewer.';
 export const NOT_ON_IT = "Only this interview's two interviewers and admins write notes here.";
 export const BAD_INPUT = "That didn't save. Reload and try again.";
 export const NOTE_FAILED = "Couldn't save. Try again.";
@@ -20,10 +19,10 @@ export function noteRefusal(who: Who, pair: string[]): string | null {
   return NOT_ON_IT;
 }
 
-/** Why this person may not change an interviewer, or null when they may (admins only). */
+/** Why this person may not change an interviewer, or null when they may (any admin or board member). */
 export function changeRefusal(who: Who): string | null {
   if (!who.id || (who.role !== 'admin' && who.role !== 'board')) return NOT_STAFF;
-  return who.role === 'admin' ? null : NOT_ADMIN;
+  return null;
 }
 
 /** A note as the browser sent it, checked: real ids, a string, at most NOTE_MAX characters (cut, never refused). */

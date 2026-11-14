@@ -5,7 +5,7 @@
 // starter questions under the Legacy rubric). Also the ?demo= states: stress, empty, board (no admin rights), failsave
 // (every note save fails); error and failed are the load error, loading the skeleton (both handled by the page).
 import { questionGroups } from '@/lib/interview-page-map';
-import type { InterviewPageResult, InterviewPageView, IpNote, IpPerson } from '@/lib/interview-page-view';
+import type { InterviewPageResult, InterviewPageView, IpNote, IpOption, IpPerson } from '@/lib/interview-page-view';
 import { OVERALL } from '@/lib/interview-page-view';
 import { STARTER_QUESTIONS } from './interview-flow';
 import { INTERVIEWS_VIEW } from './interviews-view';
@@ -39,14 +39,16 @@ const DANA_NOTES: Record<string, string> = {
   'mock-q-1': 'Tutors on campus twice a week.',
 };
 
-// Who could cover each person: board members not on this interview, fewest interviews first (the mock's stand-in for
-// listFreeReplacements).
-function replacementsFor(pairIds: string[]): IpPerson[] {
-  return INTERVIEWS_VIEW.people
-    .filter((p) => !pairIds.includes(p.id))
-    .sort((a, b) => a.interviews - b.interviews || a.name.localeCompare(b.name))
-    .slice(0, 4)
-    .map((p) => ({ id: p.id, name: p.name, initials: p.initials, me: p.id === MOCK_ME }));
+// Who could cover each person (the mock's stand-in for listReplacementOptions): board members not on this interview,
+// the three least loaded free then, then two who are not, with the note the live list gives.
+function replacementsFor(pairIds: string[]): IpOption[] {
+  const others = INTERVIEWS_VIEW.people.filter((p) => !pairIds.includes(p.id)).sort((a, b) => a.interviews - b.interviews || a.name.localeCompare(b.name));
+  const free = others.slice(0, 3).map((p) => ({ id: p.id, name: p.name, initials: p.initials, free: true, note: null }));
+  const rest = others
+    .slice(3, 5)
+    .map((p, i) => ({ id: p.id, name: p.name, initials: p.initials, free: false, note: i === 0 ? 'Not marked free then' : `At their limit of ${Math.max(1, p.interviews)}` }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...free, ...rest];
 }
 
 /** The normal mock view for a slot id, or null when the sample has no such interview. */
@@ -113,7 +115,7 @@ function stress(v: InterviewPageView): InterviewPageView {
 /**
  * The mock result for a slot id and a `?demo=` value (mock mode only). `error` and `failed` are a failed load; `empty` has
  * no questions and nobody paired; `board` is the view of a board member without admin rights (on someone else's interview
- * the link and notes are hidden); `failsave` refuses every note save; `stress` the longest names and notes.
+ * the link and notes are hidden; Change is still offered); `failsave` refuses every note save; `stress` the longest names and notes.
  */
 export function mockInterviewPage(slotId: string, demo?: string): InterviewPageResult {
   if (demo === 'error' || demo === 'failed') return { state: 'failed' };
@@ -135,7 +137,7 @@ export function mockInterviewPage(slotId: string, demo?: string): InterviewPageR
         linkHidden: !mine && v.link !== null,
         mine: mine ? v.mine : {},
         others: mine ? v.others : {},
-        caps: { change: false, notes: mine, score: mine },
+        caps: { change: v.pair.length === 2, notes: mine, score: mine },
       },
     };
   }
