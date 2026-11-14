@@ -56,6 +56,7 @@ import {
   timesOn,
   weeksOf,
 } from '@/lib/interviews-map';
+import { askedSentLine, askedTitle } from '@/lib/asked-times';
 import { interviewHref } from '@/lib/interview-href';
 import type { InterviewsView, IzBooking, IzInterviewer, IzPerson, IzTime } from '@/lib/interviews-view';
 import { isVideoUrl } from '@/lib/pairing-slots';
@@ -1541,7 +1542,11 @@ export function InterviewsBoard({ view, live }: { view: InterviewsView; live: bo
     );
   };
 
-  const showNeeds = stage !== 'clear' || needsNote !== null;
+  // "Asked for other times": students who sent their free times from the Portal and hold no booking. Every board member
+  // sees the list (null = the read failed: an error line, never "nobody").
+  const asked = d.asked;
+  const askedN = asked?.length ?? 0;
+  const showNeeds = stage !== 'clear' || needsNote !== null || askedN > 0;
   const segs = Math.min(Math.max(d.applicants, 1), 40);
   const onSegs = d.applicants > 0 ? Math.round((d.booked / d.applicants) * segs) : 0;
   // "Make Teams links" under Booked: admins, whenever a paired interview exists and the gold card is on another task (the
@@ -1590,6 +1595,14 @@ export function InterviewsBoard({ view, live }: { view: InterviewsView; live: bo
             <Fold open appear={stageKey !== firstStage} key={stageKey}>
               {needsBody()}
             </Fold>
+            {askedN > 0 ? (
+              <p className="iz-n-ask">
+                <Icon name="clock" />
+                <a className="rf-lnk" href="#iz-oth">
+                  {askedTitle(askedN)}
+                </a>
+              </p>
+            ) : null}
           </section>
         ) : null}
 
@@ -1649,6 +1662,45 @@ export function InterviewsBoard({ view, live }: { view: InterviewsView; live: bo
             </>
           ) : (
             <ul className="iz-tickets">{ordered.map(ticket)}</ul>
+          )}
+        </Panel>
+
+        <Panel id="iz-oth" title="Asked for other times" className="iz-span">
+          {asked === null ? (
+            <StateLine kind="error" onRetry={retry} retrying={retrying}>
+              Couldn&rsquo;t load who asked for other times.
+            </StateLine>
+          ) : askedN === 0 ? (
+            <StateLine kind="empty">No student is waiting on other times.</StateLine>
+          ) : (
+            <ul className="iz-ask">
+              {asked.map((a) => (
+                <li key={a.id}>
+                  <div className="iz-ask-top">
+                    <span className="iz-wnm">{a.name}</span>
+                    <span className="iz-cd">{a.code}</span>
+                  </div>
+                  {a.said ? <p className="iz-ask-said">&ldquo;{a.said}&rdquo;</p> : null}
+                  {a.lines.length > 0 ? (
+                    <ul className="iz-ask-lines" aria-label={`${a.name}'s free times`}>
+                      {a.lines.map((l) => (
+                        <li key={l}>{l}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <p className="iz-ask-fit">
+                    {a.fits.length > 0 ? (
+                      <>
+                        <b>Fits:</b> {a.fits.map((f) => `${f.label}${f.opened ? '' : ' (not open yet)'}`).join(' · ')}
+                      </>
+                    ) : (
+                      'No proposed time fits.'
+                    )}
+                  </p>
+                  <p className="iz-wem">{askedSentLine(a.sent)}</p>
+                </li>
+              ))}
+            </ul>
           )}
         </Panel>
 

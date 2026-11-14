@@ -63,6 +63,17 @@ export function planChatPushes(o: { messageId: string; authorName: string; recip
   return o.recipientIds.map((userId) => ({ userId, key: `chat:${o.messageId}:${userId}`, title: 'Board chat', body: `${who} sent a message.`, url: '/chat' }));
 }
 
+/**
+ * "Asked for other times" to every board member when a student with no interview time sends the times she is free
+ * (Portal, "None of these times work"). Lock screens show "Applicant 15", never her name. `day` is the Eastern day the
+ * alert goes out: the key holds at most one such push per student, person and day (the email log's 24-hour rule decides
+ * whether an alert goes at all).
+ */
+export function planAskedTimesPushes(o: { applicationId: string; code: string; userIds: string[]; day: string }): PushItem[] {
+  const num = applicantNumber(o.code);
+  return [...new Set(o.userIds)].map((userId) => ({ userId, key: `free-times:${o.applicationId}:${o.day}:${userId}`, title: 'Asked for other times', body: `${num} sent the times they're free.`, url: INTERVIEWS }));
+}
+
 /** The admin's "send a test push to my phone". The nonce makes each press its own push. */
 export function planTestPush(userId: string, nonce: string): PushItem[] {
   return [{ userId, key: `test:${nonce}:${userId}`, title: 'Test from the Ops Hub', body: 'Pushes work on this phone.', url: '/' }];

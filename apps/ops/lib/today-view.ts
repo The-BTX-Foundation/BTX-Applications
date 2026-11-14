@@ -146,6 +146,11 @@ export type TodayView = {
   /** "Tue, Nov 10". */
   dateLabel: string;
   needs: BookingNeeds | null;
+  /**
+   * Students of the published cycle who sent the times they are free ("None of these times work" in the Portal) and hold no
+   * booking: a "2 students asked for other times" card linking to that list on Interviews when above 0. null = not read.
+   */
+  askedOtherTimes: number | null;
   /** The viewer's open tasks, approvals included (the Approvals tab is the `kind: 'approval'` rows). */
   tasks: TodayTask[];
   /** Open tasks across the team, for the Team tab's "7 open" line. */

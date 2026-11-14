@@ -78,6 +78,7 @@ export const TODAY_VIEW: TodayView = {
   today: '2026-11-10',
   dateLabel: 'Tue, Nov 10',
   needs: NEEDS,
+  askedOtherTimes: 2,
   tasks: baseTasks('Ada Okafor'),
   teamOpen: 7,
   tasksFailed: false,
@@ -103,6 +104,7 @@ export const TODAY_VIEW_STRESS: TodayView = {
     plain('report', 'File the quarterly donation report', 'Finance', '2026-11-27'),
   ],
   teamOpen: 31,
+  askedOtherTimes: 128,
   interviews: tickets(LONG),
   chat: { channelId: 'ch-board', unread: 140, latest: LATEST },
 };
@@ -111,6 +113,7 @@ export const TODAY_VIEW_STRESS: TodayView = {
 export const TODAY_VIEW_EMPTY: TodayView = {
   ...TODAY_VIEW,
   needs: null,
+  askedOtherTimes: 0,
   tasks: [],
   teamOpen: 7,
   areas: areas(true),

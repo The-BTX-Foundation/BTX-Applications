@@ -125,6 +125,33 @@ export async function saveFreeRanges(client: BtxClient, applicationId: string, v
   return { ok: !error };
 }
 
+/** What sendFreeRanges did: added her row (`created`) or changed it; or the database's error code (null for a network failure). */
+export type SendFreeRangesResult = { ok: true; created: boolean } | { ok: false; code: string | null };
+
+/**
+ * The same save as saveFreeRanges, for the Portal's server route (app/api/free-times) running as the signed-in student, so
+ * row-level security (her own application, no active booking, the booking deadline) still decides. Differences: it says
+ * whether the row was added or changed (the alert to the board depends on it), and a change must come back as exactly one
+ * row: under RLS an update that matches no row returns no error, so zero rows back is a refusal ('42501'), never a save.
+ */
+export async function sendFreeRanges(client: BtxClient, applicationId: string, v: FreeRangesRow): Promise<SendFreeRangesResult> {
+  const ranges = v.ranges.filter(isRange).map((r) => ({ day: r.day, start: r.start, end: r.end }));
+  if (ranges.length === 0) return { ok: false, code: 'no_ranges' };
+  const said = v.said.trim();
+  const row = { ranges, said: said || null };
+  // Not an upsert (see saveFreeRanges): change her row if she has one, otherwise add it.
+  const { data: existing, error: readError } = await client.from('interview_free_times').select('application_id').eq('application_id', applicationId).maybeSingle();
+  if (readError) return { ok: false, code: readError.code ?? null };
+  if (existing) {
+    const { data, error } = await client.from('interview_free_times').update(row).eq('application_id', applicationId).select('application_id');
+    if (error) return { ok: false, code: error.code ?? null };
+    // RLS: an update its policy refuses matches no row and reports no error.
+    return (data ?? []).length === 1 ? { ok: true, created: false } : { ok: false, code: '42501' };
+  }
+  const { error } = await client.from('interview_free_times').insert({ application_id: applicationId, ...row });
+  return error ? { ok: false, code: error.code ?? null } : { ok: true, created: true };
+}
+
 // ---- photo and story -------------------------------------------------------------------------------------------
 
 export const PHOTO_BUCKET = 'award-photos';

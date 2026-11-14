@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { TodayView } from '@/lib/today-view';
 import { fullDate, groupOf, rowActions, snoozeDays, TODAY_GROUPS, weekday, type ParsedTask } from '@/lib/today-time';
+import { askedTitle } from '@/lib/asked-times';
+import { NewsCard } from '@/components/refresh/news-card';
 import { PageHeader } from '@/components/refresh/page-header';
 import { Panel } from '@/components/refresh/panel';
 import { StateLine } from '@/components/refresh/state-line';
@@ -592,6 +594,7 @@ export function TodayBoard({ view, live, me }: Props) {
       <div className="rf-board">
         <div className="rf-col td-col-a">
           {view.needs ? <NeedsCard needs={view.needs} today={today} canRemind={caps.remind} onReminded={setReminded} say={say} /> : null}
+          {view.askedOtherTimes ? <NewsCard icon="clock" kicker="Interviews" title={askedTitle(view.askedOtherTimes)} go="See them" href="/scholarships/interviews#iz-oth" /> : null}
 
           <Panel id="td-th" title="Your tasks" className="td-tasks">
             {view.tasksFailed ? (

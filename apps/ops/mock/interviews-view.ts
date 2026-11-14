@@ -1,6 +1,7 @@
 // The refreshed Interviews page's mock sample (mock mode only): the demo p-interviews, with today Tue Nov 10, 2026 and
 // interviews Nov 10 to 20. Dana Mercer (mock/staff.ts MOCK_ME) is the viewer, with admin rights. Also the ?demo= states:
 // stress (long names, many times and people), empty (no times built yet) and error (the load-error state).
+import { groupAsked, type FreeTimesRead } from '@/lib/asked-times';
 import { capsFor } from '@/lib/interviews-map';
 import type { InterviewsView, IzBooking, IzInterviewer, IzPerson, IzTime, IzWaiting } from '@/lib/interviews-view';
 import { MOCK_ME } from './staff';
@@ -55,6 +56,21 @@ const waiting = (names: string[]): IzWaiting[] =>
   names.map((name, i) => ({ id: `mock-app-${i + 1}`, name, code: `APP-2026-${String(30 + i).padStart(5, '0')}`, emailed: i % 8 === 3 ? REMINDED : EMAILED, remindedToday: i % 8 === 3 }));
 
 const nov = (n: number) => `2026-11-${String(n).padStart(2, '0')}`;
+
+// "Asked for other times" (students who sent the times they are free): [application id, name, what she typed, ranges as
+// [day of November, start, end], when she sent it]. The ids match the "Not booked yet" rows: they have not booked either.
+type AskedRow = [string, string, string, [number, string, string][], string];
+const ASKED: AskedRow[] = [
+  ['mock-app-1', 'Jalen Thomas', 'Sunday afternoon, or Monday right after 5.', [[15, '15:00', '22:00'], [16, '17:00', '18:00']], '2026-11-10T01:14:00Z'],
+  ['mock-app-2', 'Renee Simmons', 'Only weekends. I work every weekday.', [[21, '10:00', '14:00'], [22, '12:00', '24:00']], '2026-11-10T14:40:00Z'],
+];
+// Builds the list through the same code as live mode (lib/asked-times.ts), so the fits come from the mock times (30 minutes each; November is UTC-5).
+function asked(rows: AskedRow[], times: IzTime[]): ReturnType<typeof groupAsked> {
+  const iso = (day: string, min: number) => new Date(Date.parse(`${day}T00:00:00-05:00`) + min * 60_000).toISOString();
+  const slots = times.map((t) => ({ id: t.id, startsAt: iso(t.day, t.minute), endsAt: iso(t.day, t.minute + 30), opened: t.opened, booked: t.booking !== null || t.heldBy !== null }));
+  const reads: FreeTimesRead[] = rows.map(([id, , said, ranges, at]) => ({ application_id: id, ranges: ranges.map(([d, start, end]) => ({ day: nov(d), start, end })), said, days: null, windows: null, note: null, created_at: at, updated_at: at }));
+  return groupAsked(rows.map(([id, name]) => ({ id, name, code: `APP-2026-${String(29 + Number(id.split('-').pop())).padStart(5, '0')}` })), new Set(), reads, slots, new Date('2026-11-10T17:00:00Z'));
+}
 const mins = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
 const ini = (name: string) => {
   const w = name.split(' ');
@@ -62,7 +78,7 @@ const ini = (name: string) => {
 };
 
 // Builds a view from board rows, booked rows and time rows (shared by the normal and stress samples).
-function build(board: typeof BOARD, booked: typeof BOOKED, rows: typeof TIMES, applicants: number, unbooked: string[], sent: string, cover: string[] = []): InterviewsView {
+function build(board: typeof BOARD, booked: typeof BOOKED, rows: typeof TIMES, applicants: number, unbooked: string[], sent: string, cover: string[] = [], askedRows: AskedRow[] = ASKED): InterviewsView {
   const person = (id: string): IzInterviewer => {
     const b = board.find((x) => x[0] === id)!;
     return { id, name: b[1], initials: ini(b[1]) };
@@ -101,6 +117,7 @@ function build(board: typeof BOARD, booked: typeof BOOKED, rows: typeof TIMES, a
     sentLine: sent,
     target: 5,
     unbooked: waiting(unbooked),
+    asked: asked(askedRows, times),
     dueDay: '2026-11-12',
     caps: capsFor(false, true, true),
   };
@@ -135,8 +152,19 @@ STRESS_NAMES.forEach((name, i) => {
 });
 const STRESS_UNBOOKED = Array.from({ length: 46 }, (_, i) => (i === 0 ? 'Adaeze-Grace Nwachukwu-Bello Okonkwo' : `${UNBOOKED[i % UNBOOKED.length]} ${i > 15 ? String.fromCharCode(65 + (i % 26)) + '.' : ''}`.trim()));
 
+// Stress: six students, long names, a long note and many ranges.
+const LONG_SAID = 'I have clinical rotations most weekdays until 4:30 and then a long commute home, so any evening after 6 works, and Saturdays are wide open except for the morning. Sundays I am at church until about noon. I am happy to join from my phone if that is easier for the board.';
+const STRESS_ASKED: AskedRow[] = [
+  ['mock-app-1', 'Adaeze-Grace Nwachukwu-Bello Okonkwo', LONG_SAID, [[11, '18:00', '22:00'], [12, '18:00', '22:00'], [13, '18:00', '22:00'], [14, '12:00', '24:00'], [15, '12:00', '20:00'], [16, '18:00', '22:00'], [17, '18:00', '22:00']], '2026-11-08T23:59:00Z'],
+  ['mock-app-2', 'Christopher Montgomery-Wellington III', '', [[21, '09:00', '11:00']], '2026-11-09T12:00:00Z'],
+  ['mock-app-3', 'Oluwaseun Abimbola-Adeyemi', 'Mornings only.', [[14, '09:00', '12:00'], [19, '08:00', '10:00']], '2026-11-09T18:30:00Z'],
+  ['mock-app-4', 'Maria-Fernanda Gutierrez-Santos', 'After 7 PM any day.', [[18, '19:00', '24:00'], [19, '19:00', '24:00'], [20, '19:00', '24:00']], '2026-11-10T02:10:00Z'],
+  ['mock-app-5', 'Bartholomew Featherstonehaugh', 'Lunch breaks.', [[12, '12:00', '13:00']], '2026-11-10T13:00:00Z'],
+  ['mock-app-6', 'Kwame Asante-Boateng', 'Weekend afternoons.', [[14, '13:00', '17:00'], [15, '13:00', '17:00']], '2026-11-10T15:45:00Z'],
+];
+
 /** ?demo=stress. */
-export const INTERVIEWS_VIEW_STRESS: InterviewsView = build(STRESS_BOARD, STRESS_BOOKED, STRESS_TIMES, 60, STRESS_UNBOOKED, 'Sent to all 60 today, 8:01 AM', ['s1', 's4', 's9']);
+export const INTERVIEWS_VIEW_STRESS: InterviewsView = build(STRESS_BOARD, STRESS_BOOKED, STRESS_TIMES, 60, STRESS_UNBOOKED, 'Sent to all 60 today, 8:01 AM', ['s1', 's4', 's9'], STRESS_ASKED);
 
 /** ?demo=empty: the cycle's dates are set but no times are built and nobody is booked; three people have not sent hours. */
 export const INTERVIEWS_VIEW_EMPTY: InterviewsView = {
@@ -144,6 +172,7 @@ export const INTERVIEWS_VIEW_EMPTY: InterviewsView = {
   people: BOARD.map(([id, name, hours], i) => ({ id, name, initials: ini(name), hours: i % 3 === 1 ? 0 : hours, most: null, sent: i % 3 !== 1, weekOnly: false, interviews: 0 })),
   target: 0,
   unbooked: [],
+  asked: [],
   dueDay: null,
 };
 

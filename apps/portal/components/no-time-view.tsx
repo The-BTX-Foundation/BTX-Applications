@@ -4,13 +4,14 @@
 // She types when she is free. The server action reads it into time ranges per day; she fixes them and presses Send.
 // When the reader is not set up, cannot read the text, fails, or her daily limit is used, she gets the same editor
 // without the reading ("Add the days and times you're free."), which is complete on its own.
-// If an open time fits her ranges it is offered as a button and the gold button books it. Live, Send saves her ranges
-// and what she typed in interview_free_times (saveFreeRanges, one row per application).
+// If an open time fits her ranges it is offered as a button and the gold button books it. Live, Send posts her ranges
+// and what she typed to /api/free-times, which saves them in interview_free_times as her (one row per application) and
+// then alerts the board. When the booking deadline has passed she goes to /status (the closed screen), as booking does.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Icon } from '@btx/ui';
-import { getAuthMode, getBrowserClient, saveFreeRanges } from '@btx/data';
+import { getAuthMode } from '@btx/data';
 import {
   clock,
   dayLabel,
@@ -112,8 +113,20 @@ export function NoTimeView(p: NoTimeProps) {
     }
     if (!p.applicationId) return setProblem('failed');
     setSaving(true);
-    const r = await saveFreeRanges(getBrowserClient(), p.applicationId, { ranges, said });
+    let r: { ok: boolean; kind?: string };
+    try {
+      const res = await fetch('/api/free-times', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: p.applicationId, ranges, said }) });
+      r = (await res.json()) as { ok: boolean; kind?: string };
+    } catch {
+      r = { ok: false, kind: 'failed' };
+    }
     setSaving(false);
+    if (!r.ok && r.kind === 'booking_closed') {
+      // the deadline passed: /status shows the closed screen (the same handling as booking, booking-parts.tsx)
+      router.replace('/status');
+      router.refresh();
+      return;
+    }
     if (!r.ok) return setProblem('failed');
     router.push('/status');
     router.refresh();

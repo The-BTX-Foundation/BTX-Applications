@@ -1,6 +1,7 @@
 // Live mode: builds the Today view (lib/today-view.ts) from the real tables as the signed-in person. Every read goes through the
 // session client, so row-level security applies exactly as for the other pages. The mapping itself is pure (lib/today-map.ts).
 // A failed tasks read sets `tasksFailed` and the rest still draws; each other part falls back to empty rather than guessing.
+import { countAsked } from './asked-times';
 import { readRows, whoAmI, type Row } from './daily-db';
 import { loadLiveTasks, safe } from './daily-load';
 import { easternDay } from './daily-tasks';
@@ -119,9 +120,23 @@ export async function loadLiveTodayView(): Promise<TodayResultV2> {
     // No area-channel list (read failed) = no chat card: no channel, no message, no reply box.
     const chat = areaChannels === null ? EMPTY_CHAT : mapChat({ messages, unread, people: staff, me: who.id, areaChannelIds: areaChannels.map((c) => String(c.id)) });
 
+    // "N students asked for other times": the published cycle's submitted students with a free-times row and no active
+    // booking (RLS lets every staff role read interview_free_times). A failed read is null: no card, never a guessed zero.
+    let askedOtherTimes: number | null = null;
+    if (published && cycle === published) {
+      try {
+        const ids = submitted.map((a) => String(a.id));
+        const rows = await readIn('interview_free_times', 'application_id', 'application_id', ids);
+        askedOtherTimes = countAsked(ids, new Set(bookings.map((b) => String(b.application_id))), new Set(rows.map((r) => String(r.application_id))));
+      } catch {
+        console.error('[today] read failed', { table: 'interview_free_times', code: 'asked' });
+      }
+    }
+
     return {
       today,
       dateLabel: dateLabel(today),
+      askedOtherTimes,
       needs: mapNeeds({ cycle: published ? { id: String(published.id), interview_end: published.interview_end } : null, submitted, activeBookings: bookings, slots: cycleSlots }),
       tasks,
       teamOpen: tasksRead ? tasksRead.tasks.length : 0,
