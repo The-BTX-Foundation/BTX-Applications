@@ -201,6 +201,8 @@ export type Database = {
         Row: {
           award_amount_cents: number | null;
           award_name: string | null;
+          // 20261114120000_booking_deadline.sql: when booking closes for students who have not booked (null = never)
+          booking_closes_at: string | null;
           closes_at: string | null;
           code_lifetime_minutes: number | null;
           created_at: string;
@@ -226,6 +228,7 @@ export type Database = {
         Insert: {
           award_amount_cents?: number | null;
           award_name?: string | null;
+          booking_closes_at?: string | null;
           closes_at?: string | null;
           code_lifetime_minutes?: number | null;
           created_at?: string;
@@ -251,6 +254,7 @@ export type Database = {
         Update: {
           award_amount_cents?: number | null;
           award_name?: string | null;
+          booking_closes_at?: string | null;
           closes_at?: string | null;
           code_lifetime_minutes?: number | null;
           created_at?: string;

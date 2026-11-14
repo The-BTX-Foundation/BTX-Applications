@@ -63,18 +63,21 @@ const small = (text: string, top: number) => `<p style="margin:${top}px 0 0;font
 export type BookEmailInput = JourneyEmailBase & {
   /** The last day to pick a time, like "Fri Oct 9". */
   bookBy: string;
+  /** True when the booking deadline has passed (a student who sent free times is still emailed): no "by" date is shown. */
+  pastDeadline?: boolean;
 };
 
-export const bookSubject = (i: Pick<BookEmailInput, 'bookBy'>) => `Schedule your interview by ${i.bookBy}`;
+export const bookSubject = (i: Pick<BookEmailInput, 'bookBy' | 'pastDeadline'>) =>
+  i.pastDeadline ? 'Your interview times are open' : `Schedule your interview by ${i.bookBy}`;
 const bookUrl = (i: JourneyEmailBase) => `${i.origin}/status/schedule`;
 
 export function bookHtml(i: BookEmailInput): string {
   return shell(i, {
     title: bookSubject(i),
-    preheader: `Pick your 30-minute video interview by ${i.bookBy}.`,
+    preheader: i.pastDeadline ? 'Pick your 30-minute video interview.' : `Pick your 30-minute video interview by ${i.bookBy}.`,
     heading: 'Interview times are open.',
     body:
-      p(`Hi ${esc(i.firstName)}, please pick one by ${esc(i.bookBy)}.`) +
+      p(i.pastDeadline ? `Hi ${esc(i.firstName)}, interview times are open. Please pick one on the booking page.` : `Hi ${esc(i.firstName)}, please pick one by ${esc(i.bookBy)}.`) +
       `<p style="margin:18px 0 0;font:500 16px/1.4 ${font};color:${ink}">30 minutes &nbsp;&nbsp;&middot;&nbsp;&nbsp; Video call</p>`,
     button: { label: 'Book your interview', href: bookUrl(i) },
     extra: small("None of the times work? Tell us when you're free on that page.", 20) + small('Questions? Reply to this email.', 4),
@@ -84,7 +87,7 @@ export function bookHtml(i: BookEmailInput): string {
 
 export function bookText(i: BookEmailInput): string {
   return [
-    `Hi ${i.firstName}, please pick a time for your interview by ${i.bookBy}.`,
+    i.pastDeadline ? `Hi ${i.firstName}, interview times are open. Please pick one on the booking page.` : `Hi ${i.firstName}, please pick a time for your interview by ${i.bookBy}.`,
     '',
     '30 minutes, video call.',
     '',

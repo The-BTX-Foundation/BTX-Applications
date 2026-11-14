@@ -21,6 +21,10 @@ export type ClaimRow = { kind: EmailKind; cycle_id: string | null; application_i
 
 export interface EmailStore {
   cycle(cycleId: string): Promise<CycleRow | null>;
+  /** The cycle's booking deadline (an ISO instant), or null when it sets none or the column does not exist yet. Optional so test stores may omit it. */
+  bookingClosesAt?(cycleId: string): Promise<string | null>;
+  /** Ids of this cycle's applications that have an interview_free_times row (exempt from the booking deadline). Optional so test stores may omit it. */
+  freeTimesApplicationIds?(cycleId: string): Promise<Set<string>>;
   submittedApplicants(cycleId: string): Promise<ApplicantRow[]>;
   /** Ids of applications that hold an active interview booking. */
   bookedApplicationIds(cycleId: string): Promise<Set<string>>;
@@ -45,6 +49,12 @@ function fail(what: string, error: { message: string } | null): never {
 
 export function supabaseStore(db: Db): EmailStore {
   return {
+    // select('*') so a database without the column yet reads as "no deadline" instead of failing the send
+    async bookingClosesAt(cycleId) {
+      const { data, error } = await db.from('cycles').select('*').eq('id', cycleId).maybeSingle();
+      if (error) fail('booking deadline', error);
+      return (data as { booking_closes_at?: string | null } | null)?.booking_closes_at ?? null;
+    },
     async cycle(cycleId) {
       const { data, error } = await db
         .from('cycles')
@@ -71,6 +81,14 @@ export function supabaseStore(db: Db): EmailStore {
         .eq('status', 'active')
         .eq('interview_slots.cycle_id', cycleId);
       if (error) fail('bookings', error);
+      return new Set(((data as { application_id: string }[]) ?? []).map((r) => r.application_id));
+    },
+    async freeTimesApplicationIds(cycleId) {
+      const { data, error } = await db
+        .from('interview_free_times')
+        .select('application_id, applications!inner(cycle_id)')
+        .eq('applications.cycle_id', cycleId);
+      if (error) fail('free times', error);
       return new Set(((data as { application_id: string }[]) ?? []).map((r) => r.application_id));
     },
     async awards(cycleId) {

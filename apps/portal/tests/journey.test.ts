@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countdown, describeFreeTimes, groupByDay, mondayOf, pickState, range, slotsThatFit, soonTitle, type JourneyInput } from '@/lib/journey';
+import { bookByDate, bookingClosed, countdown, describeFreeTimes, groupByDay, mondayOf, pickState, range, shortLabel, slotsThatFit, soonTitle, type JourneyInput } from '@/lib/journey';
 
 const base: JourneyInput = {
   now: new Date('2026-09-15T16:00:00Z'),
@@ -59,6 +59,53 @@ describe('status state picker', () => {
     // released early by an admin: it shows; not released: the database sends null and the interview-done screen stays
     expect(pickState({ ...base, now: new Date('2026-10-12T14:00:00Z'), booking: oct6, decision: { kind: 'won', storySent: false } })).toBe('won');
     expect(pickState({ ...base, now: new Date('2026-10-30T14:00:00Z'), booking: oct6, decision: null })).toBe('after');
+  });
+});
+
+describe('booking deadline', () => {
+  // 2026-11-14 04:59 UTC is Nov 13, 11:59 PM Eastern
+  const closes = '2026-11-14T04:59:00Z';
+  const at = (iso: string): JourneyInput => ({ ...base, interviewStart: '2026-11-10', interviewEnd: '2026-11-20', now: new Date(iso), bookingClosesAt: closes });
+  const nov18 = { ...oct6, startsAt: '2026-11-18T23:00:00Z', endsAt: '2026-11-18T23:30:00Z', bookedAt: '2026-11-10T15:00:00Z' };
+  it('closes booking for a student with no time once the deadline passes', () => {
+    expect(pickState(at('2026-11-14T04:58:59Z'))).toBe('book');
+    expect(pickState(at('2026-11-14T04:59:00Z'))).toBe('booking-closed');
+    expect(pickState(at('2026-11-15T12:00:00Z'))).toBe('booking-closed');
+  });
+  it('a student who sent free times before the deadline is exempt: she keeps the sent or book screen', () => {
+    const free = { days: ['Sun'], windows: ['morning'], note: '' };
+    const ranges = { days: [], windows: [], note: '', ranges: [{ day: '2026-11-16', start: '18:00', end: '20:00' }] };
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: free })).toBe('sent');
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: ranges })).toBe('sent');
+    // BTX opened times for her: still not the closed screen
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: free, timesOpen: true })).not.toBe('booking-closed');
+  });
+  it('shows closed (no free times) before the interview weeks, or after them', () => {
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), interviewStart: '2026-11-25', interviewEnd: '2026-11-30' })).toBe('booking-closed');
+    expect(pickState(at('2026-11-25T12:00:00Z'))).toBe('booking-closed');
+  });
+  it('a booked student stays booked after the deadline', () => {
+    expect(pickState({ ...at('2026-11-14T12:00:00Z'), booking: nov18 })).toBe('booked');
+    expect(pickState({ ...at('2026-11-16T12:00:00Z'), booking: nov18 })).toBe('soon');
+  });
+  it('a decision still wins over the closed screen', () => {
+    expect(pickState({ ...at('2026-12-01T12:00:00Z'), decision: { kind: 'not-picked' } })).toBe('not-picked');
+  });
+  it('a null or absent deadline never closes booking', () => {
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), bookingClosesAt: null })).toBe('book');
+    expect(pickState({ ...base, interviewStart: '2026-11-10', interviewEnd: '2026-11-20', now: new Date('2026-11-15T12:00:00Z') })).toBe('book');
+  });
+  it('bookByDate: the deadline Eastern day when set, the interview end otherwise', () => {
+    expect(bookByDate('2026-11-20', closes)).toBe('2026-11-13');
+    expect(bookByDate('2026-11-20', null)).toBe('2026-11-20');
+    expect(bookByDate('2026-11-20', undefined)).toBe('2026-11-20');
+    expect(bookByDate(null, null)).toBe(null);
+  });
+  it('bookingClosed, and the date the screen shows (Eastern)', () => {
+    expect(bookingClosed(new Date('2026-11-14T04:59:00Z'), closes)).toBe(true);
+    expect(bookingClosed(new Date('2026-11-14T04:58:00Z'), closes)).toBe(false);
+    expect(bookingClosed(new Date('2030-01-01T00:00:00Z'), null)).toBe(false);
+    expect(shortLabel(closes)).toBe('Nov 13');
   });
 });
 

@@ -1,7 +1,7 @@
 // The status page after submitting. It picks its screen from the real data (see lib/journey.ts): waiting for the
 // interviews, book your interview, free times sent, booked, switched, interview soon, interview day, interview done,
-// and the decision. `?demo=` draws each screen with the drafts' sample data in mock mode (never against the database):
-// before-booking, sent, booked, switched, soon, today, after, won, won-sent, not-picked, and `-stress` on any of them
+// and the decision; also booking closed (the cycle's booking deadline passed and she holds no time). `?demo=` draws each
+// screen with the drafts' sample data in mock mode (never against the database): before-booking, sent, booking-closed, booked, switched, soon, today, after, won, won-sent, not-picked, and `-stress` on any of them
 // (a bare `stress` is the waiting screen's stress demo).
 import type { Metadata } from 'next';
 import { ApplyLoadError } from '@/components/load-error-pages';
@@ -32,6 +32,8 @@ export default async function StatusPage({ searchParams }: { searchParams: Promi
     decision: d.decision,
     // Live only: the sample data always has open times, and its stage is set by the demo date instead.
     timesOpen: !d.mock && d.slots.length > 0,
+    // the cycle's booking deadline (null = none); past it, a student with no time sees the closed screen
+    bookingClosesAt: d.view.bookingClosesAt,
   });
   if (state === 'waiting') {
     return (

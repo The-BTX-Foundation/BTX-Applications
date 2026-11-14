@@ -12,6 +12,7 @@ export type DemoName =
   | 'soon'
   | 'today'
   | 'sent'
+  | 'booking-closed'
   | 'after'
   | 'won'
   | 'won-sent'
@@ -23,7 +24,7 @@ export type DemoName =
   | 'story';
 
 export const DEMO_NAMES: readonly DemoName[] = [
-  'before-booking', 'booked', 'switched', 'soon', 'today', 'sent', 'after', 'won', 'won-sent', 'not-picked',
+  'before-booking', 'booked', 'switched', 'soon', 'today', 'sent', 'booking-closed', 'after', 'won', 'won-sent', 'not-picked',
   'schedule', 'taken', 'no-time', 'change', 'story',
 ];
 
@@ -168,6 +169,8 @@ export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting
     'no-time': '2026-09-15T16:00:00Z',
     booked: '2026-09-15T16:00:00Z',
     sent: '2026-09-15T16:00:00Z',
+    // two days after the sample booking deadline (Wed Sep 30, 11:59 PM Eastern)
+    'booking-closed': '2026-10-02T16:00:00Z',
     switched: '2026-10-04T18:00:00Z',
     change: '2026-10-04T18:00:00Z',
     soon: '2026-10-04T18:00:00Z',
@@ -208,7 +211,8 @@ export function buildDemo(raw: string | undefined, fallback: DemoName | 'waiting
     ...who,
     submittedAt: SUBMITTED,
     now,
-    view: MOCK_VIEW,
+    // the closed demo sets a booking deadline (Sep 30, 11:59 PM Eastern); every other demo has none
+    view: name === 'booking-closed' ? { ...MOCK_VIEW, bookingClosesAt: et('2026-09-30', 23, 59) } : MOCK_VIEW,
     booking,
     freeTimes,
     decision,

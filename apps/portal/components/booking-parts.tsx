@@ -46,7 +46,8 @@ async function postBook(slotId: string, note?: string): Promise<BookResult> {
 }
 
 // Books (or switches to) a slot. In mock mode there is no database: it goes to the matching status preview with the
-// time she picked. Live, it asks /api/book (which calls switch_booking); 'taken' sends her back to the open times with the notice.
+// time she picked. Live, it asks /api/book (which calls switch_booking); 'taken' sends her back to the open times with the notice,
+// and 'booking_closed' (the deadline passed while the page was open) sends her to /status, which shows the closed screen.
 // NOT TESTED AGAINST LIVE DATA.
 export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) {
   const router = useRouter();
@@ -75,6 +76,11 @@ export function useBook(opts: { mode: 'schedule' | 'change'; stress: boolean }) 
     }
     if (r.ok) {
       router.push('/status');
+      router.refresh();
+      return;
+    }
+    if (r.kind === 'booking_closed') {
+      router.replace('/status');
       router.refresh();
       return;
     }

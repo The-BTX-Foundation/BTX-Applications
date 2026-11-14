@@ -29,6 +29,9 @@ export type CycleView = {
   /** The scholars' event: its date ("Fri Dec 4"), or "[Event date]" when the date is not set; `eventOn` says it is planned. */
   eventDate: string;
   eventOn: boolean;
+  /** When interview booking closes for students who have not booked (cycles.booking_closes_at, an ISO instant), or
+   *  null when the cycle sets no deadline. A row read before the column exists has none (undefined), read as null. */
+  bookingClosesAt: string | null;
   /** Inputs for the dates drawing (all "YYYY-MM-DD"), or null when the dates are not all set. */
   drawing: null | {
     opens: string;
@@ -59,6 +62,7 @@ const MOCK: CycleView = {
   paymentNote: "[How it's paid]",
   eventDate: '[Event date]',
   eventOn: true,
+  bookingClosesAt: null,
   requirements: [],
   drawing: {
     opens: '2026-08-17',
@@ -90,6 +94,7 @@ export function toView(c: Cycle): CycleView {
     paymentNote: c.payment_note?.trim() || "[How it's paid]",
     eventDate: c.event_enabled && c.event_at ? longDay(easternDate(c.event_at)) : '[Event date]',
     eventOn: c.event_enabled,
+    bookingClosesAt: c.booking_closes_at ?? null,
     requirements: Array.isArray(c.requirements) ? c.requirements.filter((r): r is string => typeof r === 'string') : [],
     drawing: complete
       ? {

@@ -195,6 +195,8 @@ export async function sendTimes(cycleId: string): Promise<SendTimesResult> {
     const r = await sendBookingInvites(cycleId);
     const open = 'The times are open in the Portal.';
     if (!r.ok) {
+      // The times were opened above, so say so alongside the refusal.
+      if (r.reason === 'booking-closed') return { ok: false, message: `Booking closed on ${r.closedOn}. No emails went out. ${open}`, emailed: 0, notConfigured: false };
       if (r.reason === 'no-service-key') return { ok: true, message: `Email isn't set up here, so no emails went out. ${open}`, emailed: 0, notConfigured: true };
       if (r.reason === 'no-interview-end') return { ok: true, message: `${open} No emails went out: set the interview dates on the cycle first.`, emailed: 0, notConfigured: false };
       return { ok: true, message: `${open} No emails went out.`, emailed: 0, notConfigured: false };
