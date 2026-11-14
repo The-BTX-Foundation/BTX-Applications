@@ -1,10 +1,11 @@
-// None of these times work. `?demo=no-time` (and `-stress`) draws the drafts' state in mock mode.
+// None of these times work. `?demo=no-time` (and `-stress`) draws the drafts' state in mock mode. Past the cycle's
+// booking deadline a student with no time goes back to /status (the closed screen); the database refuses free times then.
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { ApplyLoadError } from '@/components/load-error-pages';
 import { NoTimeView } from '@/components/no-time-view';
 import { loadJourney } from '@/lib/journey-data';
-import { freeWindow } from '@/lib/journey';
+import { bookingClosed, freeWindow } from '@/lib/journey';
 import { easternDate } from '@/lib/format';
 import { journeyLinks } from '@/lib/journey-demo';
 
@@ -16,6 +17,8 @@ export default async function NoTimePage({ searchParams }: { searchParams: Promi
   if ('failed' in d) return <ApplyLoadError status />;
   // she already holds a time (the database refuses free times then): changing it is the other page
   if (!d.mock && d.booking) redirect('/status/change');
+  // booking has closed and she holds no time: no free times either
+  if (!d.mock && !d.booking && bookingClosed(d.now, d.view.bookingClosesAt)) redirect('/status');
   const sample = d.mock && d.demoName?.startsWith('no-time');
   const win = freeWindow(easternDate(d.now), d.view.drawing?.interviewStart ?? null, d.view.drawing?.interviewEnd ?? null);
   // the stress demo opens on a long list of times; otherwise she starts from what she already sent, if anything

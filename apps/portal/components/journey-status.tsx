@@ -1,13 +1,14 @@
 // The status screens after she submits and before the decision (drafts status-book, status-sent, status-booked,
 // status-request, status, status-today and their phone versions): book your interview, free times sent, just booked,
-// switched to a new time, interview soon, interview day, and the interview-done screen.
+// switched to a new time, interview soon, interview day, and the interview-done screen. Also the booking-closed screen
+// (no Figma frame: the cycle's booking deadline passed and she holds no time), drawn with the same parts.
 import Link from 'next/link';
 import { describeRanges } from '@btx/ai';
 import { HELP_EMAIL, Icon, TopBar } from '@btx/ui';
 import { PREPARE_GUIDE_URL } from '@/lib/config';
 import { easternDate, longDay } from '@/lib/format';
 import { buildIcs, icsHref } from '@/lib/ics';
-import { countdown, dayLabel, describeFreeTimes, range, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
+import { countdown, dayLabel, describeFreeTimes, range, shortLabel, soonTitle, type Booking, type FreeTimes, type JourneyState } from '@/lib/journey';
 import type { CycleView } from '@/lib/cycle';
 import { FollowCard } from './follow-card';
 import { JourneyDrawing } from './journey-drawing';
@@ -18,7 +19,7 @@ import j from './journey-status.module.css';
 export type JourneyLinks = { schedule: string; noTime: string; change: string };
 
 export type JourneyStatusProps = {
-  state: Extract<JourneyState, 'book' | 'sent' | 'booked' | 'switched' | 'soon' | 'today' | 'after'>;
+  state: Extract<JourneyState, 'book' | 'sent' | 'booking-closed' | 'booked' | 'switched' | 'soon' | 'today' | 'after'>;
   accountName: string;
   firstName: string;
   submittedAt: string;
@@ -44,7 +45,39 @@ function Meta({ children }: { children: React.ReactNode }) {
   return <p className={j.meta}>{children}</p>;
 }
 
+// Booking closed: the deadline passed and she holds no time. Headline and one line; the help address sits in that line,
+// so the "Questions?" footer is left out (each fact once). No dates drawing: its booking window is over.
+function ClosedStatus(p: JourneyStatusProps) {
+  const closedOn = p.view.bookingClosesAt ? shortLabel(p.view.bookingClosesAt) : null;
+  return (
+    <div className="app">
+      <TopBar variant="signed-in" accountName={p.accountName} />
+      <main id="main" className={`pm ${s.page}`}>
+        <div className={s.wrap} data-review="Status: booking-closed">
+          <h1 className={s.title}>Interview booking is closed.</h1>
+          <p className={s.lead}>
+            {closedOn ? <>The deadline to book an interview passed on {nb(closedOn)}. </> : 'The deadline to book an interview has passed. '}
+            If you still need an interview, email{' '}
+            <a href={`mailto:${HELP_EMAIL}`} className="lk">
+              {HELP_EMAIL}
+            </a>
+            .
+          </p>
+          {/* same columns as the book screen: the follow card sits where it does there */}
+          <div className={`${j.cols} ${j.colsBook}`}>
+            <div className={j.c1} />
+            <div className={j.c2}>
+              <FollowCard className={j.follow} />
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function JourneyStatus(p: JourneyStatusProps) {
+  if (p.state === 'booking-closed') return <ClosedStatus {...p} />;
   const { state, view, booking, now } = p;
   const d = view.drawing;
   const applied = easternDate(p.submittedAt);

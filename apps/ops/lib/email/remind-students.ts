@@ -8,7 +8,9 @@
 // same day, or two admins at once, sends nothing more. A failed send gives the row back. Until that migration is applied
 // the database refuses the kind and nothing is sent ("not-ready"). Without RESEND_API_KEY or OPS_EMAIL_FROM nothing is
 // sent or logged. It refuses a cycle that is not the current published one, and one whose interview end date has passed
-// (Eastern), so an old cycle's students are never reminded.
+// (Eastern), so an old cycle's students are never reminded. It also refuses once the cycle's booking deadline
+// (cycles.booking_closes_at, migration 20261114120000_booking_deadline.sql) has passed: the Portal no longer lets an
+// unbooked student book then, so a "Schedule your interview" email would point at a closed door.
 import { bookHtml, bookSubject, bookText, emailDay, sendMail, type Mail, type SendResult } from '@btx/emails';
 import { easternDate, remindKey } from '../interview-cover';
 import { defaultIsAdmin, HELP_EMAIL } from './send';
@@ -21,6 +23,8 @@ export type Applicant = { id: string; full_name: string | null; terpmail: string
 /** What the reminder reads and writes; the default uses the service role, tests pass their own. */
 export interface RemindStore {
   cycle(cycleId: string): Promise<{ term: string; award_name: string | null; interview_end: string | null } | null>;
+  /** The cycle's booking deadline (an ISO instant), or null when it sets none or the column does not exist yet. */
+  bookingClosesAt(cycleId: string): Promise<string | null>;
   /** The id of the current published cycle (the newest with status 'published'), or null when there is none. */
   publishedCycleId(): Promise<string | null>;
   submittedApplicants(cycleId: string): Promise<Applicant[]>;
@@ -43,10 +47,14 @@ export type RemindDeps = {
 
 export type RemindResult =
   | { ok: true; sent: number; skipped: number; failed: number; notConfigured: boolean; at: string }
-  | { ok: false; reason: 'not-admin' | 'no-service-key' | 'no-cycle' | 'not-current' | 'no-interview-end' | 'interviews-over' | 'not-ready' | 'none' };
+  | { ok: false; reason: 'not-admin' | 'no-service-key' | 'no-cycle' | 'not-current' | 'no-interview-end' | 'interviews-over' | 'not-ready' | 'none' }
+  /** Booking has closed: `closedOn` is the Eastern day it closed ("Nov 13"). */
+  | { ok: false; reason: 'booking-closed'; closedOn: string };
 
 const wait = (ms: number) => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
 const firstName = (a: Applicant) => (a.full_name ?? '').trim().split(/\s+/)[0] || 'there';
+// "Nov 13" for an instant, in Eastern time (the deadline 2026-11-14T04:59Z is Nov 13).
+const easternMonthDay = (ts: string) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(new Date(ts));
 
 async function defaultStore(): Promise<RemindStore | null> {
   const { createServiceClient } = await import('@btx/data/server');
@@ -56,6 +64,12 @@ async function defaultStore(): Promise<RemindStore | null> {
   const base = supabaseStore(db);
   return {
     cycle: base.cycle,
+    // select('*') so a database without the column yet reads as "no deadline" instead of failing the reminder
+    async bookingClosesAt(cycleId) {
+      const { data, error } = await db.from('cycles').select('*').eq('id', cycleId).maybeSingle();
+      if (error) throw new Error(`booking deadline: ${error.message}`);
+      return (data as { booking_closes_at?: string | null } | null)?.booking_closes_at ?? null;
+    },
     async publishedCycleId() {
       const { data, error } = await db.from('cycles').select('id').eq('status', 'published').order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw new Error(`published cycle: ${error.message}`);
@@ -93,6 +107,11 @@ export async function remindUnbooked(cycleId: string, ids: string[] | null, deps
   const now = (deps.now ?? (() => new Date()))();
   // interview_end is a date ("2026-11-20"); the last interview day still counts.
   if (cycle.interview_end.slice(0, 10) < easternDate(now)) return { ok: false, reason: 'interviews-over' };
+  // Booking deadline passed: unbooked students can no longer book, so no reminder goes out.
+  const closesAt = await store.bookingClosesAt(cycleId);
+  if (closesAt && !Number.isNaN(Date.parse(closesAt)) && now.getTime() >= Date.parse(closesAt)) {
+    return { ok: false, reason: 'booking-closed', closedOn: easternMonthDay(closesAt) };
+  }
   const [applicants, booked] = await Promise.all([store.submittedApplicants(cycleId), store.bookedApplicationIds(cycleId)]);
   const want = ids ? new Set(ids) : null;
   const todo = applicants.filter((a) => !booked.has(a.id) && (!want || want.has(a.id)));
@@ -134,7 +153,8 @@ export async function remindUnbooked(cycleId: string, ids: string[] | null, deps
 /** The page's words for a result. */
 export function remindLine(r: RemindResult): { ok: boolean; message: string } {
   if (!r.ok) {
-    const m: Record<typeof r.reason, string> = {
+    if (r.reason === 'booking-closed') return { ok: false, message: `Booking closed on ${r.closedOn}. No emails went out.` };
+    const m: Record<Exclude<typeof r.reason, 'booking-closed'>, string> = {
       'not-admin': 'Only board members with admin rights can remind students.',
       'no-service-key': "Email isn't set up here, so no emails went out.",
       'no-cycle': 'That cycle was not found.',

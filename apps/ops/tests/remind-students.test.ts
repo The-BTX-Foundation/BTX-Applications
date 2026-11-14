@@ -9,11 +9,12 @@ const NOW = new Date('2026-11-13T15:00:00Z');
 const app = (id: string, name: string): Applicant => ({ id, full_name: name, terpmail: `${id}@terpmail.umd.edu`, applicant_code: `BTX-${id}` });
 
 // An in-memory email_log with the unique key the database has (kind + recipient).
-function store(opts: { booked?: string[]; notReady?: boolean; published?: string | null; interviewEnd?: string | null } = {}) {
+function store(opts: { booked?: string[]; notReady?: boolean; published?: string | null; interviewEnd?: string | null; closesAt?: string | null } = {}) {
   const keys = new Set<string>();
   const sent: RemindRow[] = [];
   const s: RemindStore = {
     cycle: async () => ({ term: 'Fall 2026', award_name: 'Legacy', interview_end: opts.interviewEnd === undefined ? '2026-11-20' : opts.interviewEnd }),
+    bookingClosesAt: async () => opts.closesAt ?? null,
     publishedCycleId: async () => (opts.published === undefined ? 'c1' : opts.published),
     submittedApplicants: async () => [app('a1', 'Ana Ruiz'), app('a2', 'Ben Cole'), app('a3', 'Cam Fox')],
     bookedApplicationIds: async () => new Set(opts.booked ?? []),
@@ -71,6 +72,16 @@ describe('remindUnbooked', () => {
     const r = await remindUnbooked('c1', null, { ...base, store: s });
     expect(r).toEqual({ ok: false, reason: 'not-ready' });
     expect(remindLine(r)).toEqual({ ok: false, message: 'Reminders need a database update first. No emails went out.' });
+  });
+  it('booking deadline: no reminders once booking has closed, with the Eastern day it closed', async () => {
+    // closes 2026-11-14 04:59 UTC = Nov 13, 11:59 PM Eastern; NOW is Nov 13 15:00 UTC (before it)
+    const before = store({ closesAt: '2026-11-14T04:59:00Z' });
+    expect(await remindUnbooked('c1', null, { ...base, store: before.s })).toMatchObject({ ok: true, sent: 3 });
+    const after = store({ closesAt: '2026-11-14T04:59:00Z' });
+    const r = await remindUnbooked('c1', null, { ...base, store: after.s, now: () => new Date('2026-11-14T05:00:00Z') });
+    expect(r).toEqual({ ok: false, reason: 'booking-closed', closedOn: 'Nov 13' });
+    expect(after.sent).toEqual([]);
+    expect(remindLine(r)).toEqual({ ok: false, message: 'Booking closed on Nov 13. No emails went out.' });
   });
   it('permission: only admins', async () => {
     const { s, sent } = store();

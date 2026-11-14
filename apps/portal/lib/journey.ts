@@ -8,6 +8,7 @@ export type JourneyState =
   | 'waiting' // submitted, before interviews open (the screen built with the status page)
   | 'book' // interviews are open and she has no time yet
   | 'sent' // she sent her free times and waits for a time from BTX
+  | 'booking-closed' // the cycle's booking deadline passed and she holds no time
   | 'booked' // she just booked (within a day)
   | 'switched' // she just changed her time (within a day)
   | 'soon' // her interview is 1 to 3 days away
@@ -46,25 +47,38 @@ export type JourneyInput = {
   decision: Decision;
   /** True when the board has opened interview times she can book (open_interview_slots returned some). */
   timesOpen?: boolean;
+  /** When booking closes for students with no time (cycles.booking_closes_at, an instant). Absent or null = never. */
+  bookingClosesAt?: string | null;
 };
+
+// True when the cycle sets a booking deadline and `now` is at or past it (same rule as the database's booking_closed()).
+export function bookingClosed(now: Date, closesAt: string | null | undefined): boolean {
+  if (!closesAt) return false;
+  const at = Date.parse(closesAt);
+  return !Number.isNaN(at) && now.getTime() >= at;
+}
 
 const DAY = 86400000;
 
 // Picks the screen. Rules, in order:
 //  1. A decision shows when the database returns one (my_decision is null until an admin releases the decisions), so
 //     there is no date check here.
-//  2. Before any times are open to book and before the interview weeks (or when the cycle sets no interview dates):
+//  2. No booking and the booking deadline has passed: the closed screen, whatever else is true (free times sent, the
+//     interview weeks not started or over). The database refuses her booking and free times then.
+//  3. Before any times are open to book and before the interview weeks (or when the cycle sets no interview dates):
 //     the waiting screen. The board opens times after applications close, which can be days before the first
 //     interview, so open times (or a booking) end the wait.
-//  3. With a booking: interview day, then just booked or switched (first 24 hours), then 1 to 3 days away, then
+//  4. With a booking: interview day, then just booked or switched (first 24 hours), then 1 to 3 days away, then
 //     plain booked; once the interview has ended: the after screen.
-//  4. Without one: after the interview weeks, the after screen; free times sent, the sent screen; otherwise book.
+//  5. Without one: after the interview weeks, the after screen; free times sent, the sent screen; otherwise book.
 export function pickState(i: JourneyInput): JourneyState {
   const today = easternDate(i.now);
   if (i.decision) {
     if (i.decision.kind === 'not-picked') return 'not-picked';
     return i.decision.storySent ? 'won-sent' : 'won';
   }
+  // a student who holds a time is never closed out (she can still switch)
+  if (!i.booking && bookingClosed(i.now, i.bookingClosesAt)) return 'booking-closed';
   const started = Boolean(i.interviewStart && today >= i.interviewStart);
   if (!i.booking && !i.timesOpen && !started) return 'waiting';
   if (i.booking) {

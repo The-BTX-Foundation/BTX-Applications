@@ -16,6 +16,7 @@ describe('book or switch an interview time', () => {
     expect(await bookSlot(client({ error: { message: 'slot_not_found', code: 'P0002' } }), 's')).toEqual({ ok: false, kind: 'slot_gone' });
     expect(await bookSlot(client({ error: { message: 'slot_in_past', code: '22023' } }), 's')).toEqual({ ok: false, kind: 'slot_gone' });
     expect(await bookSlot(client({ error: { message: 'no_submitted_application', code: '42501' } }), 's')).toEqual({ ok: false, kind: 'not_submitted' });
+    expect(await bookSlot(client({ error: { message: 'booking_closed', code: '22023' } }), 's')).toEqual({ ok: false, kind: 'booking_closed' });
     expect(await bookSlot(client({ error: { message: 'Failed to fetch' } }), 's')).toEqual({ ok: false, kind: 'network' });
     expect(await bookSlot(client({ error: { message: 'weird', code: '1' } }), 's')).toEqual({ ok: false, kind: 'unknown' });
   });
