@@ -23,7 +23,7 @@ export type IpGroup = { key: string; name: string; questions: IpQuestion[] };
 
 /** What the page may offer. Live: each flag names its condition in lib/interview-page-map.ts. */
 export type IpCaps = {
-  /** "Change" on an interviewer (admins only; changeInterviewerAction). */
+  /** "Change" on an interviewer (any admin or board member; changeInterviewerAction). */
   change: boolean;
   /** The viewer's own notes boxes (one of the two interviewers, or an admin; saveInterviewNoteAction). */
   notes: boolean;
@@ -31,8 +31,11 @@ export type IpCaps = {
   score: boolean;
 };
 
+/** Someone who could take an interviewer's seat: free then (`free`), or not, with a short `note` ("Not marked free then"). */
+export type IpOption = { id: string; name: string; initials: string; free: boolean; note: string | null };
+
 /** Mock only: who could cover each interviewer (by their id), and a switch that makes every note save fail. */
-export type IpSim = { replacements: Record<string, IpPerson[]>; failSave: boolean };
+export type IpSim = { replacements: Record<string, IpOption[]>; failSave: boolean };
 
 /** Everything the page draws. */
 export type InterviewPageView = {

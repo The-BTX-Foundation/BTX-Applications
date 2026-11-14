@@ -2,14 +2,15 @@
 
 // The page for one interview (route /scholarships/interviews/[slot], built 2026-11-13 from board feedback). Top: the student
 // (with a link to their application), the day and time in Eastern time, the award and the two interviewers. Then joining
-// (a gold "Join on Teams" and "Copy link"), the interviewers with "Change" for admins, the cycle's interview questions with
+// (a gold "Join on Teams" and "Copy link"), the interviewers with "Change" for any board member, the cycle's interview questions with
 // the viewer's own notes box under each and everyone else's notes read only, "Overall notes", and a link to score.
 //
 // Notes save by themselves a moment after typing stops and when a box loses focus (lib/interview-notes-flow.ts): one save
 // per box at a time, a failed save keeps the words and says "Not saved" with Retry, words not yet saved are kept in memory
-// for this person (lib/interview-notes-unsent.ts) and the page warns before closing. Change interviewer is admin only: it
-// lists who is free (listReplacementsAction) and makes the change (changeInterviewerAction), then the page re-reads from the
-// server and keeps the Change controls locked until that read lands. Mock mode plays every write on this device only.
+// for this person (lib/interview-notes-unsent.ts) and the page warns before closing. Change interviewer is open to every
+// admin and board member: it lists who can cover, free people first and the rest with a note (listReplacementsAction), and
+// makes the change (changeInterviewerAction); picking someone not marked free says so above Save. Then the page re-reads
+// from the server and keeps the Change controls locked until that read lands. Mock mode plays every write on this device.
 import { useEffect, useRef, useState, useTransition, type ButtonHTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -23,7 +24,8 @@ import { NOTE_MAX } from '@/lib/interview-notes-db';
 import { anyUnsaved, boxReducer, boxStatus, DEBOUNCE_MS, dirty, newBox, shouldSave, type Box, type BoxEvent } from '@/lib/interview-notes-flow';
 import { claimNotes, keepWords, unsentFor } from '@/lib/interview-notes-unsent';
 import { minutesOf } from '@/lib/interview-page-map';
-import { OVERALL, type InterviewPageView, type IpNote, type IpPerson } from '@/lib/interview-page-view';
+import { pickWarning, timeRangeWords } from '@/lib/interview-replacement-options';
+import { OVERALL, type InterviewPageView, type IpNote, type IpOption, type IpPerson } from '@/lib/interview-page-view';
 import { armed, goKey } from '@/lib/interviews-map';
 import { clock, easternDay, fullDate, shortDate } from '@/lib/refresh-time';
 import { LIMIT_MS, within } from '@/lib/scoring-flow';
@@ -34,14 +36,14 @@ const QUESTIONS = '/scholarships/interviews/questions';
 const NO_ANSWER = 'No answer in time. Reload to check.';
 const NO_ANSWER_CHANGE = 'No answer in time. Reload to check. An email may already have gone out.';
 const CHANGE_FAILED = "Couldn't change the interviewer. Try again.";
-const LIST_FAILED = "Couldn't check who is free. Try again.";
+const LIST_FAILED = "Couldn't check who can cover. Try again.";
 
 const wait = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
 // The clock, read only in event handlers (opening the Change sheet), never while drawing.
 const nowMs = () => Date.now();
 
-type Sheet = { out: string; openedAt: number; state: 'loading' | 'ok' | 'error'; people: IpPerson[]; pick: string | null; message: string | null; saving: boolean };
+type Sheet = { out: string; openedAt: number; state: 'loading' | 'ok' | 'error'; people: IpOption[]; pick: string | null; message: string | null; saving: boolean };
 type Outcome = { ok: boolean; text: string } | null;
 
 // Copies text: the Clipboard API, then the old select-and-copy way. True when one of them worked.
@@ -224,7 +226,7 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
     else requestAnimationFrame(() => copyBox.current?.select());
   };
 
-  // ---- Change interviewer (admins) ----
+  // ---- Change interviewer (any board member) ----
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [outcome, setOutcome] = useState<Outcome>(null);
   // After a live change: locked until the re-read view lands (the gate clears when `view` changes).
@@ -255,7 +257,7 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
     } else {
       try {
         const r = await within(listReplacementsAction(slotId), LIMIT_MS);
-        next = !r.done ? { state: 'error', message: NO_ANSWER } : r.value.ok ? { state: 'ok', people: r.value.people.map((x) => ({ ...x, me: x.id === view.me })) } : { state: 'error', message: r.value.message };
+        next = !r.done ? { state: 'error', message: NO_ANSWER } : r.value.ok ? { state: 'ok', people: r.value.people } : { state: 'error', message: r.value.message };
       } catch {
         next = { state: 'error', message: LIST_FAILED };
       }
@@ -277,7 +279,7 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
     setSheet({ ...sheet, saving: true, message: null });
     if (!live) {
       await wait(500);
-      setMockPair((ps) => ps.map((x) => (x.id === out ? { ...pick, me: pick.id === view.me } : x)));
+      setMockPair((ps) => ps.map((x) => (x.id === out ? { id: pick.id, name: pick.name, initials: pick.initials, me: pick.id === view.me } : x)));
       setSheet(null);
       setOutcome({ ok: true, text: `Changed to ${pick.name}.` });
       say(`Changed to ${pick.name}.`);
@@ -305,6 +307,9 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
   const mins = minutesOf(view.startsAt, view.endsAt);
   const first = view.name.split(/\s+/)[0] || view.name;
   const note = (k: string): IpNote[] => view.others[k] ?? [];
+  const slotWords = view.startsAt && view.endsAt ? timeRangeWords(clock(view.startsAt), clock(view.endsAt)) : null;
+  const picked = sheet?.pick ? sheet.people.find((x) => x.id === sheet.pick) : undefined;
+  const warning = picked ? pickWarning(picked, slotWords) : null;
 
   // One notes box (the viewer's own) with its state line.
   const box = (key: string, label: string, labelId?: string) => {
@@ -488,17 +493,17 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
                               </p>
                               {sheet.state === 'loading' ? (
                                 <p className="ip-dim" role="status">
-                                  Checking who is free…
+                                  Checking who can cover…
                                 </p>
                               ) : sheet.state === 'error' ? (
                                 <StateLine kind="error" onRetry={() => void openChange(p)}>
                                   {sheet.message ?? LIST_FAILED}
                                 </StateLine>
                               ) : sheet.people.length === 0 ? (
-                                <StateLine kind="empty">Nobody else is free for the whole time.</StateLine>
+                                <StateLine kind="empty">No other board member can take this one.</StateLine>
                               ) : (
                                 <fieldset className="ip-cands">
-                                  <legend className="rf-sr">Board members free for the whole time</legend>
+                                  <legend className="rf-sr">Board members</legend>
                                   {sheet.people.map((c) => (
                                     <label key={c.id} className={`ip-cand${sheet.pick === c.id ? ' ip-on' : ''}`}>
                                       <input
@@ -512,11 +517,19 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
                                       <span className="ip-av" aria-hidden="true">
                                         {c.initials}
                                       </span>
-                                      <span className="ip-pname">{c.name}</span>
+                                      <span className="ip-cn">
+                                        <span className="ip-pname">{c.name}</span>
+                                        {c.free || c.note ? <span className={`ip-cnote${c.free ? '' : ' ip-cnote-off'}`}>{c.free ? 'Free then' : c.note}</span> : null}
+                                      </span>
                                     </label>
                                   ))}
                                 </fieldset>
                               )}
+                              {warning && sheet.state === 'ok' ? (
+                                <p className="ip-warn" id={`ip-warn-${p.id}`}>
+                                  {warning}
+                                </p>
+                              ) : null}
                               {sheet.message && sheet.state === 'ok' ? (
                                 <p className="ip-outcome ip-bad" role="alert">
                                   <Icon name="alert" />
@@ -525,7 +538,7 @@ export function InterviewPageBoard({ view, live, userId }: { view: InterviewPage
                               ) : null}
                               <div className="ip-sact">
                                 {sheet.state === 'ok' && sheet.people.length > 0 ? (
-                                  <GoButton className="rf-btn" openedAt={sheet.openedAt} onGo={() => void saveChange()} aria-disabled={!sheet.pick || sheet.saving || undefined} aria-describedby={`ip-shh-${p.id}`}>
+                                  <GoButton className="rf-btn" openedAt={sheet.openedAt} onGo={() => void saveChange()} aria-disabled={!sheet.pick || sheet.saving || undefined} aria-describedby={warning ? `ip-shh-${p.id} ip-warn-${p.id}` : `ip-shh-${p.id}`}>
                                     {sheet.saving ? 'Saving…' : 'Save change'}
                                   </GoButton>
                                 ) : null}
