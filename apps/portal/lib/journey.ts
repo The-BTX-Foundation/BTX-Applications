@@ -72,8 +72,9 @@ const DAY = 86400000;
 // Picks the screen. Rules, in order:
 //  1. A decision shows when the database returns one (my_decision is null until an admin releases the decisions), so
 //     there is no date check here.
-//  2. No booking and the booking deadline has passed: the closed screen, whatever else is true (free times sent, the
-//     interview weeks not started or over). The database refuses her booking and free times then.
+//  2. No booking, no free times sent, and the booking deadline has passed: the closed screen, whatever else is true (the
+//     interview weeks not started or over). The database refuses her booking and free times then. A student who sent
+//     "None of these times work" free times before the deadline is exempt: she keeps the screens below as before it.
 //  3. Before any times are open to book and before the interview weeks (or when the cycle sets no interview dates):
 //     the waiting screen. The board opens times after applications close, which can be days before the first
 //     interview, so open times (or a booking) end the wait.
@@ -86,8 +87,8 @@ export function pickState(i: JourneyInput): JourneyState {
     if (i.decision.kind === 'not-picked') return 'not-picked';
     return i.decision.storySent ? 'won-sent' : 'won';
   }
-  // a student who holds a time is never closed out (she can still switch)
-  if (!i.booking && bookingClosed(i.now, i.bookingClosesAt)) return 'booking-closed';
+  // a student who holds a time, or who sent free times, is never closed out (she can still switch or be given a time)
+  if (!i.booking && !i.freeTimes && bookingClosed(i.now, i.bookingClosesAt)) return 'booking-closed';
   const started = Boolean(i.interviewStart && today >= i.interviewStart);
   if (!i.booking && !i.timesOpen && !started) return 'waiting';
   if (i.booking) {

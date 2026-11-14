@@ -16,7 +16,7 @@ export default async function ChangePage({ searchParams }: { searchParams: Promi
   const d = await loadJourney('/status/change', demo, 'change');
   if ('failed' in d) return <ApplyLoadError status />;
   // no time to change: book one, unless booking has closed (live only; the demos set no deadline)
-  if (!d.booking) redirect(!d.mock && bookingClosed(d.now, d.view.bookingClosesAt) ? '/status' : '/status/schedule');
+  if (!d.booking) redirect(!d.mock && !d.freeTimes && bookingClosed(d.now, d.view.bookingClosesAt) ? '/status' : '/status/schedule');
   const links = journeyLinks(d.mock ? (d.demoName ?? '') : null);
   const takenAt = taken && !Number.isNaN(Date.parse(taken)) ? taken : null;
   return (

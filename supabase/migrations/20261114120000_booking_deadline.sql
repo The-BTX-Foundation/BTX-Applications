@@ -3,13 +3,19 @@
 -- closes for students who have NOT booked: cycles.booking_closes_at (null = no
 -- deadline). Until now the "book by" date in the booking email was only text.
 --
--- After the deadline, for a student with no active booking:
+-- After the deadline, for a student with no active booking AND no free-times row
+-- (interview_free_times row for her application; it exists only when she sent
+-- "None of these times work", ranges or the older days/windows):
 --   - switch_booking() refuses with 'booking_closed' (errcode 22023);
 --   - open_interview_slots() returns no rows (not an error);
---   - she can no longer send or change "None of these times work" free times
---     (interview_free_times insert/update policies).
+--   - she cannot send free times (interview_free_times insert policy: an insert
+--     means she has no row yet).
 -- A student who already holds an active booking keeps full control: she still
 -- sees the open times, can switch, and can save a note on her own time.
+-- A student who sent free times before the deadline is EXEMPT (she followed the
+-- process and waits for a time): she behaves as before the deadline, so she
+-- sees times, can book or switch when BTX opens times for her, and can update
+-- her free times.
 --
 -- Functions are redefined from their newest versions in
 -- 20261013090300_interview_flow.sql (no later migration changes them); the free
@@ -30,8 +36,8 @@ alter table public.cycles add column if not exists booking_closes_at timestamptz
 
 comment on column public.cycles.booking_closes_at is
   'When interview booking closes for students who have not booked (null = no deadline). '
-  'After it, a student with no active booking cannot book, sees no open times and cannot send free times; '
-  'a student with an active booking can still switch times and add notes.';
+  'After it, a student with no active booking and no free-times row cannot book, sees no open times and cannot send free times; '
+  'a student with an active booking, or one who sent free times before the deadline, is exempt.';
 
 -- -----------------------------------------------------------------------------
 -- 2. Helper: has the cycle's booking deadline passed?
@@ -62,8 +68,9 @@ grant execute on function public.booking_closed(uuid) to authenticated, service_
 
 -- The future, opened slots of a cycle that nobody holds, for the booking pages.
 -- Same as the interview-flow version, plus: once the cycle's booking deadline has
--- passed, a caller with no active booking gets zero rows (she can no longer
--- book). A caller who holds a time still gets the list, so she can switch.
+-- passed, a caller with no active booking and no free-times row gets zero rows
+-- (she can no longer book). A caller who holds a time, or who sent free times,
+-- still gets the list.
 -- Error: no_submitted_application (same word switch_booking uses).
 create or replace function public.open_interview_slots(p_cycle_id uuid)
 returns table (id uuid, starts_at timestamptz, ends_at timestamptz)
@@ -79,11 +86,14 @@ begin
                     where a.user_id = auth.uid() and a.cycle_id = p_cycle_id and a.status = 'submitted') then
     raise exception 'no_submitted_application' using errcode = '42501';
   end if;
-  -- Booking deadline: past it, only a student who already holds a time sees the list.
+  -- Booking deadline: past it, only a student who already holds a time, or who sent free times, sees the list.
   if public.booking_closed(p_cycle_id)
      and not exists (select 1 from public.bookings b
                      join public.applications a on a.id = b.application_id
-                     where a.user_id = auth.uid() and a.cycle_id = p_cycle_id and b.status = 'active') then
+                     where a.user_id = auth.uid() and a.cycle_id = p_cycle_id and b.status = 'active')
+     and not exists (select 1 from public.interview_free_times f
+                     join public.applications a on a.id = f.application_id
+                     where a.user_id = auth.uid() and a.cycle_id = p_cycle_id) then
     return;
   end if;
   return query
@@ -105,8 +115,9 @@ grant execute on function public.open_interview_slots(uuid) to authenticated, se
 -- -----------------------------------------------------------------------------
 
 -- Same as the interview-flow version, plus: once the cycle's booking deadline has
--- passed, a caller with no active booking is refused with 'booking_closed'. A
--- caller who holds a time can still switch or save a note. Returns:
+-- passed, a caller with no active booking and no free-times row is refused with
+-- 'booking_closed'. A caller who holds a time, or sent free times, can still
+-- switch, book or save a note. Returns:
 --   'booked'    first booking made
 --   'switched'  moved to the new slot, old slot released
 --   'unchanged' she already holds this slot
@@ -150,12 +161,14 @@ begin
     raise exception 'no_submitted_application' using errcode = '42501';
   end if;
 
-  -- Booking deadline: past it, only a student who already holds a time may act
-  -- (switch, or save a note on her own time). Checked after her row is locked,
-  -- so it sees her current booking.
+  -- Booking deadline: past it, only a student who already holds a time, or who
+  -- sent free times, may act (book, switch, or save a note). Checked after her
+  -- row is locked, so it sees her current booking.
   if public.booking_closed(v_slot.cycle_id)
      and not exists (select 1 from public.bookings b
-                     where b.application_id = v_app and b.status = 'active') then
+                     where b.application_id = v_app and b.status = 'active')
+     and not exists (select 1 from public.interview_free_times f
+                     where f.application_id = v_app) then
     raise exception 'booking_closed' using errcode = '22023';
   end if;
 
@@ -198,9 +211,13 @@ grant execute on function public.switch_booking(uuid, text) to authenticated, se
 -- -----------------------------------------------------------------------------
 
 -- Same as the journey file's policies (application submitted, hers, no active
--- booking), plus: not after her cycle's booking deadline. The existing "no
--- active booking" rule already keeps students who hold a time out of this table,
--- so the deadline only changes things for students without one.
+-- booking), plus the deadline:
+--   - INSERT is closed after her cycle's booking deadline (an insert means she
+--     has no free-times row, so she is not exempt);
+--   - UPDATE stays open after the deadline for a student who has a free-times
+--     row (the row being updated is that row, so she is exempt by definition).
+-- The existing "no active booking" rule already keeps students who hold a time
+-- out of this table.
 drop policy if exists interview_free_times_insert_own on public.interview_free_times;
 drop policy if exists interview_free_times_update_own on public.interview_free_times;
 
@@ -224,15 +241,21 @@ create policy interview_free_times_update_own on public.interview_free_times
                 where a.id = application_id and a.user_id = (select auth.uid()) and a.status = 'submitted')
     and not exists (select 1 from public.bookings b
                     where b.application_id = interview_free_times.application_id and b.status = 'active')
-    and not exists (select 1 from public.applications a
-                    where a.id = interview_free_times.application_id and public.booking_closed(a.cycle_id)))
+    -- exempt: past the deadline she may still update a row she already has
+    and (not exists (select 1 from public.applications a
+                     where a.id = interview_free_times.application_id and public.booking_closed(a.cycle_id))
+         or exists (select 1 from public.interview_free_times f
+                    where f.application_id = interview_free_times.application_id)))
   with check (
     (select public.app_role()) = 'applicant'
     and exists (select 1 from public.applications a
                 where a.id = application_id and a.user_id = (select auth.uid()) and a.status = 'submitted')
     and not exists (select 1 from public.bookings b
                     where b.application_id = interview_free_times.application_id and b.status = 'active')
-    and not exists (select 1 from public.applications a
-                    where a.id = interview_free_times.application_id and public.booking_closed(a.cycle_id)));
+    -- exempt: past the deadline she may still update a row she already has
+    and (not exists (select 1 from public.applications a
+                     where a.id = interview_free_times.application_id and public.booking_closed(a.cycle_id))
+         or exists (select 1 from public.interview_free_times f
+                    where f.application_id = interview_free_times.application_id)));
 
 commit;

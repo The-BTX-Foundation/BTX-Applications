@@ -1,7 +1,8 @@
 -- Booking deadline (20261114120000): cycles.booking_closes_at closes booking for
--- students with no active booking (switch_booking refuses 'booking_closed',
--- open_interview_slots returns nothing, free times are refused). A student who
--- already holds a time keeps full control. Null = no deadline.
+-- students with no active booking and no free-times row (switch_booking refuses
+-- 'booking_closed', open_interview_slots returns nothing, free times cannot be
+-- inserted). A student who already holds a time keeps full control, and so does
+-- one who sent free times before the deadline (exempt). Null = no deadline.
 -- Run with: npx supabase test db
 -- now() is fixed for the whole transaction, so deadlines are set relative to it.
 begin;
@@ -108,11 +109,7 @@ select tests.login('bea@terpmail.umd.edu'); set local role authenticated;
 select throws_ok($$ insert into public.interview_free_times (application_id, ranges, said)
   values (tests.app_id('bea@terpmail.umd.edu'), '[{"day":"2030-10-16","start":"18:00","end":"20:00"}]', 'Wednesday') $$,
   '42501', null, 'after the deadline: an unbooked student cannot send free times');
-reset role; select tests.login('cy@terpmail.umd.edu'); set local role authenticated;
-update public.interview_free_times set said = 'Thursday instead' where application_id = tests.app_id('cy@terpmail.umd.edu');
 reset role;
-select is((select said from public.interview_free_times where application_id = tests.app_id('cy@terpmail.umd.edu')), 'Wednesday evening',
-  'after the deadline: an unbooked student cannot change free times she sent earlier');
 
 -- ---- after the deadline: a booked student keeps full control ------------------
 select tests.login('ada@terpmail.umd.edu'); set local role authenticated;
@@ -133,10 +130,30 @@ select throws_ok($$ insert into public.interview_free_times (application_id, ran
   values (tests.app_id('ada@terpmail.umd.edu'), '[{"day":"2030-10-16","start":"18:00","end":"20:00"}]', 'Wednesday') $$,
   '42501', null, 'a booked student still cannot send free times (unchanged rule)');
 
+-- ---- after the deadline: a student who sent free times beforehand is exempt ----
+-- Cy sent free times before the deadline (row exists), holds no booking.
+reset role;
+select tests.login('cy@terpmail.umd.edu'); set local role authenticated;
+select is((select count(*) from public.open_interview_slots('11111111-1111-1111-1111-111111111111')), 3::bigint,
+  'after the deadline: an unbooked student with free times still sees the open times');
+select lives_ok($$ update public.interview_free_times set said = 'Thursday instead'
+  where application_id = tests.app_id('cy@terpmail.umd.edu') $$,
+  'after the deadline: an unbooked student with free times can update them');
+reset role;
+select is((select said from public.interview_free_times where application_id = tests.app_id('cy@terpmail.umd.edu')), 'Thursday instead',
+  'the update was saved');
+select tests.login('cy@terpmail.umd.edu'); set local role authenticated;
+select is(public.switch_booking('52000000-0000-0000-0000-000000000004'), 'booked',
+  'after the deadline: an unbooked student with free times can book a time BTX opened');
+reset role;
+-- Bea has no free-times row: still cannot insert (covered above); and no row appeared for her.
+select is((select count(*) from public.interview_free_times where application_id = tests.app_id('bea@terpmail.umd.edu')), 0::bigint,
+  'a student with no row still has none after the deadline');
+
 -- ---- the deadline lifted (null again): unbooked students can book -------------
 reset role; select tests.deadline(null);
 select tests.login('bea@terpmail.umd.edu'); set local role authenticated;
-select is((select count(*) from public.open_interview_slots('11111111-1111-1111-1111-111111111111')), 3::bigint,
+select is((select count(*) from public.open_interview_slots('11111111-1111-1111-1111-111111111111')), 2::bigint,
   'deadline cleared: the unbooked student sees open times again');
 select is(public.switch_booking('52000000-0000-0000-0000-000000000002'), 'booked', 'deadline cleared: the unbooked student books');
 

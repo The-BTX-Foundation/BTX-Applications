@@ -72,9 +72,15 @@ describe('booking deadline', () => {
     expect(pickState(at('2026-11-14T04:59:00Z'))).toBe('booking-closed');
     expect(pickState(at('2026-11-15T12:00:00Z'))).toBe('booking-closed');
   });
-  it('shows closed even when she sent free times, or before the interview weeks, or after them', () => {
+  it('a student who sent free times before the deadline is exempt: she keeps the sent or book screen', () => {
     const free = { days: ['Sun'], windows: ['morning'], note: '' };
-    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: free })).toBe('booking-closed');
+    const ranges = { days: [], windows: [], note: '', ranges: [{ day: '2026-11-16', start: '18:00', end: '20:00' }] };
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: free })).toBe('sent');
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: ranges })).toBe('sent');
+    // BTX opened times for her: still not the closed screen
+    expect(pickState({ ...at('2026-11-15T12:00:00Z'), freeTimes: free, timesOpen: true })).not.toBe('booking-closed');
+  });
+  it('shows closed (no free times) before the interview weeks, or after them', () => {
     expect(pickState({ ...at('2026-11-15T12:00:00Z'), interviewStart: '2026-11-25', interviewEnd: '2026-11-30' })).toBe('booking-closed');
     expect(pickState(at('2026-11-25T12:00:00Z'))).toBe('booking-closed');
   });

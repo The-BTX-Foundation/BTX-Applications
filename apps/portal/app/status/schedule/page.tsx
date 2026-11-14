@@ -1,6 +1,6 @@
 // Schedule your interview. `?demo=schedule` (and `taken`, with `-stress`) draw the drafts' states in mock mode.
 // Live: `?taken=<time>` shows the "was just taken" notice after switch_booking answered 'taken'. Past the cycle's booking
-// deadline a student with no time goes back to /status (the closed screen).
+// deadline a student with no time and no free times goes back to /status (the closed screen).
 import type { Metadata } from 'next';
 import { ApplyLoadError } from '@/components/load-error-pages';
 import { ScheduleView } from '@/components/schedule-view';
@@ -19,8 +19,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   if ('failed' in d) return <ApplyLoadError status />;
   // she already holds a time: changing it is the other page
   if (!d.mock && d.booking) redirect('/status/change');
-  // booking has closed and she holds no time: the database would refuse her, so the status page explains instead
-  if (!d.mock && !d.booking && bookingClosed(d.now, d.view.bookingClosesAt)) redirect('/status');
+  // booking has closed and she holds no time and sent no free times: the database would refuse her, so the status page explains instead
+  if (!d.mock && !d.booking && !d.freeTimes && bookingClosed(d.now, d.view.bookingClosesAt)) redirect('/status');
   const takenAt = taken && !Number.isNaN(Date.parse(taken)) ? taken : undefined;
   const demoTaken = d.mock && d.demoName?.startsWith('taken') ? (d.stress ? 'Wednesday, September 30 at 9:30 PM' : 'Tue Oct 6 at 6:00 PM') : null;
   const demoAt = demoTaken ? (d.stress ? et('2026-09-30', 21, 30) : et('2026-10-06', 18)) : undefined;
