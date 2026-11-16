@@ -8,5 +8,8 @@
     "./tokens.css": "./src/tokens.css",
     "./components.css": "./src/components.css"
   },
-  "peerDependencies": { "react": "^19", "react-dom": "^19" }
+  "peerDependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
 }
